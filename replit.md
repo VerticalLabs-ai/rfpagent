@@ -64,8 +64,8 @@ Preferred communication style: Simple, everyday language.
 - **OpenAI GPT-5**: Advanced language model for document analysis and proposal generation
 - **Custom AI Workflows**: Document parsing, compliance analysis, and content generation pipelines
 
-### Web Scraping and Automation
-- **Puppeteer**: Headless browser automation for portal interaction and data extraction
+### AI-Powered Automation
+- **Mastra Framework**: TypeScript AI agent framework for intelligent RFP portal scraping with specialized agents
 - **Node-cron**: Scheduled job execution for automated portal scanning
 
 ### Development and Build Tools
