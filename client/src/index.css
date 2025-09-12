@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(210, 40%, 98%);
+  --foreground: hsl(222, 84%, 5%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(222, 84%, 5%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(222, 84%, 5%);
+  --primary: hsl(221, 83%, 53%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(210, 40%, 96%);
+  --secondary-foreground: hsl(222, 47%, 11%);
+  --muted: hsl(210, 40%, 96%);
+  --muted-foreground: hsl(215, 16%, 47%);
+  --accent: hsl(210, 40%, 96%);
+  --accent-foreground: hsl(222, 47%, 11%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --ring: hsl(221, 83%, 53%);
+  --chart-1: hsl(221, 83%, 53%);
+  --chart-2: hsl(159, 78%, 36%);
+  --chart-3: hsl(45, 93%, 47%);
+  --chart-4: hsl(142, 76%, 36%);
+  --chart-5: hsl(341, 75%, 51%);
+  --sidebar: hsl(0, 0%, 100%);
+  --sidebar-foreground: hsl(222, 84%, 5%);
+  --sidebar-primary: hsl(221, 83%, 53%);
+  --sidebar-primary-foreground: hsl(210, 40%, 98%);
+  --sidebar-accent: hsl(210, 40%, 96%);
+  --sidebar-accent-foreground: hsl(222, 47%, 11%);
+  --sidebar-border: hsl(214, 32%, 91%);
+  --sidebar-ring: hsl(221, 83%, 53%);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.5rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(221, 83%, 53%, 0.05);
+  --shadow-xs: 0px 1px 3px 0px hsl(221, 83%, 53%, 0.1);
+  --shadow-sm: 0px 1px 2px -1px hsl(221, 83%, 53%, 0.1), 0px 1px 3px 0px hsl(221, 83%, 53%, 0.1);
+  --shadow: 0px 1px 3px 0px hsl(221, 83%, 53%, 0.12), 0px 1px 2px 0px hsl(221, 83%, 53%, 0.07);
+  --shadow-md: 0px 4px 6px -1px hsl(221, 83%, 53%, 0.1), 0px 2px 4px -1px hsl(221, 83%, 53%, 0.06);
+  --shadow-lg: 0px 10px 15px -3px hsl(221, 83%, 53%, 0.1), 0px 4px 6px -2px hsl(221, 83%, 53%, 0.05);
+  --shadow-xl: 0px 20px 25px -5px hsl(221, 83%, 53%, 0.1), 0px 10px 10px -5px hsl(221, 83%, 53%, 0.04);
+  --shadow-2xl: 0px 25px 50px -12px hsl(221, 83%, 53%, 0.25);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+}
+
+.dark {
+  --background: hsl(224, 71%, 4%);
+  --foreground: hsl(213, 31%, 91%);
+  --card: hsl(224, 71%, 4%);
+  --card-foreground: hsl(213, 31%, 91%);
+  --popover: hsl(224, 71%, 4%);
+  --popover-foreground: hsl(213, 31%, 91%);
+  --primary: hsl(217, 91%, 60%);
+  --primary-foreground: hsl(222, 84%, 5%);
+  --secondary: hsl(222, 47%, 11%);
+  --secondary-foreground: hsl(213, 31%, 91%);
+  --muted: hsl(223, 47%, 11%);
+  --muted-foreground: hsl(215, 16%, 57%);
+  --accent: hsl(216, 34%, 17%);
+  --accent-foreground: hsl(213, 31%, 91%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(213, 31%, 91%);
+  --border: hsl(216, 34%, 17%);
+  --input: hsl(216, 34%, 17%);
+  --ring: hsl(217, 91%, 60%);
+  --sidebar: hsl(224, 71%, 4%);
+  --sidebar-foreground: hsl(213, 31%, 91%);
+  --sidebar-primary: hsl(217, 91%, 60%);
+  --sidebar-primary-foreground: hsl(222, 84%, 5%);
+  --sidebar-accent: hsl(216, 34%, 17%);
+  --sidebar-accent-foreground: hsl(213, 31%, 91%);
+  --sidebar-border: hsl(216, 34%, 17%);
+  --sidebar-ring: hsl(217, 91%, 60%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Custom status badge styles */
+.status-badge {
+  @apply inline-flex items-center text-xs font-medium px-2 py-1 rounded-md;
+}
+
+.status-discovered {
+  @apply bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300;
+}
+
+.status-parsing {
+  @apply bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300;
+}
+
+.status-drafting {
+  @apply bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300;
+}
+
+.status-review {
+  @apply bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300;
+}
+
+.status-approved {
+  @apply bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300;
+}
+
+.status-submitted {
+  @apply bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300;
+}
+
+/* Progress bar animation */
+.progress-bar {
+  @apply transition-all duration-500 ease-out;
+}
+
+/* Sidebar navigation transitions */
+.sidebar-nav {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Activity feed animations */
+.activity-item {
+  @apply opacity-0 animate-in slide-in-from-left-2 duration-500;
+}
+
+.activity-item:nth-child(1) { animation-delay: 0ms; }
+.activity-item:nth-child(2) { animation-delay: 100ms; }
+.activity-item:nth-child(3) { animation-delay: 200ms; }
+.activity-item:nth-child(4) { animation-delay: 300ms; }
+.activity-item:nth-child(5) { animation-delay: 400ms; }
