@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["chromium", "glib", "gtk3", "pango", "atk", "cairo", "cups", "dbus", "fontconfig", "freetype", "nss"]
+packages = ["chromium", "glib", "gtk3", "pango", "atk", "cairo", "cups", "dbus", "fontconfig", "freetype", "nss", "libxkbcommon", "mesa", "vulkan-loader"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -41,7 +41,3 @@ waitForPort = 5000
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 44075
-externalPort = 3000

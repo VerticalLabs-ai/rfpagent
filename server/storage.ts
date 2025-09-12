@@ -19,6 +19,7 @@ export interface IStorage {
   getPortal(id: string): Promise<Portal | undefined>;
   createPortal(portal: InsertPortal): Promise<Portal>;
   updatePortal(id: string, updates: Partial<Portal>): Promise<Portal>;
+  deletePortal(id: string): Promise<void>;
 
   // RFPs
   getAllRFPs(filters?: { status?: string; portalId?: string; limit?: number; offset?: number }): Promise<{ rfps: RFP[]; total: number }>;
@@ -107,6 +108,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(portals.id, id))
       .returning();
     return updatedPortal;
+  }
+
+  async deletePortal(id: string): Promise<void> {
+    await db.delete(portals).where(eq(portals.id, id));
   }
 
   // RFPs
