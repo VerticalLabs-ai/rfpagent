@@ -376,6 +376,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/notifications/:id/read", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.markNotificationRead(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ error: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/clear-all", async (req, res) => {
+    try {
+      const notifications = await storage.getAllNotifications();
+      await Promise.all(
+        notifications.map(notification => 
+          storage.markNotificationRead(notification.id)
+        )
+      );
+      res.json({ success: true, cleared: notifications.length });
+    } catch (error) {
+      console.error("Error clearing all notifications:", error);
+      res.status(500).json({ error: "Failed to clear notifications" });
+    }
+  });
+
   app.put("/api/notifications/:id/read", async (req, res) => {
     try {
       const { id } = req.params;

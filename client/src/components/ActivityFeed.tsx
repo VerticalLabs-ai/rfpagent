@@ -144,8 +144,7 @@ function ActivityItem({ notification, index }: { notification: any; index: numbe
 
   return (
     <div 
-      className={`flex items-start space-x-3 activity-item`}
-      style={{ animationDelay: `${index * 100}ms` }}
+      className={`flex items-start space-x-3`}
       data-testid={`activity-item-${notification.id}`}
     >
       <div className={`w-2 h-2 ${activityIcon.color.replace('text-', 'bg-')} rounded-full mt-2 flex-shrink-0`}></div>
@@ -191,8 +190,7 @@ function ComplianceAlert({ rfp, index }: { rfp: any; index: number }) {
 
   return (
     <div 
-      className={`flex items-start space-x-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-900 activity-item`}
-      style={{ animationDelay: `${index * 100}ms` }}
+      className={`flex items-start space-x-3 p-3 bg-red-50 dark:bg-red-950 rounded-lg border border-red-200 dark:border-red-900`}
       data-testid={`compliance-alert-${rfp.id}`}
     >
       <i className={`${getRiskIcon(primaryFlag.category)} text-red-500 mt-1 flex-shrink-0`}></i>
@@ -219,8 +217,7 @@ function ComplianceAlert({ rfp, index }: { rfp: any; index: number }) {
 function ComplianceNotificationAlert({ notification, index }: { notification: any; index: number }) {
   return (
     <div 
-      className={`flex items-start space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-900 activity-item`}
-      style={{ animationDelay: `${index * 100}ms` }}
+      className={`flex items-start space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-900`}
       data-testid={`compliance-notification-${notification.id}`}
     >
       <i className="fas fa-exclamation-circle text-orange-500 mt-1 flex-shrink-0"></i>

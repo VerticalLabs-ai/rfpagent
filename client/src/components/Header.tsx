@@ -1,19 +1,51 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
   DropdownMenuContent, 
   DropdownMenuItem,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Header() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  
   const { data: unreadNotifications } = useQuery({
     queryKey: ["/api/notifications/unread"],
   });
 
-  const unreadCount = unreadNotifications?.length || 0;
+  const unreadCount = Array.isArray(unreadNotifications) ? unreadNotifications.length : 0;
+
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/notifications/clear-all");
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+      toast({
+        title: "Notifications Cleared",
+        description: `Successfully cleared ${data.cleared} notifications`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: "Failed to clear notifications",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleClearAll = () => {
+    clearAllMutation.mutate();
+  };
 
   return (
     <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
@@ -49,7 +81,7 @@ export default function Header() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
-            {unreadNotifications?.slice(0, 5).map((notification: any) => (
+            {Array.isArray(unreadNotifications) && unreadNotifications.slice(0, 5).map((notification: any) => (
               <DropdownMenuItem 
                 key={notification.id}
                 className="flex flex-col items-start p-3"
@@ -64,6 +96,18 @@ export default function Header() {
               <DropdownMenuItem disabled>
                 <span className="text-muted-foreground">No new notifications</span>
               </DropdownMenuItem>
+            )}
+            {unreadCount > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={handleClearAll}
+                  className="justify-center text-sm font-medium"
+                  data-testid="clear-all-notifications"
+                >
+                  Clear All ({unreadCount})
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
