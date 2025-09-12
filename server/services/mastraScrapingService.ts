@@ -414,7 +414,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       try {
         const { url, loginRequired, credentials, portalType } = context;
         
-        console.log(`Scraping ${url} (portal type: ${portalType})`);
+        console.log(`🔍 Starting intelligent scrape of ${url} (portal type: ${portalType})`);
         
         // Step 1: Fetch the page content
         let sessionData: any = null;
@@ -448,24 +448,33 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           headersTimeout: 10000
         });
 
-        if (response.statusCode !== 200) {
+        console.log(`📡 HTTP Response: ${response.statusCode} from ${url}`);
+        
+        if (response.statusCode >= 400) {
           throw new Error(`HTTP ${response.statusCode}: Failed to fetch ${url}`);
         }
 
         const html = await response.body.text();
+        console.log(`📄 Fetched ${html.length} characters of HTML content`);
         
         // Step 3: Parse HTML content with Cheerio
         const $ = cheerio.load(html);
+        console.log(`🔧 Parsed HTML with Cheerio, found ${$('*').length} elements`);
         
         // Step 4: Extract structured content based on portal type
+        console.log(`🎯 Extracting content for portal type: ${portalType}`);
         const extractedContent = this.extractContentByPortalType($, portalType, url);
+        console.log(`📊 Extracted ${extractedContent?.length || 0} content sections`);
         
         // Step 5: Look for RFP/opportunity links to fetch additional details
+        console.log(`🔗 Looking for opportunity links...`);
         const opportunityLinks = this.findOpportunityLinks($, url, portalType);
+        console.log(`🎯 Found ${opportunityLinks?.length || 0} potential opportunity links`);
         
         // Step 6: Fetch additional opportunity details (limited concurrency)
+        console.log(`📥 Fetching details for ${Math.min(opportunityLinks?.length || 0, 10)} opportunities...`);
         const detailedOpportunities = await Promise.allSettled(
-          opportunityLinks.slice(0, 10).map(link => // Limit to 10 opportunities per scrape
+          (opportunityLinks || []).slice(0, 10).map(link => // Limit to 10 opportunities per scrape
             this.fetchOpportunityDetails(link, sessionData)
           )
         );
@@ -474,6 +483,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           .filter(result => result.status === 'fulfilled')
           .map(result => (result as PromiseFulfilledResult<any>).value)
           .filter(opp => opp !== null);
+        
+        console.log(`✅ Successfully fetched ${successfulOpportunities.length} detailed opportunities`);
 
         return {
           content: html,
