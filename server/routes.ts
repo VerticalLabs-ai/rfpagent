@@ -76,6 +76,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/portals/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deletePortal(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting portal:", error);
+      if (error instanceof Error && error.message === "Portal not found") {
+        return res.status(404).json({ error: "Portal not found" });
+      }
+      res.status(500).json({ error: "Failed to delete portal" });
+    }
+  });
+
   // RFP management
   app.get("/api/rfps", async (req, res) => {
     try {

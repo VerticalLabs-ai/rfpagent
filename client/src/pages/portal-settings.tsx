@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
@@ -90,6 +91,27 @@ export default function PortalSettings() {
     },
   });
 
+  const deletePortalMutation = useMutation({
+    mutationFn: async (portalId: string) => {
+      return apiRequest("DELETE", `/api/portals/${portalId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Portal Deleted",
+        description: "The portal has been removed successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/portals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/portals/activity"] });
+    },
+    onError: () => {
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete portal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="p-6">
@@ -154,7 +176,9 @@ export default function PortalSettings() {
               rfpCount={activity?.rfpCount || 0}
               onUpdate={(updates) => updatePortalMutation.mutate({ id: portal.id, updates })}
               onScan={() => scanPortalMutation.mutate(portal.id)}
+              onDelete={() => deletePortalMutation.mutate(portal.id)}
               scanning={scanPortalMutation.isPending}
+              deleting={deletePortalMutation.isPending}
             />
           );
         })}
@@ -286,7 +310,7 @@ function AddPortalForm({ onSubmit }: { onSubmit: (data: PortalFormData) => void 
   );
 }
 
-function PortalCard({ portal, rfpCount, onUpdate, onScan, scanning }: any) {
+function PortalCard({ portal, rfpCount, onUpdate, onScan, onDelete, scanning, deleting }: any) {
   const [isEditing, setIsEditing] = useState(false);
   
   const getStatusColor = (status: string) => {
@@ -393,6 +417,40 @@ function PortalCard({ portal, rfpCount, onUpdate, onScan, scanning }: any) {
                 <EditPortalForm portal={portal} onSubmit={onUpdate} />
               </DialogContent>
             </Dialog>
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleting}
+                  data-testid={`delete-portal-${portal.id}`}
+                >
+                  <i className="fas fa-trash mr-2"></i>
+                  {deleting ? "Deleting..." : "Delete"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Portal</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete "{portal.name}"? This action will permanently remove the portal and all associated RFPs, proposals, documents, and submissions. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid={`cancel-delete-${portal.id}`}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    data-testid={`confirm-delete-${portal.id}`}
+                  >
+                    Delete Portal
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
       </CardContent>

@@ -111,7 +111,47 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePortal(id: string): Promise<void> {
+    // Check if portal exists
+    const portal = await this.getPortal(id);
+    if (!portal) {
+      throw new Error("Portal not found");
+    }
+
+    // Get all RFPs associated with this portal
+    const relatedRfps = await db.select().from(rfps).where(eq(rfps.portalId, id));
+    
+    // Delete in correct order to avoid foreign key constraint violations
+    for (const rfp of relatedRfps) {
+      // Delete submissions for this RFP
+      await db.delete(submissions).where(eq(submissions.rfpId, rfp.id));
+      
+      // Delete documents for this RFP
+      await db.delete(documents).where(eq(documents.rfpId, rfp.id));
+      
+      // Delete proposals for this RFP
+      await db.delete(proposals).where(eq(proposals.rfpId, rfp.id));
+    }
+    
+    // Delete all RFPs for this portal
+    await db.delete(rfps).where(eq(rfps.portalId, id));
+    
+    // Delete submissions that directly reference the portal
+    await db.delete(submissions).where(eq(submissions.portalId, id));
+    
+    // Finally delete the portal itself
     await db.delete(portals).where(eq(portals.id, id));
+    
+    // Create audit log for the deletion
+    await this.createAuditLog({
+      entityType: "portal",
+      entityId: id,
+      action: "deleted",
+      details: {
+        portalName: portal.name,
+        portalUrl: portal.url,
+        relatedRfpsCount: relatedRfps.length
+      }
+    });
   }
 
   // RFPs
