@@ -365,10 +365,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private parseAgentResponse(response: string): any[] {
     try {
-      console.log('Parsing agent response...');
+      console.log('🤖 Parsing AI agent response...');
+      console.log(`📝 Agent response length: ${response.length} characters`);
       
       // First, try to extract JSON blocks from the response
       const jsonBlocks = this.extractJsonBlocks(response);
+      console.log(`🔍 Found ${jsonBlocks.length} JSON blocks in response`);
       
       for (const jsonBlock of jsonBlocks) {
         try {
