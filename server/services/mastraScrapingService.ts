@@ -9,6 +9,7 @@ import pLimit from "p-limit";
 import { storage } from "../storage";
 import { AIService } from "./aiService";
 import type { Portal } from "@shared/schema";
+import puppeteer from "puppeteer";
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -47,6 +48,80 @@ export class MastraScrapingService {
     // });
 
     this.initializeAgents();
+  }
+
+  /**
+   * Scrape dynamic content using Puppeteer for JavaScript-heavy sites like Austin Finance
+   */
+  private async scrapeDynamicContent(url: string, sessionData?: any): Promise<string> {
+    let browser;
+    try {
+      console.log(`🤖 Launching Puppeteer browser for ${url}`);
+      
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ]
+      });
+
+      const page = await browser.newPage();
+      
+      // Set user agent to match our requests
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
+      
+      // Set cookies if we have session data
+      if (sessionData?.cookies) {
+        console.log(`🍪 Setting session cookies for authentication`);
+        // Parse cookies and set them
+        const cookies = sessionData.cookies.split(';').map((cookie: string) => {
+          const [name, value] = cookie.trim().split('=');
+          return { name, value, domain: new URL(url).hostname };
+        });
+        await page.setCookie(...cookies);
+      }
+
+      console.log(`🌐 Navigating to ${url} with Puppeteer`);
+      
+      // Navigate and wait for network to be idle (JavaScript content loaded)
+      await page.goto(url, { 
+        waitUntil: 'networkidle2', // Wait until no more than 2 network connections for 500ms
+        timeout: 30000 
+      });
+
+      // Additional wait for any remaining JavaScript to finish
+      console.log(`⏳ Waiting for JavaScript content to load completely...`);
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Give extra time for dynamic content
+
+      // Check if we can find table elements or solicitation content
+      await page.waitForFunction(() => {
+        const tables = document.querySelectorAll('table, .solicitation, [id*="solicitation"], [class*="rfp"]');
+        return tables.length > 0;
+      }, { timeout: 10000 }).catch(() => {
+        console.log(`⚠️ No specific solicitation elements found, proceeding with full page content`);
+      });
+
+      // Get the fully rendered HTML
+      const html = await page.content();
+      console.log(`✅ Successfully scraped ${html.length} characters of dynamic content`);
+      
+      return html;
+      
+    } catch (error) {
+      console.error(`❌ Dynamic scraping failed for ${url}:`, error instanceof Error ? error.message : String(error));
+      throw new Error(`Dynamic content scraping failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      if (browser) {
+        await browser.close();
+        console.log(`🔒 Puppeteer browser closed`);
+      }
+    }
   }
 
   private initializeAgents(): void {
@@ -503,30 +578,38 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           }
         }
 
-        // Step 2: Fetch main portal page
-        const response = await request(url, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            ...(sessionData?.cookies ? { 'Cookie': sessionData.cookies } : {}),
-            ...(sessionData?.headers ? sessionData.headers : {})
-          },
-          bodyTimeout: 30000,
-          headersTimeout: 10000
-        });
-
-        console.log(`📡 HTTP Response: ${response.statusCode} from ${url}`);
+        // Step 2: Fetch main portal page (use dynamic scraping for Austin Finance)
+        let html: string;
         
-        if (response.statusCode >= 400) {
-          throw new Error(`HTTP ${response.statusCode}: Failed to fetch ${url}`);
-        }
+        if (portalType.toLowerCase().includes('austin') && portalType.toLowerCase().includes('finance')) {
+          console.log(`🌐 Austin Finance detected: Using dynamic content scraping with Puppeteer`);
+          html = await this.scrapeDynamicContent(url, sessionData);
+        } else {
+          const response = await request(url, {
+            method: 'GET',
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.5',
+              'Accept-Encoding': 'gzip, deflate',
+              'Connection': 'keep-alive',
+              'Upgrade-Insecure-Requests': '1',
+              ...(sessionData?.cookies ? { 'Cookie': sessionData.cookies } : {}),
+              ...(sessionData?.headers ? sessionData.headers : {})
+            },
+            bodyTimeout: 30000,
+            headersTimeout: 10000
+          });
 
-        const html = await response.body.text();
+          console.log(`📡 HTTP Response: ${response.statusCode} from ${url}`);
+          
+          if (response.statusCode >= 400) {
+            throw new Error(`HTTP ${response.statusCode}: Failed to fetch ${url}`);
+          }
+
+          html = await response.body.text();
+        }
+        
         console.log(`📄 Fetched ${html.length} characters of HTML content`);
         
         // Step 3: Parse HTML content with Cheerio
