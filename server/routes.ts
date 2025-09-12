@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertRfpSchema, insertProposalSchema, insertPortalSchema, insertDocumentSchema } from "@shared/schema";
-import { ScrapingService } from "./services/scrapingService";
+import { MastraScrapingService } from "./services/mastraScrapingService";
 import { DocumentParsingService } from "./services/documentParsingService";
 import { AIService } from "./services/aiService";
 import { SubmissionService } from "./services/submissionService";
@@ -11,7 +11,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { setupScrapingScheduler } from "./jobs/scrapingScheduler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const scrapingService = new ScrapingService();
+  const scrapingService = new MastraScrapingService();
   const documentService = new DocumentParsingService();
   const aiService = new AIService();
   const submissionService = new SubmissionService();

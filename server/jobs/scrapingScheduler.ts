@@ -1,10 +1,10 @@
 import cron from "node-cron";
-import { ScrapingService } from "../services/scrapingService";
+import { MastraScrapingService } from "../services/mastraScrapingService";
 import { NotificationService } from "../services/notificationService";
 import { storage } from "../storage";
 
 export function setupScrapingScheduler(): void {
-  const scrapingService = new ScrapingService();
+  const scrapingService = new MastraScrapingService();
   const notificationService = new NotificationService();
 
   // Schedule portal scraping every 4 hours
