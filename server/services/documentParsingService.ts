@@ -1,4 +1,3 @@
-import PDFParse from "pdf-parse";
 import mammoth from "mammoth";
 import { ObjectStorageService } from "../objectStorage";
 import { storage } from "../storage";
@@ -135,6 +134,7 @@ export class DocumentParsingService {
 
   private async parsePDF(buffer: Buffer): Promise<string> {
     try {
+      const PDFParse = (await import("pdf-parse")).default;
       const data = await PDFParse(buffer);
       return data.text;
     } catch (error) {
