@@ -6,7 +6,7 @@ import {
   type Notification, type InsertNotification
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, or, gte, lte, count } from "drizzle-orm";
+import { eq, desc, asc, and, or, gte, lte, count, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -386,7 +386,7 @@ export class DatabaseStorage implements IStorage {
 
     const totalValue = await db
       .select({ 
-        total: db.$sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)` 
+        total: sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)` 
       })
       .from(rfps)
       .where(or(

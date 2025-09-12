@@ -275,7 +275,29 @@ export class MastraScrapingService {
       });
 
       // Parse agent response and extract opportunities
-      const opportunities = this.parseAgentResponse(response.text);
+      let opportunities = this.parseAgentResponse(response.text);
+      
+      // If agent didn't call tools or returned no opportunities, call intelligentWebScrape directly
+      if (opportunities.length === 0) {
+        console.log(`🔄 Agent returned no opportunities, calling intelligentWebScrape directly for ${portal.name}`);
+        try {
+          const directScrapeResult = await this.intelligentWebScrape({
+            url: portal.url,
+            loginRequired: portal.loginRequired,
+            credentials: portal.loginRequired ? {
+              username: portal.username,
+              password: portal.password
+            } : null
+          });
+          
+          if (directScrapeResult && directScrapeResult.opportunities) {
+            opportunities = directScrapeResult.opportunities;
+            console.log(`✅ Direct scrape found ${opportunities.length} opportunities`);
+          }
+        } catch (directScrapeError) {
+          console.error(`Direct scrape failed for ${portal.name}:`, directScrapeError);
+        }
+      }
 
       // Process discovered opportunities
       for (const opportunity of opportunities) {
@@ -341,6 +363,38 @@ export class MastraScrapingService {
   }
 
   private buildScrapingPrompt(portal: Portal, context: string): string {
+    // Build specialized prompt based on portal type
+    const isAustinFinance = portal.name.toLowerCase().includes('austin finance');
+    
+    if (isAustinFinance) {
+      return `Please scrape the Austin Finance Online portal for procurement opportunities:
+
+${context}
+
+IMPORTANT: You are analyzing the ACTIVE SOLICITATIONS page which contains a table/list of current RFPs.
+
+Your task:
+1. Look for the "ACTIVE SOLICITATIONS" table or list on the page
+2. Each row contains solicitation information in this pattern:
+   - Solicitation ID (e.g. "IFQ 1100 BAS1065", "RFP 8100 SAR3013")
+   - Due Date (e.g. "09/12/2025 at 2PM") 
+   - Title/Description (e.g. "Gearbox, Unit 6 & 7 Cooling Tower Fan")
+   - Detailed description paragraph
+3. Extract ALL solicitations from the table/list
+4. For each opportunity, extract:
+   - Title (from the bold title line)
+   - Solicitation ID (the code like IFQ/IFB/RFP + numbers)
+   - Due Date (convert to ISO format)
+   - Description (full description text)
+   - Agency: "City of Austin"
+   - Source URL: Construct detail URL if provided (e.g. solicitation_details.cfm?sid=XXXXX)
+   - Category: Based on solicitation type (IFQ=Quote, IFB=Bid, RFP=Proposal)
+
+Look specifically for table rows or list items that contain solicitation codes like "IFQ", "IFB", "RFP", "RFQS" followed by numbers.
+
+Return results as structured JSON array with all found solicitations.`;
+    }
+
     return `Please scrape the following RFP portal for procurement opportunities:
 
 ${context}
@@ -414,7 +468,23 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private async intelligentWebScrape(context: any): Promise<any> {
     return await this.requestLimiter(async () => {
       try {
-        const { url, loginRequired, credentials, portalType } = context;
+        const { url, loginRequired, credentials } = context;
+        
+        // Auto-detect portal type based on URL if not provided or unclear
+        let portalType = context.portalType;
+        if (!portalType || portalType === 'generic') {
+          if (url.includes('financeonline.austintexas.gov') || url.includes('austin') && url.includes('finance')) {
+            portalType = 'austin finance';
+          } else if (url.includes('bonfire')) {
+            portalType = 'bonfire';
+          } else if (url.includes('sam.gov')) {
+            portalType = 'sam.gov';
+          } else if (url.includes('findrfp')) {
+            portalType = 'findrfp';
+          }
+        }
+        
+        console.log(`🔍 Portal type detected: ${portalType} for ${url}`);
         
         console.log(`🔍 Starting intelligent scrape of ${url} (portal type: ${portalType})`);
         
@@ -487,11 +557,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           .filter(opp => opp !== null);
         
         console.log(`✅ Successfully fetched ${successfulOpportunities.length} detailed opportunities`);
+        
+        // Merge detailed opportunities with extracted opportunities - critical fix!
+        const allOpportunities = successfulOpportunities.length > 0 ? 
+          successfulOpportunities : 
+          extractedContent.opportunities || [];
+        
+        console.log(`🔄 intelligentWebScrape returning ${allOpportunities.length} opportunities (${successfulOpportunities.length} detailed + ${extractedContent.opportunities?.length || 0} extracted)`);
 
         return {
           content: html,
           extractedContent,
-          opportunities: successfulOpportunities,
+          opportunities: allOpportunities,
           opportunityLinks,
           status: 'success',
           timestamp: new Date().toISOString(),
@@ -608,8 +685,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         opportunity.link || opportunity.url
       );
       
-      if (!rfpDetails || rfpDetails.confidence < 0.7) {
-        console.log(`Skipping low-confidence opportunity: ${opportunity.title}`);
+      // Lower confidence threshold for Austin Finance due to municipal list pages
+      const confidenceThreshold = portal.name.toLowerCase().includes('austin') ? 0.4 : 0.7;
+      
+      if (!rfpDetails || rfpDetails.confidence < confidenceThreshold) {
+        console.log(`Skipping low-confidence opportunity: ${opportunity.title} (confidence: ${rfpDetails?.confidence}, threshold: ${confidenceThreshold})`);
         return;
       }
 
@@ -695,6 +775,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           break;
         case 'findrfp':
           content.opportunities = this.extractFindRFPOpportunities($, url);
+          break;
+        case 'austin finance online':
+        case 'austin_finance_online':
+        case 'austin finance':
+        case 'austin_finance':
+          content.opportunities = this.extractAustinFinanceOpportunities($, url);
           break;
         default:
           content.opportunities = this.extractGenericOpportunities($, url);
@@ -803,6 +889,104 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return opportunities;
   }
 
+  private extractAustinFinanceOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
+    const opportunities: any[] = [];
+    
+    console.log(`🔍 Austin Finance: Starting extraction from ${baseUrl}`);
+    
+    // Target solicitation detail links directly
+    const detailLinks = $('a[href*="solicitation_details.cfm"]');
+    console.log(`🔗 Austin Finance: Found ${detailLinks.length} detail links`);
+    
+    detailLinks.each((_, linkElement) => {
+      const $link = $(linkElement);
+      const href = $link.attr('href');
+      
+      if (!href) return;
+      
+      // Find the container element (tr, li, div, etc.) that holds this link
+      const $container = $link.closest('tr, li, div, td').length ? $link.closest('tr, li, div, td') : $link.parent();
+      let text = $container.text();
+      
+      // Normalize text - replace NBSP and collapse whitespace
+      text = text.replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      
+      if (text.length < 10) {
+        // If container is too small, try a larger parent
+        text = $container.parent().text().replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      
+      console.log(`📄 Austin Finance: Processing container text (${text.length} chars): ${text.substring(0, 100)}...`);
+      
+      // Use more tolerant ID regex patterns
+      const tolerantPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
+      const fallbackPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i;
+      
+      const idMatch = text.match(tolerantPattern) || text.match(fallbackPattern);
+      
+      if (!idMatch) {
+        console.log(`⚠️ Austin Finance: No solicitation ID found in: ${text.substring(0, 50)}...`);
+        return;
+      }
+      
+      const solicitationId = idMatch[0].trim();
+      console.log(`✅ Austin Finance: Found solicitation ID: ${solicitationId}`);
+      
+      // Extract title (usually in bold/strong or after ID)
+      let title = $container.find('strong, b').first().text().trim();
+      if (!title) {
+        // Try to find title after the ID
+        const afterId = text.substring(text.indexOf(solicitationId) + solicitationId.length).trim();
+        const lines = afterId.split(/\n|Due Date|View Details/i);
+        title = lines[0] ? lines[0].trim() : '';
+      }
+      
+      // Extract due date
+      const dueDateMatch = text.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+      const dueDate = dueDateMatch ? dueDateMatch[1] : '';
+      
+      // Extract description (text between title and due date)
+      let description = text;
+      if (title) description = description.replace(title, '');
+      description = description.replace(solicitationId, '');
+      if (dueDate) description = description.replace(dueDate, '');
+      description = description.replace(/due date:?/i, '').replace(/view details/i, '').trim();
+      description = description.substring(0, 500); // Limit length
+      
+      if (solicitationId && title) {
+        const opportunity = {
+          title: title,
+          solicitationId: solicitationId,
+          description: description,
+          dueDate: dueDate,
+          agency: 'City of Austin',
+          link: new URL(href, baseUrl).toString(),
+          category: solicitationId.toUpperCase().startsWith('IFQ') ? 'Quote' : 
+                   solicitationId.toUpperCase().startsWith('IFB') ? 'Bid' : 
+                   solicitationId.toUpperCase().startsWith('RFP') ? 'Proposal' : 'Other',
+          source: 'austin_finance'
+        };
+        
+        opportunities.push(opportunity);
+        console.log(`🎯 Austin Finance: Created opportunity: ${solicitationId} - ${title}`);
+      }
+    });
+    
+    // Remove duplicates based on solicitation ID
+    const unique = opportunities.filter((opp, index, self) => 
+      index === self.findIndex(o => o.solicitationId === opp.solicitationId)
+    );
+    
+    console.log(`🏛️ Austin Finance: Extracted ${unique.length} opportunities from ${opportunities.length} raw matches`);
+    if (unique.length > 0) {
+      console.log(`🎯 Austin Finance sample opportunity:`, unique[0]);
+    } else {
+      console.log(`❌ Austin Finance: No opportunities found. HTML elements: ${$('*').length}, detail links: ${detailLinks.length}`);
+    }
+    
+    return unique;
+  }
+
   private extractGenericOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
     const opportunities: any[] = [];
     
@@ -838,7 +1022,28 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private findOpportunityLinks($: cheerio.CheerioAPI, baseUrl: string, portalType: string): string[] {
     const links: string[] = [];
     
-    // Look for links that likely contain RFP details
+    console.log(`🔗 Finding opportunity links for portal type: ${portalType}`);
+    
+    // Portal-specific link patterns
+    if (portalType?.toLowerCase().includes('austin finance')) {
+      // Austin Finance specific patterns
+      $('a[href*="solicitation_details.cfm"]').each((_, element) => {
+        const href = $(element).attr('href');
+        if (href) {
+          try {
+            const fullUrl = new URL(href, baseUrl).toString();
+            if (!links.includes(fullUrl)) {
+              links.push(fullUrl);
+              console.log(`🏛️ Austin Finance detail link found: ${fullUrl}`);
+            }
+          } catch (error) {
+            // Skip malformed URLs
+          }
+        }
+      });
+    }
+    
+    // Generic link detection for all portals
     const rfpKeywords = ['rfp', 'bid', 'proposal', 'opportunity', 'solicitation', 'procurement', 'tender'];
     
     $('a[href]').each((_, element) => {
@@ -858,6 +1063,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       }
     });
     
+    console.log(`🔗 Found ${links.length} opportunity links total`);
     return links.slice(0, 20); // Limit to 20 links per page
   }
 
