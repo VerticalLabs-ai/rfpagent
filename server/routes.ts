@@ -11,6 +11,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { setupScrapingScheduler } from "./jobs/scrapingScheduler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const server = createServer(app);
   const scrapingService = new MastraScrapingService();
   const documentService = new DocumentParsingService();
   const aiService = new AIService();
@@ -425,7 +426,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  const httpServer = createServer(app);
-
-  return httpServer;
+  return server;
 }

@@ -375,8 +375,16 @@ export class MastraScrapingService {
       }
 
       // Process discovered opportunities
-      for (const opportunity of opportunities) {
-        await this.processOpportunity(opportunity, portal);
+      console.log(`🔧 Processing ${opportunities.length} opportunities for ${portal.name}`);
+      for (let i = 0; i < opportunities.length; i++) {
+        const opportunity = opportunities[i];
+        console.log(`🔧 Processing opportunity ${i + 1}/${opportunities.length}: ${opportunity.title || opportunity.solicitationId || 'Unknown'}`);
+        try {
+          await this.processOpportunity(opportunity, portal);
+          console.log(`✅ Successfully processed opportunity: ${opportunity.title || opportunity.solicitationId}`);
+        } catch (error) {
+          console.error(`❌ Error processing opportunity ${opportunity.title || opportunity.solicitationId}:`, error);
+        }
       }
 
       console.log(`Completed intelligent scrape of ${portal.name}: found ${opportunities.length} opportunities`);
@@ -642,16 +650,21 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         console.log(`✅ Successfully fetched ${successfulOpportunities.length} detailed opportunities`);
         
         // Merge detailed opportunities with extracted opportunities - critical fix!
-        const allOpportunities = successfulOpportunities.length > 0 ? 
-          successfulOpportunities : 
-          extractedContent.opportunities || [];
+        const extractedOpportunities = extractedContent.opportunities || [];
+        const allOpportunities = [...successfulOpportunities, ...extractedOpportunities];
         
-        console.log(`🔄 intelligentWebScrape returning ${allOpportunities.length} opportunities (${successfulOpportunities.length} detailed + ${extractedContent.opportunities?.length || 0} extracted)`);
+        // Remove duplicates based on link or solicitationId
+        const uniqueOpportunities = allOpportunities.filter((opportunity, index, arr) => {
+          const identifier = opportunity.link || opportunity.url || opportunity.solicitationId || opportunity.title;
+          return arr.findIndex(o => (o.link || o.url || o.solicitationId || o.title) === identifier) === index;
+        });
+        
+        console.log(`🔄 intelligentWebScrape returning ${uniqueOpportunities.length} opportunities (${successfulOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed)`);
 
         return {
           content: html,
           extractedContent,
-          opportunities: allOpportunities,
+          opportunities: uniqueOpportunities,
           opportunityLinks,
           status: 'success',
           timestamp: new Date().toISOString(),
@@ -761,20 +774,30 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private async processOpportunity(opportunity: any, portal: Portal): Promise<void> {
+    console.log(`🎯 Starting processOpportunity for: ${opportunity.title || opportunity.solicitationId} from ${portal.name}`);
     try {
       // Enhanced AI analysis with confidence scoring
+      console.log(`🤖 Calling AI analysis for: ${opportunity.title || opportunity.solicitationId}`);
       const rfpDetails = await this.aiService.extractRFPDetails(
         opportunity.content || opportunity.description, 
         opportunity.link || opportunity.url
       );
+      console.log(`🤖 AI analysis completed. Result:`, rfpDetails ? `Confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%` : 'NULL');
       
       // Lower confidence threshold for Austin Finance due to municipal list pages
       const confidenceThreshold = portal.name.toLowerCase().includes('austin') ? 0.4 : 0.7;
       
-      if (!rfpDetails || rfpDetails.confidence < confidenceThreshold) {
-        console.log(`Skipping low-confidence opportunity: ${opportunity.title} (confidence: ${rfpDetails?.confidence}, threshold: ${confidenceThreshold})`);
+      if (!rfpDetails) {
+        console.log(`🚫 Skipping opportunity - AI returned null: ${opportunity.title || opportunity.solicitationId}`);
         return;
       }
+      
+      if (rfpDetails.confidence < confidenceThreshold) {
+        console.log(`🚫 Skipping low-confidence opportunity: ${opportunity.title || opportunity.solicitationId} (confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%, threshold: ${(confidenceThreshold * 100).toFixed(1)}%)`);
+        return;
+      }
+      
+      console.log(`✅ AI analysis passed: ${opportunity.title || opportunity.solicitationId} (confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%)`);
 
       // Check for duplicates
       const existingRfps = await storage.getRFPsByPortal(portal.id);
@@ -822,7 +845,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         relatedEntityId: rfp.id
       });
 
-      console.log(`AI agent created new RFP: ${rfp.title}`);
+      console.log(`🎉 AI agent created new RFP: ${rfp.title} (ID: ${rfp.id})`);
+      console.log(`💾 Successfully saved RFP to database with ID: ${rfp.id}`);
 
     } catch (error) {
       console.error("Error processing opportunity:", error);

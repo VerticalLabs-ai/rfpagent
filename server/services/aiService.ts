@@ -38,7 +38,8 @@ ${documentText}
         temperature: 0.3
       });
 
-      return JSON.parse(response.choices[0].message.content);
+      const content = response.choices[0].message.content;
+      return content ? JSON.parse(content) : null;
     } catch (error) {
       console.error("Error analyzing document compliance:", error);
       throw new Error("Failed to analyze document compliance");
@@ -154,7 +155,8 @@ Use professional language suitable for government procurement.
       temperature: 0.4
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    return content ? JSON.parse(content) : null;
   }
 
   private async generatePricingTables(rfp: RFP, documentContext: string): Promise<any> {
@@ -199,13 +201,15 @@ Target 40% gross margin. Be competitive but profitable.
       temperature: 0.3
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const content = response.choices[0].message.content;
+    return content ? JSON.parse(content) : null;
   }
 
   async extractRFPDetails(scrapedContent: string, sourceUrl: string): Promise<any> {
     try {
       const prompt = `
-Extract structured RFP information from this scraped content.
+Extract structured RFP information from this scraped content. Analyze ANY legitimate government contract, procurement, or solicitation opportunity.
+
 Respond with JSON in this format:
 {
   "title": "string",
@@ -215,10 +219,26 @@ Respond with JSON in this format:
   "estimatedValue": number or null,
   "category": "string",
   "requirements": ["string"],
-  "contactInfo": "string"
+  "contactInfo": "string",
+  "confidence": number (0.0 to 1.0 based on how clearly this is a legitimate RFP/procurement opportunity)
 }
 
-Focus on water supply, beverage, or related contracts. If this is not a relevant RFP, return null.
+Consider these legitimate RFP types:
+- Government procurement (supplies, equipment, services)
+- Construction and infrastructure projects
+- IT and technology contracts
+- Professional services (consulting, engineering, legal)
+- Maintenance and operations contracts
+- Any municipal, state, or federal solicitations
+
+Set confidence based on:
+- 0.9-1.0: Clear RFP with title, deadline, and description
+- 0.7-0.8: Good RFP information but missing some details
+- 0.5-0.6: Basic procurement info but unclear requirements
+- 0.3-0.4: Possible opportunity but limited information
+- 0.1-0.2: Very unclear or incomplete
+
+If this is clearly NOT a procurement opportunity, return null.
 
 Source URL: ${sourceUrl}
 Content: ${scrapedContent}
@@ -231,8 +251,17 @@ Content: ${scrapedContent}
         temperature: 0.2
       });
 
-      const result = JSON.parse(response.choices[0].message.content);
-      return result.title ? result : null;
+      const content = response.choices[0].message.content;
+      if (!content) return null;
+      
+      const result = JSON.parse(content);
+      
+      // Ensure confidence score exists
+      if (result && result.title && !result.confidence) {
+        result.confidence = 0.6; // Default moderate confidence
+      }
+      
+      return result && result.title ? result : null;
     } catch (error) {
       console.error("Error extracting RFP details:", error);
       return null;
