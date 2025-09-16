@@ -342,20 +342,30 @@ export class MastraScrapingService {
       // Create scraping context with portal-specific knowledge
       const context = await this.buildPortalContext(portal);
       
-      // Execute intelligent scraping
-      const scrapingPrompt = this.buildScrapingPrompt(portal, context);
-      const response = await agent.generateVNext(scrapingPrompt, {
-        resourceId: portal.id,
-        threadId: `portal-${portal.id}-${Date.now()}`
-      });
+      // Execute intelligent scraping with error handling
+      let opportunities: any[] = [];
+      try {
+        const scrapingPrompt = this.buildScrapingPrompt(portal, context);
+        const response = await agent.generate(scrapingPrompt, {
+          resourceId: portal.id,
+          threadId: `portal-${portal.id}-${Date.now()}`
+        });
 
-      // Parse agent response and extract opportunities
-      let opportunities = this.parseAgentResponse(response.text);
+        // Parse agent response and extract opportunities
+        console.log(`🤖 Raw agent response (first 500 chars):`, response.text.substring(0, 500));
+        opportunities = this.parseAgentResponse(response.text);
+        console.log(`🤖 parseAgentResponse returned ${opportunities.length} opportunities`);
+      } catch (agentError) {
+        console.error(`🚨 Agent execution failed for ${portal.name}:`, agentError);
+        console.log(`🔄 Falling back to direct scraping due to agent error`);
+        opportunities = []; // Force fallback to intelligentWebScrape
+      }
       
       // If agent didn't call tools or returned no opportunities, call intelligentWebScrape directly
       if (opportunities.length === 0) {
         console.log(`🔄 Agent returned no opportunities, calling intelligentWebScrape directly for ${portal.name}`);
         try {
+          console.log(`🔄 Calling intelligentWebScrape for ${portal.name}...`);
           const directScrapeResult = await this.intelligentWebScrape({
             url: portal.url,
             loginRequired: portal.loginRequired,
@@ -365,9 +375,15 @@ export class MastraScrapingService {
             } : null
           });
           
+          console.log(`🔄 intelligentWebScrape completed. Result type:`, typeof directScrapeResult);
+          console.log(`🔄 directScrapeResult has opportunities?`, directScrapeResult && 'opportunities' in directScrapeResult);
+          console.log(`🔄 directScrapeResult.opportunities length:`, directScrapeResult?.opportunities?.length || 'undefined');
+          
           if (directScrapeResult && directScrapeResult.opportunities) {
             opportunities = directScrapeResult.opportunities;
             console.log(`✅ Direct scrape found ${opportunities.length} opportunities`);
+          } else {
+            console.log(`❌ No opportunities found in directScrapeResult:`, directScrapeResult ? Object.keys(directScrapeResult) : 'null/undefined');
           }
         } catch (directScrapeError) {
           console.error(`Direct scrape failed for ${portal.name}:`, directScrapeError);
@@ -540,6 +556,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       }
       
       console.warn("No valid JSON opportunities found in agent response");
+      console.log(`🚨 Agent response (first 1000 chars):`, response.substring(0, 1000));
       return [];
       
     } catch (error) {
