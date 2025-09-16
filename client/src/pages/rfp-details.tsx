@@ -16,16 +16,16 @@ export default function RFPDetails() {
   const { toast } = useToast();
 
   const getProgressFromStatus = (status: string) => {
-    // Step-based progress based on workflow stages
+    // Step-based progress based on actual work completed
     switch (status) {
-      case "discovered": return 15;  // Just discovered
-      case "parsing": return 35;     // Parsing documents
-      case "drafting": return 60;    // AI drafting proposal
-      case "review": return 80;      // Under review
-      case "approved": return 95;    // Approved, ready to submit
+      case "discovered": return 5;   // Just found, no work done yet
+      case "parsing": return 25;     // Analyzing documents
+      case "drafting": return 50;    // AI drafting proposal
+      case "review": return 75;      // Under review
+      case "approved": return 90;    // Approved, ready to submit
       case "submitted": return 100;  // Submitted
       case "closed": return 100;     // Process complete
-      default: return 10;           // Unknown status
+      default: return 0;            // Unknown status
     }
   };
 
