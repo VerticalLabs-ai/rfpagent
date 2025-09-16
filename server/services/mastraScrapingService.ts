@@ -342,23 +342,29 @@ export class MastraScrapingService {
       // Create scraping context with portal-specific knowledge
       const context = await this.buildPortalContext(portal);
       
-      // Execute intelligent scraping with error handling
+      // For Austin Finance, bypass agent and go direct to working scraper
       let opportunities: any[] = [];
-      try {
-        const scrapingPrompt = this.buildScrapingPrompt(portal, context);
-        const response = await agent.generate(scrapingPrompt, {
-          resourceId: portal.id,
-          threadId: `portal-${portal.id}-${Date.now()}`
-        });
+      if (portal.url.includes('austintexas.gov')) {
+        console.log(`🎯 Austin Finance detected: Bypassing agent, using direct scraping only`);
+        opportunities = []; // Force direct scraping path
+      } else {
+        // Execute intelligent scraping with error handling for other portals
+        try {
+          const scrapingPrompt = this.buildScrapingPrompt(portal, context);
+          const response = await agent.generate(scrapingPrompt, {
+            resourceId: portal.id,
+            threadId: `portal-${portal.id}-${Date.now()}`
+          });
 
-        // Parse agent response and extract opportunities
-        console.log(`🤖 Raw agent response (first 500 chars):`, response.text.substring(0, 500));
-        opportunities = this.parseAgentResponse(response.text);
-        console.log(`🤖 parseAgentResponse returned ${opportunities.length} opportunities`);
-      } catch (agentError) {
-        console.error(`🚨 Agent execution failed for ${portal.name}:`, agentError);
-        console.log(`🔄 Falling back to direct scraping due to agent error`);
-        opportunities = []; // Force fallback to intelligentWebScrape
+          // Parse agent response and extract opportunities
+          console.log(`🤖 Raw agent response (first 500 chars):`, response.text.substring(0, 500));
+          opportunities = this.parseAgentResponse(response.text);
+          console.log(`🤖 parseAgentResponse returned ${opportunities.length} opportunities`);
+        } catch (agentError) {
+          console.error(`🚨 Agent execution failed for ${portal.name}:`, agentError);
+          console.log(`🔄 Falling back to direct scraping due to agent error`);
+          opportunities = []; // Force fallback to intelligentWebScrape
+        }
       }
       
       // If agent didn't call tools or returned no opportunities, call intelligentWebScrape directly
