@@ -394,12 +394,15 @@ export class DatabaseStorage implements IStorage {
         eq(rfps.status, "submitted")
       ));
 
+    const portalsCount = await db
+      .select({ count: count() })
+      .from(portals);
+
     return {
       activeRfps: activeRfpsCount[0].count,
       submittedRfps: submittedCount[0].count,
       totalValue: totalValue[0].total || 0,
-      winRate: 34, // Calculate based on actual wins vs submissions
-      avgResponseTime: 3.2 // Calculate based on actual data
+      portalsTracked: portalsCount[0].count
     };
   }
 

@@ -115,6 +115,20 @@ export default function ActiveRFPsTable() {
     }
   };
 
+  const getProgressFromStatus = (status: string) => {
+    // Step-based progress based on workflow stages
+    switch (status) {
+      case "discovered": return 15;  // Just discovered
+      case "parsing": return 35;     // Parsing documents
+      case "drafting": return 60;    // AI drafting proposal
+      case "review": return 80;      // Under review
+      case "approved": return 95;    // Approved, ready to submit
+      case "submitted": return 100;  // Submitted
+      case "closed": return 100;     // Process complete
+      default: return 10;           // Unknown status
+    }
+  };
+
   const getProgressColor = (status: string, progress: number) => {
     if (status === "submitted") return "bg-green-600";
     if (status === "approved") return "bg-green-500";
@@ -236,7 +250,8 @@ export default function ActiveRFPsTable() {
             <tbody className="divide-y divide-border">
               {filteredRfps.map((item: any) => {
                 const deadline = getDeadlineText(item.rfp.deadline);
-                const progressColor = getProgressColor(item.rfp.status, item.rfp.progress);
+                const calculatedProgress = getProgressFromStatus(item.rfp.status);
+                const progressColor = getProgressColor(item.rfp.status, calculatedProgress);
                 
                 return (
                   <tr 
@@ -301,12 +316,12 @@ export default function ActiveRFPsTable() {
                       <div className="w-full bg-secondary rounded-full h-2">
                         <div 
                           className={`h-2 rounded-full progress-bar ${progressColor}`}
-                          style={{ width: `${item.rfp.progress}%` }}
+                          style={{ width: `${calculatedProgress}%` }}
                           data-testid={`rfp-progress-bar-${item.rfp.id}`}
                         ></div>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1" data-testid={`rfp-progress-text-${item.rfp.id}`}>
-                        {item.rfp.progress}% complete
+                        {calculatedProgress}% complete
                       </div>
                     </td>
                     <td className="py-4 px-6">

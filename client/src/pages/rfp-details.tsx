@@ -15,6 +15,20 @@ export default function RFPDetails() {
   const { id } = useParams();
   const { toast } = useToast();
 
+  const getProgressFromStatus = (status: string) => {
+    // Step-based progress based on workflow stages
+    switch (status) {
+      case "discovered": return 15;  // Just discovered
+      case "parsing": return 35;     // Parsing documents
+      case "drafting": return 60;    // AI drafting proposal
+      case "review": return 80;      // Under review
+      case "approved": return 95;    // Approved, ready to submit
+      case "submitted": return 100;  // Submitted
+      case "closed": return 100;     // Process complete
+      default: return 10;           // Unknown status
+    }
+  };
+
   const { data: rfp, isLoading, error } = useQuery<RFP>({
     queryKey: ['/api/rfps', id],
     enabled: !!id,
@@ -249,9 +263,9 @@ export default function RFPDetails() {
                   <div>
                     <p className="text-sm font-medium">Progress</p>
                     <div className="flex items-center gap-2">
-                      <Progress value={rfp.progress} className="w-20" />
+                      <Progress value={getProgressFromStatus(rfp.status)} className="w-20" />
                       <span className="text-sm text-muted-foreground" data-testid="text-progress">
-                        {rfp.progress}%
+                        {getProgressFromStatus(rfp.status)}%
                       </span>
                     </div>
                   </div>

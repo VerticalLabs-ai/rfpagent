@@ -9,8 +9,8 @@ export default function MetricsCards() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardContent className="p-6">
               <Skeleton className="h-20" />
@@ -28,29 +28,19 @@ export default function MetricsCards() {
       icon: "fas fa-file-contract",
       iconBg: "bg-blue-100",
       iconColor: "text-blue-600",
-      change: "+12% from last week",
-      changeColor: "text-green-600",
+      change: `${metrics?.activeRfps || 0} opportunities found`,
+      changeColor: "text-blue-600",
       testId: "metric-active-rfps"
     },
     {
-      title: "Win Rate",
-      value: `${metrics?.winRate || 0}%`,
-      icon: "fas fa-trophy",
+      title: "Portals Tracked",
+      value: metrics?.portalsTracked || 0,
+      icon: "fas fa-globe",
       iconBg: "bg-green-100",
       iconColor: "text-green-600",
-      change: "+8% from last month",
+      change: "Government procurement sites",
       changeColor: "text-green-600",
-      testId: "metric-win-rate"
-    },
-    {
-      title: "Avg Response Time",
-      value: `${metrics?.avgResponseTime || 0}h`,
-      icon: "fas fa-clock",
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
-      change: "↓ 89% improvement",
-      changeColor: "text-green-600",
-      testId: "metric-response-time"
+      testId: "metric-portals-tracked"
     },
     {
       title: "Revenue Pipeline",
@@ -58,14 +48,14 @@ export default function MetricsCards() {
       icon: "fas fa-dollar-sign",
       iconBg: "bg-yellow-100",
       iconColor: "text-yellow-600",
-      change: "+43% growth",
-      changeColor: "text-green-600",
+      change: "Total estimated value",
+      changeColor: "text-yellow-600",
       testId: "metric-revenue-pipeline"
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
       {cards.map((card) => (
         <Card key={card.title} data-testid={card.testId}>
           <CardContent className="p-6">
