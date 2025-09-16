@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +83,7 @@ export default function ActiveRFPsTable() {
     },
   });
 
-  const rfps = rfpData || [];
+  const rfps = Array.isArray(rfpData) ? rfpData : [];
   const filteredRfps = rfps.filter((item: any) => {
     const matchesSearch = item.rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.rfp.agency.toLowerCase().includes(searchQuery.toLowerCase());
@@ -245,12 +246,14 @@ export default function ActiveRFPsTable() {
                   >
                     <td className="py-4 px-6">
                       <div>
-                        <h4 
-                          className="text-sm font-medium text-foreground"
-                          data-testid={`rfp-title-${item.rfp.id}`}
-                        >
-                          {item.rfp.title}
-                        </h4>
+                        <Link href={`/rfps/${item.rfp.id}`}>
+                          <h4 
+                            className="text-sm font-medium text-foreground hover:text-primary cursor-pointer transition-colors"
+                            data-testid={`rfp-title-${item.rfp.id}`}
+                          >
+                            {item.rfp.title}
+                          </h4>
+                        </Link>
                         <p 
                           className="text-xs text-muted-foreground"
                           data-testid={`rfp-agency-${item.rfp.id}`}

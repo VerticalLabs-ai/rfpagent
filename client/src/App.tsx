@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import RFPDiscovery from "@/pages/rfp-discovery";
+import RFPDetails from "@/pages/rfp-details";
 import Proposals from "@/pages/proposals";
 import Compliance from "@/pages/compliance";
 import Submissions from "@/pages/submissions";
@@ -24,6 +25,7 @@ function Router() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/discovery" component={RFPDiscovery} />
+            <Route path="/rfps/:id" component={RFPDetails} />
             <Route path="/proposals" component={Proposals} />
             <Route path="/compliance" component={Compliance} />
             <Route path="/submissions" component={Submissions} />
