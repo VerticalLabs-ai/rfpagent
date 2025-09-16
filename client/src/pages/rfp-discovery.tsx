@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,20 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 export default function RFPDiscovery() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
+
+  const getProgressFromStatus = (status: string) => {
+    // Step-based progress based on actual work completed
+    switch (status) {
+      case "discovered": return 5;   // Just found, no work done yet
+      case "parsing": return 25;     // Analyzing documents
+      case "drafting": return 50;    // AI drafting proposal
+      case "review": return 75;      // Under review
+      case "approved": return 90;    // Approved, ready to submit
+      case "submitted": return 100;  // Submitted
+      case "closed": return 100;     // Process complete
+      default: return 0;            // Unknown status
+    }
+  };
 
   const { data: rfps, isLoading } = useQuery({
     queryKey: ["/api/rfps", "detailed"],
@@ -168,28 +183,30 @@ export default function RFPDiscovery() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Progress:</span>
                   <span className="font-medium" data-testid={`rfp-progress-${item.rfp.id}`}>
-                    {item.rfp.progress}%
+                    {getProgressFromStatus(item.rfp.status)}%
                   </span>
                 </div>
 
                 <div className="w-full bg-secondary rounded-full h-2">
                   <div 
                     className="bg-primary h-2 rounded-full progress-bar" 
-                    style={{ width: `${item.rfp.progress}%` }}
+                    style={{ width: `${getProgressFromStatus(item.rfp.status)}%` }}
                     data-testid={`rfp-progress-bar-${item.rfp.id}`}
                   ></div>
                 </div>
 
                 <div className="flex space-x-2 pt-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    className="flex-1"
-                    data-testid={`rfp-view-details-${item.rfp.id}`}
-                  >
-                    <i className="fas fa-eye mr-2"></i>
-                    View Details
-                  </Button>
+                  <Link href={`/rfps/${item.rfp.id}`} className="flex-1">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="w-full"
+                      data-testid={`rfp-view-details-${item.rfp.id}`}
+                    >
+                      <i className="fas fa-eye mr-2"></i>
+                      View Details
+                    </Button>
+                  </Link>
                   
                   {item.rfp.status === "discovered" && (
                     <Button 
