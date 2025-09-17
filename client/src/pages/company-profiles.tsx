@@ -338,6 +338,8 @@ function CompanyProfileCard({ profile }: { profile: CompanyProfile }) {
 
 export default function CompanyProfiles() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isExpiringDialogOpen, setIsExpiringDialogOpen] = useState(false);
+  const [expiringDialogType, setExpiringDialogType] = useState<"certifications" | "insurance" | "all">("all");
   
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["/api/company-profiles"],
@@ -487,27 +489,41 @@ export default function CompanyProfiles() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card 
+              className="cursor-pointer hover:bg-muted/50 transition-colors" 
+              onClick={() => {
+                setExpiringDialogType("certifications");
+                setIsExpiringDialogOpen(true);
+              }}
+              data-testid="card-expiring-certifications"
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Expiring Certifications
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-orange-600" data-testid="stat-expiring-certifications">
                   {expiringCertifications?.length || 0}
                 </div>
               </CardContent>
             </Card>
             
-            <Card>
+            <Card 
+              className="cursor-pointer hover:bg-muted/50 transition-colors" 
+              onClick={() => {
+                setExpiringDialogType("insurance");
+                setIsExpiringDialogOpen(true);
+              }}
+              data-testid="card-expiring-insurance"
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Expiring Insurance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-orange-600" data-testid="stat-expiring-insurance">
                   {expiringInsurance?.length || 0}
                 </div>
               </CardContent>
@@ -515,6 +531,118 @@ export default function CompanyProfiles() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Expiring Items Dialog */}
+      <Dialog open={isExpiringDialogOpen} onOpenChange={setIsExpiringDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              Expiring Items Alert
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Expiring Certifications */}
+            {(expiringDialogType === "certifications" || expiringDialogType === "all") && 
+             expiringCertifications && expiringCertifications.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-orange-600">
+                  Expiring Certifications ({expiringCertifications.length})
+                </h3>
+                <div className="space-y-3">
+                  {expiringCertifications.map((cert: any) => (
+                    <Card key={cert.id} className="border-orange-200">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {cert.certificationType?.toUpperCase() || 'Unknown Certification'}
+                            </div>
+                            {cert.certificationNumber && (
+                              <div className="text-sm text-muted-foreground">
+                                Certificate #: {cert.certificationNumber}
+                              </div>
+                            )}
+                            {cert.issuingEntity && (
+                              <div className="text-sm text-muted-foreground">
+                                Issuing Entity: {cert.issuingEntity}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-orange-600">
+                              Expires: {new Date(cert.expirationDate).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Math.ceil((new Date(cert.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expiring Insurance */}
+            {(expiringDialogType === "insurance" || expiringDialogType === "all") && 
+             expiringInsurance && expiringInsurance.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-orange-600">
+                  Expiring Insurance ({expiringInsurance.length})
+                </h3>
+                <div className="space-y-3">
+                  {expiringInsurance.map((insurance: any) => (
+                    <Card key={insurance.id} className="border-orange-200">
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {insurance.insuranceType?.replace('_', ' ').toUpperCase() || 'Unknown Insurance'}
+                            </div>
+                            {insurance.policyNumber && (
+                              <div className="text-sm text-muted-foreground">
+                                Policy #: {insurance.policyNumber}
+                              </div>
+                            )}
+                            {insurance.carrier && (
+                              <div className="text-sm text-muted-foreground">
+                                Carrier: {insurance.carrier}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-orange-600">
+                              Expires: {new Date(insurance.expirationDate).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {Math.ceil((new Date(insurance.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* No expiring items */}
+            {(
+              (expiringDialogType === "certifications" && (!expiringCertifications || expiringCertifications.length === 0)) ||
+              (expiringDialogType === "insurance" && (!expiringInsurance || expiringInsurance.length === 0)) ||
+              (expiringDialogType === "all" && (!expiringCertifications || expiringCertifications.length === 0) && (!expiringInsurance || expiringInsurance.length === 0))
+            ) && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Shield className="h-12 w-12 mx-auto mb-3 text-green-600" />
+                <p>No {expiringDialogType === "all" ? "items" : expiringDialogType} expiring in the next 90 days</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
