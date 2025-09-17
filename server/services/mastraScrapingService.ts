@@ -2117,6 +2117,104 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       
       // Extract content regardless of navigation success
       try {
+        // For Bonfire Hub, use enhanced DOM extraction instead of static HTML
+        if (url.includes('bonfirehub.com')) {
+          console.log(`🔧 Using enhanced DOM extraction for Bonfire Hub...`);
+          
+          // Wait for client-rendered opportunities to load
+          try {
+            console.log(`⏳ Waiting for opportunities to render...`);
+            await Promise.race([
+              page.waitForSelector('table tbody tr, .opportunity-item, .bid-item, .listing-item, [data-testid*="opportunity"], .card, .row:has(a[href*="opportunity"])', { timeout: 30000 }),
+              page.waitForTimeout(30000)
+            ]);
+            console.log(`✅ Opportunity elements detected or timeout reached`);
+          } catch (waitError) {
+            console.log(`⚠️ Opportunity wait timeout, proceeding with DOM extraction...`);
+          }
+          
+          // Extract opportunities directly from DOM using page.evaluate
+          const domOpportunities = await page.evaluate(() => {
+            const opportunities: any[] = [];
+            
+            // Enhanced selectors for Bonfire Hub opportunities
+            const selectors = [
+              'table tbody tr', // Table rows in opportunities list
+              '.opportunity-item, .bid-item, .listing-item', // Opportunity card components
+              '[data-testid*="opportunity"], [data-testid*="bid"]', // Test ID elements
+              '.card:has(a[href*="opportunity"])', // Cards with opportunity links
+              '.row:has(a[href*="opportunity"])', // Rows with opportunity links
+              'div:has(a[href*="/opportunities/"])', // Divs containing opportunity links
+              'li:has(a[href*="opportunity"])', // List items with opportunity links
+              '[class*="opportunity"], [class*="bid"], [class*="rfp"]' // Elements with opportunity-related classes
+            ];
+            
+            selectors.forEach(selector => {
+              try {
+                const elements = document.querySelectorAll(selector);
+                console.log(`🔍 DOM selector "${selector}" found ${elements.length} elements`);
+                
+                elements.forEach((element, index) => {
+                  if (index >= 20) return; // Limit to first 20 per selector
+                  
+                  // Extract text content and links
+                  const textContent = element.textContent?.trim() || '';
+                  const links = element.querySelectorAll('a[href]');
+                  
+                  // Look for opportunity-specific links
+                  const opportunityLinks = Array.from(links).filter(link => {
+                    const href = link.getAttribute('href') || '';
+                    return href.includes('opportunity') || href.includes('bid') || href.includes('rfp');
+                  });
+                  
+                  if (textContent.length > 20 && !textContent.toLowerCase().includes('welcome back')) {
+                    // Extract title (first meaningful text or link text)
+                    let title = '';
+                    const titleLink = element.querySelector('a[href*="opportunity"], a[href*="bid"]');
+                    if (titleLink) {
+                      title = titleLink.textContent?.trim() || '';
+                    } else {
+                      // Try to find title in text content
+                      const lines = textContent.split('\n').filter(line => line.trim().length > 0);
+                      title = lines[0]?.trim() || '';
+                    }
+                    
+                    if (title && title.length > 3) {
+                      opportunities.push({
+                        title: title.substring(0, 200), // Limit title length
+                        description: textContent.substring(0, 500), // First 500 chars as description
+                        link: opportunityLinks[0]?.getAttribute('href') || null,
+                        source: `bonfire_dom_${selector.replace(/[^a-zA-Z0-9]/g, '_')}`,
+                        deadline: null, // Will be extracted from detail page if needed
+                        agency: null // Will be extracted from detail page if needed
+                      });
+                    }
+                  }
+                });
+              } catch (selectorError) {
+                console.error(`Error with selector ${selector}:`, selectorError);
+              }
+            });
+            
+            // Remove duplicates based on title
+            const uniqueOpportunities = opportunities.filter((opp, index, self) => 
+              index === self.findIndex(o => o.title === opp.title)
+            );
+            
+            console.log(`🎯 DOM extraction found ${uniqueOpportunities.length} unique opportunities`);
+            return uniqueOpportunities;
+          });
+          
+          console.log(`🔧 DOM extraction returned ${domOpportunities.length} opportunities`);
+          
+          // If DOM extraction found opportunities, use those instead of static HTML
+          if (domOpportunities.length > 0) {
+            console.log(`✅ Using DOM-extracted opportunities instead of static HTML`);
+            return JSON.stringify({ opportunities: domOpportunities });
+          }
+        }
+        
+        // Fallback to static HTML extraction
         html = await page.content();
         console.log(`✅ Successfully extracted ${html.length} characters using authenticated session`);
         
