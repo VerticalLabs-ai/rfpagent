@@ -744,10 +744,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         const extractedOpportunities = extractedContent.opportunities || [];
         const allOpportunities = [...detailedOpportunities, ...extractedOpportunities];
         
-        // Remove duplicates based on link or solicitationId
+        // Remove duplicates based on solicitationId or title first, then link/url
+        // This prevents collapsing multiple opportunities due to shared generic list URLs
         const uniqueOpportunities = allOpportunities.filter((opportunity, index, arr) => {
-          const identifier = opportunity.link || opportunity.url || opportunity.solicitationId || opportunity.title;
-          return arr.findIndex(o => (o.link || o.url || o.solicitationId || o.title) === identifier) === index;
+          const identifier = opportunity.solicitationId || opportunity.title || opportunity.link || opportunity.url;
+          return arr.findIndex(o => (o.solicitationId || o.title || o.link || o.url) === identifier) === index;
         });
         
         console.log(`🔄 intelligentWebScrape returning ${uniqueOpportunities.length} opportunities (${detailedOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed)`);
