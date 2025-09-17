@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.28",
+    "@browserbasehq/stagehand": "^2.5.0",
     "@google-cloud/storage": "^7.17.1",
     "@hookform/resolvers": "^3.10.0",
     "@jridgewell/trace-mapping": "^0.3.25",
