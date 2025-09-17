@@ -713,7 +713,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         } else if ($) {
           // Traditional HTML link extraction
           console.log(`🔗 Looking for opportunity links...`);
-          opportunityLinks = this.findOpportunityLinks($, url, portalType);
+          // Legacy opportunity link finding replaced by enhanced Stagehand extraction
+          opportunityLinks = [];
         }
         console.log(`🎯 Found ${opportunityLinks?.length || 0} potential opportunity links`);
         
@@ -1135,7 +1136,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           content.opportunities = this.extractSAMGovOpportunities($, url);
           break;
         case 'findrfp':
-          content.opportunities = this.extractFindRFPOpportunities($, url);
+          // FindRFP now uses enhanced Stagehand extraction in authenticated browser sessions
+          content.opportunities = [];
           break;
         case 'austin finance online':
         case 'austin_finance_online':
@@ -1324,164 +1326,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return opportunities;
   }
 
-  private extractFindRFPOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
-    const opportunities: any[] = [];
-    console.log(`🔍 Analyzing FindRFP HTML structure...`);
-    
-    // Debug: Log the page structure to understand what we're working with
-    const pageTitle = $('title').text();
-    console.log(`📄 FindRFP page title: ${pageTitle}`);
-    
-    // Debug: Check for common structures
-    const tables = $('table').length;
-    const rows = $('tr').length;
-    const forms = $('form').length;
-    const divs = $('div').length;
-    const spans = $('span').length;
-    console.log(`🔢 FindRFP structure: ${tables} tables, ${rows} rows, ${forms} forms, ${divs} divs, ${spans} spans`);
-    
-    // Enhanced FindRFP selectors - try multiple approaches
-    const selectors = [
-      'table tr', // Table-based search results
-      '.result, [class*="result"]', // Result classes
-      '.listing, [class*="listing"]', // Listing classes  
-      '.opportunity, [class*="opportunity"]', // Opportunity classes
-      '.rfp, [class*="rfp"]', // RFP classes
-      'a[href*="service/opportunity"]', // FindRFP opportunity links
-      'a[href*="details"]', // Detail links
-      'a[href*="rfp"]', // RFP links
-      'tr:has(a)', // Table rows with links
-      'div:has(a)', // Divs with links
-    ];
-    
-    selectors.forEach(selector => {
-      const elements = $(selector);
-      console.log(`🎯 FindRFP selector "${selector}" found ${elements.length} elements`);
-      
-      elements.each((index, element) => {
-        if (index >= 3) return; // Limit logging to first 3 elements per selector
-        
-        const $element = $(element);
-        const text = $element.text().trim();
-        const links = $element.find('a').length;
-        const hasHref = $element.attr('href') ? 'has href' : 'no href';
-        
-        console.log(`  📋 Element ${index + 1}: ${text.substring(0, 80)}... (${links} links, ${hasHref})`);
-      });
-    });
-    
-    // Try table-based extraction (common for search results)
-    $('table tr').each((index, element) => {
-      if (index === 0) return; // Skip header row
-      
-      const $row = $(element);
-      const cells = $row.find('td');
-      const allLinks = $row.find('a');
-      
-      if (cells.length >= 1 && allLinks.length > 0) {
-        const cellTexts = cells.map((_, cell) => $(cell).text().trim()).get();
-        const rowText = cellTexts.join(' | ');
-        
-        // Find the main link (usually to opportunity details)
-        const mainLink = allLinks.first().attr('href');
-        const linkText = allLinks.first().text().trim();
-        
-        // Extract title from the link text or cell content
-        const title = linkText || cellTexts.find(text => text.length > 10) || '';
-        
-        if (title && title.length > 5 && mainLink) {
-          // Extract agency/organization info
-          const agency = cellTexts.find(text => 
-            text.toLowerCase().includes('agency') || 
-            text.toLowerCase().includes('department') || 
-            text.toLowerCase().includes('city') || 
-            text.toLowerCase().includes('county')
-          ) || '';
-          
-          // Extract deadline/date info
-          const deadline = cellTexts.find(text => 
-            /\d{1,2}\/\d{1,2}\/\d{4}/.test(text) || 
-            text.toLowerCase().includes('due') ||
-            text.toLowerCase().includes('deadline')
-          ) || '';
-          
-          opportunities.push({
-            title: title.substring(0, 200), // Limit title length
-            description: rowText.substring(0, 500),
-            agency,
-            deadline,
-            link: new URL(mainLink, baseUrl).toString(),
-            source: 'findrfp_table'
-          });
-          console.log(`✅ FindRFP table opportunity found: ${title}`);
-        }
-      }
-    });
-    
-    // Try extracting from all links that might be opportunities
-    $('a[href]').each((_, element) => {
-      const $link = $(element);
-      const href = $link.attr('href');
-      const linkText = $link.text().trim();
-      const parentText = $link.parent().text().trim();
-      
-      // Look for links that seem to be opportunities
-      if (href && (
-        href.includes('opportunity') || 
-        href.includes('details') || 
-        href.includes('rfp') ||
-        href.includes('service/')
-      )) {
-        
-        const title = linkText || parentText.substring(0, 100);
-        
-        if (title && title.length > 5 && !opportunities.some(opp => opp.link === new URL(href, baseUrl).toString())) {
-          opportunities.push({
-            title,
-            description: parentText,
-            agency: '',
-            deadline: '',
-            link: new URL(href, baseUrl).toString(),
-            source: 'findrfp_link'
-          });
-          console.log(`✅ FindRFP link opportunity found: ${title}`);
-        }
-      }
-    });
-    
-    // Try form-based extraction (search results might be in forms)
-    $('form').each((_, element) => {
-      const $form = $(element);
-      const formText = $form.text().trim();
-      const links = $form.find('a');
-      
-      if (formText.length > 50 && links.length > 0) {
-        links.each((_, linkElement) => {
-          const $link = $(linkElement);
-          const href = $link.attr('href');
-          const linkText = $link.text().trim();
-          
-          if (href && linkText && linkText.length > 10) {
-            const title = linkText.substring(0, 200);
-            
-            if (!opportunities.some(opp => opp.title === title)) {
-              opportunities.push({
-                title,
-                description: formText.substring(0, 300),
-                agency: '',
-                deadline: '',
-                link: new URL(href, baseUrl).toString(),
-                source: 'findrfp_form'
-              });
-              console.log(`✅ FindRFP form opportunity found: ${title}`);
-            }
-          }
-        });
-      }
-    });
-    
-    return opportunities;
-  }
+  // Legacy extractFindRFPOpportunities function removed - replaced by enhanced Stagehand extraction
 
   private extractAustinFinanceOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
     const opportunities: any[] = [];
@@ -1613,53 +1458,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return opportunities;
   }
 
-  private findOpportunityLinks($: cheerio.CheerioAPI, baseUrl: string, portalType: string): string[] {
-    const links: string[] = [];
-    
-    console.log(`🔗 Finding opportunity links for portal type: ${portalType}`);
-    
-    // Portal-specific link patterns
-    if (portalType?.toLowerCase().includes('austin finance')) {
-      // Austin Finance specific patterns
-      $('a[href*="solicitation_details.cfm"]').each((_, element) => {
-        const href = $(element).attr('href');
-        if (href) {
-          try {
-            const fullUrl = new URL(href, baseUrl).toString();
-            if (!links.includes(fullUrl)) {
-              links.push(fullUrl);
-              console.log(`🏛️ Austin Finance detail link found: ${fullUrl}`);
-            }
-          } catch (error) {
-            // Skip malformed URLs
-          }
-        }
-      });
-    }
-    
-    // Generic link detection for all portals
-    const rfpKeywords = ['rfp', 'bid', 'proposal', 'opportunity', 'solicitation', 'procurement', 'tender'];
-    
-    $('a[href]').each((_, element) => {
-      const href = $(element).attr('href');
-      const text = $(element).text().toLowerCase();
-      const title = $(element).attr('title')?.toLowerCase() || '';
-      
-      if (href && (rfpKeywords.some(keyword => text.includes(keyword) || title.includes(keyword) || href.includes(keyword)))) {
-        try {
-          const fullUrl = new URL(href, baseUrl).toString();
-          if (!links.includes(fullUrl)) {
-            links.push(fullUrl);
-          }
-        } catch (error) {
-          // Skip malformed URLs
-        }
-      }
-    });
-    
-    console.log(`🔗 Found ${links.length} opportunity links total`);
-    return links.slice(0, 20); // Limit to 20 links per page
-  }
+  // Legacy findOpportunityLinks function removed - replaced by enhanced Stagehand extraction
 
   private async fetchOpportunityDetails(url: string, sessionData: any): Promise<any> {
     return await this.requestLimiter(async () => {
