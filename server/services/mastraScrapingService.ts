@@ -733,11 +733,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         
         console.log(`Attempting authentication for ${portalUrl}`);
         
-        // Step 1: Detect if this is Ory Kratos (Bonfire Hub) and handle directly
-        if (portalUrl.includes('bonfirehub.com')) {
-          console.log(`🔑 Bonfire Hub detected: Using Ory Kratos authentication flow`);
-          return await this.handleOryKratosAuthentication({ portalUrl, username, password, cookieHeader: null });
-        }
+        // Step 1: Let all portals go through standard detection to route browser automation properly
         
         // Step 1: Determine the actual login page URL for other portals
         let loginUrl = portalUrl;
@@ -747,6 +743,17 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
         // Check final response status
         if (finalResponse.statusCode !== 200) {
+          // HTTP 403 or 401 typically indicates authentication is required - route to browser automation
+          if (finalResponse.statusCode === 403 || finalResponse.statusCode === 401) {
+            console.log(`🌐 Browser authentication required: HTTP ${finalResponse.statusCode} - portal requires authentication`);
+            return await this.handleBrowserAuthentication({
+              loginUrl: finalUrl,
+              targetUrl: portalUrl,
+              username,
+              password,
+              portal: authContext?.portal
+            });
+          }
           throw new Error(`Login page fetch failed after following redirects: HTTP ${finalResponse.statusCode} from ${finalUrl}`);
         }
 
@@ -1491,11 +1498,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     const { $, portalUrl, username, password, formData, loginPageResponse, cookieHeader } = context;
     
     try {
-      // Detect if this is Ory Kratos (Bonfire Hub)
-      if (portalUrl.includes('bonfirehub.com') || portalUrl.includes('account-flows.bonfirehub.com')) {
-        console.log(`🔐 Ory Kratos authentication detected for Bonfire Hub`);
-        return await this.handleOryKratosAuthentication({ portalUrl, username, password, cookieHeader });
-      }
+      // Let all portals go through standard browser automation detection
       
       // Generic form authentication for other portals
       return await this.handleGenericFormAuthentication(context);
