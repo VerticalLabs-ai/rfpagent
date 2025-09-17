@@ -719,6 +719,103 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     });
   }
 
+  /**
+   * Helper function to handle HTTP redirects with cookie accumulation
+   * Follows up to 10 redirects and preserves session cookies across hops
+   */
+  private async getWithRedirects(url: string, options: any = {}): Promise<{
+    finalResponse: any;
+    finalUrl: string;
+    cookieHeader: string;
+  }> {
+    let currentUrl = url;
+    let currentResponse: any;
+    const maxRedirects = 10;
+    let redirectCount = 0;
+    const cookies = new Map<string, string>(); // Simple cookie jar
+
+    console.log(`🔗 Starting redirect chain from: ${currentUrl}`);
+
+    while (redirectCount < maxRedirects) {
+      console.log(`🌐 Request ${redirectCount + 1}: ${currentUrl}`);
+      
+      // Build cookie header from accumulated cookies
+      const cookieHeader = Array.from(cookies.entries())
+        .map(([name, value]) => `${name}=${value}`)
+        .join('; ');
+
+      const requestHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
+        ...options.headers
+      };
+
+      currentResponse = await request(currentUrl, {
+        method: options.method || 'GET',
+        headers: requestHeaders,
+        body: options.body,
+        bodyTimeout: 30000,
+        headersTimeout: 10000
+      });
+
+      // Extract and store any new cookies from Set-Cookie headers
+      const setCookieHeaders = currentResponse.headers['set-cookie'];
+      if (setCookieHeaders) {
+        const setCookieArray = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+        setCookieArray.forEach((cookie: string) => {
+          const [nameValue] = cookie.split(';');
+          if (nameValue && nameValue.includes('=')) {
+            const [name, value] = nameValue.split('=', 2);
+            if (name && value) {
+              cookies.set(name.trim(), value.trim());
+              console.log(`🍪 Cookie captured: ${name.trim()}`);
+            }
+          }
+        });
+      }
+
+      console.log(`📡 Response ${redirectCount + 1}: HTTP ${currentResponse.statusCode}`);
+
+      // Check if this is a redirect status code
+      const isRedirect = [301, 302, 303, 307, 308].includes(currentResponse.statusCode);
+      
+      if (!isRedirect) {
+        // Not a redirect, we're done
+        const finalCookieHeader = Array.from(cookies.entries())
+          .map(([name, value]) => `${name}=${value}`)
+          .join('; ');
+        
+        console.log(`✅ Redirect chain complete: ${redirectCount + 1} requests, ${cookies.size} cookies`);
+        return {
+          finalResponse: currentResponse,
+          finalUrl: currentUrl,
+          cookieHeader: finalCookieHeader
+        };
+      }
+
+      // Handle redirect
+      const location = currentResponse.headers.location;
+      if (!location) {
+        throw new Error(`Redirect response missing Location header: HTTP ${currentResponse.statusCode} from ${currentUrl}`);
+      }
+
+      const locationString = Array.isArray(location) ? location[0] : location;
+      const nextUrl = new URL(locationString, currentUrl).toString();
+      
+      console.log(`🔄 Redirect ${redirectCount + 1}: ${currentResponse.statusCode} → ${nextUrl}`);
+      
+      currentUrl = nextUrl;
+      redirectCount++;
+    }
+
+    throw new Error(`Too many redirects: exceeded ${maxRedirects} redirects starting from ${url}`);
+  }
+
   private async handleAuthentication(context: any): Promise<any> {
     return await this.requestLimiter(async () => {
       try {
@@ -735,24 +832,15 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           console.log(`🔑 Bonfire Hub detected: Using correct login URL ${loginUrl}`);
         }
         
-        // Step 2: Fetch login page to analyze form structure
-        const loginPageResponse = await request(loginUrl, {
-          method: 'GET',
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-          },
-          bodyTimeout: 30000,
-          headersTimeout: 10000
-        });
+        // Step 2: Fetch login page with proper redirect and cookie handling
+        const { finalResponse, finalUrl, cookieHeader } = await this.getWithRedirects(loginUrl);
 
-        // No need for alternative URLs - we have the exact Bonfire login URL
-
-        if (loginPageResponse.statusCode !== 200) {
-          throw new Error(`Failed to fetch login page: HTTP ${loginPageResponse.statusCode} from ${loginUrl}`);
+        // Check final response status
+        if (finalResponse.statusCode !== 200) {
+          throw new Error(`Login page fetch failed after following redirects: HTTP ${finalResponse.statusCode} from ${finalUrl}`);
         }
 
-        const loginPageHtml = await loginPageResponse.body.text();
+        const loginPageHtml = await finalResponse.body.text();
         const $ = cheerio.load(loginPageHtml);
         
         // Step 2: Analyze authentication method
@@ -779,11 +867,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         if (authMethod.type === 'form') {
           return await this.handleFormAuthentication({
             $, 
-            portalUrl, 
+            portalUrl: finalUrl, // Use final URL after redirects
             username, 
             password, 
             formData: authMethod.formData,
-            loginPageResponse
+            loginPageResponse: finalResponse, // Use final response after redirects
+            cookieHeader // Pass accumulated cookies from redirect chain
           });
         }
 
@@ -1311,7 +1400,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private async handleFormAuthentication(context: any): Promise<any> {
-    const { $, portalUrl, username, password, formData, loginPageResponse } = context;
+    const { $, portalUrl, username, password, formData, loginPageResponse, cookieHeader } = context;
     
     try {
       // Build form payload
@@ -1332,8 +1421,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         }
       });
       
-      // Extract cookies from login page response
-      const cookies = this.extractCookies(loginPageResponse);
+      // Use accumulated cookies from redirect chain, fallback to extracting from final response
+      const cookies = cookieHeader || this.extractCookies(loginPageResponse);
+      console.log(`🍪 Using cookies for form submission: ${cookies ? 'Yes' : 'No'} (${cookies?.length || 0} chars)`);
       
       // Submit login form
       const loginResponse = await request(formData.action, {
