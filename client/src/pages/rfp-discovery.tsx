@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function RFPDiscovery() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedPortal, setSelectedPortal] = useState("");
+  const [scanFilter, setScanFilter] = useState("");
   const { toast } = useToast();
 
   const getProgressFromStatus = (status: string) => {
@@ -36,8 +39,10 @@ export default function RFPDiscovery() {
   });
 
   const scanPortalMutation = useMutation({
-    mutationFn: async (portalId: string) => {
-      return apiRequest("POST", `/api/portals/${portalId}/scan`);
+    mutationFn: async ({ portalId, searchFilter }: { portalId: string; searchFilter?: string }) => {
+      return apiRequest("POST", `/api/portals/${portalId}/scan`, { 
+        body: searchFilter ? { searchFilter } : undefined 
+      });
     },
     onSuccess: () => {
       toast({
@@ -117,19 +122,53 @@ export default function RFPDiscovery() {
           <i className="fas fa-search absolute left-3 top-3 text-muted-foreground text-xs"></i>
         </div>
         
-        <div className="flex space-x-2">
-          {(portals || []).map((portal: any) => (
+        {/* Portal Scanning Controls */}
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <Select value={selectedPortal} onValueChange={setSelectedPortal} data-testid="portal-select">
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select Portal" />
+              </SelectTrigger>
+              <SelectContent>
+                {(portals || []).map((portal: any) => (
+                  <SelectItem key={portal.id} value={portal.id}>
+                    {portal.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Input
+              placeholder="Filter search (e.g., Water, Construction)"
+              value={scanFilter}
+              onChange={(e) => setScanFilter(e.target.value)}
+              className="w-[250px]"
+              data-testid="scan-filter-input"
+            />
+            
             <Button
-              key={portal.id}
               variant="outline"
-              onClick={() => scanPortalMutation.mutate(portal.id)}
-              disabled={scanPortalMutation.isPending}
-              data-testid={`scan-portal-${portal.id}`}
+              onClick={() => {
+                if (!selectedPortal) {
+                  toast({
+                    title: "No Portal Selected",
+                    description: "Please select a portal to scan.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                scanPortalMutation.mutate({ 
+                  portalId: selectedPortal, 
+                  searchFilter: scanFilter.trim() || undefined 
+                });
+              }}
+              disabled={scanPortalMutation.isPending || !selectedPortal}
+              data-testid="scan-button"
             >
               <i className="fas fa-search mr-2"></i>
-              Scan {portal.name}
+              {scanPortalMutation.isPending ? "Scanning..." : "Scan Portal"}
             </Button>
-          ))}
+          </div>
         </div>
       </div>
 
