@@ -15,6 +15,7 @@ export default function Sidebar() {
     { path: "/proposals", label: "Proposals", icon: "fas fa-file-alt" },
     { path: "/compliance", label: "Compliance", icon: "fas fa-tasks" },
     { path: "/submissions", label: "Submissions", icon: "fas fa-paper-plane" },
+    { path: "/company-profiles", label: "Company Profiles", icon: "fas fa-building" },
     { path: "/portal-settings", label: "Portal Settings", icon: "fas fa-cog" },
     { path: "/analytics", label: "Analytics", icon: "fas fa-chart-bar" },
   ];

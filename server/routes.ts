@@ -487,12 +487,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/company-profiles", async (req, res) => {
     try {
+      console.log("POST /api/company-profiles - Request body:", req.body);
       const profileData = insertCompanyProfileSchema.parse(req.body);
+      console.log("Parsed profile data:", profileData);
       const profile = await storage.createCompanyProfile(profileData);
+      console.log("Created profile:", profile);
       res.status(201).json(profile);
     } catch (error) {
+      if (error instanceof ZodError) {
+        console.error("Validation error creating company profile:", error.errors);
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
       console.error("Error creating company profile:", error);
-      res.status(400).json({ error: "Failed to create company profile" });
+      res.status(500).json({ error: "Failed to create company profile" });
     }
   });
 

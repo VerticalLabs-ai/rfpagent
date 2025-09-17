@@ -11,6 +11,7 @@ import Compliance from "@/pages/compliance";
 import Submissions from "@/pages/submissions";
 import PortalSettings from "@/pages/portal-settings";
 import Analytics from "@/pages/analytics";
+import CompanyProfiles from "@/pages/company-profiles";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -29,6 +30,7 @@ function Router() {
             <Route path="/proposals" component={Proposals} />
             <Route path="/compliance" component={Compliance} />
             <Route path="/submissions" component={Submissions} />
+            <Route path="/company-profiles" component={CompanyProfiles} />
             <Route path="/portal-settings" component={PortalSettings} />
             <Route path="/analytics" component={Analytics} />
             <Route component={NotFound} />
