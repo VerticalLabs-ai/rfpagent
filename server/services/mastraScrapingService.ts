@@ -2115,6 +2115,142 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         console.log(`⚠️ Portal content wait timeout, proceeding with extraction...`);
       }
       
+      // Add deterministic post-auth navigation for Bonfire Hub to reach opportunities listing
+      // Get current page URL for robust domain detection
+      const currentUrl = await page.url();
+      const targetDomain = (currentUrl || url);
+      
+      if (targetDomain.includes('bonfirehub')) {
+        try {
+          console.log(`🎯 Implementing deterministic post-auth navigation for Bonfire Hub...`);
+          console.log(`🌐 Target URL: ${url}, Current URL: ${currentUrl}`);
+          
+          // Check if we're on a dashboard instead of opportunities listing
+          const pageContent = await page.content();
+          
+          console.log(`🌐 Current URL: ${currentUrl}`);
+          
+          // Detect dashboard state via "Welcome Back!" or dashboard indicators
+          const isDashboard = pageContent.includes('Welcome Back!') || 
+                             pageContent.includes('Dashboard') || 
+                             !currentUrl.includes('/opportunities') ||
+                             currentUrl.includes('dashboard');
+          
+          if (isDashboard) {
+            console.log(`🔄 Dashboard detected, forcing navigation to opportunities listing...`);
+            
+            // Build domain-agnostic opportunities URL
+            const urlObj = new URL(currentUrl);
+            const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+            
+            // Try multiple opportunities URL patterns
+            const opportunityUrls = [
+              `${baseUrl}/opportunities/all`,
+              `${baseUrl}/opportunities`,
+              `${baseUrl}/opportunities?open=1`,
+              `${baseUrl}/open-opportunities`,
+              `${baseUrl}/bids/open`
+            ];
+            
+            let navigationSuccess = false;
+            
+            for (const oppUrl of opportunityUrls) {
+              try {
+                console.log(`🎯 Trying opportunities URL: ${oppUrl}`);
+                
+                await page.goto(oppUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                await page.waitForTimeout(3000);
+                
+                // Check if we reached an opportunities page (look for opportunity-related content)
+                const newContent = await page.content();
+                const hasOpportunityContent = newContent.includes('opportunity') || 
+                                            newContent.includes('bid') || 
+                                            newContent.includes('rfp') ||
+                                            await page.$('table tbody tr, .opportunity-item, .bid-item');
+                
+                if (hasOpportunityContent && !newContent.includes('Welcome Back!')) {
+                  console.log(`✅ Successfully navigated to opportunities listing: ${oppUrl}`);
+                  navigationSuccess = true;
+                  break;
+                }
+              } catch (navError) {
+                console.log(`⚠️ Failed to navigate to ${oppUrl}: ${navError.message}`);
+                continue;
+              }
+            }
+            
+            // If URL navigation failed, try programmatic navigation via UI
+            if (!navigationSuccess) {
+              console.log(`🔄 URL navigation failed, trying programmatic UI navigation...`);
+              
+              try {
+                // Go back to the authenticated dashboard and click opportunities link
+                await page.goto(currentUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+                await page.waitForTimeout(2000);
+                
+                // Find and click opportunities navigation link
+                const opportunitiesLinkClicked = await page.evaluate(() => {
+                  const selectors = [
+                    'a[href*="/opportunities"]',
+                    'a[href*="/open-opportunities"]',
+                    'a[href*="/bids"]',
+                    'button:contains("Opportunities")',
+                    'a:contains("Opportunities")',
+                    'a:contains("Open Opportunities")',
+                    'a:contains("Bids")',
+                    '[data-testid*="opportunities"]',
+                    'nav a:contains("Opportunities")',
+                    '.nav a:contains("Opportunities")'
+                  ];
+                  
+                  for (const selector of selectors) {
+                    try {
+                      const elements = document.querySelectorAll(selector);
+                      for (const element of elements) {
+                        const text = element.textContent?.toLowerCase() || '';
+                        if (text.includes('opportunit') || text.includes('bid') || text.includes('open')) {
+                          (element as HTMLElement).click();
+                          console.log(`🖱️ Clicked opportunities link: ${selector}`);
+                          return true;
+                        }
+                      }
+                    } catch (e) {
+                      continue;
+                    }
+                  }
+                  return false;
+                });
+                
+                if (opportunitiesLinkClicked) {
+                  console.log(`🖱️ Opportunities link clicked, waiting for navigation...`);
+                  await page.waitForTimeout(5000);
+                  
+                  // Wait for opportunities content to load
+                  await Promise.race([
+                    page.waitForSelector('table tbody tr, .opportunity-item, .bid-item, [data-testid*="opportunity"]', { timeout: 15000 }),
+                    page.waitForTimeout(15000)
+                  ]);
+                  
+                  console.log(`✅ UI navigation to opportunities completed`);
+                  navigationSuccess = true;
+                }
+              } catch (uiNavError) {
+                console.log(`⚠️ UI navigation failed: ${uiNavError.message}`);
+              }
+            }
+            
+            if (!navigationSuccess) {
+              console.log(`⚠️ All navigation attempts failed, proceeding with current page content...`);
+            }
+          } else {
+            console.log(`✅ Already on opportunities listing page, proceeding with extraction...`);
+          }
+          
+        } catch (navError) {
+          console.log(`⚠️ Post-auth navigation error: ${navError.message}, proceeding anyway...`);
+        }
+      }
+      
       // Extract content regardless of navigation success
       try {
         // For Bonfire Hub, use enhanced DOM extraction instead of static HTML
