@@ -719,102 +719,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     });
   }
 
-  /**
-   * Helper function to handle HTTP redirects with cookie accumulation
-   * Follows up to 10 redirects and preserves session cookies across hops
-   */
-  private async getWithRedirects(url: string, options: any = {}): Promise<{
-    finalResponse: any;
-    finalUrl: string;
-    cookieHeader: string;
-  }> {
-    let currentUrl = url;
-    let currentResponse: any;
-    const maxRedirects = 10;
-    let redirectCount = 0;
-    const cookies = new Map<string, string>(); // Simple cookie jar
-
-    console.log(`🔗 Starting redirect chain from: ${currentUrl}`);
-
-    while (redirectCount < maxRedirects) {
-      console.log(`🌐 Request ${redirectCount + 1}: ${currentUrl}`);
-      
-      // Build cookie header from accumulated cookies
-      const cookieHeader = Array.from(cookies.entries())
-        .map(([name, value]) => `${name}=${value}`)
-        .join('; ');
-
-      const requestHeaders = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
-        ...options.headers
-      };
-
-      currentResponse = await request(currentUrl, {
-        method: options.method || 'GET',
-        headers: requestHeaders,
-        body: options.body,
-        bodyTimeout: 30000,
-        headersTimeout: 10000
-      });
-
-      // Extract and store any new cookies from Set-Cookie headers
-      const setCookieHeaders = currentResponse.headers['set-cookie'];
-      if (setCookieHeaders) {
-        const setCookieArray = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
-        setCookieArray.forEach((cookie: string) => {
-          const [nameValue] = cookie.split(';');
-          if (nameValue && nameValue.includes('=')) {
-            const [name, value] = nameValue.split('=', 2);
-            if (name && value) {
-              cookies.set(name.trim(), value.trim());
-              console.log(`🍪 Cookie captured: ${name.trim()}`);
-            }
-          }
-        });
-      }
-
-      console.log(`📡 Response ${redirectCount + 1}: HTTP ${currentResponse.statusCode}`);
-
-      // Check if this is a redirect status code
-      const isRedirect = [301, 302, 303, 307, 308].includes(currentResponse.statusCode);
-      
-      if (!isRedirect) {
-        // Not a redirect, we're done
-        const finalCookieHeader = Array.from(cookies.entries())
-          .map(([name, value]) => `${name}=${value}`)
-          .join('; ');
-        
-        console.log(`✅ Redirect chain complete: ${redirectCount + 1} requests, ${cookies.size} cookies`);
-        return {
-          finalResponse: currentResponse,
-          finalUrl: currentUrl,
-          cookieHeader: finalCookieHeader
-        };
-      }
-
-      // Handle redirect
-      const location = currentResponse.headers.location;
-      if (!location) {
-        throw new Error(`Redirect response missing Location header: HTTP ${currentResponse.statusCode} from ${currentUrl}`);
-      }
-
-      const locationString = Array.isArray(location) ? location[0] : location;
-      const nextUrl = new URL(locationString, currentUrl).toString();
-      
-      console.log(`🔄 Redirect ${redirectCount + 1}: ${currentResponse.statusCode} → ${nextUrl}`);
-      
-      currentUrl = nextUrl;
-      redirectCount++;
-    }
-
-    throw new Error(`Too many redirects: exceeded ${maxRedirects} redirects starting from ${url}`);
-  }
+  // Removed duplicate getWithRedirects method - using the improved version with loop detection
 
   private async handleAuthentication(context: any): Promise<any> {
     return await this.requestLimiter(async () => {
@@ -823,14 +728,14 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         
         console.log(`Attempting authentication for ${portalUrl}`);
         
-        // Step 1: Determine the actual login page URL
-        let loginUrl = portalUrl;
-        
-        // For Bonfire Hub, use the specific account login page
+        // Step 1: Detect if this is Ory Kratos (Bonfire Hub) and handle directly
         if (portalUrl.includes('bonfirehub.com')) {
-          loginUrl = 'https://account.bonfirehub.com/login';
-          console.log(`🔑 Bonfire Hub detected: Using correct login URL ${loginUrl}`);
+          console.log(`🔑 Bonfire Hub detected: Using Ory Kratos authentication flow`);
+          return await this.handleOryKratosAuthentication({ portalUrl, username, password, cookieHeader: null });
         }
+        
+        // Step 1: Determine the actual login page URL for other portals
+        let loginUrl = portalUrl;
         
         // Step 2: Fetch login page with proper redirect and cookie handling
         const { finalResponse, finalUrl, cookieHeader } = await this.getWithRedirects(loginUrl);
@@ -974,6 +879,146 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     } catch (error) {
       console.error("Error processing opportunity:", error);
     }
+  }
+
+  private redactSensitiveCookies(cookies: string | null): string {
+    if (!cookies) return 'None';
+    
+    // Redact sensitive cookie values but keep structure for debugging
+    return cookies.replace(
+      /(csrf[^=]*|session[^=]*|bm[^=]*)=([^;]+)/gi, 
+      '$1=[REDACTED]'
+    );
+  }
+
+  private mergeCookies(existingCookies: string | null, newCookies: string | null): string | null {
+    if (!existingCookies && !newCookies) return null;
+    if (!existingCookies) return newCookies;
+    if (!newCookies) return existingCookies;
+    
+    // Parse existing cookies
+    const cookieMap = new Map<string, string>();
+    
+    existingCookies.split(';').forEach(cookie => {
+      const [name, value] = cookie.trim().split('=');
+      if (name && value) {
+        cookieMap.set(name, value);
+      }
+    });
+    
+    // Add/update with new cookies
+    newCookies.split(';').forEach(cookie => {
+      const [name, value] = cookie.trim().split('=');
+      if (name && value) {
+        cookieMap.set(name, value);
+      }
+    });
+    
+    // Convert back to string
+    return Array.from(cookieMap.entries())
+      .map(([name, value]) => `${name}=${value}`)
+      .join('; ');
+  }
+
+  private async getWithRedirects(url: string, maxRedirects: number = 10, initialCookies?: string | null): Promise<{finalResponse: any, finalUrl: string, cookieHeader: string | null}> {
+    let currentUrl = url;
+    let redirectCount = 0;
+    let currentResponse: any;
+    const cookies = new Map<string, string>();
+    const visitedUrls = new Set<string>();
+    
+    // Initialize with any existing cookies
+    if (initialCookies) {
+      initialCookies.split(';').forEach(cookie => {
+        const [name, value] = cookie.trim().split('=');
+        if (name && value) {
+          cookies.set(name.trim(), value.trim());
+        }
+      });
+    }
+
+    while (redirectCount < maxRedirects) {
+      // Loop detection
+      if (visitedUrls.has(currentUrl)) {
+        throw new Error(`Redirect loop detected: URL ${currentUrl} visited before`);
+      }
+      visitedUrls.add(currentUrl);
+      
+      console.log(`🌐 Request ${redirectCount + 1}: ${currentUrl}`);
+      
+      // Build cookie header from accumulated cookies
+      const cookieHeader = Array.from(cookies.entries())
+        .map(([name, value]) => `${name}=${value}`)
+        .join('; ');
+
+      const requestHeaders = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        ...(cookieHeader ? { 'Cookie': cookieHeader } : {})
+      };
+
+      currentResponse = await request(currentUrl, {
+        method: 'GET',
+        headers: requestHeaders,
+        bodyTimeout: 30000,
+        headersTimeout: 10000
+      });
+      
+      // Update cookies from response
+      const setCookieHeaders = currentResponse.headers['set-cookie'];
+      if (setCookieHeaders) {
+        const cookieArray = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+        cookieArray.forEach(cookieHeader => {
+          const [nameValue] = cookieHeader.split(';');
+          if (nameValue) {
+            const [name, value] = nameValue.split('=');
+            if (name && value) {
+              cookies.set(name.trim(), value.trim());
+              console.log(`🍪 Cookie captured: ${name.trim()}`);
+            }
+          }
+        });
+      }
+
+      console.log(`📡 Response ${redirectCount + 1}: HTTP ${currentResponse.statusCode}`);
+
+      // Check if this is a redirect status code
+      const isRedirect = [301, 302, 303, 307, 308].includes(currentResponse.statusCode);
+      
+      if (!isRedirect) {
+        // Not a redirect, we're done
+        const finalCookieHeader = Array.from(cookies.entries())
+          .map(([name, value]) => `${name}=${value}`)
+          .join('; ');
+        
+        console.log(`✅ Redirect chain complete: ${redirectCount + 1} requests, ${cookies.size} cookies`);
+        return {
+          finalResponse: currentResponse,
+          finalUrl: currentUrl,
+          cookieHeader: finalCookieHeader
+        };
+      }
+
+      // Handle redirect
+      const location = currentResponse.headers.location;
+      if (!location) {
+        throw new Error(`Redirect response missing Location header: HTTP ${currentResponse.statusCode} from ${currentUrl}`);
+      }
+
+      const locationString = Array.isArray(location) ? location[0] : location;
+      const nextUrl = new URL(locationString, currentUrl).toString();
+      
+      console.log(`🔄 Redirect ${redirectCount + 1}: ${currentResponse.statusCode} → ${nextUrl}`);
+      
+      currentUrl = nextUrl;
+      redirectCount++;
+    }
+
+    throw new Error(`Too many redirects: exceeded ${maxRedirects} redirects starting from ${url}`);
   }
 
   // Supporting utility methods for real web scraping
@@ -1403,6 +1448,221 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     const { $, portalUrl, username, password, formData, loginPageResponse, cookieHeader } = context;
     
     try {
+      // Detect if this is Ory Kratos (Bonfire Hub)
+      if (portalUrl.includes('bonfirehub.com') || portalUrl.includes('account-flows.bonfirehub.com')) {
+        console.log(`🔐 Ory Kratos authentication detected for Bonfire Hub`);
+        return await this.handleOryKratosAuthentication({ portalUrl, username, password, cookieHeader });
+      }
+      
+      // Generic form authentication for other portals
+      return await this.handleGenericFormAuthentication(context);
+      
+    } catch (error) {
+      console.error('Form authentication error:', error);
+      return {
+        authenticated: false,
+        error: error instanceof Error ? error.message : String(error),
+        method: 'form_authentication_error',
+        portalUrl
+      };
+    }
+  }
+
+  private async handleOryKratosAuthentication(context: any): Promise<any> {
+    const { portalUrl, username, password, cookieHeader } = context;
+    
+    try {
+      console.log(`🔐 Starting Ory Kratos authentication flow for ${portalUrl}`);
+      
+      // Step 1: Get the login flow URL with flow ID
+      const loginFlowUrl = 'https://account-flows.bonfirehub.com/self-service/login/browser?return_to=https%3A%2F%2Fvendor.bonfirehub.com%2Fopportunities%2Fall';
+      console.log(`🌐 Step 1: Getting login flow from ${loginFlowUrl}`);
+      
+      const { finalResponse: flowResponse, finalUrl: flowFinalUrl, cookieHeader: flowCookies } = await this.getWithRedirects(loginFlowUrl, 10);
+      
+      if (!flowFinalUrl.includes('/login?flow=')) {
+        throw new Error(`Expected login flow URL with flow ID, got: ${flowFinalUrl}`);
+      }
+      
+      // Extract flow ID from URL
+      const flowId = new URL(flowFinalUrl).searchParams.get('flow');
+      if (!flowId) {
+        throw new Error(`Could not extract flow ID from ${flowFinalUrl}`);
+      }
+      
+      console.log(`🎯 Step 1 Complete: Flow ID extracted: ${flowId}`);
+      
+      // Step 2: Fetch flow JSON to get form action and CSRF token
+      const flowJsonUrl = `https://account.bonfirehub.com/login?flow=${flowId}`;
+      console.log(`📋 Step 2: Fetching flow JSON from ${flowJsonUrl}`);
+      
+      const flowJsonResponse = await request(flowJsonUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          ...(flowCookies ? { 'Cookie': flowCookies } : {})
+        },
+        bodyTimeout: 30000,
+        headersTimeout: 10000
+      });
+      
+      if (flowJsonResponse.statusCode !== 200) {
+        throw new Error(`Failed to fetch flow JSON: HTTP ${flowJsonResponse.statusCode}`);
+      }
+      
+      const flowData = await flowJsonResponse.body.json() as any;
+      console.log(`🎯 Step 2 Complete: Flow JSON fetched, action: ${flowData.ui?.action}`);
+      
+      // Extract form action URL and CSRF token
+      const formAction = flowData.ui?.action;
+      if (!formAction) {
+        throw new Error(`No form action found in flow JSON`);
+      }
+      
+      // Find CSRF token in hidden fields
+      let csrfToken = null;
+      const hiddenFields: any = {};
+      
+      if (flowData.ui?.nodes) {
+        for (const node of flowData.ui.nodes) {
+          if (node.attributes?.name && node.attributes?.type === 'hidden') {
+            hiddenFields[node.attributes.name] = node.attributes.value;
+            if (node.attributes.name.includes('csrf')) {
+              csrfToken = node.attributes.value;
+            }
+          }
+        }
+      }
+      
+      console.log(`🔒 CSRF token found: ${csrfToken ? 'Yes' : 'No'}`);
+      console.log(`📝 Hidden fields found: ${Object.keys(hiddenFields).length}`);
+      
+      // Step 3: Submit credentials to form action
+      console.log(`📤 Step 3: Submitting credentials to ${formAction}`);
+      
+      const loginPayload: any = {
+        method: 'password',
+        identifier: username,
+        password: password,
+        ...hiddenFields // Include all hidden fields including CSRF token
+      };
+      
+      // Get fresh cookies from flow response
+      const formCookies = this.extractCookies(flowJsonResponse) || flowCookies;
+      const redactedCookies = this.redactSensitiveCookies(formCookies);
+      console.log(`🍪 Using cookies for login: ${redactedCookies}`);
+      
+      const loginSubmitResponse = await request(formAction, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Referer': flowFinalUrl,
+          ...(formCookies ? { 'Cookie': formCookies } : {})
+        },
+        body: new URLSearchParams(loginPayload).toString(),
+        bodyTimeout: 30000,
+        headersTimeout: 10000
+      });
+      
+      console.log(`📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.statusCode}`);
+      
+      // Step 4: Follow redirects to complete authentication
+      if ([302, 303, 307, 308].includes(loginSubmitResponse.statusCode)) {
+        console.log(`🔄 Step 4: Following redirects to complete authentication`);
+        
+        const location = loginSubmitResponse.headers.location;
+        const redirectUrl = Array.isArray(location) ? location[0] : location;
+        
+        if (!redirectUrl) {
+          throw new Error('Login response had redirect status but no Location header');
+        }
+        
+        const fullRedirectUrl = new URL(redirectUrl, formAction).toString();
+        console.log(`🌐 Following redirect to: ${fullRedirectUrl}`);
+        
+        // Merge cookies from login response
+        const loginCookies = this.extractCookies(loginSubmitResponse);
+        const allCookies = this.mergeCookies(formCookies, loginCookies);
+        
+        // Follow the redirect chain
+        const { finalResponse, finalUrl, cookieHeader: finalCookies } = await this.getWithRedirects(fullRedirectUrl, 10, allCookies);
+        
+        console.log(`✅ Step 4 Complete: Final URL: ${finalUrl}`);
+        console.log(`📡 Final response: HTTP ${finalResponse.statusCode}`);
+        
+        // Verify we ended up at the target page or a success page
+        const isSuccess = finalUrl.includes('vendor.bonfirehub.com') || 
+                         finalUrl.includes('opportunities') ||
+                         finalResponse.statusCode === 200;
+        
+        if (isSuccess) {
+          console.log(`🎉 Ory Kratos authentication successful!`);
+          return {
+            authenticated: true,
+            cookies: finalCookies,
+            headers: {
+              'Referer': finalUrl
+            },
+            method: 'ory_kratos',
+            portalUrl: finalUrl,
+            flowId
+          };
+        } else {
+          console.log(`❌ Authentication may have failed - unexpected final URL: ${finalUrl}`);
+          return {
+            authenticated: false,
+            error: `Unexpected redirect destination: ${finalUrl}`,
+            method: 'ory_kratos_redirect_failed',
+            portalUrl,
+            flowId
+          };
+        }
+        
+      } else if (loginSubmitResponse.statusCode === 200) {
+        // Check if we got an error response
+        const responseText = await loginSubmitResponse.body.text();
+        if (responseText.toLowerCase().includes('error') || responseText.toLowerCase().includes('invalid')) {
+          console.log(`❌ Login failed - error response received`);
+          return {
+            authenticated: false,
+            error: 'Invalid credentials or login error',
+            method: 'ory_kratos_error',
+            portalUrl,
+            flowId
+          };
+        }
+        
+        // If no redirect and no error, consider it successful
+        return {
+          authenticated: true,
+          cookies: this.extractCookies(loginSubmitResponse),
+          method: 'ory_kratos_direct',
+          portalUrl,
+          flowId
+        };
+        
+      } else {
+        throw new Error(`Unexpected login response: HTTP ${loginSubmitResponse.statusCode}`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Ory Kratos authentication failed:`, error);
+      return {
+        authenticated: false,
+        error: error instanceof Error ? error.message : String(error),
+        method: 'ory_kratos_error',
+        portalUrl
+      };
+    }
+  }
+
+  private async handleGenericFormAuthentication(context: any): Promise<any> {
+    const { $, portalUrl, username, password, formData, loginPageResponse, cookieHeader } = context;
+    
+    try {
       // Build form payload
       const payload: any = {};
       
@@ -1423,7 +1683,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       
       // Use accumulated cookies from redirect chain, fallback to extracting from final response
       const cookies = cookieHeader || this.extractCookies(loginPageResponse);
-      console.log(`🍪 Using cookies for form submission: ${cookies ? 'Yes' : 'No'} (${cookies?.length || 0} chars)`);
+      const redactedCookies = this.redactSensitiveCookies(cookies);
+      console.log(`🍪 Using cookies for form submission: ${redactedCookies}`);
       
       // Submit login form
       const loginResponse = await request(formData.action, {
@@ -1461,17 +1722,17 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         headers: isSuccessful ? {
           'Referer': portalUrl
         } : undefined,
-        method: 'form_authentication',
+        method: 'generic_form_authentication',
         portalUrl,
         statusCode: loginResponse.statusCode
       };
       
     } catch (error) {
-      console.error('Form authentication error:', error);
+      console.error('Generic form authentication error:', error);
       return {
         authenticated: false,
         error: error instanceof Error ? error.message : String(error),
-        method: 'form_authentication_error',
+        method: 'generic_form_authentication_error',
         portalUrl
       };
     }
