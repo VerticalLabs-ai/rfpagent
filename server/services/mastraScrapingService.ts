@@ -1111,26 +1111,128 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private extractBonfireOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
     const opportunities: any[] = [];
+    console.log(`🔍 Analyzing Bonfire Hub HTML structure...`);
     
-    // Common Bonfire selectors
-    $('.opportunity-card, .bid-card, .rfp-card, [class*="opportunity"], [class*="bid"]').each((_, element) => {
-      const $card = $(element);
+    // Debug: Log the page structure to understand what we're working with
+    const pageTitle = $('title').text();
+    console.log(`📄 Bonfire page title: ${pageTitle}`);
+    
+    // Debug: Check for common table/list structures
+    const tables = $('table').length;
+    const rows = $('tr').length;
+    const lists = $('ul, ol').length;
+    const listItems = $('li').length;
+    const divs = $('div').length;
+    console.log(`🔢 Bonfire structure: ${tables} tables, ${rows} rows, ${lists} lists, ${listItems} list items, ${divs} divs`);
+    
+    // Enhanced Bonfire selectors - try multiple approaches
+    const selectors = [
+      'table tr', // Common table structure for opportunity listings
+      'tbody tr', // Table body rows
+      '.opportunity, [class*="opportunity"]', // Opportunity classes
+      '.bid, [class*="bid"]', // Bid classes
+      '.rfp, [class*="rfp"]', // RFP classes
+      '.listing, [class*="listing"]', // Listing classes
+      '.row, [class*="row"]', // Row classes
+      'li', // List items that might contain opportunities
+      '[data-id]', // Elements with data IDs
+      'a[href*="opportunity"]', // Links containing "opportunity"
+      'a[href*="bid"]', // Links containing "bid"
+      'a[href*="rfp"]' // Links containing "rfp"
+    ];
+    
+    selectors.forEach(selector => {
+      const elements = $(selector);
+      console.log(`🎯 Bonfire selector "${selector}" found ${elements.length} elements`);
       
-      const title = $card.find('h3, h4, .title, [class*="title"]').first().text().trim();
-      const description = $card.find('.description, .summary, p').first().text().trim();
-      const deadline = $card.find('[class*="deadline"], [class*="due"], .date').first().text().trim();
-      const agency = $card.find('[class*="agency"], [class*="department"]').first().text().trim();
-      const link = $card.find('a').first().attr('href');
+      elements.each((index, element) => {
+        if (index >= 5) return; // Limit logging to first 5 elements per selector
+        
+        const $element = $(element);
+        const text = $element.text().trim();
+        const links = $element.find('a').length;
+        const hasHref = $element.attr('href') ? 'has href' : 'no href';
+        
+        console.log(`  📋 Element ${index + 1}: ${text.substring(0, 100)}... (${links} links, ${hasHref})`);
+      });
+    });
+    
+    // Try table-based extraction first (common for government portals)
+    $('table tr').each((index, element) => {
+      if (index === 0) return; // Skip header row
       
-      if (title && link) {
-        opportunities.push({
-          title,
-          description,
-          deadline,
-          agency,
-          link: new URL(link, baseUrl).toString(),
-          source: 'bonfire'
-        });
+      const $row = $(element);
+      const cells = $row.find('td');
+      
+      if (cells.length >= 2) {
+        const title = cells.eq(0).text().trim();
+        const description = cells.eq(1).text().trim();
+        const deadline = cells.length > 2 ? cells.eq(2).text().trim() : '';
+        const agency = cells.length > 3 ? cells.eq(3).text().trim() : '';
+        
+        // Look for links in any cell
+        const link = $row.find('a').first().attr('href');
+        
+        if (title && title.length > 5 && (link || title.toLowerCase().includes('rfp') || title.toLowerCase().includes('bid'))) {
+          opportunities.push({
+            title,
+            description,
+            deadline,
+            agency,
+            link: link ? new URL(link, baseUrl).toString() : null,
+            source: 'bonfire_table'
+          });
+          console.log(`✅ Bonfire table opportunity found: ${title}`);
+        }
+      }
+    });
+    
+    // Try list-based extraction
+    $('li').each((_, element) => {
+      const $item = $(element);
+      const text = $item.text().trim();
+      const link = $item.find('a').first().attr('href') || $item.closest('a').attr('href');
+      
+      if (text.length > 10 && (text.toLowerCase().includes('rfp') || text.toLowerCase().includes('bid') || text.toLowerCase().includes('opportunity'))) {
+        const title = $item.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 100);
+        
+        if (title && !opportunities.some(opp => opp.title === title)) {
+          opportunities.push({
+            title,
+            description: text,
+            deadline: '',
+            agency: '',
+            link: link ? new URL(link, baseUrl).toString() : null,
+            source: 'bonfire_list'
+          });
+          console.log(`✅ Bonfire list opportunity found: ${title}`);
+        }
+      }
+    });
+    
+    // Try div-based extraction with RFP keywords
+    $('div').each((_, element) => {
+      const $div = $(element);
+      const text = $div.text().trim();
+      const link = $div.find('a').first().attr('href');
+      
+      if (text.length > 20 && text.length < 500 && 
+          (text.toLowerCase().includes('rfp') || text.toLowerCase().includes('bid') || text.toLowerCase().includes('opportunity')) &&
+          !text.toLowerCase().includes('footer') && !text.toLowerCase().includes('header')) {
+        
+        const title = $div.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 100);
+        
+        if (title && !opportunities.some(opp => opp.title === title)) {
+          opportunities.push({
+            title,
+            description: text,
+            deadline: '',
+            agency: '',
+            link: link ? new URL(link, baseUrl).toString() : null,
+            source: 'bonfire_div'
+          });
+          console.log(`✅ Bonfire div opportunity found: ${title}`);
+        }
       }
     });
     
@@ -1167,25 +1269,156 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private extractFindRFPOpportunities($: cheerio.CheerioAPI, baseUrl: string): any[] {
     const opportunities: any[] = [];
+    console.log(`🔍 Analyzing FindRFP HTML structure...`);
     
-    // FindRFP specific selectors
-    $('.rfp-listing, .opportunity-listing, .search-result').each((_, element) => {
-      const $listing = $(element);
+    // Debug: Log the page structure to understand what we're working with
+    const pageTitle = $('title').text();
+    console.log(`📄 FindRFP page title: ${pageTitle}`);
+    
+    // Debug: Check for common structures
+    const tables = $('table').length;
+    const rows = $('tr').length;
+    const forms = $('form').length;
+    const divs = $('div').length;
+    const spans = $('span').length;
+    console.log(`🔢 FindRFP structure: ${tables} tables, ${rows} rows, ${forms} forms, ${divs} divs, ${spans} spans`);
+    
+    // Enhanced FindRFP selectors - try multiple approaches
+    const selectors = [
+      'table tr', // Table-based search results
+      '.result, [class*="result"]', // Result classes
+      '.listing, [class*="listing"]', // Listing classes  
+      '.opportunity, [class*="opportunity"]', // Opportunity classes
+      '.rfp, [class*="rfp"]', // RFP classes
+      'a[href*="service/opportunity"]', // FindRFP opportunity links
+      'a[href*="details"]', // Detail links
+      'a[href*="rfp"]', // RFP links
+      'tr:has(a)', // Table rows with links
+      'div:has(a)', // Divs with links
+    ];
+    
+    selectors.forEach(selector => {
+      const elements = $(selector);
+      console.log(`🎯 FindRFP selector "${selector}" found ${elements.length} elements`);
       
-      const title = $listing.find('.rfp-title, .title, h3').first().text().trim();
-      const description = $listing.find('.description, .summary').first().text().trim();
-      const agency = $listing.find('.agency, .organization').first().text().trim();
-      const deadline = $listing.find('.deadline, .due-date').first().text().trim();
-      const link = $listing.find('a').first().attr('href');
+      elements.each((index, element) => {
+        if (index >= 3) return; // Limit logging to first 3 elements per selector
+        
+        const $element = $(element);
+        const text = $element.text().trim();
+        const links = $element.find('a').length;
+        const hasHref = $element.attr('href') ? 'has href' : 'no href';
+        
+        console.log(`  📋 Element ${index + 1}: ${text.substring(0, 80)}... (${links} links, ${hasHref})`);
+      });
+    });
+    
+    // Try table-based extraction (common for search results)
+    $('table tr').each((index, element) => {
+      if (index === 0) return; // Skip header row
       
-      if (title && link) {
-        opportunities.push({
-          title,
-          description,
-          agency,
-          deadline,
-          link: new URL(link, baseUrl).toString(),
-          source: 'findrfp'
+      const $row = $(element);
+      const cells = $row.find('td');
+      const allLinks = $row.find('a');
+      
+      if (cells.length >= 1 && allLinks.length > 0) {
+        const cellTexts = cells.map((_, cell) => $(cell).text().trim()).get();
+        const rowText = cellTexts.join(' | ');
+        
+        // Find the main link (usually to opportunity details)
+        const mainLink = allLinks.first().attr('href');
+        const linkText = allLinks.first().text().trim();
+        
+        // Extract title from the link text or cell content
+        const title = linkText || cellTexts.find(text => text.length > 10) || '';
+        
+        if (title && title.length > 5 && mainLink) {
+          // Extract agency/organization info
+          const agency = cellTexts.find(text => 
+            text.toLowerCase().includes('agency') || 
+            text.toLowerCase().includes('department') || 
+            text.toLowerCase().includes('city') || 
+            text.toLowerCase().includes('county')
+          ) || '';
+          
+          // Extract deadline/date info
+          const deadline = cellTexts.find(text => 
+            /\d{1,2}\/\d{1,2}\/\d{4}/.test(text) || 
+            text.toLowerCase().includes('due') ||
+            text.toLowerCase().includes('deadline')
+          ) || '';
+          
+          opportunities.push({
+            title: title.substring(0, 200), // Limit title length
+            description: rowText.substring(0, 500),
+            agency,
+            deadline,
+            link: new URL(mainLink, baseUrl).toString(),
+            source: 'findrfp_table'
+          });
+          console.log(`✅ FindRFP table opportunity found: ${title}`);
+        }
+      }
+    });
+    
+    // Try extracting from all links that might be opportunities
+    $('a[href]').each((_, element) => {
+      const $link = $(element);
+      const href = $link.attr('href');
+      const linkText = $link.text().trim();
+      const parentText = $link.parent().text().trim();
+      
+      // Look for links that seem to be opportunities
+      if (href && (
+        href.includes('opportunity') || 
+        href.includes('details') || 
+        href.includes('rfp') ||
+        href.includes('service/')
+      )) {
+        
+        const title = linkText || parentText.substring(0, 100);
+        
+        if (title && title.length > 5 && !opportunities.some(opp => opp.link === new URL(href, baseUrl).toString())) {
+          opportunities.push({
+            title,
+            description: parentText,
+            agency: '',
+            deadline: '',
+            link: new URL(href, baseUrl).toString(),
+            source: 'findrfp_link'
+          });
+          console.log(`✅ FindRFP link opportunity found: ${title}`);
+        }
+      }
+    });
+    
+    // Try form-based extraction (search results might be in forms)
+    $('form').each((_, element) => {
+      const $form = $(element);
+      const formText = $form.text().trim();
+      const links = $form.find('a');
+      
+      if (formText.length > 50 && links.length > 0) {
+        links.each((_, linkElement) => {
+          const $link = $(linkElement);
+          const href = $link.attr('href');
+          const linkText = $link.text().trim();
+          
+          if (href && linkText && linkText.length > 10) {
+            const title = linkText.substring(0, 200);
+            
+            if (!opportunities.some(opp => opp.title === title)) {
+              opportunities.push({
+                title,
+                description: formText.substring(0, 300),
+                agency: '',
+                deadline: '',
+                link: new URL(href, baseUrl).toString(),
+                source: 'findrfp_form'
+              });
+              console.log(`✅ FindRFP form opportunity found: ${title}`);
+            }
+          }
         });
       }
     });
@@ -1790,7 +2023,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   /**
-   * Extract HTML content using an authenticated browser session
+   * Extract HTML content using an authenticated browser session with adaptive timeouts
    */
   private async scrapeWithAuthenticatedSession(url: string, sessionId: string): Promise<string> {
     try {
@@ -1808,18 +2041,72 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       const stagehand = session.stagehand;
       const page = stagehand.page;
       
-      // Navigate to the target URL using the authenticated session
       console.log(`🎯 Navigating authenticated session to: ${url}`);
-      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
       
-      // Wait a moment for dynamic content to load
-      await page.waitForTimeout(2000);
+      // Adaptive navigation strategy for heavy JavaScript pages
+      let html: string | null = null;
+      let navigationSuccess = false;
       
-      // Extract the page content
-      const html = await page.content();
-      console.log(`✅ Successfully extracted ${html.length} characters using authenticated session`);
+      // Strategy 1: Try domcontentloaded first (faster)
+      try {
+        console.log(`📄 Trying 'domcontentloaded' navigation...`);
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+        await page.waitForTimeout(3000); // Wait for initial JS execution
+        navigationSuccess = true;
+        console.log(`✅ 'domcontentloaded' navigation successful`);
+      } catch (error) {
+        console.log(`⚠️ 'domcontentloaded' failed, trying 'load' fallback...`);
+        
+        // Strategy 2: Fall back to 'load' 
+        try {
+          await page.goto(url, { waitUntil: 'load', timeout: 60000 });
+          await page.waitForTimeout(3000);
+          navigationSuccess = true;
+          console.log(`✅ 'load' navigation successful`);
+        } catch (error2) {
+          console.log(`⚠️ 'load' failed, trying basic navigation...`);
+          
+          // Strategy 3: Basic navigation without wait conditions
+          try {
+            await page.goto(url, { timeout: 90000 });
+            await page.waitForTimeout(5000); // Give more time for heavy JS
+            navigationSuccess = true;
+            console.log(`✅ Basic navigation successful`);
+          } catch (error3) {
+            console.log(`⚠️ All navigation strategies failed, attempting content extraction anyway...`);
+            // Continue to try content extraction even if navigation partially failed
+          }
+        }
+      }
       
-      return html;
+      // Wait for portal-specific elements that indicate the page is ready
+      try {
+        console.log(`🔍 Waiting for portal content to load...`);
+        
+        // Try to wait for common portal elements (with timeout)
+        await Promise.race([
+          page.waitForSelector('table, .opportunity, .listing, .rfp, .bid', { timeout: 15000 }),
+          page.waitForTimeout(15000) // Maximum wait
+        ]);
+        console.log(`✅ Portal content elements detected`);
+      } catch (waitError) {
+        console.log(`⚠️ Portal content wait timeout, proceeding with extraction...`);
+      }
+      
+      // Extract content regardless of navigation success
+      try {
+        html = await page.content();
+        console.log(`✅ Successfully extracted ${html.length} characters using authenticated session`);
+        
+        if (html.length < 1000) {
+          console.log(`⚠️ Warning: Extracted content is suspiciously small (${html.length} chars)`);
+        }
+        
+        return html;
+      } catch (extractError) {
+        console.error(`❌ Failed to extract content:`, extractError);
+        throw new Error(`Content extraction failed: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
+      }
       
     } catch (error) {
       console.error(`❌ Error extracting content with authenticated session:`, error);
