@@ -614,13 +614,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           }
         }
 
-        // Step 2: Fetch main portal page (use dynamic scraping for Austin Finance)
+        // Step 2: Fetch main portal page with optimized session handling
         let html: string;
         
         if (portalType.toLowerCase().includes('austin') && portalType.toLowerCase().includes('finance')) {
           console.log(`🌐 Austin Finance detected: Using dynamic content scraping with Puppeteer`);
           html = await this.scrapeDynamicContent(url, sessionData);
+        } else if (sessionData?.sessionId && sessionData?.method === 'browser_authentication') {
+          // Use authenticated browser session for content extraction instead of falling back to HTTP
+          console.log(`🌐 Using authenticated browser session for content extraction: ${sessionData.sessionId}`);
+          html = await this.scrapeWithAuthenticatedSession(url, sessionData.sessionId);
         } else {
+          // Fall back to HTTP only for non-authenticated portals
           const response = await request(url, {
             method: 'GET',
             headers: {
@@ -1781,6 +1786,44 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         method: 'generic_form_authentication_error',
         portalUrl
       };
+    }
+  }
+
+  /**
+   * Extract HTML content using an authenticated browser session
+   */
+  private async scrapeWithAuthenticatedSession(url: string, sessionId: string): Promise<string> {
+    try {
+      console.log(`🌐 Extracting content from authenticated session ${sessionId} for ${url}`);
+      
+      // Import sessionManager from stagehandTools
+      const { sessionManager } = await import('./stagehandTools');
+      
+      // Get the existing authenticated session
+      const session = sessionManager.getSession(sessionId);
+      if (!session) {
+        throw new Error(`No authenticated session found for ID: ${sessionId}`);
+      }
+      
+      const stagehand = session.stagehand;
+      const page = stagehand.page;
+      
+      // Navigate to the target URL using the authenticated session
+      console.log(`🎯 Navigating authenticated session to: ${url}`);
+      await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+      
+      // Wait a moment for dynamic content to load
+      await page.waitForTimeout(2000);
+      
+      // Extract the page content
+      const html = await page.content();
+      console.log(`✅ Successfully extracted ${html.length} characters using authenticated session`);
+      
+      return html;
+      
+    } catch (error) {
+      console.error(`❌ Error extracting content with authenticated session:`, error);
+      throw error;
     }
   }
 
