@@ -403,7 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/notifications/clear-all", async (req, res) => {
     try {
-      const notifications = await storage.getAllNotifications();
+      const notifications = await storage.getAllNotifications(999999); // Get ALL notifications, not just 50
       await Promise.all(
         notifications.map(notification => 
           storage.markNotificationRead(notification.id)
