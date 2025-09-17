@@ -55,9 +55,9 @@ export default function RFPDiscovery() {
     },
   });
 
-  const discoveredRfps = rfps?.filter((item: any) => 
+  const discoveredRfps = (rfps || []).filter((item: any) => 
     item.rfp.status === "discovered" || item.rfp.status === "parsing"
-  ) || [];
+  );
 
   const filteredRfps = discoveredRfps.filter((item: any) =>
     item.rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -118,7 +118,7 @@ export default function RFPDiscovery() {
         </div>
         
         <div className="flex space-x-2">
-          {portals?.map((portal: any) => (
+          {(portals || []).map((portal: any) => (
             <Button
               key={portal.id}
               variant="outline"
