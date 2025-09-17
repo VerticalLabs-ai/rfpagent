@@ -748,7 +748,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/certifications/expiring", async (req, res) => {
     try {
       const daysParam = req.query.days as string;
-      const days = daysParam ? parseInt(daysParam) : 30;
+      const days = daysParam ? parseInt(daysParam) : 90;
       if (isNaN(days) || days < 1 || days > 365) {
         return res.status(400).json({ error: "Days parameter must be a number between 1 and 365" });
       }
