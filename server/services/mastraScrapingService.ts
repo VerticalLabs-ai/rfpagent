@@ -351,7 +351,7 @@ export class MastraScrapingService {
         // Execute intelligent scraping with error handling for other portals
         try {
           const scrapingPrompt = this.buildScrapingPrompt(portal, context);
-          const response = await agent.generate(scrapingPrompt, {
+          const response = await agent.generateVNext(scrapingPrompt, {
             resourceId: portal.id,
             threadId: `portal-${portal.id}-${Date.now()}`
           });
@@ -726,8 +726,17 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         
         console.log(`Attempting authentication for ${portalUrl}`);
         
-        // Step 1: Fetch login page to analyze form structure
-        const loginPageResponse = await request(portalUrl, {
+        // Step 1: Determine the actual login page URL
+        let loginUrl = portalUrl;
+        
+        // For Bonfire Hub, use the specific account login page
+        if (portalUrl.includes('bonfirehub.com')) {
+          loginUrl = 'https://account.bonfirehub.com/login';
+          console.log(`🔑 Bonfire Hub detected: Using correct login URL ${loginUrl}`);
+        }
+        
+        // Step 2: Fetch login page to analyze form structure
+        const loginPageResponse = await request(loginUrl, {
           method: 'GET',
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -737,8 +746,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           headersTimeout: 10000
         });
 
+        // No need for alternative URLs - we have the exact Bonfire login URL
+
         if (loginPageResponse.statusCode !== 200) {
-          throw new Error(`Failed to fetch login page: HTTP ${loginPageResponse.statusCode}`);
+          throw new Error(`Failed to fetch login page: HTTP ${loginPageResponse.statusCode} from ${loginUrl}`);
         }
 
         const loginPageHtml = await loginPageResponse.body.text();
