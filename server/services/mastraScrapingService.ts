@@ -10,6 +10,11 @@ import { storage } from "../storage";
 import { AIService } from "./aiService";
 import type { Portal } from "@shared/schema";
 import puppeteer from "puppeteer";
+import { 
+  performBrowserAuthentication, 
+  scrapeWithAuthenticatedSession,
+  sessionManager
+} from "./stagehandTools";
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -781,7 +786,19 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           });
         }
 
-        // Step 4: Handle other authentication types
+        // Step 4: Handle browser-based authentication (OAuth/SSO/Complex forms)
+        if (authMethod.type === 'browser_required') {
+          console.log(`🌐 Browser authentication required: ${authMethod.details}`);
+          return await this.handleBrowserAuthentication({
+            loginUrl: finalUrl,
+            targetUrl: portalUrl,
+            username,
+            password,
+            portal: authContext?.portal
+          });
+        }
+
+        // Step 5: Handle other authentication types
         return {
           authenticated: false,
           error: `Authentication type '${authMethod.type}' not yet implemented`,
@@ -1436,9 +1453,35 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       };
     }
     
-    // Check for OAuth or other authentication methods
+    // Check for OAuth or other authentication methods that require browser automation
     if ($('a[href*="oauth"], a[href*="sso"], a[href*="saml"]').length > 0) {
-      return { type: 'unsupported', details: 'OAuth/SSO authentication detected' };
+      return { type: 'browser_required', details: 'OAuth/SSO authentication detected - requires browser automation' };
+    }
+    
+    // Check for complex authentication indicators that suggest browser automation is needed
+    const complexAuthIndicators = [
+      'data-sitekey', // reCAPTCHA
+      'g-recaptcha', // Google reCAPTCHA
+      'captcha',     // Generic CAPTCHA
+      'microsoft', 'google', 'azure', // SSO providers
+      'okta', 'saml', 'adfs'          // Enterprise SSO
+    ];
+    
+    const pageText = $('body').text().toLowerCase();
+    const hasComplexAuth = complexAuthIndicators.some(indicator => 
+      pageText.includes(indicator) || $(`[class*="${indicator}"], [id*="${indicator}"]`).length > 0
+    );
+    
+    if (hasComplexAuth) {
+      return { type: 'browser_required', details: 'Complex authentication detected - requires browser automation' };
+    }
+    
+    // Check for specific portals that we know require browser automation
+    const browserRequiredDomains = ['findrfp.com', 'bonfirehub.com'];
+    const requiresBrowser = browserRequiredDomains.some(domain => portalUrl.includes(domain));
+    
+    if (requiresBrowser) {
+      return { type: 'browser_required', details: 'Portal requires browser automation for authentication' };
     }
     
     return { type: 'unknown', details: 'Authentication method could not be determined' };
@@ -1734,6 +1777,62 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         error: error instanceof Error ? error.message : String(error),
         method: 'generic_form_authentication_error',
         portalUrl
+      };
+    }
+  }
+
+  /**
+   * Handle browser-based authentication using Stagehand for OAuth/SSO/Complex forms
+   */
+  private async handleBrowserAuthentication(context: any): Promise<any> {
+    const { loginUrl, targetUrl, username, password, portal } = context;
+    
+    try {
+      console.log(`🌐 Starting browser authentication for ${loginUrl}`);
+      
+      // Generate a unique session ID for this portal
+      const sessionId = `portal_${portal?.id || 'unknown'}_${Date.now()}`;
+      
+      // Perform browser authentication using Stagehand
+      const authResult = await performBrowserAuthentication(
+        loginUrl,
+        username,
+        password,
+        targetUrl,
+        sessionId
+      );
+      
+      if (authResult.success) {
+        console.log(`✅ Browser authentication successful for ${loginUrl}`);
+        
+        return {
+          authenticated: true,
+          method: 'browser_authentication',
+          sessionData: authResult.sessionData,
+          sessionId: sessionId,
+          portalUrl: targetUrl,
+          loginUrl: loginUrl,
+          targetUrl: authResult.targetUrl
+        };
+      } else {
+        console.log(`❌ Browser authentication failed for ${loginUrl}`);
+        
+        return {
+          authenticated: false,
+          error: 'Browser authentication failed',
+          method: 'browser_authentication_failed',
+          portalUrl: targetUrl
+        };
+      }
+      
+    } catch (error: any) {
+      console.error(`Browser authentication error for ${loginUrl}:`, error);
+      
+      return {
+        authenticated: false,
+        error: error.message || 'Browser authentication failed',
+        method: 'browser_authentication_error',
+        portalUrl: targetUrl
       };
     }
   }
