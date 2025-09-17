@@ -616,6 +616,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
         // Step 2: Fetch main portal page with optimized session handling
         let html: string;
+        let structuredData: any = null;
         
         if (portalType.toLowerCase().includes('austin') && portalType.toLowerCase().includes('finance')) {
           console.log(`🌐 Austin Finance detected: Using dynamic content scraping with Puppeteer`);
@@ -623,7 +624,15 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         } else if (sessionData?.sessionId && sessionData?.method === 'browser_authentication') {
           // Use authenticated browser session for content extraction instead of falling back to HTTP
           console.log(`🌐 Using authenticated browser session for content extraction: ${sessionData.sessionId}`);
-          html = await this.scrapeWithAuthenticatedSession(url, sessionData.sessionId);
+          const sessionResult = await this.scrapeWithAuthenticatedSession(url, sessionData.sessionId);
+          
+          if (sessionResult.isStructured && sessionResult.opportunities) {
+            console.log(`🎯 Using structured data from Stagehand extraction: ${sessionResult.opportunities.length} opportunities`);
+            structuredData = { opportunities: sessionResult.opportunities };
+            html = ''; // No HTML needed for structured data
+          } else {
+            html = sessionResult.html || '';
+          }
         } else {
           // Fall back to HTTP only for non-authenticated portals
           const response = await request(url, {
@@ -653,38 +662,86 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         
         console.log(`📄 Fetched ${html.length} characters of HTML content`);
         
-        // Step 3: Parse HTML content with Cheerio
-        const $ = cheerio.load(html);
-        console.log(`🔧 Parsed HTML with Cheerio, found ${$('*').length} elements`);
+        // Step 3: Parse HTML content with Cheerio (skip if we have structured data)
+        let $: cheerio.CheerioAPI | null = null;
+        let extractedContent: any = null;
         
-        // Step 4: Extract structured content based on portal type
-        console.log(`🎯 Extracting content for portal type: ${portalType}`);
-        const extractedContent = this.extractContentByPortalType($, portalType, url);
-        console.log(`📊 Extracted ${extractedContent?.length || 0} content sections`);
+        if (structuredData && structuredData.opportunities) {
+          // Use structured data directly from Stagehand extraction
+          console.log(`🎯 Using structured data directly: ${structuredData.opportunities.length} opportunities`);
+          extractedContent = {
+            title: '',
+            headings: [],
+            links: [],
+            text: '',
+            opportunities: structuredData.opportunities
+          };
+        } else if (html) {
+          // Parse HTML content with Cheerio for traditional extraction
+          $ = cheerio.load(html);
+          console.log(`🔧 Parsed HTML with Cheerio, found ${$('*').length} elements`);
+          
+          // Step 4: Extract structured content based on portal type
+          console.log(`🎯 Extracting content for portal type: ${portalType}`);
+          extractedContent = this.extractContentByPortalType($, portalType, url);
+        } else {
+          // No data available
+          console.log(`⚠️ No HTML content or structured data available`);
+          extractedContent = {
+            title: '',
+            headings: [],
+            links: [],
+            text: '',
+            opportunities: []
+          };
+        }
         
-        // Step 5: Look for RFP/opportunity links to fetch additional details
-        console.log(`🔗 Looking for opportunity links...`);
-        const opportunityLinks = this.findOpportunityLinks($, url, portalType);
+        console.log(`📊 Extracted ${extractedContent?.opportunities?.length || 0} opportunities from content`);
+        
+        // Step 5: Look for RFP/opportunity links to fetch additional details (skip if we have structured data)
+        let opportunityLinks: any[] = [];
+        if (structuredData && structuredData.opportunities) {
+          // Extract links from structured opportunities if available
+          console.log(`🔗 Extracting links from structured data...`);
+          opportunityLinks = structuredData.opportunities
+            .map((opp: any) => ({
+              url: opp.link || opp.url,
+              title: opp.title,
+              type: 'opportunity'
+            }))
+            .filter((link: any) => link.url);
+        } else if ($) {
+          // Traditional HTML link extraction
+          console.log(`🔗 Looking for opportunity links...`);
+          opportunityLinks = this.findOpportunityLinks($, url, portalType);
+        }
         console.log(`🎯 Found ${opportunityLinks?.length || 0} potential opportunity links`);
         
-        // Step 6: Fetch additional opportunity details (limited concurrency)
-        console.log(`📥 Fetching details for ${Math.min(opportunityLinks?.length || 0, 10)} opportunities...`);
-        const detailedOpportunities = await Promise.allSettled(
-          (opportunityLinks || []).slice(0, 10).map(link => // Limit to 10 opportunities per scrape
-            this.fetchOpportunityDetails(link, sessionData)
-          )
-        );
+        // Step 6: Fetch additional opportunity details (skip if we have structured data with sufficient detail)
+        let detailedOpportunities: any[] = [];
+        if (structuredData && structuredData.opportunities) {
+          // Skip fetching additional details for structured data since Stagehand extraction is comprehensive
+          console.log(`⏭️ Skipping detail fetching - structured data from Stagehand is comprehensive`);
+          detailedOpportunities = [];
+        } else {
+          // Fetch additional opportunity details for traditional HTML extraction
+          console.log(`📥 Fetching details for ${Math.min(opportunityLinks?.length || 0, 10)} opportunities...`);
+          const detailFetches = await Promise.allSettled(
+            (opportunityLinks || []).slice(0, 10).map(link => // Limit to 10 opportunities per scrape
+              this.fetchOpportunityDetails(link, sessionData)
+            )
+          );
+          detailedOpportunities = detailFetches
+            .filter(result => result.status === 'fulfilled')
+            .map(result => (result as PromiseFulfilledResult<any>).value)
+            .filter(opp => opp !== null);
+        }
 
-        const successfulOpportunities = detailedOpportunities
-          .filter(result => result.status === 'fulfilled')
-          .map(result => (result as PromiseFulfilledResult<any>).value)
-          .filter(opp => opp !== null);
-        
-        console.log(`✅ Successfully fetched ${successfulOpportunities.length} detailed opportunities`);
+        console.log(`✅ Successfully fetched ${detailedOpportunities.length} detailed opportunities`);
         
         // Merge detailed opportunities with extracted opportunities - critical fix!
         const extractedOpportunities = extractedContent.opportunities || [];
-        const allOpportunities = [...successfulOpportunities, ...extractedOpportunities];
+        const allOpportunities = [...detailedOpportunities, ...extractedOpportunities];
         
         // Remove duplicates based on link or solicitationId
         const uniqueOpportunities = allOpportunities.filter((opportunity, index, arr) => {
@@ -692,7 +749,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           return arr.findIndex(o => (o.link || o.url || o.solicitationId || o.title) === identifier) === index;
         });
         
-        console.log(`🔄 intelligentWebScrape returning ${uniqueOpportunities.length} opportunities (${successfulOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed)`);
+        console.log(`🔄 intelligentWebScrape returning ${uniqueOpportunities.length} opportunities (${detailedOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed)`);
 
         return {
           content: html,
@@ -2023,9 +2080,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   /**
-   * Extract HTML content using an authenticated browser session with adaptive timeouts
+   * Extract content using an authenticated browser session with adaptive timeouts
+   * Returns structured data when Stagehand extraction succeeds, HTML when falling back
    */
-  private async scrapeWithAuthenticatedSession(url: string, sessionId: string): Promise<string> {
+  private async scrapeWithAuthenticatedSession(url: string, sessionId: string): Promise<{ opportunities?: any[], html?: string, isStructured: boolean }> {
     try {
       console.log(`🌐 Extracting content from authenticated session ${sessionId} for ${url}`);
       
@@ -2173,7 +2231,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                   navigationSuccess = true;
                   break;
                 }
-              } catch (navError) {
+              } catch (navError: any) {
                 console.log(`⚠️ Failed to navigate to ${oppUrl}: ${navError.message}`);
                 continue;
               }
@@ -2206,7 +2264,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                   for (const selector of selectors) {
                     try {
                       const elements = document.querySelectorAll(selector);
-                      for (const element of elements) {
+                      for (let i = 0; i < elements.length; i++) {
+                        const element = elements[i];
                         const text = element.textContent?.toLowerCase() || '';
                         if (text.includes('opportunit') || text.includes('bid') || text.includes('open')) {
                           (element as HTMLElement).click();
@@ -2234,7 +2293,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                   console.log(`✅ UI navigation to opportunities completed`);
                   navigationSuccess = true;
                 }
-              } catch (uiNavError) {
+              } catch (uiNavError: any) {
                 console.log(`⚠️ UI navigation failed: ${uiNavError.message}`);
               }
             }
@@ -2246,107 +2305,135 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             console.log(`✅ Already on opportunities listing page, proceeding with extraction...`);
           }
           
-        } catch (navError) {
+        } catch (navError: any) {
           console.log(`⚠️ Post-auth navigation error: ${navError.message}, proceeding anyway...`);
         }
       }
       
       // Extract content regardless of navigation success
       try {
-        // For Bonfire Hub, use enhanced DOM extraction instead of static HTML
-        if (url.includes('bonfirehub.com')) {
-          console.log(`🔧 Using enhanced DOM extraction for Bonfire Hub...`);
+        // For Bonfire Hub, use clean Stagehand extraction with AI-powered parsing
+        if (targetDomain.includes('bonfirehub')) {
+          console.log(`🔧 Using clean Stagehand extraction for Bonfire Hub...`);
           
-          // Wait for client-rendered opportunities to load
+          // Wait for opportunities content to load
           try {
             console.log(`⏳ Waiting for opportunities to render...`);
             await Promise.race([
-              page.waitForSelector('table tbody tr, .opportunity-item, .bid-item, .listing-item, [data-testid*="opportunity"], .card, .row:has(a[href*="opportunity"])', { timeout: 30000 }),
-              page.waitForTimeout(30000)
+              page.waitForSelector('table, .opportunity, .bid, .rfp, .listing, [data-testid]', { timeout: 15000 }),
+              page.waitForTimeout(15000)
             ]);
-            console.log(`✅ Opportunity elements detected or timeout reached`);
+            console.log(`✅ Content detected, proceeding with AI extraction`);
           } catch (waitError) {
-            console.log(`⚠️ Opportunity wait timeout, proceeding with DOM extraction...`);
+            console.log(`⚠️ Content wait timeout, proceeding with extraction anyway...`);
           }
           
-          // Extract opportunities directly from DOM using page.evaluate
-          const domOpportunities = await page.evaluate(() => {
-            const opportunities: any[] = [];
+          // Use clean Stagehand page.extract() with Zod schema
+          try {
+            console.log(`🤖 Extracting opportunities using AI-powered Stagehand extraction...`);
             
-            // Enhanced selectors for Bonfire Hub opportunities
-            const selectors = [
-              'table tbody tr', // Table rows in opportunities list
-              '.opportunity-item, .bid-item, .listing-item', // Opportunity card components
-              '[data-testid*="opportunity"], [data-testid*="bid"]', // Test ID elements
-              '.card:has(a[href*="opportunity"])', // Cards with opportunity links
-              '.row:has(a[href*="opportunity"])', // Rows with opportunity links
-              'div:has(a[href*="/opportunities/"])', // Divs containing opportunity links
-              'li:has(a[href*="opportunity"])', // List items with opportunity links
-              '[class*="opportunity"], [class*="bid"], [class*="rfp"]' // Elements with opportunity-related classes
-            ];
-            
-            selectors.forEach(selector => {
-              try {
-                const elements = document.querySelectorAll(selector);
-                console.log(`🔍 DOM selector "${selector}" found ${elements.length} elements`);
-                
-                elements.forEach((element, index) => {
-                  if (index >= 20) return; // Limit to first 20 per selector
-                  
-                  // Extract text content and links
-                  const textContent = element.textContent?.trim() || '';
-                  const links = element.querySelectorAll('a[href]');
-                  
-                  // Look for opportunity-specific links
-                  const opportunityLinks = Array.from(links).filter(link => {
-                    const href = link.getAttribute('href') || '';
-                    return href.includes('opportunity') || href.includes('bid') || href.includes('rfp');
-                  });
-                  
-                  if (textContent.length > 20 && !textContent.toLowerCase().includes('welcome back')) {
-                    // Extract title (first meaningful text or link text)
-                    let title = '';
-                    const titleLink = element.querySelector('a[href*="opportunity"], a[href*="bid"]');
-                    if (titleLink) {
-                      title = titleLink.textContent?.trim() || '';
-                    } else {
-                      // Try to find title in text content
-                      const lines = textContent.split('\n').filter(line => line.trim().length > 0);
-                      title = lines[0]?.trim() || '';
-                    }
-                    
-                    if (title && title.length > 3) {
-                      opportunities.push({
-                        title: title.substring(0, 200), // Limit title length
-                        description: textContent.substring(0, 500), // First 500 chars as description
-                        link: opportunityLinks[0]?.getAttribute('href') || null,
-                        source: `bonfire_dom_${selector.replace(/[^a-zA-Z0-9]/g, '_')}`,
-                        deadline: null, // Will be extracted from detail page if needed
-                        agency: null // Will be extracted from detail page if needed
-                      });
-                    }
-                  }
-                });
-              } catch (selectorError) {
-                console.error(`Error with selector ${selector}:`, selectorError);
-              }
+            const extractionResult = await page.extract({
+              instruction: `Extract all RFP opportunities, bids, and procurement opportunities from this page. 
+                           Look for opportunities in tables, cards, lists, or any other format. 
+                           For each opportunity, extract:
+                           - title: The opportunity or RFP title/name
+                           - description: Brief description or summary (if available)
+                           - agency: The agency or organization posting the opportunity
+                           - deadline: Deadline or due date (if mentioned)
+                           - estimatedValue: Contract value or budget (if mentioned)
+                           - link: Direct link to the opportunity details
+                           - category: Type of opportunity (construction, services, goods, etc.)
+                           
+                           Ignore welcome messages, navigation menus, or non-opportunity content.
+                           Only extract actual procurement opportunities or RFPs.`,
+              
+              schema: z.object({
+                opportunities: z.array(OpportunitySchema)
+              })
             });
             
-            // Remove duplicates based on title
-            const uniqueOpportunities = opportunities.filter((opp, index, self) => 
-              index === self.findIndex(o => o.title === opp.title)
-            );
+            console.log(`🎯 Stagehand extraction found ${extractionResult.opportunities?.length || 0} opportunities`);
             
-            console.log(`🎯 DOM extraction found ${uniqueOpportunities.length} unique opportunities`);
-            return uniqueOpportunities;
-          });
+            if (extractionResult.opportunities && extractionResult.opportunities.length > 0) {
+              console.log(`✅ Using Stagehand-extracted opportunities`);
+              return { 
+                opportunities: extractionResult.opportunities, 
+                isStructured: true 
+              };
+            } else {
+              console.log(`⚠️ No opportunities found with Stagehand extraction, checking for dashboard content...`);
+              
+              // Check if we're on a dashboard page
+              const pageContent = await page.content();
+              if (pageContent.includes('Welcome Back') || pageContent.includes('Dashboard')) {
+                console.log(`⚠️ Detected dashboard page - opportunities extraction should only run after successful navigation to opportunities listing`);
+              }
+            }
+            
+          } catch (extractionError) {
+            console.log(`⚠️ Stagehand extraction error: ${extractionError instanceof Error ? extractionError.message : String(extractionError)}`);
+            console.log(`🔄 Falling back to static HTML extraction...`);
+          }
+        }
+        
+        // For FindRFP, use clean Stagehand extraction with AI-powered parsing
+        if (targetDomain.includes('findrfp')) {
+          console.log(`🔧 Using clean Stagehand extraction for FindRFP...`);
           
-          console.log(`🔧 DOM extraction returned ${domOpportunities.length} opportunities`);
+          // Wait for search results and opportunities to load
+          try {
+            console.log(`⏳ Waiting for FindRFP opportunities to render...`);
+            await Promise.race([
+              page.waitForSelector('table, .result, .opportunity, .listing, [data-testid], .search-results', { timeout: 15000 }),
+              page.waitForTimeout(15000)
+            ]);
+            console.log(`✅ FindRFP content detected, proceeding with AI extraction`);
+          } catch (waitError) {
+            console.log(`⚠️ FindRFP content wait timeout, proceeding with extraction anyway...`);
+          }
           
-          // If DOM extraction found opportunities, use those instead of static HTML
-          if (domOpportunities.length > 0) {
-            console.log(`✅ Using DOM-extracted opportunities instead of static HTML`);
-            return JSON.stringify({ opportunities: domOpportunities });
+          // Use clean Stagehand page.extract() with Zod schema  
+          try {
+            console.log(`🤖 Extracting FindRFP opportunities using AI-powered Stagehand extraction...`);
+            
+            const extractionResult = await page.extract({
+              instruction: `Extract all RFP opportunities and procurement opportunities from this FindRFP.com page.
+                           FindRFP.com is an aggregation platform that displays opportunities from multiple government sources.
+                           Look for opportunities in search results, tables, listings, or any other format.
+                           
+                           For each opportunity, extract:
+                           - title: The RFP or opportunity title/name
+                           - description: Brief description or summary of the opportunity
+                           - agency: The government agency or organization posting (e.g., "City of Austin", "Department of Defense")
+                           - deadline: Application deadline or due date (if mentioned)
+                           - estimatedValue: Contract value, budget, or project value (if mentioned)
+                           - link: Direct link to the detailed opportunity page or application
+                           - category: Type of opportunity (construction, services, goods, IT, consulting, etc.)
+                           
+                           Focus on actual procurement opportunities and RFPs.
+                           Ignore promotional content, navigation menus, ads, or non-opportunity content.
+                           Extract as many opportunities as possible from this page to exceed the previous count of 6.`,
+              
+              schema: z.object({
+                opportunities: z.array(OpportunitySchema)
+              })
+            });
+            
+            console.log(`🎯 FindRFP Stagehand extraction found ${extractionResult.opportunities?.length || 0} opportunities`);
+            
+            if (extractionResult.opportunities && extractionResult.opportunities.length > 0) {
+              console.log(`✅ Using FindRFP Stagehand-extracted opportunities (${extractionResult.opportunities.length} found)`);
+              return { 
+                opportunities: extractionResult.opportunities, 
+                isStructured: true 
+              };
+            } else {
+              console.log(`⚠️ No opportunities found with FindRFP Stagehand extraction`);
+            }
+            
+          } catch (extractionError) {
+            console.log(`⚠️ FindRFP Stagehand extraction error: ${extractionError instanceof Error ? extractionError.message : String(extractionError)}`);
+            console.log(`🔄 Falling back to static HTML extraction for FindRFP...`);
           }
         }
         
@@ -2358,7 +2445,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           console.log(`⚠️ Warning: Extracted content is suspiciously small (${html.length} chars)`);
         }
         
-        return html;
+        return { 
+          html: html, 
+          isStructured: false 
+        };
       } catch (extractError) {
         console.error(`❌ Failed to extract content:`, extractError);
         throw new Error(`Content extraction failed: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
