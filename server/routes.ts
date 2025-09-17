@@ -1,7 +1,12 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertRfpSchema, insertProposalSchema, insertPortalSchema, insertDocumentSchema } from "@shared/schema";
+import { 
+  insertRfpSchema, insertProposalSchema, insertPortalSchema, insertDocumentSchema,
+  insertCompanyProfileSchema, insertCompanyAddressSchema, insertCompanyContactSchema,
+  insertCompanyIdentifierSchema, insertCompanyCertificationSchema, insertCompanyInsuranceSchema
+} from "@shared/schema";
+import { ZodError } from "zod";
 import { MastraScrapingService } from "./services/mastraScrapingService";
 import { DocumentParsingService } from "./services/documentParsingService";
 import { AIService } from "./services/aiService";
@@ -436,6 +441,448 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching audit logs:", error);
       res.status(500).json({ error: "Failed to fetch audit logs" });
+    }
+  });
+
+  // Company Profile Management Routes
+  
+  // Company Profiles
+  app.get("/api/company-profiles", async (req, res) => {
+    try {
+      const profiles = await storage.getAllCompanyProfiles();
+      res.json(profiles);
+    } catch (error) {
+      console.error("Error fetching company profiles:", error);
+      res.status(500).json({ error: "Failed to fetch company profiles" });
+    }
+  });
+
+  app.get("/api/company-profiles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const profile = await storage.getCompanyProfile(id);
+      if (!profile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching company profile:", error);
+      res.status(500).json({ error: "Failed to fetch company profile" });
+    }
+  });
+
+  app.get("/api/company-profiles/:id/details", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const profile = await storage.getCompanyProfileWithDetails(id);
+      if (!profile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      console.error("Error fetching company profile details:", error);
+      res.status(500).json({ error: "Failed to fetch company profile details" });
+    }
+  });
+
+  app.post("/api/company-profiles", async (req, res) => {
+    try {
+      const profileData = insertCompanyProfileSchema.parse(req.body);
+      const profile = await storage.createCompanyProfile(profileData);
+      res.status(201).json(profile);
+    } catch (error) {
+      console.error("Error creating company profile:", error);
+      res.status(400).json({ error: "Failed to create company profile" });
+    }
+  });
+
+  app.put("/api/company-profiles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      // Validate updates using partial schema
+      const updateSchema = insertCompanyProfileSchema.partial();
+      const updates = updateSchema.parse(req.body);
+      const profile = await storage.updateCompanyProfile(id, updates);
+      if (!profile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      res.json(profile);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company profile:", error);
+      res.status(500).json({ error: "Failed to update company profile" });
+    }
+  });
+
+  app.delete("/api/company-profiles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const profile = await storage.getCompanyProfile(id);
+      if (!profile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      await storage.deleteCompanyProfile(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting company profile:", error);
+      res.status(500).json({ error: "Failed to delete company profile" });
+    }
+  });
+
+  // Company Addresses
+  app.get("/api/company-profiles/:companyProfileId/addresses", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      const addresses = await storage.getCompanyAddresses(companyProfileId);
+      res.json(addresses);
+    } catch (error) {
+      console.error("Error fetching company addresses:", error);
+      res.status(500).json({ error: "Failed to fetch company addresses" });
+    }
+  });
+
+  app.post("/api/company-profiles/:companyProfileId/addresses", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      // Check if parent company profile exists
+      const parentProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!parentProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      const addressData = insertCompanyAddressSchema.parse({
+        ...req.body,
+        companyProfileId
+      });
+      const address = await storage.createCompanyAddress(addressData);
+      res.status(201).json(address);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error creating company address:", error);
+      res.status(500).json({ error: "Failed to create company address" });
+    }
+  });
+
+  app.put("/api/company-addresses/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = insertCompanyAddressSchema.partial().omit({ companyProfileId: true });
+      const updates = updateSchema.parse(req.body);
+      const address = await storage.updateCompanyAddress(id, updates);
+      if (!address) {
+        return res.status(404).json({ error: "Company address not found" });
+      }
+      res.json(address);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company address:", error);
+      res.status(500).json({ error: "Failed to update company address" });
+    }
+  });
+
+  app.delete("/api/company-addresses/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyAddress(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company address:", error);
+      res.status(500).json({ error: "Failed to delete company address" });
+    }
+  });
+
+  // Company Contacts
+  app.get("/api/company-profiles/:companyProfileId/contacts", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      const contacts = await storage.getCompanyContacts(companyProfileId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching company contacts:", error);
+      res.status(500).json({ error: "Failed to fetch company contacts" });
+    }
+  });
+
+  app.post("/api/company-profiles/:companyProfileId/contacts", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      // Check if parent company profile exists
+      const parentProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!parentProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      const contactData = insertCompanyContactSchema.parse({
+        ...req.body,
+        companyProfileId
+      });
+      const contact = await storage.createCompanyContact(contactData);
+      res.status(201).json(contact);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error creating company contact:", error);
+      res.status(500).json({ error: "Failed to create company contact" });
+    }
+  });
+
+  app.put("/api/company-contacts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = insertCompanyContactSchema.partial().omit({ companyProfileId: true });
+      const updates = updateSchema.parse(req.body);
+      const contact = await storage.updateCompanyContact(id, updates);
+      if (!contact) {
+        return res.status(404).json({ error: "Company contact not found" });
+      }
+      res.json(contact);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company contact:", error);
+      res.status(500).json({ error: "Failed to update company contact" });
+    }
+  });
+
+  app.delete("/api/company-contacts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyContact(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company contact:", error);
+      res.status(500).json({ error: "Failed to delete company contact" });
+    }
+  });
+
+  // Company Identifiers
+  app.get("/api/company-profiles/:companyProfileId/identifiers", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      const identifiers = await storage.getCompanyIdentifiers(companyProfileId);
+      res.json(identifiers);
+    } catch (error) {
+      console.error("Error fetching company identifiers:", error);
+      res.status(500).json({ error: "Failed to fetch company identifiers" });
+    }
+  });
+
+  app.post("/api/company-profiles/:companyProfileId/identifiers", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      // Check if parent company profile exists
+      const parentProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!parentProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      const identifierData = insertCompanyIdentifierSchema.parse({
+        ...req.body,
+        companyProfileId
+      });
+      const identifier = await storage.createCompanyIdentifier(identifierData);
+      res.status(201).json(identifier);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error creating company identifier:", error);
+      res.status(500).json({ error: "Failed to create company identifier" });
+    }
+  });
+
+  app.put("/api/company-identifiers/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = insertCompanyIdentifierSchema.partial().omit({ companyProfileId: true });
+      const updates = updateSchema.parse(req.body);
+      const identifier = await storage.updateCompanyIdentifier(id, updates);
+      if (!identifier) {
+        return res.status(404).json({ error: "Company identifier not found" });
+      }
+      res.json(identifier);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company identifier:", error);
+      res.status(500).json({ error: "Failed to update company identifier" });
+    }
+  });
+
+  app.delete("/api/company-identifiers/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyIdentifier(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company identifier:", error);
+      res.status(500).json({ error: "Failed to delete company identifier" });
+    }
+  });
+
+  // Company Certifications
+  app.get("/api/company-profiles/:companyProfileId/certifications", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      const certifications = await storage.getCompanyCertifications(companyProfileId);
+      res.json(certifications);
+    } catch (error) {
+      console.error("Error fetching company certifications:", error);
+      res.status(500).json({ error: "Failed to fetch company certifications" });
+    }
+  });
+
+  app.get("/api/certifications/expiring", async (req, res) => {
+    try {
+      const daysParam = req.query.days as string;
+      const days = daysParam ? parseInt(daysParam) : 30;
+      if (isNaN(days) || days < 1 || days > 365) {
+        return res.status(400).json({ error: "Days parameter must be a number between 1 and 365" });
+      }
+      const certifications = await storage.getExpiringCertifications(days);
+      res.json(certifications);
+    } catch (error) {
+      console.error("Error fetching expiring certifications:", error);
+      res.status(500).json({ error: "Failed to fetch expiring certifications" });
+    }
+  });
+
+  app.post("/api/company-profiles/:companyProfileId/certifications", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      // Check if parent company profile exists
+      const parentProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!parentProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      const certificationData = insertCompanyCertificationSchema.parse({
+        ...req.body,
+        companyProfileId
+      });
+      const certification = await storage.createCompanyCertification(certificationData);
+      res.status(201).json(certification);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error creating company certification:", error);
+      res.status(500).json({ error: "Failed to create company certification" });
+    }
+  });
+
+  app.put("/api/company-certifications/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = insertCompanyCertificationSchema.partial().omit({ companyProfileId: true });
+      const updates = updateSchema.parse(req.body);
+      const certification = await storage.updateCompanyCertification(id, updates);
+      if (!certification) {
+        return res.status(404).json({ error: "Company certification not found" });
+      }
+      res.json(certification);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company certification:", error);
+      res.status(500).json({ error: "Failed to update company certification" });
+    }
+  });
+
+  app.delete("/api/company-certifications/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyCertification(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company certification:", error);
+      res.status(500).json({ error: "Failed to delete company certification" });
+    }
+  });
+
+  // Company Insurance
+  app.get("/api/company-profiles/:companyProfileId/insurance", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      const insurance = await storage.getCompanyInsurance(companyProfileId);
+      res.json(insurance);
+    } catch (error) {
+      console.error("Error fetching company insurance:", error);
+      res.status(500).json({ error: "Failed to fetch company insurance" });
+    }
+  });
+
+  app.get("/api/insurance/expiring", async (req, res) => {
+    try {
+      const daysParam = req.query.days as string;
+      const days = daysParam ? parseInt(daysParam) : 30;
+      if (isNaN(days) || days < 1 || days > 365) {
+        return res.status(400).json({ error: "Days parameter must be a number between 1 and 365" });
+      }
+      const insurance = await storage.getExpiringInsurance(days);
+      res.json(insurance);
+    } catch (error) {
+      console.error("Error fetching expiring insurance:", error);
+      res.status(500).json({ error: "Failed to fetch expiring insurance" });
+    }
+  });
+
+  app.post("/api/company-profiles/:companyProfileId/insurance", async (req, res) => {
+    try {
+      const { companyProfileId } = req.params;
+      // Check if parent company profile exists
+      const parentProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!parentProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+      const insuranceData = insertCompanyInsuranceSchema.parse({
+        ...req.body,
+        companyProfileId
+      });
+      const insurance = await storage.createCompanyInsurance(insuranceData);
+      res.status(201).json(insurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error creating company insurance:", error);
+      res.status(500).json({ error: "Failed to create company insurance" });
+    }
+  });
+
+  app.put("/api/company-insurance/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateSchema = insertCompanyInsuranceSchema.partial().omit({ companyProfileId: true });
+      const updates = updateSchema.parse(req.body);
+      const insurance = await storage.updateCompanyInsurance(id, updates);
+      if (!insurance) {
+        return res.status(404).json({ error: "Company insurance not found" });
+      }
+      res.json(insurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid input data", details: error.errors });
+      }
+      console.error("Error updating company insurance:", error);
+      res.status(500).json({ error: "Failed to update company insurance" });
+    }
+  });
+
+  app.delete("/api/company-insurance/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteCompanyInsurance(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting company insurance:", error);
+      res.status(500).json({ error: "Failed to delete company insurance" });
     }
   });
 

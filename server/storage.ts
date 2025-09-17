@@ -68,6 +68,7 @@ export interface IStorage {
   getCompanyProfileWithDetails(id: string): Promise<any>;
   createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
   updateCompanyProfile(id: string, updates: Partial<CompanyProfile>): Promise<CompanyProfile>;
+  deleteCompanyProfile(id: string): Promise<void>;
   
   // Company Addresses
   getCompanyAddresses(companyProfileId: string): Promise<CompanyAddress[]>;
@@ -515,6 +516,13 @@ export class DatabaseStorage implements IStorage {
       .where(eq(companyProfiles.id, id))
       .returning();
     return updatedProfile;
+  }
+
+  async deleteCompanyProfile(id: string): Promise<void> {
+    await db
+      .update(companyProfiles)
+      .set({ isActive: false, updatedAt: sql`NOW()` })
+      .where(eq(companyProfiles.id, id));
   }
 
   // Company Addresses
