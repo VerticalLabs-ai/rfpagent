@@ -339,16 +339,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/portals/:id/scan", async (req, res) => {
     try {
       const { id } = req.params;
+      let { searchFilter } = req.body || {};
+      
+      // Validate and sanitize search filter
+      if (searchFilter) {
+        searchFilter = searchFilter.trim();
+        if (searchFilter.length === 0 || searchFilter.length > 100) {
+          return res.status(400).json({ error: "Search filter must be between 1-100 characters" });
+        }
+      }
+      
       const portal = await storage.getPortal(id);
       
       if (!portal) {
         return res.status(404).json({ error: "Portal not found" });
       }
 
-      // Start scraping asynchronously
-      scrapingService.scrapePortal(portal).catch(console.error);
+      // Start scraping asynchronously with optional search filter
+      scrapingService.scrapePortal(portal, searchFilter).catch(console.error);
 
-      res.json({ message: "Portal scan started" });
+      const message = searchFilter 
+        ? `Portal scan started with filter: "${searchFilter}"` 
+        : "Portal scan started";
+      res.json({ message });
     } catch (error) {
       console.error("Error starting portal scan:", error);
       res.status(500).json({ error: "Failed to start portal scan" });

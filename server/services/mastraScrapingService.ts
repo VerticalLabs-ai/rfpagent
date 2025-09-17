@@ -156,7 +156,8 @@ export class MastraScrapingService {
           username: z.string().optional(),
           password: z.string().optional()
         }).optional().describe("Login credentials if required"),
-        portalType: z.string().describe("Type of portal (bonfire, sam.gov, etc.)")
+        portalType: z.string().describe("Type of portal (bonfire, sam.gov, etc.)"),
+        searchFilter: z.string().optional().describe("Search filter to apply during scraping - only return opportunities related to this term")
       }),
       execute: async ({ context }) => {
         // Use AI-powered web scraping instead of browser automation
@@ -331,8 +332,9 @@ export class MastraScrapingService {
     }
   }
 
-  async scrapePortal(portal: Portal): Promise<void> {
-    console.log(`Starting intelligent scrape of ${portal.name} using Mastra agents`);
+  async scrapePortal(portal: Portal, searchFilter?: string): Promise<void> {
+    const filterMessage = searchFilter ? ` with filter: "${searchFilter}"` : '';
+    console.log(`Starting intelligent scrape of ${portal.name} using Mastra agents${filterMessage}`);
     
     try {
       // Update last scanned timestamp
@@ -344,8 +346,8 @@ export class MastraScrapingService {
       // Select appropriate agent based on portal type
       const agent = this.selectAgent(portal);
       
-      // Create scraping context with portal-specific knowledge
-      const context = await this.buildPortalContext(portal);
+      // Create scraping context with portal-specific knowledge and search filter
+      const context = await this.buildPortalContext(portal, searchFilter);
       
       // For Austin Finance, bypass agent and go direct to working scraper
       let opportunities: any[] = [];
@@ -355,7 +357,7 @@ export class MastraScrapingService {
       } else {
         // Execute intelligent scraping with error handling for other portals
         try {
-          const scrapingPrompt = this.buildScrapingPrompt(portal, context);
+          const scrapingPrompt = this.buildScrapingPrompt(portal, context, searchFilter);
           const response = await agent.generateVNext(scrapingPrompt, {
             resourceId: portal.id,
             threadId: `portal-${portal.id}-${Date.now()}`
@@ -383,7 +385,8 @@ export class MastraScrapingService {
             credentials: portal.loginRequired ? {
               username: portal.username,
               password: portal.password
-            } : null
+            } : null,
+            searchFilter: searchFilter
           });
           
           console.log(`🔄 intelligentWebScrape completed. Result type:`, typeof directScrapeResult);
@@ -455,7 +458,7 @@ export class MastraScrapingService {
     return this.agents.get('generic')!;
   }
 
-  private async buildPortalContext(portal: Portal): Promise<string> {
+  private async buildPortalContext(portal: Portal, searchFilter?: string): Promise<string> {
     // Get historical context from memory and previous scrapes
     const recentRfps = await storage.getRFPsByPortal(portal.id);
     const recentCount = recentRfps.filter(rfp => {
@@ -463,25 +466,35 @@ export class MastraScrapingService {
       return daysSinceCreated <= 30;
     }).length;
 
+    const searchFilterInfo = searchFilter ? `
+    - Search Filter: "${searchFilter}" - Focus only on opportunities related to this term` : '';
+
     return `Portal Context:
     - Name: ${portal.name}
     - URL: ${portal.url}
     - Requires Login: ${portal.loginRequired}
     - Recent RFPs Found: ${recentCount} in last 30 days
     - Portal Status: ${portal.status}
-    - Last Successful Scan: ${portal.lastScanned || 'Never'}`;
+    - Last Successful Scan: ${portal.lastScanned || 'Never'}${searchFilterInfo}`;
   }
 
-  private buildScrapingPrompt(portal: Portal, context: string): string {
+  private buildScrapingPrompt(portal: Portal, context: string, searchFilter?: string): string {
     // Build specialized prompt based on portal type
     const isAustinFinance = portal.name.toLowerCase().includes('austin finance');
     
+    const austinFinanceFilterInstructions = searchFilter ? `
+
+🔍 SEARCH FILTER ACTIVE: Only extract solicitations related to "${searchFilter}"
+- Filter results to only include RFPs with titles/descriptions containing or related to "${searchFilter}"
+- Ignore solicitations that are not related to this search term
+- If no results match the filter, return an empty array` : '';
+
     if (isAustinFinance) {
       return `Please scrape the Austin Finance Online portal for procurement opportunities:
 
 ${context}
 
-IMPORTANT: You are analyzing the ACTIVE SOLICITATIONS page which contains a table/list of current RFPs.
+IMPORTANT: You are analyzing the ACTIVE SOLICITATIONS page which contains a table/list of current RFPs.${austinFinanceFilterInstructions}
 
 Your task:
 1. Look for the "ACTIVE SOLICITATIONS" table or list on the page
@@ -490,7 +503,7 @@ Your task:
    - Due Date (e.g. "09/12/2025 at 2PM") 
    - Title/Description (e.g. "Gearbox, Unit 6 & 7 Cooling Tower Fan")
    - Detailed description paragraph
-3. Extract ALL solicitations from the table/list
+3. Extract ALL solicitations from the table/list${searchFilter ? ` that match the search filter "${searchFilter}"` : ''}
 4. For each opportunity, extract:
    - Title (from the bold title line)
    - Solicitation ID (the code like IFQ/IFB/RFP + numbers)
@@ -505,14 +518,22 @@ Look specifically for table rows or list items that contain solicitation codes l
 Return results as structured JSON array with all found solicitations.`;
     }
 
+    const generalFilterInstructions = searchFilter ? `
+
+🔍 SEARCH FILTER ACTIVE: Only look for opportunities related to "${searchFilter}"
+- If the portal has a search function, use it to search for "${searchFilter}"
+- Filter results to only include RFPs that contain or are related to "${searchFilter}"
+- Ignore opportunities that are not related to this search term
+- If no results match the filter, return an empty array` : '';
+
     return `Please scrape the following RFP portal for procurement opportunities:
 
-${context}
+${context}${generalFilterInstructions}
 
 Your task:
 1. Navigate to the portal URL: ${portal.url}
 ${portal.loginRequired ? `2. Authenticate using provided credentials` : '2. Access public listings'}
-3. Find all available RFP/procurement opportunities
+3. Find all available RFP/procurement opportunities${searchFilter ? ` related to "${searchFilter}"` : ''}
 4. Extract key information for each opportunity:
    - Title
    - Agency/Organization
@@ -579,7 +600,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private async intelligentWebScrape(context: any): Promise<any> {
     return await this.requestLimiter(async () => {
       try {
-        const { url, loginRequired, credentials } = context;
+        const { url, loginRequired, credentials, searchFilter } = context;
         
         // Auto-detect portal type based on URL if not provided or unclear
         let portalType = context.portalType;
@@ -596,8 +617,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         }
         
         console.log(`🔍 Portal type detected: ${portalType} for ${url}`);
-        
-        console.log(`🔍 Starting intelligent scrape of ${url} (portal type: ${portalType})`);
+        const filterMessage = searchFilter ? ` with search filter: "${searchFilter}"` : '';
+        console.log(`🔍 Starting intelligent scrape of ${url} (portal type: ${portalType})${filterMessage}`);
         
         // Step 1: Fetch the page content
         let sessionData: any = null;
@@ -751,12 +772,33 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           return arr.findIndex(o => (o.solicitationId || o.title || o.link || o.url) === identifier) === index;
         });
         
-        console.log(`🔄 intelligentWebScrape returning ${uniqueOpportunities.length} opportunities (${detailedOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed)`);
+        // Apply search filter if provided (post-processing filtering)
+        let finalOpportunities = uniqueOpportunities;
+        if (searchFilter && searchFilter.trim()) {
+          const filterTerm = searchFilter.toLowerCase().trim();
+          const beforeFilterCount = finalOpportunities.length;
+          
+          finalOpportunities = uniqueOpportunities.filter((opportunity: any) => {
+            const title = (opportunity.title || '').toLowerCase();
+            const description = (opportunity.description || '').toLowerCase();
+            const agency = (opportunity.agency || '').toLowerCase();
+            const category = (opportunity.category || '').toLowerCase();
+            
+            return title.includes(filterTerm) || 
+                   description.includes(filterTerm) || 
+                   agency.includes(filterTerm) || 
+                   category.includes(filterTerm);
+          });
+          
+          console.log(`🔍 Search filter "${searchFilter}" applied: ${beforeFilterCount} → ${finalOpportunities.length} opportunities`);
+        }
+
+        console.log(`🔄 intelligentWebScrape returning ${finalOpportunities.length} opportunities (${detailedOpportunities.length} detailed + ${extractedOpportunities.length} extracted, ${allOpportunities.length - uniqueOpportunities.length} duplicates removed${searchFilter ? `, filtered from ${uniqueOpportunities.length}` : ''})`);
 
         return {
           content: html,
           extractedContent,
-          opportunities: uniqueOpportunities,
+          opportunities: finalOpportunities,
           opportunityLinks,
           status: 'success',
           timestamp: new Date().toISOString(),
