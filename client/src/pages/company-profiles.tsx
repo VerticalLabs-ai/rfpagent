@@ -304,6 +304,7 @@ function CompanyContactForm({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
       toast({ title: "Contact created successfully" });
       onSuccess();
     },
@@ -318,6 +319,7 @@ function CompanyContactForm({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
       toast({ title: "Contact updated successfully" });
       onSuccess();
     },
@@ -722,6 +724,7 @@ function ContactList({ companyProfileId }: { companyProfileId: string }) {
       apiRequest("DELETE", `/api/company-contacts/${contactId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
       toast({ title: "Contact deleted successfully" });
     },
     onError: () => {
@@ -946,6 +949,20 @@ export default function CompanyProfiles() {
     queryKey: ["/api/insurance/expiring"],
   });
 
+  // Fetch all contacts to analyze decision makers
+  const { data: allContacts = [] } = useQuery({
+    queryKey: ["/api/company-profiles/all-contacts"],
+    queryFn: async () => {
+      if (!profiles?.length) return [];
+      const contactPromises = profiles.map((profile: CompanyProfile) => 
+        apiRequest("GET", `/api/company-profiles/${profile.id}/contacts`)
+      );
+      const contactArrays = await Promise.all(contactPromises);
+      return contactArrays.flat();
+    },
+    enabled: !!profiles?.length
+  });
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -962,6 +979,25 @@ export default function CompanyProfiles() {
   }
 
   const hasExpiringItems = (expiringCertifications?.length || 0) > 0 || (expiringInsurance?.length || 0) > 0;
+
+  // Decision Maker Analytics
+  const decisionMakers = allContacts.filter((contact: CompanyContact) => 
+    contact.contactType === "decision_maker" || contact.contactType === "owner"
+  );
+  
+  const decisionAreaCoverage = DECISION_AREAS.map(area => ({
+    ...area,
+    count: decisionMakers.filter((dm: CompanyContact) => 
+      (dm.decisionAreas as string[] || []).includes(area.value)
+    ).length
+  }));
+
+  const companiesWithDecisionMakers = profiles?.filter((profile: CompanyProfile) => 
+    allContacts.some((contact: CompanyContact) => 
+      contact.companyProfileId === profile.id && 
+      (contact.contactType === "decision_maker" || contact.contactType === "owner")
+    )
+  ).length || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -1164,6 +1200,185 @@ export default function CompanyProfiles() {
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600" data-testid="stat-expiring-insurance">
                   {expiringInsurance?.length || 0}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Contact Management Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Contacts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600" data-testid="stat-total-contacts">
+                  {allContacts.length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Across all companies
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Primary Contacts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600" data-testid="stat-primary-contacts">
+                  {allContacts.filter((contact: CompanyContact) => contact.contactType === "primary").length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Main contact points
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Owners
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600" data-testid="stat-owners">
+                  {allContacts.filter((contact: CompanyContact) => contact.contactType === "owner").length}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Company owners
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Companies with Contacts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600" data-testid="stat-companies-with-contacts">
+                  {profiles?.filter((profile: CompanyProfile) => 
+                    allContacts.some((contact: CompanyContact) => 
+                      contact.companyProfileId === profile.id
+                    )
+                  ).length || 0}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Out of {profiles?.length || 0} total companies
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Decision Maker Analytics Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Decision Maker Analytics
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Total Decision Makers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600" data-testid="stat-total-decision-makers">
+                    {decisionMakers.length}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Owners and Decision Makers
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Companies with Decision Makers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600" data-testid="stat-companies-with-decision-makers">
+                    {companiesWithDecisionMakers}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Out of {profiles?.length || 0} total companies
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Decision Area Coverage
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-600" data-testid="stat-decision-areas-covered">
+                    {decisionAreaCoverage.filter(area => area.count > 0).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Out of {DECISION_AREAS.length} key areas
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    Top Decision Area
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm font-bold text-orange-600" data-testid="stat-top-decision-area">
+                    {decisionAreaCoverage.length > 0 
+                      ? decisionAreaCoverage.reduce((prev, current) => 
+                          prev.count > current.count ? prev : current
+                        ).label
+                      : "None"
+                    }
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {decisionAreaCoverage.length > 0 
+                      ? `${decisionAreaCoverage.reduce((prev, current) => 
+                          prev.count > current.count ? prev : current
+                        ).count} decision makers`
+                      : "No decision makers"
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Decision Area Breakdown */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Decision Area Breakdown</CardTitle>
+                <CardDescription>
+                  Number of decision makers per area
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {decisionAreaCoverage.map((area) => (
+                    <div key={area.value} className="text-center p-3 border rounded-lg">
+                      <div className="text-lg font-bold text-blue-600" data-testid={`area-count-${area.value}`}>
+                        {area.count}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {area.label}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
