@@ -2079,13 +2079,35 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         }
       }
       
-      // Wait for portal-specific elements that indicate the page is ready
+      // Handle Cloudflare protection and wait for portal content
       try {
         console.log(`🔍 Waiting for portal content to load...`);
         
-        // Try to wait for common portal elements (with timeout)
+        // Check for Cloudflare protection first
+        const pageTitle = await page.title();
+        console.log(`📄 Page title: "${pageTitle}"`);
+        
+        if (pageTitle.includes("Just a moment") || pageTitle.includes("Please wait")) {
+          console.log(`🛡️ Cloudflare protection detected, waiting for bypass...`);
+          
+          // Wait for Cloudflare to complete (can take 5-15 seconds)
+          try {
+            await page.waitForFunction(
+              () => !document.title.includes("Just a moment") && !document.title.includes("Please wait"),
+              { timeout: 30000 }
+            );
+            console.log(`✅ Cloudflare protection bypassed`);
+            
+            // Give additional time for the real page to load
+            await page.waitForTimeout(3000);
+          } catch (cloudflareError) {
+            console.log(`⚠️ Cloudflare bypass timeout, proceeding anyway...`);
+          }
+        }
+        
+        // Now wait for portal-specific elements
         await Promise.race([
-          page.waitForSelector('table, .opportunity, .listing, .rfp, .bid', { timeout: 15000 }),
+          page.waitForSelector('table, .opportunity, .listing, .rfp, .bid, .content, main, [data-testid]', { timeout: 15000 }),
           page.waitForTimeout(15000) // Maximum wait
         ]);
         console.log(`✅ Portal content elements detected`);
