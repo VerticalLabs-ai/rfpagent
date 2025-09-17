@@ -71,13 +71,13 @@ export default function NotificationToast({ className }: NotificationToastProps)
       )}
       data-testid="notification-toast"
     >
-      <Card className="w-80 shadow-lg border border-border bg-card">
+      <Card className="w-80 shadow-lg border border-border bg-white dark:bg-gray-800">
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <div className={`w-2 h-2 ${notificationIcon.color.replace('text-', 'bg-')} rounded-full mt-2 flex-shrink-0`}></div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-2">
-                <p className="text-sm font-medium text-foreground" data-testid="toast-title">
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100" data-testid="toast-title">
                   {visibleNotification.title}
                 </p>
                 <div className="flex items-center space-x-2">
@@ -91,7 +91,7 @@ export default function NotificationToast({ className }: NotificationToastProps)
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-6 w-6 p-0"
+                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                     onClick={() => setVisibleNotification(null)}
                     data-testid="toast-close-button"
                   >
@@ -100,7 +100,7 @@ export default function NotificationToast({ className }: NotificationToastProps)
                 </div>
               </div>
               
-              <p className="text-xs text-muted-foreground mb-3" data-testid="toast-message">
+              <p className="text-xs text-gray-600 dark:text-gray-300 mb-3" data-testid="toast-message">
                 {visibleNotification.message}
               </p>
               
@@ -108,7 +108,7 @@ export default function NotificationToast({ className }: NotificationToastProps)
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="text-xs h-7"
+                  className="text-xs h-7 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
                   onClick={() => {
                     // Navigate to related entity - would need routing logic
                     setVisibleNotification(null);
