@@ -1,9 +1,13 @@
 import {
   users, portals, rfps, proposals, documents, submissions, auditLogs, notifications,
+  companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
-  type Notification, type InsertNotification
+  type Notification, type InsertNotification, type CompanyProfile, type InsertCompanyProfile,
+  type CompanyAddress, type InsertCompanyAddress, type CompanyContact, type InsertCompanyContact,
+  type CompanyIdentifier, type InsertCompanyIdentifier, type CompanyCertification, type InsertCompanyCertification,
+  type CompanyInsurance, type InsertCompanyInsurance
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, gte, lte, count, sql } from "drizzle-orm";
@@ -57,6 +61,45 @@ export interface IStorage {
   getUnreadNotifications(): Promise<Notification[]>;
   createNotification(notification: InsertNotification): Promise<Notification>;
   markNotificationRead(id: string): Promise<void>;
+
+  // Company Profile Management
+  getAllCompanyProfiles(): Promise<CompanyProfile[]>;
+  getCompanyProfile(id: string): Promise<CompanyProfile | undefined>;
+  getCompanyProfileWithDetails(id: string): Promise<any>;
+  createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile>;
+  updateCompanyProfile(id: string, updates: Partial<CompanyProfile>): Promise<CompanyProfile>;
+  
+  // Company Addresses
+  getCompanyAddresses(companyProfileId: string): Promise<CompanyAddress[]>;
+  createCompanyAddress(address: InsertCompanyAddress): Promise<CompanyAddress>;
+  updateCompanyAddress(id: string, updates: Partial<CompanyAddress>): Promise<CompanyAddress>;
+  deleteCompanyAddress(id: string): Promise<void>;
+  
+  // Company Contacts
+  getCompanyContacts(companyProfileId: string): Promise<CompanyContact[]>;
+  createCompanyContact(contact: InsertCompanyContact): Promise<CompanyContact>;
+  updateCompanyContact(id: string, updates: Partial<CompanyContact>): Promise<CompanyContact>;
+  deleteCompanyContact(id: string): Promise<void>;
+  
+  // Company Identifiers
+  getCompanyIdentifiers(companyProfileId: string): Promise<CompanyIdentifier[]>;
+  createCompanyIdentifier(identifier: InsertCompanyIdentifier): Promise<CompanyIdentifier>;
+  updateCompanyIdentifier(id: string, updates: Partial<CompanyIdentifier>): Promise<CompanyIdentifier>;
+  deleteCompanyIdentifier(id: string): Promise<void>;
+  
+  // Company Certifications
+  getCompanyCertifications(companyProfileId: string): Promise<CompanyCertification[]>;
+  getExpiringCertifications(days: number): Promise<CompanyCertification[]>;
+  createCompanyCertification(certification: InsertCompanyCertification): Promise<CompanyCertification>;
+  updateCompanyCertification(id: string, updates: Partial<CompanyCertification>): Promise<CompanyCertification>;
+  deleteCompanyCertification(id: string): Promise<void>;
+  
+  // Company Insurance
+  getCompanyInsurance(companyProfileId: string): Promise<CompanyInsurance[]>;
+  getExpiringInsurance(days: number): Promise<CompanyInsurance[]>;
+  createCompanyInsurance(insurance: InsertCompanyInsurance): Promise<CompanyInsurance>;
+  updateCompanyInsurance(id: string, updates: Partial<CompanyInsurance>): Promise<CompanyInsurance>;
+  deleteCompanyInsurance(id: string): Promise<void>;
 
   // Analytics
   getDashboardMetrics(): Promise<any>;
@@ -416,6 +459,256 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(rfps, eq(portals.id, rfps.portalId))
       .groupBy(portals.id)
       .orderBy(asc(portals.name));
+  }
+
+  // Company Profile Management
+  async getAllCompanyProfiles(): Promise<CompanyProfile[]> {
+    return await db
+      .select()
+      .from(companyProfiles)
+      .where(eq(companyProfiles.isActive, true))
+      .orderBy(asc(companyProfiles.companyName));
+  }
+
+  async getCompanyProfile(id: string): Promise<CompanyProfile | undefined> {
+    const [profile] = await db
+      .select()
+      .from(companyProfiles)
+      .where(and(eq(companyProfiles.id, id), eq(companyProfiles.isActive, true)));
+    return profile || undefined;
+  }
+
+  async getCompanyProfileWithDetails(id: string): Promise<any> {
+    const profile = await this.getCompanyProfile(id);
+    if (!profile) return null;
+
+    const [addresses, contacts, identifiers, certifications, insurance] = await Promise.all([
+      this.getCompanyAddresses(id),
+      this.getCompanyContacts(id),
+      this.getCompanyIdentifiers(id),
+      this.getCompanyCertifications(id),
+      this.getCompanyInsurance(id)
+    ]);
+
+    return {
+      ...profile,
+      addresses,
+      contacts,
+      identifiers,
+      certifications,
+      insurance
+    };
+  }
+
+  async createCompanyProfile(profile: InsertCompanyProfile): Promise<CompanyProfile> {
+    const [newProfile] = await db
+      .insert(companyProfiles)
+      .values(profile)
+      .returning();
+    return newProfile;
+  }
+
+  async updateCompanyProfile(id: string, updates: Partial<CompanyProfile>): Promise<CompanyProfile> {
+    const [updatedProfile] = await db
+      .update(companyProfiles)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(companyProfiles.id, id))
+      .returning();
+    return updatedProfile;
+  }
+
+  // Company Addresses
+  async getCompanyAddresses(companyProfileId: string): Promise<CompanyAddress[]> {
+    return await db
+      .select()
+      .from(companyAddresses)
+      .where(and(eq(companyAddresses.companyProfileId, companyProfileId), eq(companyAddresses.isActive, true)))
+      .orderBy(asc(companyAddresses.addressType));
+  }
+
+  async createCompanyAddress(address: InsertCompanyAddress): Promise<CompanyAddress> {
+    const [newAddress] = await db
+      .insert(companyAddresses)
+      .values(address)
+      .returning();
+    return newAddress;
+  }
+
+  async updateCompanyAddress(id: string, updates: Partial<CompanyAddress>): Promise<CompanyAddress> {
+    const [updatedAddress] = await db
+      .update(companyAddresses)
+      .set(updates)
+      .where(eq(companyAddresses.id, id))
+      .returning();
+    return updatedAddress;
+  }
+
+  async deleteCompanyAddress(id: string): Promise<void> {
+    await db
+      .update(companyAddresses)
+      .set({ isActive: false })
+      .where(eq(companyAddresses.id, id));
+  }
+
+  // Company Contacts
+  async getCompanyContacts(companyProfileId: string): Promise<CompanyContact[]> {
+    return await db
+      .select()
+      .from(companyContacts)
+      .where(and(eq(companyContacts.companyProfileId, companyProfileId), eq(companyContacts.isActive, true)))
+      .orderBy(asc(companyContacts.name));
+  }
+
+  async createCompanyContact(contact: InsertCompanyContact): Promise<CompanyContact> {
+    const [newContact] = await db
+      .insert(companyContacts)
+      .values(contact)
+      .returning();
+    return newContact;
+  }
+
+  async updateCompanyContact(id: string, updates: Partial<CompanyContact>): Promise<CompanyContact> {
+    const [updatedContact] = await db
+      .update(companyContacts)
+      .set(updates)
+      .where(eq(companyContacts.id, id))
+      .returning();
+    return updatedContact;
+  }
+
+  async deleteCompanyContact(id: string): Promise<void> {
+    await db
+      .update(companyContacts)
+      .set({ isActive: false })
+      .where(eq(companyContacts.id, id));
+  }
+
+  // Company Identifiers
+  async getCompanyIdentifiers(companyProfileId: string): Promise<CompanyIdentifier[]> {
+    return await db
+      .select()
+      .from(companyIdentifiers)
+      .where(and(eq(companyIdentifiers.companyProfileId, companyProfileId), eq(companyIdentifiers.isActive, true)))
+      .orderBy(asc(companyIdentifiers.identifierType));
+  }
+
+  async createCompanyIdentifier(identifier: InsertCompanyIdentifier): Promise<CompanyIdentifier> {
+    const [newIdentifier] = await db
+      .insert(companyIdentifiers)
+      .values(identifier)
+      .returning();
+    return newIdentifier;
+  }
+
+  async updateCompanyIdentifier(id: string, updates: Partial<CompanyIdentifier>): Promise<CompanyIdentifier> {
+    const [updatedIdentifier] = await db
+      .update(companyIdentifiers)
+      .set(updates)
+      .where(eq(companyIdentifiers.id, id))
+      .returning();
+    return updatedIdentifier;
+  }
+
+  async deleteCompanyIdentifier(id: string): Promise<void> {
+    await db
+      .update(companyIdentifiers)
+      .set({ isActive: false })
+      .where(eq(companyIdentifiers.id, id));
+  }
+
+  // Company Certifications
+  async getCompanyCertifications(companyProfileId: string): Promise<CompanyCertification[]> {
+    return await db
+      .select()
+      .from(companyCertifications)
+      .where(eq(companyCertifications.companyProfileId, companyProfileId))
+      .orderBy(asc(companyCertifications.certificationType));
+  }
+
+  async getExpiringCertifications(days: number): Promise<CompanyCertification[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    
+    return await db
+      .select()
+      .from(companyCertifications)
+      .where(and(
+        eq(companyCertifications.status, "active"),
+        gte(companyCertifications.expirationDate, new Date()),
+        lte(companyCertifications.expirationDate, futureDate)
+      ))
+      .orderBy(asc(companyCertifications.expirationDate));
+  }
+
+  async createCompanyCertification(certification: InsertCompanyCertification): Promise<CompanyCertification> {
+    const [newCertification] = await db
+      .insert(companyCertifications)
+      .values(certification)
+      .returning();
+    return newCertification;
+  }
+
+  async updateCompanyCertification(id: string, updates: Partial<CompanyCertification>): Promise<CompanyCertification> {
+    const [updatedCertification] = await db
+      .update(companyCertifications)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(companyCertifications.id, id))
+      .returning();
+    return updatedCertification;
+  }
+
+  async deleteCompanyCertification(id: string): Promise<void> {
+    await db
+      .delete(companyCertifications)
+      .where(eq(companyCertifications.id, id));
+  }
+
+  // Company Insurance
+  async getCompanyInsurance(companyProfileId: string): Promise<CompanyInsurance[]> {
+    return await db
+      .select()
+      .from(companyInsurance)
+      .where(and(eq(companyInsurance.companyProfileId, companyProfileId), eq(companyInsurance.isActive, true)))
+      .orderBy(asc(companyInsurance.insuranceType));
+  }
+
+  async getExpiringInsurance(days: number): Promise<CompanyInsurance[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+    
+    return await db
+      .select()
+      .from(companyInsurance)
+      .where(and(
+        eq(companyInsurance.isActive, true),
+        gte(companyInsurance.expirationDate, new Date()),
+        lte(companyInsurance.expirationDate, futureDate)
+      ))
+      .orderBy(asc(companyInsurance.expirationDate));
+  }
+
+  async createCompanyInsurance(insurance: InsertCompanyInsurance): Promise<CompanyInsurance> {
+    const [newInsurance] = await db
+      .insert(companyInsurance)
+      .values(insurance)
+      .returning();
+    return newInsurance;
+  }
+
+  async updateCompanyInsurance(id: string, updates: Partial<CompanyInsurance>): Promise<CompanyInsurance> {
+    const [updatedInsurance] = await db
+      .update(companyInsurance)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(companyInsurance.id, id))
+      .returning();
+    return updatedInsurance;
+  }
+
+  async deleteCompanyInsurance(id: string): Promise<void> {
+    await db
+      .update(companyInsurance)
+      .set({ isActive: false })
+      .where(eq(companyInsurance.id, id));
   }
 }
 

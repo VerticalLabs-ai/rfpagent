@@ -100,10 +100,156 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Company Profile Management Tables
+export const companyProfiles = pgTable("company_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyName: text("company_name").notNull(),
+  dba: text("dba"),
+  website: text("website"),
+  primaryBusinessCategory: text("primary_business_category"),
+  naicsPrimary: text("naics_primary"),
+  nigpCodes: text("nigp_codes"),
+  employeesCount: text("employees_count"),
+  registrationState: text("registration_state"),
+  county: text("county"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const companyAddresses = pgTable("company_addresses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyProfileId: varchar("company_profile_id").references(() => companyProfiles.id).notNull(),
+  addressType: text("address_type").notNull(), // primary_mailing, physical, former
+  addressLine1: text("address_line1").notNull(),
+  addressLine2: text("address_line2"),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  zipCode: text("zip_code").notNull(),
+  country: text("country").default("US").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const companyContacts = pgTable("company_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyProfileId: varchar("company_profile_id").references(() => companyProfiles.id).notNull(),
+  contactType: text("contact_type").notNull(), // primary, owner, decision_maker
+  name: text("name").notNull(),
+  role: text("role"),
+  email: text("email"),
+  officePhone: text("office_phone"),
+  mobilePhone: text("mobile_phone"),
+  fax: text("fax"),
+  decisionAreas: jsonb("decision_areas"), // array of areas like "financial_contracts", "bids_proposals"
+  ownershipPercent: text("ownership_percent"),
+  gender: text("gender"),
+  ethnicity: text("ethnicity"),
+  citizenship: text("citizenship"),
+  hoursPerWeek: text("hours_per_week"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const companyIdentifiers = pgTable("company_identifiers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyProfileId: varchar("company_profile_id").references(() => companyProfiles.id).notNull(),
+  identifierType: text("identifier_type").notNull(), // duns, sam_uei, ein, tax_id, vendor_id
+  identifierValue: text("identifier_value").notNull(),
+  issuingEntity: text("issuing_entity"), // e.g., "City of Austin", "Texas"
+  description: text("description"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const companyCertifications = pgTable("company_certifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyProfileId: varchar("company_profile_id").references(() => companyProfiles.id).notNull(),
+  certificationType: text("certification_type").notNull(), // hub, dbe, mbe, wbe, wbenc, small_business, woman_owned
+  certificationNumber: text("certification_number"),
+  certificationDate: timestamp("certification_date"),
+  expirationDate: timestamp("expiration_date"),
+  recertificationDate: timestamp("recertification_date"),
+  status: text("status").notNull().default("active"), // active, pending, expired, submitted
+  applicationNumber: text("application_number"),
+  applicationStarted: timestamp("application_started"),
+  submittedDate: timestamp("submitted_date"),
+  issuingEntity: text("issuing_entity"),
+  notes: text("notes"),
+  autoRenewal: boolean("auto_renewal").default(false),
+  alertDaysBefore: integer("alert_days_before").default(30),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const companyInsurance = pgTable("company_insurance", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyProfileId: varchar("company_profile_id").references(() => companyProfiles.id).notNull(),
+  insuranceType: text("insurance_type").notNull(), // general_liability, professional, workers_comp, etc.
+  policyNumber: text("policy_number"),
+  carrier: text("carrier"),
+  agencyName: text("agency_name"),
+  agentName: text("agent_name"),
+  agentContact: text("agent_contact"),
+  coverageAmount: decimal("coverage_amount", { precision: 12, scale: 2 }),
+  deductible: decimal("deductible", { precision: 12, scale: 2 }),
+  effectiveDate: timestamp("effective_date"),
+  expirationDate: timestamp("expiration_date"),
+  policyDetails: jsonb("policy_details"),
+  autoRenewal: boolean("auto_renewal").default(false),
+  alertDaysBefore: integer("alert_days_before").default(30),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const portalsRelations = relations(portals, ({ many }) => ({
   rfps: many(rfps),
   submissions: many(submissions),
+}));
+
+export const companyProfilesRelations = relations(companyProfiles, ({ many }) => ({
+  addresses: many(companyAddresses),
+  contacts: many(companyContacts),
+  identifiers: many(companyIdentifiers),
+  certifications: many(companyCertifications),
+  insurance: many(companyInsurance),
+}));
+
+export const companyAddressesRelations = relations(companyAddresses, ({ one }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [companyAddresses.companyProfileId],
+    references: [companyProfiles.id],
+  }),
+}));
+
+export const companyContactsRelations = relations(companyContacts, ({ one }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [companyContacts.companyProfileId],
+    references: [companyProfiles.id],
+  }),
+}));
+
+export const companyIdentifiersRelations = relations(companyIdentifiers, ({ one }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [companyIdentifiers.companyProfileId],
+    references: [companyProfiles.id],
+  }),
+}));
+
+export const companyCertificationsRelations = relations(companyCertifications, ({ one }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [companyCertifications.companyProfileId],
+    references: [companyProfiles.id],
+  }),
+}));
+
+export const companyInsuranceRelations = relations(companyInsurance, ({ one }) => ({
+  companyProfile: one(companyProfiles, {
+    fields: [companyInsurance.companyProfileId],
+    references: [companyProfiles.id],
+  }),
 }));
 
 export const rfpsRelations = relations(rfps, ({ one, many }) => ({
@@ -192,6 +338,40 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
   createdAt: true,
 });
 
+// Company Profile Insert Schemas
+export const insertCompanyProfileSchema = createInsertSchema(companyProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCompanyAddressSchema = createInsertSchema(companyAddresses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCompanyContactSchema = createInsertSchema(companyContacts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCompanyIdentifierSchema = createInsertSchema(companyIdentifiers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCompanyCertificationSchema = createInsertSchema(companyCertifications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertCompanyInsuranceSchema = createInsertSchema(companyInsurance).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -216,3 +396,22 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Company Profile Types
+export type CompanyProfile = typeof companyProfiles.$inferSelect;
+export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema>;
+
+export type CompanyAddress = typeof companyAddresses.$inferSelect;
+export type InsertCompanyAddress = z.infer<typeof insertCompanyAddressSchema>;
+
+export type CompanyContact = typeof companyContacts.$inferSelect;
+export type InsertCompanyContact = z.infer<typeof insertCompanyContactSchema>;
+
+export type CompanyIdentifier = typeof companyIdentifiers.$inferSelect;
+export type InsertCompanyIdentifier = z.infer<typeof insertCompanyIdentifierSchema>;
+
+export type CompanyCertification = typeof companyCertifications.$inferSelect;
+export type InsertCompanyCertification = z.infer<typeof insertCompanyCertificationSchema>;
+
+export type CompanyInsurance = typeof companyInsurance.$inferSelect;
+export type InsertCompanyInsurance = z.infer<typeof insertCompanyInsuranceSchema>;
