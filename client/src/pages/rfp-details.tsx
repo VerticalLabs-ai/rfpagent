@@ -36,7 +36,7 @@ export default function RFPDetails() {
 
   const generateMaterialsMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest('POST', `/api/rfps/${id}/generate-materials`);
+      return apiRequest('POST', `/api/proposals/${id}/generate`);
     },
     onSuccess: () => {
       toast({

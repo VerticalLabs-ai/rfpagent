@@ -899,8 +899,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       );
       console.log(`🤖 AI analysis completed. Result:`, rfpDetails ? `Confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%` : 'NULL');
       
-      // Lower confidence threshold for Austin Finance due to municipal list pages
-      const confidenceThreshold = portal.name.toLowerCase().includes('austin') ? 0.4 : 0.7;
+      // Lower confidence threshold for Austin Finance and FindRFP portals
+      // FindRFP opportunities are already validated by Stagehand AI extraction
+      const confidenceThreshold = 
+        portal.name.toLowerCase().includes('austin') ? 0.4 :
+        portal.url.includes('findrfp') ? 0.3 : // Lower threshold for FindRFP since Stagehand already validated
+        0.7;
       
       if (!rfpDetails) {
         console.log(`🚫 Skipping opportunity - AI returned null: ${opportunity.title || opportunity.solicitationId}`);
