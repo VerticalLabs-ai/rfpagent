@@ -7,9 +7,9 @@
   --background: #f0f0f0;
   --foreground: #1a1a1a;
   --card: #fcfcfc;
-  --card-foreground: hsl(0, 0%, 0%);
+  --card-foreground: hsl(0deg 0% 10.2%);
   --popover: hsl(45, 25%, 97%);
-  --popover-foreground: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(0deg 0% 10.2%);
   --primary: #eb1a4e;
   --primary-foreground: #ffffff;
   --secondary: #c4c4c4;
@@ -36,9 +36,9 @@
   --sidebar-accent-foreground: hsl(20, 14%, 17%);
   --sidebar-border: hsl(45, 15%, 80%);
   --sidebar-ring: hsl(9, 75%, 61%);
-  --font-sans: 'Poppins', sans-serif;
-  --font-serif: 'Poppins', sans-serif;
-  --font-mono: Menlo, monospace;
+  --font-sans: Space Grotesk;
+  --font-serif: Roboto;
+  --font-mono: DM Sans;
   --radius: 0.8rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
