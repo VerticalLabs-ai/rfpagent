@@ -243,14 +243,106 @@ export async function performBrowserAuthentication(
     
     // Check if we're successfully logged in by trying to navigate to target URL
     console.log(`🎯 Navigating to target URL: ${targetUrl}`);
-    await page.goto(targetUrl);
+    
+    // Navigate to target URL with proper waiting and Cloudflare handling
+    try {
+      // Navigate with domcontentloaded first (faster for heavy JS pages)
+      await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      
+      // Handle Cloudflare protection if present
+      const pageTitle = await page.title();
+      console.log(`📄 Target page title: "${pageTitle}"`);
+      
+      if (pageTitle.includes("Just a moment") || pageTitle.includes("Please wait")) {
+        console.log(`🛡️ Cloudflare protection detected on target page, waiting for bypass...`);
+        
+        try {
+          await page.waitForFunction(
+            () => !document.title.includes("Just a moment") && !document.title.includes("Please wait"),
+            { timeout: 30000 }
+          );
+          console.log(`✅ Cloudflare protection bypassed on target page`);
+          
+          // Give additional time for the real page to load
+          await page.waitForTimeout(3000);
+        } catch (cloudflareError) {
+          console.log(`⚠️ Cloudflare bypass timeout on target page, proceeding anyway...`);
+        }
+      }
+      
+      // Wait for opportunities page specific content to load
+      console.log(`🔍 Waiting for opportunities page content...`);
+      try {
+        await Promise.race([
+          page.waitForSelector('table, .opportunity, .listing, .rfp, .bid, [data-testid*="opportunity"], [class*="opportunity"]', { timeout: 15000 }),
+          page.waitForTimeout(15000)
+        ]);
+        console.log(`✅ Opportunities page content detected`);
+      } catch (waitError) {
+        console.log(`⚠️ Opportunities content wait timeout, but proceeding...`);
+      }
+      
+    } catch (navError: any) {
+      console.log(`⚠️ Navigation to target URL had issues: ${navError.message}, but proceeding...`);
+    }
     
     // Extract any session cookies
     const cookies = await page.context().cookies();
     const currentUrl = await page.url();
+    console.log(`🌐 Final URL after navigation: ${currentUrl}`);
+    
+    // Handle bounce URL redirects (common in portals after authentication)
+    if (currentUrl.includes('bounceUrl')) {
+      try {
+        const url = new URL(currentUrl);
+        const bounceUrl = url.searchParams.get('bounceUrl');
+        if (bounceUrl) {
+          console.log(`🔄 Bounce URL detected: ${bounceUrl}, navigating to actual target...`);
+          const fullBounceUrl = bounceUrl.startsWith('http') ? bounceUrl : `${url.origin}${bounceUrl}`;
+          console.log(`🎯 Navigating to bounce URL: ${fullBounceUrl}`);
+          
+          // Navigate to the bounce URL with proper waiting
+          await page.goto(fullBounceUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+          
+          // Handle Cloudflare protection on bounce URL if needed
+          const bouncePageTitle = await page.title();
+          console.log(`📄 Bounce page title: "${bouncePageTitle}"`);
+          
+          if (bouncePageTitle.includes("Just a moment") || bouncePageTitle.includes("Please wait")) {
+            console.log(`🛡️ Cloudflare protection detected on bounce page, waiting for bypass...`);
+            try {
+              await page.waitForFunction(
+                () => !document.title.includes("Just a moment") && !document.title.includes("Please wait"),
+                { timeout: 30000 }
+              );
+              console.log(`✅ Cloudflare protection bypassed on bounce page`);
+              await page.waitForTimeout(3000);
+            } catch (cloudflareError) {
+              console.log(`⚠️ Cloudflare bypass timeout on bounce page, proceeding anyway...`);
+            }
+          }
+          
+          // Wait for opportunities content on the actual target page
+          console.log(`🔍 Waiting for opportunities content on bounce page...`);
+          try {
+            await Promise.race([
+              page.waitForSelector('table, .opportunity, .listing, .rfp, .bid, [data-testid*="opportunity"], [class*="opportunity"]', { timeout: 15000 }),
+              page.waitForTimeout(15000)
+            ]);
+            console.log(`✅ Opportunities content detected on bounce page`);
+          } catch (waitError) {
+            console.log(`⚠️ Opportunities content wait timeout on bounce page, but proceeding...`);
+          }
+        }
+      } catch (bounceError: any) {
+        console.log(`⚠️ Error handling bounce URL: ${bounceError.message}`);
+      }
+    }
     
     // Check if we successfully reached the target or got redirected to login
-    const isLoggedIn = !currentUrl.includes('login') && !currentUrl.includes('signin');
+    const finalUrl = await page.url();
+    console.log(`🌐 Final URL after bounce handling: ${finalUrl}`);
+    const isLoggedIn = !finalUrl.includes('login') && !finalUrl.includes('signin');
     
     if (isLoggedIn) {
       console.log('✅ Browser authentication successful!');
