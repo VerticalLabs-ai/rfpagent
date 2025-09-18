@@ -138,13 +138,26 @@ export class PortalMonitoringService {
                            errorMsg.toLowerCase().includes('unauthorized');
         
         if (isBonfireHub && isAuthError) {
-          const enhancedError = `🔥 Bonfire Hub Authentication Error: ${errorMsg}. Check credentials for Euna Supplier Network login.`;
+          let specificGuidance = '💡 Bonfire Hub uses Euna Supplier Network authentication. Verify username/password are correct and account is active.';
+          
+          // Provide specific guidance based on error type
+          if (errorMsg.includes('Password field never appeared')) {
+            specificGuidance = '🔑 Password field issue: The login form may have changed, or 2FA/SSO is required. Check if your account uses single sign-on.';
+          } else if (errorMsg.includes('timed out')) {
+            specificGuidance = '⏰ Authentication timeout: The portal may be slow or experiencing issues. Try again later or check portal status.';
+          } else if (errorMsg.includes('still on login page')) {
+            specificGuidance = '🚫 Login rejected: Check username/password, account status, or if 2FA is required.';
+          } else if (errorMsg.includes('2FA required')) {
+            specificGuidance = '🔐 Two-factor authentication detected: This portal requires manual 2FA verification.';
+          } else if (errorMsg.includes('No observe results found')) {
+            specificGuidance = '🔍 Form field detection failed: The portal login form may have changed structure or be blocked by security features.';
+          }
+          
+          const enhancedError = `🔥 Bonfire Hub Authentication Error: ${errorMsg}`;
           errors.push(enhancedError);
           scanManager.log(scanId, 'error', enhancedError);
+          scanManager.log(scanId, 'info', specificGuidance);
           console.error(`🔥 Bonfire Hub authentication failed for ${portal.name}:`, error);
-          
-          // Add specific guidance for Bonfire Hub authentication issues
-          scanManager.log(scanId, 'info', '💡 Bonfire Hub uses Euna Supplier Network authentication. Verify username/password are correct and account is active.');
         } else {
           errors.push(errorMsg);
           scanManager.log(scanId, 'error', `Error in Mastra/Browserbase scraping: ${errorMsg}`);

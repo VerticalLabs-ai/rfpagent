@@ -209,55 +209,81 @@ async function handleBonfireAuthentication(
   password: string,
   targetUrl: string
 ): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
-  // Wrap the entire authentication process in a timeout to prevent hanging
-  const authTimeout = 60000; // 60 seconds timeout for the entire authentication process
+  // Separate timeout for login sequence vs post-login navigation
+  const loginTimeout = 90000; // 90 seconds for login sequence only
   
   try {
     console.log('🔥 Starting Bonfire Hub (Euna Supplier Network) authentication...');
-    console.log(`⏰ Authentication timeout set to ${authTimeout / 1000} seconds`);
+    console.log(`⏰ Login timeout set to ${loginTimeout / 1000} seconds`);
     
-    const authResult = await Promise.race([
-      performBonfireAuthenticationSteps(page, username, password, targetUrl),
-      new Promise<{ success: boolean; sessionData: any; targetUrl: string }>((_, reject) => 
-        setTimeout(() => reject(new Error(`Bonfire Hub authentication timed out after ${authTimeout / 1000} seconds`)), authTimeout)
+    // Only timeout the actual login process, not post-login navigation
+    const loginResult = await Promise.race([
+      performBonfireLoginOnly(page, username, password),
+      new Promise<{ success: boolean; error?: string }>((_, reject) => 
+        setTimeout(() => reject(new Error(`Bonfire Hub login timed out after ${loginTimeout / 1000} seconds`)), loginTimeout)
       )
     ]);
     
-    return authResult;
+    if (!loginResult.success) {
+      throw new Error(loginResult.error || 'Bonfire Hub authentication failed');
+    }
+    
+    // Post-login navigation handled separately without tight timeout
+    return await performPostLoginNavigation(page, targetUrl);
   } catch (error: any) {
     console.error(`❌ Bonfire Hub authentication error:`, error);
     
-    // If it's a timeout, provide specific guidance
+    // If it's a timeout, provide specific guidance but still throw
     if (error.message.includes('timed out')) {
       console.error(`🕒 Bonfire Hub authentication timed out - this may indicate credential issues or Euna system problems`);
-      return {
-        success: false,
-        sessionData: null,
-        targetUrl: await page.url()
-      };
     }
     
-    return {
-      success: false,
-      sessionData: null,
-      targetUrl: await page.url()
-    };
+    // Rethrow the error so it propagates to portal monitoring service
+    throw error;
   }
 }
 
 /**
- * Perform the actual Bonfire authentication steps (extracted for timeout wrapping)
+ * Perform only the login steps (for timeout scoping)
  */
-async function performBonfireAuthenticationSteps(
+async function performBonfireLoginOnly(
   page: any,
   username: string,
-  password: string,
-  targetUrl: string
-): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
+  password: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     
     // Wait for the page to fully load
     await page.waitForTimeout(3000);
+    
+    // Handle cookie banners first
+    console.log('🍪 Checking for cookie consent banners...');
+    try {
+      const cookieButtonSelectors = [
+        'button:has-text("Accept")',
+        'button:has-text("Accept All")', 
+        'button:has-text("Agree")',
+        'button:has-text("Continue")',
+        '[id*="accept"]',
+        '[class*="accept"]',
+        'button[value*="accept"]',
+        'button[title*="accept"]'
+      ];
+      
+      for (const selector of cookieButtonSelectors) {
+        try {
+          await page.waitForSelector(selector, { timeout: 2000 });
+          await page.click(selector);
+          console.log(`✅ Clicked cookie consent button: ${selector}`);
+          await page.waitForTimeout(1000);
+          break;
+        } catch (cookieError) {
+          // Continue to next selector
+        }
+      }
+    } catch (cookieError) {
+      console.log('⚠️ No cookie banner detected or failed to handle, proceeding...');
+    }
     
     // Check for the "Login to Euna Supplier Network" dialog
     console.log('🔍 Looking for Euna Supplier Network login dialog...');
@@ -276,24 +302,140 @@ async function performBonfireAuthenticationSteps(
       console.log('⚠️ No initial Log In button found, proceeding with form detection...');
     }
     
-    // Now look for the actual login form fields
-    console.log('📝 Looking for username/email field...');
-    await page.act(`type "${username}" in the email field, username field, or user field`);
+    // Multi-step Euna login flow: First enter email, then wait for password field
+    console.log('📝 Step 1: Looking for email address field...');
+    try {
+      await page.act(`type "${username}" in the email address field, email field, or username field`);
+    } catch (emailError) {
+      console.log('⚠️ Email field entry failed, trying alternate approach...');
+      await page.act(`type "${username}" in the input field for email or username`);
+    }
     
-    console.log('🔑 Looking for password field...');
-    await page.act(`type "${password}" in the password field`);
+    console.log('▶️ Step 2: Clicking Continue button to proceed to password step...');
+    try {
+      await page.act('click the "Continue" button, "Next" button, or submit button');
+    } catch (continueError) {
+      console.log('⚠️ Continue button click failed, trying Enter key...');
+      await page.keyboard.press('Enter');
+    }
+    
+    // Wait for password field to appear with proper selector detection
+    console.log('⏳ Step 3: Waiting for password field to appear...');
+    let passwordFieldFound = false;
+    let matchedPasswordSelector = '';
+    const passwordSelectors = [
+      'input[type="password"]',
+      'input[name*="password"]',
+      'input[name*="Password"]',
+      'input[id*="password"]',
+      'input[placeholder*="password"]',
+      'input[placeholder*="Password"]'
+    ];
+    
+    for (let attempt = 0; attempt < 10; attempt++) {
+      try {
+        await page.waitForTimeout(1000);
+        
+        // Try to find password field with multiple selectors
+        for (const selector of passwordSelectors) {
+          try {
+            await page.waitForSelector(selector, { timeout: 1000 });
+            passwordFieldFound = true;
+            matchedPasswordSelector = selector;
+            console.log(`✅ Password field detected with selector: ${selector} after ${attempt + 1} seconds`);
+            break;
+          } catch (selectorError) {
+            // Continue to next selector
+          }
+        }
+        
+        if (passwordFieldFound) break;
+        console.log(`⏳ Password field not yet visible, attempt ${attempt + 1}/10...`);
+      } catch (checkError) {
+        console.log(`⏳ Error checking for password field, attempt ${attempt + 1}/10:`, checkError.message);
+      }
+    }
+    
+    if (!passwordFieldFound) {
+      throw new Error('Password field never appeared after entering email and clicking Continue. Possible issues: email was invalid, 2FA required, SSO redirect, or page structure changed.');
+    }
+    
+    console.log('🔑 Step 4: Entering password using detected selector...');
+    await page.fill(matchedPasswordSelector, password);
     
     // Submit the login form
     console.log('🚀 Submitting Euna Supplier Network login...');
     await page.act('click the login button, submit button, or "Log In" button');
     
-    // Wait longer for Bonfire authentication to complete
+    // Wait for authentication to complete
     console.log('⏳ Waiting for authentication to complete...');
     await page.waitForTimeout(5000);
     
     // Check if we successfully logged in by looking for typical post-login indicators
-    const postLoginCheck = await page.observe('Look for success indicators like dashboard, opportunities, welcome message, or vendor portal content');
-    console.log('✅ Post-login check:', postLoginCheck);
+    try {
+      const postLoginCheck = await page.observe('Look for success indicators like dashboard, opportunities, welcome message, or vendor portal content');
+      console.log('✅ Post-login check:', postLoginCheck);
+      
+      // Check for 2FA/SSO indicators
+      const currentUrl = await page.url();
+      const currentTitle = await page.title();
+      
+      // Safely convert observe result to string for content analysis
+      const pageContent = JSON.stringify(postLoginCheck || '').toLowerCase();
+      
+      // Detect 2FA scenarios
+      const twoFactorIndicators = [
+        'verification code', 'two-factor', '2fa', 'authenticator', 'verify',
+        'enter code', 'security code', 'sms code', 'phone verification'
+      ];
+      const hasTwoFactor = twoFactorIndicators.some(indicator => 
+        pageContent.includes(indicator) || currentTitle.toLowerCase().includes(indicator)
+      );
+      
+      // Detect SSO redirects
+      const ssoIndicators = ['sso', 'saml', 'oauth', 'microsoft', 'google', 'okta', 'azure'];
+      const hasSSORedirect = ssoIndicators.some(indicator => 
+        currentUrl.toLowerCase().includes(indicator) || currentTitle.toLowerCase().includes(indicator)
+      );
+      
+      if (hasTwoFactor) {
+        throw new Error('2FA required - Two-factor authentication detected. Manual verification needed.');
+      }
+      
+      if (hasSSORedirect) {
+        throw new Error('SSO detected - Single sign-on redirect detected. Account may require SSO authentication.');
+      }
+      
+      const isLoginSuccessful = !currentUrl.includes('login') && 
+                               !currentTitle.toLowerCase().includes('login') &&
+                               !currentTitle.toLowerCase().includes('sign in');
+      
+      if (isLoginSuccessful) {
+        console.log('✅ Login phase completed successfully');
+        return { success: true };
+      } else {
+        console.log('❌ Login phase failed - still on login page');
+        throw new Error('Authentication failed - still on login page. Check credentials and account status.');
+      }
+    } catch (checkError) {
+      console.log('⚠️ Login verification error:', checkError.message);
+      throw new Error(checkError.message || 'Could not verify login success');
+    }
+    
+  } catch (error: any) {
+    console.error(`❌ Login phase error:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Handle post-login navigation and cookie extraction
+ */
+async function performPostLoginNavigation(
+  page: any,
+  targetUrl: string
+): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
+  try {
     
     // Navigate to the target opportunities page
     console.log(`🎯 Navigating to target URL: ${targetUrl}`);
@@ -343,10 +485,38 @@ async function performBonfireAuthenticationSteps(
     
     if (isSuccessful) {
       console.log(`✅ Bonfire Hub authentication successful!`);
+      
+      // Get cookies from Stagehand and convert to compatible format
+      const stagehandCookies = await page.context().cookies();
+      console.log(`🍪 Retrieved ${stagehandCookies.length} cookies from authenticated session`);
+      
+      // Convert Stagehand cookies to Puppeteer-compatible format
+      const puppeteerCookies = stagehandCookies.map(cookie => {
+        let expires = undefined;
+        if (cookie.expires) {
+          // Handle both milliseconds and seconds - if > 10^12, treat as milliseconds
+          expires = cookie.expires > 1000000000000 ? Math.floor(cookie.expires / 1000) : cookie.expires;
+        }
+        
+        return {
+          name: cookie.name,
+          value: cookie.value,
+          domain: cookie.domain,
+          path: cookie.path || '/',
+          expires,
+          size: undefined,
+          httpOnly: cookie.httpOnly || false,
+          secure: cookie.secure || false,
+          session: !expires, // Session if no expiry set
+          sameSite: cookie.sameSite || 'Lax'
+        };
+      });
+      
       return {
         success: true,
         sessionData: {
-          cookies: await page.context().cookies(),
+          cookies: puppeteerCookies,
+          stagehandCookies: stagehandCookies, // Keep original format as backup
           url: finalUrl,
           title: finalTitle
         },
@@ -354,20 +524,12 @@ async function performBonfireAuthenticationSteps(
       };
     } else {
       console.log(`❌ Bonfire Hub authentication may have failed - still on login page`);
-      return {
-        success: false,
-        sessionData: null,
-        targetUrl: finalUrl
-      };
+      throw new Error('Authentication failed - still on login page. Check credentials and account status.');
     }
     
   } catch (error: any) {
-    console.error(`❌ Bonfire Hub authentication error:`, error);
-    return {
-      success: false,
-      sessionData: null,
-      targetUrl: targetUrl
-    };
+    console.error(`❌ Bonfire Hub post-login navigation error:`, error);
+    throw error;
   }
 }
 
