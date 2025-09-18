@@ -129,9 +129,27 @@ export class PortalMonitoringService {
 
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Mastra scraping error';
-        errors.push(errorMsg);
-        scanManager.log(scanId, 'error', `Error in Mastra/Browserbase scraping: ${errorMsg}`);
-        console.error(`Error in Mastra/Browserbase scraping for ${portal.name}:`, error);
+        
+        // Enhanced error handling for Bonfire Hub authentication issues
+        const isBonfireHub = portal.url.includes('bonfirehub.com') || portal.url.includes('vendor.bonfire');
+        const isAuthError = errorMsg.toLowerCase().includes('authentication') || 
+                           errorMsg.toLowerCase().includes('login') ||
+                           errorMsg.toLowerCase().includes('credentials') ||
+                           errorMsg.toLowerCase().includes('unauthorized');
+        
+        if (isBonfireHub && isAuthError) {
+          const enhancedError = `🔥 Bonfire Hub Authentication Error: ${errorMsg}. Check credentials for Euna Supplier Network login.`;
+          errors.push(enhancedError);
+          scanManager.log(scanId, 'error', enhancedError);
+          console.error(`🔥 Bonfire Hub authentication failed for ${portal.name}:`, error);
+          
+          // Add specific guidance for Bonfire Hub authentication issues
+          scanManager.log(scanId, 'info', '💡 Bonfire Hub uses Euna Supplier Network authentication. Verify username/password are correct and account is active.');
+        } else {
+          errors.push(errorMsg);
+          scanManager.log(scanId, 'error', `Error in Mastra/Browserbase scraping: ${errorMsg}`);
+          console.error(`Error in Mastra/Browserbase scraping for ${portal.name}:`, error);
+        }
       }
 
       // Note: MastraScrapingService already handles RFP saving and deduplication

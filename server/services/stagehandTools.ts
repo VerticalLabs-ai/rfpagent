@@ -201,6 +201,177 @@ export async function performWebExtraction(
 }
 
 /**
+ * Handle Bonfire Hub specific authentication (Euna Supplier Network)
+ */
+async function handleBonfireAuthentication(
+  page: any,
+  username: string,
+  password: string,
+  targetUrl: string
+): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
+  // Wrap the entire authentication process in a timeout to prevent hanging
+  const authTimeout = 60000; // 60 seconds timeout for the entire authentication process
+  
+  try {
+    console.log('🔥 Starting Bonfire Hub (Euna Supplier Network) authentication...');
+    console.log(`⏰ Authentication timeout set to ${authTimeout / 1000} seconds`);
+    
+    const authResult = await Promise.race([
+      performBonfireAuthenticationSteps(page, username, password, targetUrl),
+      new Promise<{ success: boolean; sessionData: any; targetUrl: string }>((_, reject) => 
+        setTimeout(() => reject(new Error(`Bonfire Hub authentication timed out after ${authTimeout / 1000} seconds`)), authTimeout)
+      )
+    ]);
+    
+    return authResult;
+  } catch (error: any) {
+    console.error(`❌ Bonfire Hub authentication error:`, error);
+    
+    // If it's a timeout, provide specific guidance
+    if (error.message.includes('timed out')) {
+      console.error(`🕒 Bonfire Hub authentication timed out - this may indicate credential issues or Euna system problems`);
+      return {
+        success: false,
+        sessionData: null,
+        targetUrl: await page.url()
+      };
+    }
+    
+    return {
+      success: false,
+      sessionData: null,
+      targetUrl: await page.url()
+    };
+  }
+}
+
+/**
+ * Perform the actual Bonfire authentication steps (extracted for timeout wrapping)
+ */
+async function performBonfireAuthenticationSteps(
+  page: any,
+  username: string,
+  password: string,
+  targetUrl: string
+): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
+  try {
+    
+    // Wait for the page to fully load
+    await page.waitForTimeout(3000);
+    
+    // Check for the "Login to Euna Supplier Network" dialog
+    console.log('🔍 Looking for Euna Supplier Network login dialog...');
+    
+    // Observe the current page structure
+    const pageObservation = await page.observe('Look for login dialog, buttons, or forms on the page');
+    console.log('📄 Page structure:', pageObservation);
+    
+    // Try to find and click the "Log In" button if there's a modal/dialog
+    console.log('🎯 Looking for Log In button...');
+    try {
+      // Wait for login button or dialog to appear
+      await page.act('click the "Log In" button or login link if visible');
+      await page.waitForTimeout(2000);
+    } catch (error) {
+      console.log('⚠️ No initial Log In button found, proceeding with form detection...');
+    }
+    
+    // Now look for the actual login form fields
+    console.log('📝 Looking for username/email field...');
+    await page.act(`type "${username}" in the email field, username field, or user field`);
+    
+    console.log('🔑 Looking for password field...');
+    await page.act(`type "${password}" in the password field`);
+    
+    // Submit the login form
+    console.log('🚀 Submitting Euna Supplier Network login...');
+    await page.act('click the login button, submit button, or "Log In" button');
+    
+    // Wait longer for Bonfire authentication to complete
+    console.log('⏳ Waiting for authentication to complete...');
+    await page.waitForTimeout(5000);
+    
+    // Check if we successfully logged in by looking for typical post-login indicators
+    const postLoginCheck = await page.observe('Look for success indicators like dashboard, opportunities, welcome message, or vendor portal content');
+    console.log('✅ Post-login check:', postLoginCheck);
+    
+    // Navigate to the target opportunities page
+    console.log(`🎯 Navigating to target URL: ${targetUrl}`);
+    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    
+    // Handle potential Cloudflare protection
+    const pageTitle = await page.title();
+    console.log(`📄 Target page title: "${pageTitle}"`);
+    
+    if (pageTitle.includes("Just a moment") || pageTitle.includes("Please wait")) {
+      console.log(`🛡️ Cloudflare protection detected, waiting for bypass...`);
+      try {
+        await page.waitForFunction(
+          () => !document.title.includes("Just a moment") && !document.title.includes("Please wait"),
+          { timeout: 30000 }
+        );
+        console.log(`✅ Cloudflare protection bypassed`);
+        await page.waitForTimeout(3000);
+      } catch (cloudflareError) {
+        console.log(`⚠️ Cloudflare bypass timeout, proceeding anyway...`);
+      }
+    }
+    
+    // Wait for opportunities content to load
+    console.log(`🔍 Waiting for Bonfire opportunities page content...`);
+    try {
+      await Promise.race([
+        page.waitForSelector('table, .opportunity, .listing, .rfp, .bid, [class*="opportunity"], [data-testid*="opportunity"]', { timeout: 15000 }),
+        page.waitForTimeout(15000)
+      ]);
+      console.log(`✅ Bonfire opportunities page content detected`);
+    } catch (contentError) {
+      console.log(`⚠️ Opportunities content not detected within timeout, proceeding...`);
+    }
+    
+    // Get final page info
+    const finalUrl = await page.url();
+    const finalTitle = await page.title();
+    
+    console.log(`🎉 Bonfire authentication completed: ${finalUrl}`);
+    console.log(`📄 Final page title: "${finalTitle}"`);
+    
+    // Check if authentication was successful by examining URL and content
+    const isSuccessful = !finalUrl.includes('login') && 
+                        !finalTitle.toLowerCase().includes('login') &&
+                        !finalTitle.toLowerCase().includes('sign in');
+    
+    if (isSuccessful) {
+      console.log(`✅ Bonfire Hub authentication successful!`);
+      return {
+        success: true,
+        sessionData: {
+          cookies: await page.context().cookies(),
+          url: finalUrl,
+          title: finalTitle
+        },
+        targetUrl: finalUrl
+      };
+    } else {
+      console.log(`❌ Bonfire Hub authentication may have failed - still on login page`);
+      return {
+        success: false,
+        sessionData: null,
+        targetUrl: finalUrl
+      };
+    }
+    
+  } catch (error: any) {
+    console.error(`❌ Bonfire Hub authentication error:`, error);
+    return {
+      success: false,
+      sessionData: null,
+      targetUrl: targetUrl
+    };
+  }
+}
+
+/**
  * Authenticate using Stagehand browser automation
  */
 export async function performBrowserAuthentication(
@@ -217,10 +388,18 @@ export async function performBrowserAuthentication(
     console.log(`🔐 Starting browser authentication for: ${loginUrl}`);
     
     // Navigate to login page
-    await page.goto(loginUrl);
+    await page.goto(loginUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
     
-    // Try to find and fill login form
-    console.log('🔍 Looking for login form...');
+    // Check if this is a Bonfire Hub portal (Euna Supplier Network)
+    const isBonfireHub = loginUrl.includes('bonfirehub.com') || loginUrl.includes('vendor.bonfire');
+    
+    if (isBonfireHub) {
+      console.log('🔥 Detected Bonfire Hub portal - using specialized authentication...');
+      return await handleBonfireAuthentication(page, username, password, targetUrl);
+    }
+    
+    // Generic authentication for other portals
+    console.log('🔍 Using generic authentication flow...');
     
     // First, observe the page to understand the login form structure
     const loginObservations = await page.observe('find the login form with username and password fields');

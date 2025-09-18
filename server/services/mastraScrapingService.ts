@@ -233,17 +233,26 @@ export class MastraScrapingService {
       instructions: `You are a specialized agent for Bonfire Hub procurement portals. You understand:
 
       - Bonfire's specific layout patterns and data structures
-      - Common authentication flows used by Bonfire portals
+      - Euna Supplier Network authentication system used by Bonfire portals
       - How to navigate Bonfire's opportunity listings and filters
       - Bonfire's typical RFP presentation format
       - Agency-specific customizations within Bonfire portals
+
+      AUTHENTICATION EXPERTISE:
+      - Bonfire portals use the "Euna Supplier Network" login system
+      - Login pages typically show "Welcome Back!" and "Login to Euna Supplier Network" dialogs
+      - Authentication may require clicking a "Log In" button before accessing the form fields
+      - Form fields may be labeled as "email", "username", or "user" for the username field
+      - Post-authentication success is indicated by reaching dashboard/opportunities pages
+      - Sessions must be maintained for continued access to procurement opportunities
 
       Key patterns to recognize:
       - Opportunity cards with standardized layouts
       - Deadline formats and timezone handling
       - Attachment and document links
       - Vendor registration requirements
-      - Category and classification systems`,
+      - Category and classification systems
+      - "Welcome Back!" login screens with Euna Supplier Network branding`,
 
       model: openai("gpt-4o"),
       // memory: this.memory, // Disabled pending vector store configuration
