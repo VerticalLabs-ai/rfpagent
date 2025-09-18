@@ -16,6 +16,7 @@ import { ObjectStorageService } from "./objectStorage";
 import { PortalMonitoringService } from "./services/portal-monitoring-service";
 import { PortalSchedulerService } from "./services/portal-scheduler-service";
 import { aiProposalService } from "./services/ai-proposal-service";
+import { scanManager } from "./services/scan-manager";
 import { z } from "zod";
 
 // Zod schemas for AI API endpoints
@@ -418,7 +419,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Manual portal scraping
+  // Manual portal scraping with real-time monitoring
   app.post("/api/portals/:id/scan", async (req, res) => {
     try {
       const { id } = req.params;
@@ -438,13 +439,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Portal not found" });
       }
 
-      // Use new monitoring service for enhanced scanning
-      portalMonitoringService.scanPortal(portal.id).catch(console.error);
+      // Check if portal is already being scanned
+      if (scanManager.isPortalScanning(id)) {
+        return res.status(409).json({ error: "Portal is already being scanned" });
+      }
 
-      const message = searchFilter 
-        ? `Portal scan started with filter: "${searchFilter}"` 
-        : "Portal scan started";
-      res.json({ message });
+      // Start scan with ScanManager for real-time monitoring
+      const scanId = scanManager.startScan(id, portal.name);
+
+      // Use new monitoring service for enhanced scanning with scan context
+      portalMonitoringService.scanPortalWithEvents(portal.id, scanId).catch(console.error);
+
+      res.status(202).json({ 
+        scanId,
+        message: "Portal scan started"
+      });
     } catch (error) {
       console.error("Error starting portal scan:", error);
       res.status(500).json({ error: "Failed to start portal scan" });
@@ -471,6 +480,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching portal monitoring status:", error);
       res.status(500).json({ error: "Failed to fetch monitoring status" });
+    }
+  });
+
+  // SSE endpoint for real-time scan streaming
+  app.get("/api/portals/:id/scan/stream", async (req, res) => {
+    try {
+      const { id: portalId } = req.params;
+      const { scanId } = req.query;
+
+      if (!scanId) {
+        return res.status(400).json({ error: "scanId query parameter is required" });
+      }
+
+      const scan = scanManager.getScan(scanId as string);
+      if (!scan || scan.portalId !== portalId) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+      });
+
+      // Send initial scan state
+      res.write(`data: ${JSON.stringify({
+        type: 'initial_state',
+        data: {
+          scanId: scan.scanId,
+          portalId: scan.portalId,
+          portalName: scan.portalName,
+          status: scan.status,
+          currentStep: scan.currentStep,
+          discoveredRFPs: scan.discoveredRFPs,
+          errors: scan.errors,
+          startedAt: scan.startedAt
+        }
+      })}\n\n`);
+
+      // Get event emitter for this scan
+      const emitter = scanManager.getScanEmitter(scanId as string);
+      if (!emitter) {
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          message: 'Scan event stream not available'
+        })}\n\n`);
+        res.end();
+        return;
+      }
+
+      // Listen for scan events
+      const eventHandler = (event: any) => {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+        
+        // Close connection if scan is completed or failed
+        if (event.type === 'scan_completed' || event.type === 'scan_failed') {
+          res.end();
+        }
+      };
+
+      emitter.on('event', eventHandler);
+
+      // Keep connection alive with heartbeat
+      const keepAlive = setInterval(() => {
+        res.write(`: keep-alive\n\n`);
+      }, 15000);
+
+      // Handle client disconnect - clean up everything
+      const cleanup = () => {
+        emitter.off('event', eventHandler);
+        clearInterval(keepAlive);
+        res.end();
+        console.log(`SSE connection closed for scan ${scanId}`);
+      };
+
+      req.on('close', cleanup);
+      req.on('error', cleanup);
+
+    } catch (error) {
+      console.error("Error setting up SSE stream:", error);
+      res.status(500).json({ error: "Failed to setup scan stream" });
+    }
+  });
+
+  // Get current scan status
+  app.get("/api/scans/:scanId/status", async (req, res) => {
+    try {
+      const { scanId } = req.params;
+      const scan = scanManager.getScan(scanId);
+      
+      if (!scan) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      res.json({
+        scanId: scan.scanId,
+        portalId: scan.portalId,
+        portalName: scan.portalName,
+        status: scan.status,
+        startedAt: scan.startedAt,
+        completedAt: scan.completedAt,
+        currentStep: scan.currentStep,
+        discoveredRFPs: scan.discoveredRFPs,
+        errors: scan.errors,
+        duration: scan.completedAt ? scan.completedAt.getTime() - scan.startedAt.getTime() : Date.now() - scan.startedAt.getTime()
+      });
+    } catch (error) {
+      console.error("Error fetching scan status:", error);
+      res.status(500).json({ error: "Failed to fetch scan status" });
+    }
+  });
+
+  // Get scan history for a portal
+  app.get("/api/portals/:id/scans/history", async (req, res) => {
+    try {
+      const { id: portalId } = req.params;
+      const { limit = "10" } = req.query;
+      
+      const history = scanManager.getScanHistory(portalId, parseInt(limit as string));
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching scan history:", error);
+      res.status(500).json({ error: "Failed to fetch scan history" });
+    }
+  });
+
+  // Get all active scans across all portals
+  app.get("/api/scans/active", async (req, res) => {
+    try {
+      const activeScans = scanManager.getActiveScans().map(scan => ({
+        scanId: scan.scanId,
+        portalId: scan.portalId,
+        portalName: scan.portalName,
+        status: scan.status,
+        startedAt: scan.startedAt,
+        currentStep: scan.currentStep,
+        discoveredRFPs: scan.discoveredRFPs.length,
+        errors: scan.errors.length
+      }));
+
+      res.json(activeScans);
+    } catch (error) {
+      console.error("Error fetching active scans:", error);
+      res.status(500).json({ error: "Failed to fetch active scans" });
     }
   });
 

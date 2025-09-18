@@ -1,6 +1,7 @@
 import { Portal, RFP, InsertRFP, InsertNotification } from '@shared/schema';
 import { IStorage } from '../storage';
 import { MastraScrapingService } from './mastraScrapingService';
+import { scanManager } from './scan-manager';
 
 export interface DiscoveredRFP {
   title: string;
@@ -47,7 +48,158 @@ export class PortalMonitoringService {
   }
 
   /**
-   * Scan a specific portal for new RFPs
+   * Scan a specific portal for new RFPs with real-time event emission
+   */
+  async scanPortalWithEvents(portalId: string, scanId: string): Promise<PortalScanResult> {
+    const startTime = Date.now();
+    
+    try {
+      scanManager.log(scanId, 'info', `Starting scan for portal: ${portalId}`);
+      scanManager.updateStep(scanId, 'initializing', 5, 'Retrieving portal configuration...');
+      
+      // Use secure credential method for login-required portals
+      const portal = await this.storage.getPortalWithCredentials(portalId);
+      if (!portal) {
+        const error = `Portal not found: ${portalId}`;
+        scanManager.log(scanId, 'error', error);
+        scanManager.completeScan(scanId, false);
+        throw new Error(error);
+      }
+
+      scanManager.updateStep(scanId, 'initializing', 10, `Portal configured: ${portal.name}`);
+
+      // Update scan timestamp
+      await this.storage.updatePortal(portalId, {
+        lastScanned: new Date(),
+        status: 'active',
+        lastError: null,
+      });
+
+      scanManager.updateStep(scanId, 'authenticating', 15, `Starting Browserbase/Mastra intelligent scraping`);
+      scanManager.log(scanId, 'info', `Using Browserbase/Mastra for intelligent scraping of: ${portal.name}`);
+      
+      const discoveredRFPs: DiscoveredRFP[] = [];
+      const errors: string[] = [];
+
+      try {
+        scanManager.updateStep(scanId, 'authenticating', 20, `Connecting to portal: ${portal.url}`);
+        scanManager.log(scanId, 'info', `Starting Mastra/Browserbase scraping for: ${portal.url}`);
+        
+        // The MastraScrapingService handles everything: authentication, navigation, extraction
+        await this.mastraService.scrapePortal(portal);
+        
+        scanManager.updateStep(scanId, 'extracting', 60, 'Portal content extracted, processing RFPs...');
+        
+        // Get the RFPs that were discovered and saved by MastraScrapingService
+        const recentRFPs = await this.storage.getRFPsByPortal(portal.id);
+        const todaysRFPs = recentRFPs.filter(rfp => {
+          const rfpDate = new Date(rfp.updatedAt);
+          const today = new Date();
+          return rfpDate.toDateString() === today.toDateString();
+        });
+        
+        scanManager.updateStep(scanId, 'parsing', 80, `Processing ${todaysRFPs.length} discovered RFPs...`);
+        
+        // Convert to DiscoveredRFP format for consistency with the existing interface
+        const mastraRFPs: DiscoveredRFP[] = todaysRFPs.map(rfp => ({
+          title: rfp.title,
+          description: rfp.description || '',
+          agency: rfp.agency,
+          sourceUrl: rfp.sourceUrl,
+          deadline: rfp.deadline ? new Date(rfp.deadline) : undefined,
+          estimatedValue: rfp.estimatedValue ? parseFloat(rfp.estimatedValue) || undefined : undefined,
+          portalId: portal.id
+        }));
+        
+        discoveredRFPs.push(...mastraRFPs);
+        
+        // Record each RFP discovery
+        for (const rfp of mastraRFPs) {
+          scanManager.recordRFPDiscovery(scanId, {
+            title: rfp.title,
+            agency: rfp.agency,
+            sourceUrl: rfp.sourceUrl,
+            deadline: rfp.deadline,
+            estimatedValue: rfp.estimatedValue
+          });
+        }
+        
+        scanManager.updateStep(scanId, 'saving', 90, `Saving ${mastraRFPs.length} RFPs to database...`);
+        scanManager.log(scanId, 'info', `Mastra/Browserbase discovered ${mastraRFPs.length} RFPs from portal: ${portal.name}`);
+
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : 'Mastra scraping error';
+        errors.push(errorMsg);
+        scanManager.log(scanId, 'error', `Error in Mastra/Browserbase scraping: ${errorMsg}`);
+        console.error(`Error in Mastra/Browserbase scraping for ${portal.name}:`, error);
+      }
+
+      // Note: MastraScrapingService already handles RFP saving and deduplication
+      const savedRFPs = discoveredRFPs; // Already saved by MastraScrapingService
+
+      // Update portal status
+      await this.storage.updatePortal(portalId, {
+        status: errors.length > 0 ? 'error' : 'active',
+        lastError: errors.length > 0 ? errors.join('; ') : null,
+        errorCount: errors.length > 0 ? portal.errorCount + 1 : 0,
+      });
+
+      const scanDuration = Date.now() - startTime;
+      const success = errors.length === 0;
+      
+      if (success) {
+        scanManager.updateStep(scanId, 'completed', 100, `Scan completed successfully. Found ${discoveredRFPs.length} RFPs.`);
+      } else {
+        scanManager.updateStep(scanId, 'failed', 100, `Scan completed with ${errors.length} errors.`);
+      }
+      
+      scanManager.completeScan(scanId, success);
+      
+      console.log(`Portal scan completed for ${portal.name} in ${scanDuration}ms`);
+
+      return {
+        portalId,
+        success,
+        discoveredRFPs: discoveredRFPs,
+        errors,
+        scanDuration,
+      };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown scan error';
+      const scanDuration = Date.now() - startTime;
+      
+      scanManager.log(scanId, 'error', `Portal scan failed: ${errorMsg}`);
+      scanManager.completeScan(scanId, false);
+      
+      console.error(`Portal scan failed for ${portalId}:`, error);
+      
+      // Update portal with error status
+      try {
+        const portal = await this.storage.getPortal(portalId);
+        if (portal) {
+          await this.storage.updatePortal(portalId, {
+            status: 'error',
+            lastError: errorMsg,
+            errorCount: portal.errorCount + 1,
+          });
+        }
+      } catch (updateError) {
+        console.error('Failed to update portal error status:', updateError);
+      }
+
+      return {
+        portalId,
+        success: false,
+        discoveredRFPs: [],
+        errors: [errorMsg],
+        scanDuration,
+      };
+    }
+  }
+
+  /**
+   * Scan a specific portal for new RFPs (legacy method without events)
    */
   async scanPortal(portalId: string): Promise<PortalScanResult> {
     const startTime = Date.now();
