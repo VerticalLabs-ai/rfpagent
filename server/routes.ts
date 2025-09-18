@@ -14,6 +14,55 @@ import { SubmissionService } from "./services/submissionService";
 import { NotificationService } from "./services/notificationService";
 import { ObjectStorageService } from "./objectStorage";
 import { setupScrapingScheduler } from "./jobs/scrapingScheduler";
+import { aiProposalService } from "./services/ai-proposal-service";
+import { z } from "zod";
+
+// Zod schemas for AI API endpoints
+const AnalyzeRFPRequestSchema = z.object({
+  rfpText: z.string().min(1).max(50000),
+});
+
+const MapCompanyDataRequestSchema = z.object({
+  analysis: z.object({
+    requirements: z.object({
+      businessType: z.array(z.string()).optional(),
+      certifications: z.array(z.string()).optional(),
+      insurance: z.object({
+        types: z.array(z.string()),
+        minimumCoverage: z.number().optional(),
+      }).optional(),
+      contactRoles: z.array(z.string()).optional(),
+      businessSize: z.enum(['small', 'large', 'any']).optional(),
+      socioEconomicPreferences: z.array(z.string()).optional(),
+      geographicRequirements: z.array(z.string()).optional(),
+      experienceRequirements: z.array(z.string()).optional(),
+    }),
+    complianceItems: z.array(z.object({
+      item: z.string(),
+      category: z.string(),
+      required: z.boolean(),
+      description: z.string(),
+    })),
+    riskFlags: z.array(z.object({
+      type: z.enum(['deadline', 'complexity', 'requirements', 'financial']),
+      severity: z.enum(['low', 'medium', 'high']),
+      description: z.string(),
+    })),
+    keyDates: z.object({
+      deadline: z.string().transform(str => new Date(str)),
+      prebidMeeting: z.string().transform(str => new Date(str)).optional(),
+      questionsDeadline: z.string().transform(str => new Date(str)).optional(),
+      sampleSubmission: z.string().transform(str => new Date(str)).optional(),
+    }),
+  }),
+  companyProfileId: z.string().uuid(),
+});
+
+const GenerateProposalRequestSchema = z.object({
+  rfpText: z.string().min(1).max(50000),
+  companyProfileId: z.string().uuid(),
+  proposalType: z.enum(['standard', 'technical', 'construction', 'professional_services']).optional(),
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
@@ -890,6 +939,194 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting company insurance:", error);
       res.status(500).json({ error: "Failed to delete company insurance" });
+    }
+  });
+
+  // AI-Powered Proposal Generation Service (Phase 2.1)
+  
+  // Analyze RFP document using AI to extract requirements
+  app.post("/api/ai/analyze-rfp", async (req, res) => {
+    try {
+      const validationResult = AnalyzeRFPRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { rfpText } = validationResult.data;
+      const analysis = await aiProposalService.analyzeRFPDocument(rfpText);
+      res.json(analysis);
+    } catch (error) {
+      console.error("Error analyzing RFP document:", error);
+      res.status(500).json({ 
+        error: "Failed to analyze RFP document", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Map company profile data to RFP requirements
+  app.post("/api/ai/map-company-data", async (req, res) => {
+    try {
+      const validationResult = MapCompanyDataRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { analysis, companyProfileId } = validationResult.data;
+
+      // Get company profile and related data
+      const companyProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!companyProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      const certifications = await storage.getCompanyCertifications(companyProfileId);
+      const insurance = await storage.getCompanyInsurance(companyProfileId);
+      const contacts = await storage.getCompanyContacts(companyProfileId);
+
+      const companyMapping = await aiProposalService.mapCompanyDataToRequirements(
+        analysis,
+        companyProfile,
+        certifications,
+        insurance,
+        contacts
+      );
+
+      res.json(companyMapping);
+    } catch (error) {
+      console.error("Error mapping company data:", error);
+      res.status(500).json({ 
+        error: "Failed to map company data", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Generate comprehensive proposal content using AI
+  app.post("/api/ai/generate-proposal", async (req, res) => {
+    try {
+      const validationResult = GenerateProposalRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { rfpText, companyProfileId, proposalType } = validationResult.data;
+
+      // Step 1: Analyze RFP document
+      const analysis = await aiProposalService.analyzeRFPDocument(rfpText);
+
+      // Step 2: Get company profile and related data
+      const companyProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!companyProfile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      const certifications = await storage.getCompanyCertifications(companyProfileId);
+      const insurance = await storage.getCompanyInsurance(companyProfileId);
+      const contacts = await storage.getCompanyContacts(companyProfileId);
+
+      // Step 3: Map company data to requirements
+      const companyMapping = await aiProposalService.mapCompanyDataToRequirements(
+        analysis,
+        companyProfile,
+        certifications,
+        insurance,
+        contacts
+      );
+
+      // Step 4: Generate proposal content
+      const proposalContent = await aiProposalService.generateProposalContent(
+        analysis,
+        companyMapping,
+        rfpText
+      );
+
+      // Response includes both the analysis and generated content
+      res.json({
+        rfpAnalysis: analysis,
+        companyMapping,
+        proposalContent,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          companyProfileId,
+          proposalType: proposalType || 'standard',
+          certificationCount: certifications.length,
+          contactCount: contacts.length,
+        }
+      });
+
+    } catch (error) {
+      console.error("Error generating proposal:", error);
+      res.status(500).json({ 
+        error: "Failed to generate proposal", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get available company profiles for proposal generation
+  app.get("/api/ai/company-profiles", async (req, res) => {
+    try {
+      const profiles = await storage.getAllCompanyProfiles();
+      
+      // Return simplified profile data for AI service selection
+      const simplifiedProfiles = profiles.map(profile => ({
+        id: profile.id,
+        companyName: profile.companyName,
+        dba: profile.dba,
+        primaryBusinessCategory: profile.primaryBusinessCategory,
+        isActive: profile.isActive,
+      }));
+
+      res.json(simplifiedProfiles);
+    } catch (error) {
+      console.error("Error fetching company profiles:", error);
+      res.status(500).json({ error: "Failed to fetch company profiles" });
+    }
+  });
+
+  // Get detailed company profile for proposal context
+  app.get("/api/ai/company-profiles/:id/details", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const profile = await storage.getCompanyProfile(id);
+      if (!profile) {
+        return res.status(404).json({ error: "Company profile not found" });
+      }
+
+      const certifications = await storage.getCompanyCertifications(id);
+      const insurance = await storage.getCompanyInsurance(id);
+      const contacts = await storage.getCompanyContacts(id);
+      const addresses = await storage.getCompanyAddresses(id);
+      const identifiers = await storage.getCompanyIdentifiers(id);
+
+      res.json({
+        profile,
+        certifications,
+        insurance,
+        contacts,
+        addresses,
+        identifiers,
+        stats: {
+          totalCertifications: certifications.length,
+          activeCertifications: certifications.filter((c: any) => c.status === 'active').length,
+          totalContacts: contacts.length,
+          decisionMakers: contacts.filter((c: any) => c.contactType === 'decision_maker').length,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching company profile details:", error);
+      res.status(500).json({ error: "Failed to fetch company profile details" });
     }
   });
 
