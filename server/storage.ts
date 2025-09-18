@@ -1,10 +1,11 @@
 import {
-  users, portals, rfps, proposals, documents, submissions, auditLogs, notifications,
+  users, portals, rfps, proposals, documents, submissions, auditLogs, notifications, scans, scanEvents,
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
-  type Notification, type InsertNotification, type CompanyProfile, type InsertCompanyProfile,
+  type Notification, type InsertNotification, type Scan, type InsertScan,
+  type ScanEvent, type InsertScanEvent, type CompanyProfile, type InsertCompanyProfile,
   type CompanyAddress, type InsertCompanyAddress, type CompanyContact, type InsertCompanyContact,
   type CompanyIdentifier, type InsertCompanyIdentifier, type CompanyCertification, type InsertCompanyCertification,
   type CompanyInsurance, type InsertCompanyInsurance
@@ -108,6 +109,17 @@ export interface IStorage {
   // Analytics
   getDashboardMetrics(): Promise<any>;
   getPortalActivity(): Promise<any>;
+
+  // Scan Operations
+  createScan(scan: InsertScan): Promise<Scan>;
+  updateScan(scanId: string, updates: Partial<Scan>): Promise<Scan>;
+  getScan(scanId: string): Promise<Scan | undefined>;
+  getScansByPortal(portalId: string, limit?: number): Promise<Scan[]>;
+  getActiveScansByPortal(portalId: string): Promise<Scan[]>;
+  getActiveScans(): Promise<Scan[]>;
+  appendScanEvent(event: InsertScanEvent): Promise<ScanEvent>;
+  getScanEvents(scanId: string): Promise<ScanEvent[]>;
+  getScanHistory(portalId: string, limit?: number): Promise<Scan[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -813,6 +825,82 @@ export class DatabaseStorage implements IStorage {
       .update(companyInsurance)
       .set({ isActive: false })
       .where(eq(companyInsurance.id, id));
+  }
+
+  // Scan Operations
+  async createScan(scan: InsertScan): Promise<Scan> {
+    const [newScan] = await db
+      .insert(scans)
+      .values(scan)
+      .returning();
+    return newScan;
+  }
+
+  async updateScan(scanId: string, updates: Partial<Scan>): Promise<Scan> {
+    const [updatedScan] = await db
+      .update(scans)
+      .set(updates)
+      .where(eq(scans.id, scanId))
+      .returning();
+    return updatedScan;
+  }
+
+  async getScan(scanId: string): Promise<Scan | undefined> {
+    const [scan] = await db
+      .select()
+      .from(scans)
+      .where(eq(scans.id, scanId));
+    return scan || undefined;
+  }
+
+  async getScansByPortal(portalId: string, limit: number = 10): Promise<Scan[]> {
+    return await db
+      .select()
+      .from(scans)
+      .where(eq(scans.portalId, portalId))
+      .orderBy(desc(scans.startedAt))
+      .limit(limit);
+  }
+
+  async getActiveScansByPortal(portalId: string): Promise<Scan[]> {
+    return await db
+      .select()
+      .from(scans)
+      .where(and(eq(scans.portalId, portalId), eq(scans.status, 'running')))
+      .orderBy(desc(scans.startedAt));
+  }
+
+  async getActiveScans(): Promise<Scan[]> {
+    return await db
+      .select()
+      .from(scans)
+      .where(eq(scans.status, 'running'))
+      .orderBy(desc(scans.startedAt));
+  }
+
+  async appendScanEvent(event: InsertScanEvent): Promise<ScanEvent> {
+    const [newEvent] = await db
+      .insert(scanEvents)
+      .values(event)
+      .returning();
+    return newEvent;
+  }
+
+  async getScanEvents(scanId: string): Promise<ScanEvent[]> {
+    return await db
+      .select()
+      .from(scanEvents)
+      .where(eq(scanEvents.scanId, scanId))
+      .orderBy(asc(scanEvents.timestamp));
+  }
+
+  async getScanHistory(portalId: string, limit: number = 10): Promise<Scan[]> {
+    return await db
+      .select()
+      .from(scans)
+      .where(and(eq(scans.portalId, portalId), or(eq(scans.status, 'completed'), eq(scans.status, 'failed'))))
+      .orderBy(desc(scans.startedAt))
+      .limit(limit);
   }
 }
 

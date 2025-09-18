@@ -20,6 +20,7 @@ import { insertPortalSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useScanStream } from "@/hooks/useScanStream";
 import { ScanProgress } from "@/components/ScanProgress";
+import { ScanHistory } from "@/components/ScanHistory";
 import type { z } from "zod";
 
 type PortalFormData = z.infer<typeof insertPortalSchema>;
@@ -348,6 +349,9 @@ export default function PortalSettings() {
               />
             </div>
           )}
+
+          {/* Scan History */}
+          <ScanHistory />
         </TabsContent>
 
         <TabsContent value="discoveries" className="space-y-6">

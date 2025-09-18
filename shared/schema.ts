@@ -106,6 +106,35 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Scan Management Tables
+export const scans = pgTable("scans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  portalId: varchar("portal_id").references(() => portals.id).notNull(),
+  portalName: text("portal_name").notNull(),
+  status: text("status").notNull().default("running"), // running, completed, failed
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  currentStep: text("current_step").notNull().default("initializing"), // initializing, authenticating, authenticated, navigating, extracting, parsing, saving, completed, failed
+  currentProgress: integer("current_progress").default(0).notNull(),
+  currentMessage: text("current_message"),
+  discoveredRfpsCount: integer("discovered_rfps_count").default(0).notNull(),
+  errorCount: integer("error_count").default(0).notNull(),
+  errors: jsonb("errors"), // array of error messages
+  discoveredRfps: jsonb("discovered_rfps"), // array of discovered RFP objects
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const scanEvents = pgTable("scan_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  scanId: varchar("scan_id").references(() => scans.id).notNull(),
+  type: text("type").notNull(), // scan_started, step_update, log, progress, rfp_discovered, error, scan_completed, scan_failed
+  level: text("level"), // info, warn, error (for log events)
+  message: text("message"),
+  data: jsonb("data"), // event-specific data
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Company Profile Management Tables
 export const companyProfiles = pgTable("company_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -213,6 +242,7 @@ export const companyInsurance = pgTable("company_insurance", {
 export const portalsRelations = relations(portals, ({ many }) => ({
   rfps: many(rfps),
   submissions: many(submissions),
+  scans: many(scans),
 }));
 
 export const companyProfilesRelations = relations(companyProfiles, ({ many }) => ({
@@ -298,6 +328,22 @@ export const submissionsRelations = relations(submissions, ({ one }) => ({
   }),
 }));
 
+// Scan Relations
+export const scansRelations = relations(scans, ({ one, many }) => ({
+  portal: one(portals, {
+    fields: [scans.portalId],
+    references: [portals.id],
+  }),
+  events: many(scanEvents),
+}));
+
+export const scanEventsRelations = relations(scanEvents, ({ one }) => ({
+  scan: one(scans, {
+    fields: [scanEvents.scanId],
+    references: [scans.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -340,6 +386,17 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 });
 
 export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Scan Insert Schemas
+export const insertScanSchema = createInsertSchema(scans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertScanEventSchema = createInsertSchema(scanEvents).omit({
   id: true,
   createdAt: true,
 });
@@ -402,6 +459,13 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+// Scan Types
+export type Scan = typeof scans.$inferSelect;
+export type InsertScan = z.infer<typeof insertScanSchema>;
+
+export type ScanEvent = typeof scanEvents.$inferSelect;
+export type InsertScanEvent = z.infer<typeof insertScanEventSchema>;
 
 // Company Profile Types
 export type CompanyProfile = typeof companyProfiles.$inferSelect;

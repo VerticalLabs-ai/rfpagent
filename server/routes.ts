@@ -630,6 +630,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get scan details with events
+  app.get("/api/scans/:scanId/details", async (req, res) => {
+    try {
+      const { scanId } = req.params;
+
+      // First check active scans in ScanManager (for running scans)
+      const activeScan = scanManager.getScan(scanId);
+      if (activeScan) {
+        // Return active scan data with events
+        res.json({
+          ...activeScan,
+          id: activeScan.scanId,
+          portalId: activeScan.portalId,
+          portalName: activeScan.portalName,
+          status: activeScan.status,
+          startedAt: activeScan.startedAt,
+          completedAt: activeScan.completedAt,
+          currentStep: activeScan.currentStep.step,
+          currentProgress: activeScan.currentStep.progress,
+          currentMessage: activeScan.currentStep.message,
+          discoveredRfpsCount: activeScan.discoveredRFPs.length,
+          errorCount: activeScan.errors.length,
+          errors: activeScan.errors,
+          discoveredRfps: activeScan.discoveredRFPs,
+          events: activeScan.events
+        });
+        return;
+      }
+
+      // If not in active scans, try database (for historical scans)
+      const scan = await storage.getScan(scanId);
+      if (!scan) {
+        return res.status(404).json({ error: "Scan not found" });
+      }
+
+      const events = await storage.getScanEvents(scanId);
+      res.json({ ...scan, events });
+    } catch (error) {
+      console.error("Failed to get scan details:", error);
+      res.status(500).json({ error: "Failed to get scan details" });
+    }
+  });
+
   // Get recent RFP discoveries
   app.get("/api/portals/discoveries/recent", async (req, res) => {
     try {
