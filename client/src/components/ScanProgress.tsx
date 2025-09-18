@@ -29,6 +29,8 @@ interface ScanProgressProps {
 const stepIcons = {
   initializing: Activity,
   authenticating: Activity,
+  authenticated: CheckCircle,
+  navigating: Activity,
   extracting: Activity,
   parsing: Activity,
   saving: Activity,
@@ -39,6 +41,8 @@ const stepIcons = {
 const stepLabels = {
   initializing: 'Initializing',
   authenticating: 'Authenticating',
+  authenticated: 'Authenticated',
+  navigating: 'Navigating Portal',
   extracting: 'Extracting Content',
   parsing: 'Parsing RFPs', 
   saving: 'Saving Results',
@@ -87,7 +91,7 @@ export function ScanProgress({ scanState, isConnected, error, onReconnect, onDis
     );
   }
 
-  const StepIcon = stepIcons[scanState.currentStep.step];
+  const StepIcon = stepIcons[scanState.currentStep.step] || Activity; // Fallback to Activity icon
   const stepColor = getStepColor(scanState.currentStep.step);
 
   return (
@@ -168,7 +172,10 @@ export function ScanProgress({ scanState, isConnected, error, onReconnect, onDis
           </div>
           <div className="space-y-1">
             <div className="text-2xl font-bold text-purple-600 dark:text-purple-400" data-testid="text-duration">
-              {formatDistanceToNow(scanState.startedAt, { addSuffix: false })}
+              {scanState.startedAt && !isNaN(new Date(scanState.startedAt).getTime()) 
+                ? formatDistanceToNow(scanState.startedAt, { addSuffix: false })
+                : '0s'
+              }
             </div>
             <div className="text-xs text-gray-500">Duration</div>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 export interface ScanStep {
-  step: 'initializing' | 'authenticating' | 'extracting' | 'parsing' | 'saving' | 'completed' | 'failed';
+  step: 'initializing' | 'authenticating' | 'authenticated' | 'navigating' | 'extracting' | 'parsing' | 'saving' | 'completed' | 'failed';
   progress: number;
   message: string;
   timestamp: Date;
