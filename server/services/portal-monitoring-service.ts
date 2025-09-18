@@ -173,7 +173,7 @@ export class PortalMonitoringService {
       
       const usernameSelector = 'input[type="text"], input[type="email"], input[name*="user"], input[name*="login"]';
       const passwordSelector = 'input[type="password"]';
-      const submitSelector = 'input[type="submit"], button[type="submit"], button:contains("Login"), button:contains("Sign In")';
+      const submitSelector = 'input[type="submit"], button[type="submit"], button[data-testid*="login"], button[data-testid*="signin"], [role="button"][aria-label*="Login"], [role="button"][aria-label*="Sign In"]';
 
       await page.type(usernameSelector, portal.username!);
       await page.type(passwordSelector, portal.password!);

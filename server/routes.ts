@@ -13,7 +13,8 @@ import { AIService } from "./services/aiService";
 import { SubmissionService } from "./services/submissionService";
 import { NotificationService } from "./services/notificationService";
 import { ObjectStorageService } from "./objectStorage";
-import { setupScrapingScheduler } from "./jobs/scrapingScheduler";
+import { PortalMonitoringService } from "./services/portal-monitoring-service";
+import { PortalSchedulerService } from "./services/portal-scheduler-service";
 import { aiProposalService } from "./services/ai-proposal-service";
 import { z } from "zod";
 
@@ -64,17 +65,45 @@ const GenerateProposalRequestSchema = z.object({
   proposalType: z.enum(['standard', 'technical', 'construction', 'professional_services']).optional(),
 });
 
+// Portal Monitoring Validation Schemas
+const PortalMonitoringConfigSchema = z.object({
+  scanFrequency: z.number().int().min(1).max(168).optional(), // 1 hour to 1 week
+  maxRfpsPerScan: z.number().int().min(1).max(200).optional(),
+  selectors: z.object({
+    rfpList: z.string(),
+    rfpItem: z.string(),
+    title: z.string(),
+    agency: z.string().optional(),
+    deadline: z.string().optional(),
+    value: z.string().optional(),
+    link: z.string(),
+    description: z.string().optional(),
+  }).optional(),
+  filters: z.object({
+    minValue: z.number().optional(),
+    maxValue: z.number().optional(),
+    businessTypes: z.array(z.string()).optional(),
+    keywords: z.array(z.string()).optional(),
+    excludeKeywords: z.array(z.string()).optional(),
+  }).optional(),
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
-  const scrapingService = new MastraScrapingService();
+  const scrapingService = new MastraScrapingService(); // Keep for legacy support
   const documentService = new DocumentParsingService();
   const aiService = new AIService();
   const submissionService = new SubmissionService();
   const notificationService = new NotificationService();
   const objectStorageService = new ObjectStorageService();
+  
+  // Initialize new portal monitoring services
+  const portalMonitoringService = new PortalMonitoringService(storage);
+  const portalSchedulerService = new PortalSchedulerService(storage, portalMonitoringService);
 
-  // Initialize scheduled scraping
-  setupScrapingScheduler();
+  // Initialize new portal monitoring scheduler
+  console.log("Initializing Portal Monitoring Scheduler...");
+  portalSchedulerService.initialize().catch(console.error);
 
   // Dashboard metrics
   app.get("/api/dashboard/metrics", async (req, res) => {
@@ -409,8 +438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Portal not found" });
       }
 
-      // Start scraping asynchronously with optional search filter
-      scrapingService.scrapePortal(portal, searchFilter).catch(console.error);
+      // Use new monitoring service for enhanced scanning
+      portalMonitoringService.scanPortal(portal.id).catch(console.error);
 
       const message = searchFilter 
         ? `Portal scan started with filter: "${searchFilter}"` 
@@ -419,6 +448,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error starting portal scan:", error);
       res.status(500).json({ error: "Failed to start portal scan" });
+    }
+  });
+
+  // Enhanced Portal Monitoring Endpoints
+  
+  // Get monitoring status for all portals
+  app.get("/api/portals/monitoring/status", async (req, res) => {
+    try {
+      const portals = await storage.getAllPortals();
+      const monitoringStatus = portals.map(portal => ({
+        portalId: portal.id,
+        portalName: portal.name,
+        status: portal.status,
+        lastScanned: portal.lastScanned,
+        scanFrequency: portal.scanFrequency,
+        lastError: portal.lastError,
+        errorCount: portal.errorCount,
+      }));
+      
+      res.json(monitoringStatus);
+    } catch (error) {
+      console.error("Error fetching portal monitoring status:", error);
+      res.status(500).json({ error: "Failed to fetch monitoring status" });
+    }
+  });
+
+  // Get recent RFP discoveries
+  app.get("/api/portals/discoveries/recent", async (req, res) => {
+    try {
+      const { limit = "10", hours = "24" } = req.query;
+      const hoursAgo = new Date(Date.now() - (parseInt(hours as string) * 60 * 60 * 1000));
+      
+      // Get RFPs discovered in the last N hours
+      const { rfps } = await storage.getAllRFPs({
+        limit: parseInt(limit as string),
+        status: 'discovered'
+      });
+      
+      // Filter by discovery time (simplified - in production, add discoveredAfter filter to storage)
+      const recentRFPs = rfps.filter(rfp => 
+        rfp.discoveredAt && new Date(rfp.discoveredAt) > hoursAgo
+      );
+
+      res.json(recentRFPs);
+    } catch (error) {
+      console.error("Error fetching recent discoveries:", error);
+      res.status(500).json({ error: "Failed to fetch recent discoveries" });
+    }
+  });
+
+  // Update portal monitoring configuration
+  app.put("/api/portals/:id/monitoring", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate request body with Zod
+      const validationResult = PortalMonitoringConfigSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid monitoring configuration", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { scanFrequency, maxRfpsPerScan, selectors, filters } = validationResult.data;
+
+      const updates: any = {};
+      if (scanFrequency !== undefined) updates.scanFrequency = scanFrequency;
+      if (maxRfpsPerScan !== undefined) updates.maxRfpsPerScan = maxRfpsPerScan;
+      if (selectors) updates.selectors = selectors;
+      if (filters) updates.filters = filters;
+
+      const updatedPortal = await storage.updatePortal(id, updates);
+      
+      // Update scheduler if scan frequency changed
+      if (scanFrequency !== undefined) {
+        await portalSchedulerService.updatePortalSchedule(id);
+      }
+      
+      res.json(updatedPortal);
+    } catch (error) {
+      console.error("Error updating portal monitoring config:", error);
+      res.status(500).json({ error: "Failed to update monitoring configuration" });
+    }
+  });
+
+  // Get portal performance metrics
+  app.get("/api/portals/:id/metrics", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { days = "7" } = req.query;
+
+      const portal = await storage.getPortal(id);
+      if (!portal) {
+        return res.status(404).json({ error: "Portal not found" });
+      }
+
+      // Get RFPs discovered from this portal in the last N days
+      const daysAgo = new Date(Date.now() - (parseInt(days as string) * 24 * 60 * 60 * 1000));
+      const portalRFPs = await storage.getRFPsByPortal(id);
+      const recentRFPs = portalRFPs.filter(rfp => 
+        rfp.discoveredAt && new Date(rfp.discoveredAt) > daysAgo
+      );
+
+      const metrics = {
+        portalId: id,
+        portalName: portal.name,
+        period: `Last ${days} days`,
+        totalRFPs: recentRFPs.length,
+        averageValue: recentRFPs.reduce((sum, rfp) => {
+          const value = rfp.estimatedValue ? parseFloat(rfp.estimatedValue) : 0;
+          return sum + value;
+        }, 0) / (recentRFPs.length || 1),
+        statusBreakdown: recentRFPs.reduce((acc: any, rfp) => {
+          acc[rfp.status] = (acc[rfp.status] || 0) + 1;
+          return acc;
+        }, {}),
+        lastScanned: portal.lastScanned,
+        errorCount: portal.errorCount,
+        successfulScans: Math.max(0, (portalRFPs.length / Math.max(1, portal.maxRfpsPerScan)) - portal.errorCount),
+      };
+
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching portal metrics:", error);
+      res.status(500).json({ error: "Failed to fetch portal metrics" });
     }
   });
 
