@@ -64,10 +64,18 @@ export default function RFPDiscovery() {
     item.rfp.status === "discovered" || item.rfp.status === "parsing"
   );
 
-  const filteredRfps = discoveredRfps.filter((item: any) =>
-    item.rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.rfp.agency.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredRfps = discoveredRfps.filter((item: any) => {
+    // Filter by search query
+    const matchesSearch = !searchQuery || 
+      item.rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.rfp.agency.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    // Filter by selected portal
+    const matchesPortal = !selectedPortal || 
+      (item.portal && item.portal.id === selectedPortal);
+    
+    return matchesSearch && matchesPortal;
+  });
 
   if (isLoading) {
     return (
@@ -127,9 +135,10 @@ export default function RFPDiscovery() {
           <div className="flex items-center space-x-2">
             <Select value={selectedPortal} onValueChange={setSelectedPortal} data-testid="portal-select">
               <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Select Portal" />
+                <SelectValue placeholder="All Portals" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="">All Portals</SelectItem>
                 {(portals || []).map((portal: any) => (
                   <SelectItem key={portal.id} value={portal.id}>
                     {portal.name}
