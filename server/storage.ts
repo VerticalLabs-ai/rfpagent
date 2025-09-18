@@ -22,6 +22,7 @@ export interface IStorage {
   getAllPortals(): Promise<Portal[]>;
   getActivePortals(): Promise<Portal[]>;
   getPortal(id: string): Promise<Portal | undefined>;
+  getPortalWithCredentials(id: string): Promise<Portal | undefined>; // Internal use only - includes credentials
   createPortal(portal: InsertPortal): Promise<Portal>;
   updatePortal(id: string, updates: Partial<Portal>): Promise<Portal>;
   deletePortal(id: string): Promise<void>;
@@ -131,14 +132,68 @@ export class DatabaseStorage implements IStorage {
 
   // Portals
   async getAllPortals(): Promise<Portal[]> {
-    return await db.select().from(portals).orderBy(asc(portals.name));
+    // Exclude sensitive credentials from public portal list
+    return await db.select({
+      id: portals.id,
+      name: portals.name,
+      url: portals.url,
+      loginRequired: portals.loginRequired,
+      // username and password fields excluded for security
+      lastScanned: portals.lastScanned,
+      status: portals.status,
+      scanFrequency: portals.scanFrequency,
+      maxRfpsPerScan: portals.maxRfpsPerScan,
+      selectors: portals.selectors,
+      filters: portals.filters,
+      lastError: portals.lastError,
+      errorCount: portals.errorCount,
+      createdAt: portals.createdAt,
+    }).from(portals).orderBy(asc(portals.name));
   }
 
   async getActivePortals(): Promise<Portal[]> {
-    return await db.select().from(portals).where(eq(portals.status, 'active')).orderBy(asc(portals.name));
+    // Exclude sensitive credentials from public portal list
+    return await db.select({
+      id: portals.id,
+      name: portals.name,
+      url: portals.url,
+      loginRequired: portals.loginRequired,
+      // username and password fields excluded for security
+      lastScanned: portals.lastScanned,
+      status: portals.status,
+      scanFrequency: portals.scanFrequency,
+      maxRfpsPerScan: portals.maxRfpsPerScan,
+      selectors: portals.selectors,
+      filters: portals.filters,
+      lastError: portals.lastError,
+      errorCount: portals.errorCount,
+      createdAt: portals.createdAt,
+    }).from(portals).where(eq(portals.status, 'active')).orderBy(asc(portals.name));
   }
 
   async getPortal(id: string): Promise<Portal | undefined> {
+    // Exclude sensitive credentials from public portal access
+    const [portal] = await db.select({
+      id: portals.id,
+      name: portals.name,
+      url: portals.url,
+      loginRequired: portals.loginRequired,
+      // username and password fields excluded for security
+      lastScanned: portals.lastScanned,
+      status: portals.status,
+      scanFrequency: portals.scanFrequency,
+      maxRfpsPerScan: portals.maxRfpsPerScan,
+      selectors: portals.selectors,
+      filters: portals.filters,
+      lastError: portals.lastError,
+      errorCount: portals.errorCount,
+      createdAt: portals.createdAt,
+    }).from(portals).where(eq(portals.id, id));
+    return portal || undefined;
+  }
+
+  async getPortalWithCredentials(id: string): Promise<Portal | undefined> {
+    // INTERNAL USE ONLY - includes sensitive credentials for scanning operations
     const [portal] = await db.select().from(portals).where(eq(portals.id, id));
     return portal || undefined;
   }
@@ -147,7 +202,22 @@ export class DatabaseStorage implements IStorage {
     const [newPortal] = await db
       .insert(portals)
       .values(portal)
-      .returning();
+      .returning({
+        id: portals.id,
+        name: portals.name,
+        url: portals.url,
+        loginRequired: portals.loginRequired,
+        // username and password fields excluded for security
+        lastScanned: portals.lastScanned,
+        status: portals.status,
+        scanFrequency: portals.scanFrequency,
+        maxRfpsPerScan: portals.maxRfpsPerScan,
+        selectors: portals.selectors,
+        filters: portals.filters,
+        lastError: portals.lastError,
+        errorCount: portals.errorCount,
+        createdAt: portals.createdAt,
+      });
     return newPortal;
   }
 
@@ -156,7 +226,22 @@ export class DatabaseStorage implements IStorage {
       .update(portals)
       .set({ ...updates, updatedAt: new Date() } as any)
       .where(eq(portals.id, id))
-      .returning();
+      .returning({
+        id: portals.id,
+        name: portals.name,
+        url: portals.url,
+        loginRequired: portals.loginRequired,
+        // username and password fields excluded for security
+        lastScanned: portals.lastScanned,
+        status: portals.status,
+        scanFrequency: portals.scanFrequency,
+        maxRfpsPerScan: portals.maxRfpsPerScan,
+        selectors: portals.selectors,
+        filters: portals.filters,
+        lastError: portals.lastError,
+        errorCount: portals.errorCount,
+        createdAt: portals.createdAt,
+      });
     return updatedPortal;
   }
 

@@ -51,7 +51,8 @@ export class PortalMonitoringService {
     try {
       console.log(`Starting scan for portal: ${portalId}`);
       
-      const portal = await this.storage.getPortal(portalId);
+      // Use secure credential method for login-required portals
+      const portal = await this.storage.getPortalWithCredentials(portalId);
       if (!portal) {
         throw new Error(`Portal not found: ${portalId}`);
       }
