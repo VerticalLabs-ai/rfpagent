@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { insertPortalSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useScanStream } from "@/hooks/useScanStream";
+import { ScanProgress } from "@/components/ScanProgress";
 import type { z } from "zod";
 
 type PortalFormData = z.infer<typeof insertPortalSchema>;
@@ -25,7 +27,18 @@ type PortalFormData = z.infer<typeof insertPortalSchema>;
 export default function PortalSettings() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("portals");
+  const [activeScanPortalId, setActiveScanPortalId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Real-time scan monitoring
+  const { 
+    scanState, 
+    isConnected, 
+    error: scanError, 
+    startScan, 
+    disconnect, 
+    reconnect 
+  } = useScanStream(activeScanPortalId || undefined);
 
   const { data: portals, isLoading } = useQuery({
     queryKey: ["/api/portals"],
@@ -87,26 +100,67 @@ export default function PortalSettings() {
     },
   });
 
-  const scanPortalMutation = useMutation({
-    mutationFn: async (portalId: string) => {
-      return apiRequest("POST", `/api/portals/${portalId}/scan`);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Scan Started",
-        description: "Portal scan has been initiated.",
-      });
-      // Refresh monitoring status after scan
-      queryClient.invalidateQueries({ queryKey: ["/api/portals/monitoring/status"] });
-    },
-    onError: () => {
+  // Real-time scan handler
+  const handleStartScan = async (portalId: string) => {
+    try {
+      setActiveScanPortalId(portalId);
+      const scanId = await startScan(portalId);
+      
+      if (scanId) {
+        toast({
+          title: "Scan Started",
+          description: "Real-time portal scan has been initiated.",
+        });
+        // Refresh monitoring status after scan starts
+        queryClient.invalidateQueries({ queryKey: ["/api/portals/monitoring/status"] });
+      } else {
+        setActiveScanPortalId(null);
+        toast({
+          title: "Scan Failed",
+          description: "Failed to start portal scan.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      setActiveScanPortalId(null);
       toast({
         title: "Scan Failed",
         description: "Failed to start portal scan.",
         variant: "destructive",
       });
-    },
-  });
+    }
+  };
+
+  const handleScanComplete = () => {
+    setActiveScanPortalId(null);
+    // Refresh data after scan completion
+    queryClient.invalidateQueries({ queryKey: ["/api/portals"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/portals/monitoring/status"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/portals/discoveries/recent"] });
+  };
+
+  // Auto-handle scan completion
+  useEffect(() => {
+    if (scanState && (scanState.status === 'completed' || scanState.status === 'failed')) {
+      const timer = setTimeout(() => {
+        handleScanComplete();
+        if (scanState.status === 'completed') {
+          toast({
+            title: "Scan Completed",
+            description: `Portal scan finished successfully. Found ${scanState.rfpsDiscovered.length} RFPs.`,
+          });
+        } else {
+          toast({
+            title: "Scan Failed",
+            description: scanState.error || "Portal scan encountered an error.",
+            variant: "destructive",
+          });
+        }
+      }, 2000); // Allow user to see final results for 2 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [scanState?.status, scanState?.rfpsDiscovered.length, scanState?.error, toast]);
 
   const updateMonitoringMutation = useMutation({
     mutationFn: async ({ id, config }: { id: string; config: any }) => {
@@ -225,18 +279,33 @@ export default function PortalSettings() {
             {portals?.map((portal: any) => {
               const activity = portalActivity?.find((act: any) => act.portal.id === portal.id);
               return (
-                <PortalCard
-                  key={portal.id}
-                  portal={portal}
-                  rfpCount={activity?.rfpCount || 0}
-                  onUpdate={(updates) => updatePortalMutation.mutate({ id: portal.id, updates })}
-                  onScan={() => scanPortalMutation.mutate(portal.id)}
-                  onDelete={() => deletePortalMutation.mutate(portal.id)}
-                  onUpdateMonitoring={(config) => updateMonitoringMutation.mutate({ id: portal.id, config })}
-                  scanning={scanPortalMutation.isPending}
-                  deleting={deletePortalMutation.isPending}
-                  updatingMonitoring={updateMonitoringMutation.isPending}
-                />
+                <div key={portal.id} className="space-y-4">
+                  <PortalCard
+                    portal={portal}
+                    rfpCount={activity?.rfpCount || 0}
+                    onUpdate={(updates) => updatePortalMutation.mutate({ id: portal.id, updates })}
+                    onScan={() => handleStartScan(portal.id)}
+                    onDelete={() => deletePortalMutation.mutate(portal.id)}
+                    onUpdateMonitoring={(config) => updateMonitoringMutation.mutate({ id: portal.id, config })}
+                    scanning={activeScanPortalId === portal.id && scanState?.status === 'running'}
+                    deleting={deletePortalMutation.isPending}
+                    updatingMonitoring={updateMonitoringMutation.isPending}
+                  />
+                  
+                  {/* Real-time scan progress for this portal */}
+                  {activeScanPortalId === portal.id && scanState && (
+                    <ScanProgress
+                      scanState={scanState}
+                      isConnected={isConnected}
+                      error={scanError}
+                      onReconnect={reconnect}
+                      onDisconnect={() => {
+                        disconnect();
+                        setActiveScanPortalId(null);
+                      }}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -260,8 +329,25 @@ export default function PortalSettings() {
           <MonitoringDashboard 
             monitoringStatus={monitoringStatus} 
             isLoading={isLoading}
-            onTriggerScan={(portalId) => scanPortalMutation.mutate(portalId)}
+            onTriggerScan={(portalId) => handleStartScan(portalId)}
           />
+          
+          {/* Global scan progress display for monitoring tab */}
+          {activeScanPortalId && scanState && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">Active Portal Scan</h3>
+              <ScanProgress
+                scanState={scanState}
+                isConnected={isConnected}
+                error={scanError}
+                onReconnect={reconnect}
+                onDisconnect={() => {
+                  disconnect();
+                  setActiveScanPortalId(null);
+                }}
+              />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="discoveries" className="space-y-6">
