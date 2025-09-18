@@ -20,6 +20,7 @@ export interface IStorage {
 
   // Portals
   getAllPortals(): Promise<Portal[]>;
+  getActivePortals(): Promise<Portal[]>;
   getPortal(id: string): Promise<Portal | undefined>;
   createPortal(portal: InsertPortal): Promise<Portal>;
   updatePortal(id: string, updates: Partial<Portal>): Promise<Portal>;
@@ -28,6 +29,7 @@ export interface IStorage {
   // RFPs
   getAllRFPs(filters?: { status?: string; portalId?: string; limit?: number; offset?: number }): Promise<{ rfps: RFP[]; total: number }>;
   getRFP(id: string): Promise<RFP | undefined>;
+  getRFPBySourceUrl(sourceUrl: string): Promise<RFP | undefined>;
   getRFPsWithDetails(): Promise<any[]>;
   createRFP(rfp: InsertRFP): Promise<RFP>;
   updateRFP(id: string, updates: Partial<RFP>): Promise<RFP>;
@@ -130,6 +132,10 @@ export class DatabaseStorage implements IStorage {
   // Portals
   async getAllPortals(): Promise<Portal[]> {
     return await db.select().from(portals).orderBy(asc(portals.name));
+  }
+
+  async getActivePortals(): Promise<Portal[]> {
+    return await db.select().from(portals).where(eq(portals.status, 'active')).orderBy(asc(portals.name));
   }
 
   async getPortal(id: string): Promise<Portal | undefined> {
@@ -238,6 +244,11 @@ export class DatabaseStorage implements IStorage {
 
   async getRFP(id: string): Promise<RFP | undefined> {
     const [rfp] = await db.select().from(rfps).where(eq(rfps.id, id));
+    return rfp || undefined;
+  }
+
+  async getRFPBySourceUrl(sourceUrl: string): Promise<RFP | undefined> {
+    const [rfp] = await db.select().from(rfps).where(eq(rfps.sourceUrl, sourceUrl));
     return rfp || undefined;
   }
 

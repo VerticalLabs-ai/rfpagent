@@ -20,6 +20,12 @@ export const portals = pgTable("portals", {
   password: text("password"),
   lastScanned: timestamp("last_scanned"),
   status: text("status").notNull().default("active"), // active, maintenance, error
+  scanFrequency: integer("scan_frequency").default(24).notNull(), // hours between scans
+  maxRfpsPerScan: integer("max_rfps_per_scan").default(50).notNull(),
+  selectors: jsonb("selectors"), // CSS selectors and scraping config
+  filters: jsonb("filters"), // business type, value filters, etc.
+  lastError: text("last_error"),
+  errorCount: integer("error_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
