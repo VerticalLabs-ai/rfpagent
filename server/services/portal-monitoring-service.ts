@@ -1,6 +1,6 @@
-import puppeteer from 'puppeteer';
 import { Portal, RFP, InsertRFP, InsertNotification } from '@shared/schema';
 import { IStorage } from '../storage';
+import { MastraScrapingService } from './mastraScrapingService';
 
 export interface DiscoveredRFP {
   title: string;
@@ -40,7 +40,11 @@ export interface PortalFilters {
 }
 
 export class PortalMonitoringService {
-  constructor(private storage: IStorage) {}
+  private mastraService: MastraScrapingService;
+  
+  constructor(private storage: IStorage) {
+    this.mastraService = new MastraScrapingService();
+  }
 
   /**
    * Scan a specific portal for new RFPs
@@ -64,51 +68,49 @@ export class PortalMonitoringService {
         lastError: null,
       });
 
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-
-      const page = await browser.newPage();
+      console.log(`Using Browserbase/Mastra for intelligent scraping of: ${portal.name}`);
       
-      // Set user agent and viewport
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-      await page.setViewport({ width: 1920, height: 1080 });
-
       const discoveredRFPs: DiscoveredRFP[] = [];
       const errors: string[] = [];
 
       try {
-        // Navigate to portal
-        console.log(`Navigating to: ${portal.url}`);
-        await page.goto(portal.url, { waitUntil: 'networkidle0', timeout: 30000 });
-
-        // Handle login if required
-        if (portal.loginRequired && portal.username && portal.password) {
-          console.log('Logging in to portal...');
-          await this.handleLogin(page, portal);
-        }
-
-        // Extract RFPs using selectors
-        const selectors: PortalSelectors = portal.selectors as PortalSelectors || this.getDefaultSelectors(portal.name);
-        const filters: PortalFilters = portal.filters as PortalFilters || {};
-
-        const rfps = await this.extractRFPs(page, selectors, filters, portal);
-        discoveredRFPs.push(...rfps);
-
-        console.log(`Discovered ${rfps.length} RFPs from portal: ${portal.name}`);
+        // Use MastraScrapingService (Browserbase) instead of local Puppeteer
+        console.log(`Starting Mastra/Browserbase scraping for: ${portal.url}`);
+        
+        // The MastraScrapingService handles everything: authentication, navigation, extraction
+        await this.mastraService.scrapePortal(portal);
+        
+        // Get the RFPs that were discovered and saved by MastraScrapingService
+        const recentRFPs = await this.storage.getRFPsByPortal(portal.id);
+        const todaysRFPs = recentRFPs.filter(rfp => {
+          const rfpDate = new Date(rfp.updatedAt);
+          const today = new Date();
+          return rfpDate.toDateString() === today.toDateString();
+        });
+        
+        // Convert to DiscoveredRFP format for consistency with the existing interface
+        const mastraRFPs: DiscoveredRFP[] = todaysRFPs.map(rfp => ({
+          title: rfp.title,
+          description: rfp.description || '',
+          agency: rfp.agency,
+          sourceUrl: rfp.sourceUrl,
+          deadline: rfp.deadline ? new Date(rfp.deadline) : undefined,
+          estimatedValue: rfp.estimatedValue ? parseFloat(rfp.estimatedValue) || undefined : undefined,
+          portalId: portal.id
+        }));
+        
+        discoveredRFPs.push(...mastraRFPs);
+        console.log(`Mastra/Browserbase discovered ${mastraRFPs.length} RFPs from portal: ${portal.name}`);
 
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown extraction error';
+        const errorMsg = error instanceof Error ? error.message : 'Mastra scraping error';
         errors.push(errorMsg);
-        console.error(`Error extracting RFPs from ${portal.name}:`, error);
+        console.error(`Error in Mastra/Browserbase scraping for ${portal.name}:`, error);
       }
 
-      await browser.close();
-
-      // Process discovered RFPs
-      const deduplicatedRFPs = await this.deduplicateRFPs(discoveredRFPs);
-      const savedRFPs = await this.saveDiscoveredRFPs(deduplicatedRFPs);
+      // Note: MastraScrapingService already handles RFP saving and deduplication
+      // For interface consistency, we still return the discoveredRFPs count
+      const savedRFPs = discoveredRFPs; // Already saved by MastraScrapingService
 
       // Update portal status
       await this.storage.updatePortal(portalId, {
@@ -117,10 +119,11 @@ export class PortalMonitoringService {
         errorCount: errors.length > 0 ? portal.errorCount + 1 : 0,
       });
 
-      // Create notifications for new RFPs
-      if (savedRFPs.length > 0) {
-        await this.createDiscoveryNotifications(savedRFPs, portal);
-      }
+      // Create notifications for new RFPs (handled by MastraScrapingService)
+      // Note: MastraScrapingService already creates discovery notifications
+      // if (savedRFPs.length > 0) {
+      //   await this.createDiscoveryNotifications(savedRFPs, portal);
+      // }
 
       const scanDuration = Date.now() - startTime;
       console.log(`Portal scan completed for ${portal.name} in ${scanDuration}ms`);
@@ -128,7 +131,7 @@ export class PortalMonitoringService {
       return {
         portalId,
         success: errors.length === 0,
-        discoveredRFPs: deduplicatedRFPs,
+        discoveredRFPs: discoveredRFPs,
         errors,
         scanDuration,
       };
