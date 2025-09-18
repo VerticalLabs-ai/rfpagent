@@ -60,9 +60,9 @@ export default function RFPDiscovery() {
     },
   });
 
-  const discoveredRfps = (rfps || []).filter((item: any) => 
+  const discoveredRfps = Array.isArray(rfps) ? rfps.filter((item: any) => 
     item.rfp.status === "discovered" || item.rfp.status === "parsing"
-  );
+  ) : [];
 
   const filteredRfps = discoveredRfps.filter((item: any) => {
     // Filter by search query
@@ -71,7 +71,7 @@ export default function RFPDiscovery() {
       item.rfp.agency.toLowerCase().includes(searchQuery.toLowerCase());
     
     // Filter by selected portal
-    const matchesPortal = !selectedPortal || 
+    const matchesPortal = !selectedPortal || selectedPortal === "all" || 
       (item.portal && item.portal.id === selectedPortal);
     
     return matchesSearch && matchesPortal;
@@ -138,12 +138,15 @@ export default function RFPDiscovery() {
                 <SelectValue placeholder="All Portals" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Portals</SelectItem>
-                {(portals || []).map((portal: any) => (
-                  <SelectItem key={portal.id} value={portal.id}>
-                    {portal.name}
-                  </SelectItem>
-                ))}
+                <SelectItem value="all">All Portals</SelectItem>
+                {Array.isArray(portals) ? portals
+                  .filter((portal: any) => portal.id && portal.id.trim() !== '')
+                  .map((portal: any) => (
+                    <SelectItem key={portal.id} value={portal.id}>
+                      {portal.name}
+                    </SelectItem>
+                  )) : []
+                }
               </SelectContent>
             </Select>
             
@@ -158,10 +161,10 @@ export default function RFPDiscovery() {
             <Button
               variant="outline"
               onClick={() => {
-                if (!selectedPortal) {
+                if (!selectedPortal || selectedPortal === "all") {
                   toast({
                     title: "No Portal Selected",
-                    description: "Please select a portal to scan.",
+                    description: "Please select a specific portal to scan.",
                     variant: "destructive",
                   });
                   return;
@@ -171,7 +174,7 @@ export default function RFPDiscovery() {
                   searchFilter: scanFilter.trim() || undefined 
                 });
               }}
-              disabled={scanPortalMutation.isPending || !selectedPortal}
+              disabled={scanPortalMutation.isPending || !selectedPortal || selectedPortal === "all"}
               data-testid="scan-button"
             >
               <i className="fas fa-search mr-2"></i>
