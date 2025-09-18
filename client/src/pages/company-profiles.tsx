@@ -717,7 +717,10 @@ function ContactList({ companyProfileId }: { companyProfileId: string }) {
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["/api/company-profiles", companyProfileId, "contacts"],
-    queryFn: () => apiRequest("GET", `/api/company-profiles/${companyProfileId}/contacts`)
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/company-profiles/${companyProfileId}/contacts`);
+      return Array.isArray(response) ? response : [];
+    }
   });
 
   const deleteMutation = useMutation({
