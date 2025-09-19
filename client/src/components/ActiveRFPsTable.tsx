@@ -115,18 +115,9 @@ export default function ActiveRFPsTable() {
     }
   };
 
-  const getProgressFromStatus = (status: string) => {
-    // Step-based progress based on actual work completed
-    switch (status) {
-      case "discovered": return 0;   // Just found, no work done yet
-      case "parsing": return 25;     // Analyzing documents
-      case "drafting": return 50;    // AI drafting proposal
-      case "review": return 75;      // Under review
-      case "approved": return 90;    // Approved, ready to submit
-      case "submitted": return 100;  // Submitted
-      case "closed": return 100;     // Process complete
-      default: return 0;            // Unknown status
-    }
+  // Use actual progress values from database instead of hardcoded status mapping
+  const getProgressValue = (rfp: any) => {
+    return rfp.progress || 0;  // Use actual progress from database, default to 0
   };
 
   const getProgressColor = (status: string, progress: number) => {
@@ -250,7 +241,7 @@ export default function ActiveRFPsTable() {
             <tbody className="divide-y divide-border">
               {filteredRfps.map((item: any) => {
                 const deadline = getDeadlineText(item.rfp.deadline);
-                const calculatedProgress = getProgressFromStatus(item.rfp.status);
+                const calculatedProgress = getProgressValue(item.rfp);
                 const progressColor = getProgressColor(item.rfp.status, calculatedProgress);
                 
                 return (

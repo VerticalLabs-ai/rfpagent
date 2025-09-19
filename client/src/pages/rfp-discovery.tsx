@@ -16,18 +16,9 @@ export default function RFPDiscovery() {
   const [scanFilter, setScanFilter] = useState("");
   const { toast } = useToast();
 
-  const getProgressFromStatus = (status: string) => {
-    // Step-based progress based on actual work completed
-    switch (status) {
-      case "discovered": return 5;   // Just found, no work done yet
-      case "parsing": return 25;     // Analyzing documents
-      case "drafting": return 50;    // AI drafting proposal
-      case "review": return 75;      // Under review
-      case "approved": return 90;    // Approved, ready to submit
-      case "submitted": return 100;  // Submitted
-      case "closed": return 100;     // Process complete
-      default: return 0;            // Unknown status
-    }
+  // Use actual progress values from database instead of hardcoded status mapping
+  const getProgressValue = (rfp: any) => {
+    return rfp.progress || 0;  // Use actual progress from database, default to 0
   };
 
   const { data: rfps, isLoading } = useQuery({
@@ -234,14 +225,14 @@ export default function RFPDiscovery() {
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Progress:</span>
                   <span className="font-medium" data-testid={`rfp-progress-${item.rfp.id}`}>
-                    {getProgressFromStatus(item.rfp.status)}%
+                    {getProgressValue(item.rfp)}%
                   </span>
                 </div>
 
                 <div className="w-full bg-secondary rounded-full h-2">
                   <div 
                     className="bg-primary h-2 rounded-full progress-bar" 
-                    style={{ width: `${getProgressFromStatus(item.rfp.status)}%` }}
+                    style={{ width: `${getProgressValue(item.rfp)}%` }}
                     data-testid={`rfp-progress-bar-${item.rfp.id}`}
                   ></div>
                 </div>
