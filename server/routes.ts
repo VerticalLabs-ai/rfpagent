@@ -4,7 +4,9 @@ import { storage } from "./storage";
 import { 
   insertRfpSchema, insertProposalSchema, insertPortalSchema, insertDocumentSchema,
   insertCompanyProfileSchema, insertCompanyAddressSchema, insertCompanyContactSchema,
-  insertCompanyIdentifierSchema, insertCompanyCertificationSchema, insertCompanyInsuranceSchema
+  insertCompanyIdentifierSchema, insertCompanyCertificationSchema, insertCompanyInsuranceSchema,
+  insertAiConversationSchema, insertConversationMessageSchema, insertResearchFindingSchema,
+  type AiConversation, type ConversationMessage, type ResearchFinding
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { MastraScrapingService } from "./services/mastraScrapingService";
@@ -20,6 +22,7 @@ import { enhancedProposalService } from "./services/enhancedProposalService";
 import { documentIntelligenceService } from "./services/documentIntelligenceService";
 import { scanManager } from "./services/scan-manager";
 import { ManualRfpService } from "./services/manualRfpService";
+import { aiAgentOrchestrator } from "./services/aiAgentOrchestrator";
 import { z } from "zod";
 
 // Zod schemas for AI API endpoints
@@ -73,6 +76,43 @@ const GenerateProposalRequestSchema = z.object({
 const ManualRfpInputSchema = z.object({
   url: z.string().url("Please provide a valid URL"),
   userNotes: z.string().optional(),
+});
+
+// AI Conversation Schemas
+const ProcessQueryRequestSchema = z.object({
+  query: z.string().min(1).max(10000),
+  conversationId: z.string().uuid().optional(),
+  userId: z.string().uuid().optional(),
+  conversationType: z.enum(['general', 'rfp_search', 'bid_crafting', 'research']).optional(),
+});
+
+const ProcessQueryResponseSchema = z.object({
+  conversationId: z.string().uuid(),
+  message: z.string(),
+  messageType: z.enum(['text', 'rfp_results', 'search_results', 'analysis', 'follow_up']),
+  data: z.any().optional(),
+  followUpQuestions: z.array(z.string()).optional(),
+  actionSuggestions: z.array(z.string()).optional(),
+  relatedRfps: z.array(z.any()).optional(),
+  researchFindings: z.array(z.any()).optional(),
+});
+
+const ConversationHistoryResponseSchema = z.object({
+  conversation: z.object({
+    id: z.string().uuid(),
+    title: z.string(),
+    type: z.string(),
+    status: z.string(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+  }),
+  messages: z.array(z.object({
+    id: z.string().uuid(),
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string(),
+    messageType: z.string(),
+    createdAt: z.date(),
+  })),
 });
 
 // Portal Monitoring Validation Schemas
@@ -1674,6 +1714,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching company profile details:", error);
       res.status(500).json({ error: "Failed to fetch company profile details" });
+    }
+  });
+
+  // AI Agent Conversation Endpoints
+  
+  // Process user query and get AI response
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const validationResult = ProcessQueryRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { query, conversationId, userId, conversationType } = validationResult.data;
+      
+      const context = {
+        userId,
+        currentQuery: query,
+        conversationType: conversationType || 'general'
+      };
+
+      const response = await aiAgentOrchestrator.processUserQuery(
+        query,
+        conversationId,
+        context
+      );
+
+      // Ensure response includes conversationId as per architect feedback
+      const formattedResponse = {
+        conversationId: (response as any).conversationId || conversationId,
+        message: response.message,
+        messageType: response.messageType,
+        data: response.data,
+        followUpQuestions: response.followUpQuestions,
+        actionSuggestions: response.actionSuggestions,
+        relatedRfps: response.relatedRfps,
+        researchFindings: response.researchFindings,
+      };
+
+      res.json(formattedResponse);
+    } catch (error) {
+      console.error("Error processing AI chat query:", error);
+      res.status(500).json({ 
+        error: "Failed to process chat query", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get conversation history
+  app.get("/api/ai/conversations/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      if (!conversationId) {
+        return res.status(400).json({ error: "Conversation ID is required" });
+      }
+
+      const conversation = await storage.getAiConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const messages = await storage.getConversationMessages(conversationId);
+
+      res.json({
+        conversation: {
+          id: conversation.id,
+          title: conversation.title,
+          type: conversation.type,
+          status: conversation.status,
+          createdAt: conversation.createdAt,
+          updatedAt: conversation.updatedAt,
+        },
+        messages: messages.map(msg => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          messageType: msg.messageType,
+          createdAt: msg.createdAt,
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching conversation history:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch conversation history", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get user's conversations list
+  app.get("/api/ai/conversations", async (req, res) => {
+    try {
+      const { userId, limit = "50" } = req.query;
+      
+      const conversations = await storage.getAiConversations(
+        userId as string,
+        parseInt(limit as string)
+      );
+
+      res.json(conversations);
+    } catch (error) {
+      console.error("Error fetching conversations:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch conversations", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Update conversation status
+  app.patch("/api/ai/conversations/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const { status } = req.body;
+      
+      if (!conversationId) {
+        return res.status(400).json({ error: "Conversation ID is required" });
+      }
+
+      if (!status || !['active', 'completed', 'archived'].includes(status)) {
+        return res.status(400).json({ error: "Valid status is required (active, completed, archived)" });
+      }
+
+      await aiAgentOrchestrator.updateConversationStatus(conversationId, status);
+      
+      res.json({ success: true, message: "Conversation status updated" });
+    } catch (error) {
+      console.error("Error updating conversation status:", error);
+      res.status(500).json({ 
+        error: "Failed to update conversation status", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get research findings
+  app.get("/api/ai/research-findings", async (req, res) => {
+    try {
+      const { conversationId, type, limit = "50" } = req.query;
+      
+      const findings = await storage.getResearchFindings(
+        conversationId as string,
+        type as string,
+        parseInt(limit as string)
+      );
+
+      res.json(findings);
+    } catch (error) {
+      console.error("Error fetching research findings:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch research findings", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
