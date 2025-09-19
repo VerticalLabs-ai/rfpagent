@@ -514,10 +514,18 @@ async function performPostLoginNavigation(
         };
       });
       
+      // Convert cookies to semicolon-delimited string format expected by MastraScrapingService
+      const cookieString = stagehandCookies
+        .map((cookie: any) => `${cookie.name}=${cookie.value}`)
+        .join('; ');
+      
+      console.log(`🍪 Converted ${stagehandCookies.length} cookies to string format for compatibility`);
+      
       return {
         success: true,
         sessionData: {
-          cookies: puppeteerCookies,
+          cookies: cookieString, // String format expected by MastraScrapingService
+          puppeteerCookies: puppeteerCookies, // Keep object format as backup
           stagehandCookies: stagehandCookies, // Keep original format as backup
           url: finalUrl,
           title: finalTitle
