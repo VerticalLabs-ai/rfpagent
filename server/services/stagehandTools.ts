@@ -231,15 +231,53 @@ async function handleBonfireAuthentication(
     // Post-login navigation handled separately without tight timeout
     return await performPostLoginNavigation(page, targetUrl);
   } catch (error: any) {
-    console.error(`❌ Bonfire Hub authentication error:`, error);
+    const errorContext = {
+      phase: 'bonfire_authentication',
+      targetUrl: targetUrl,
+      loginTimeout: loginTimeout,
+      timestamp: new Date().toISOString(),
+      userAgent: 'Stagehand Browser Automation'
+    };
     
-    // If it's a timeout, provide specific guidance but still throw
+    console.error(`❌ Bonfire Hub authentication error:`, error);
+    console.error(`🔍 Error context:`, errorContext);
+    
+    // Categorize and enhance error with structured information
+    let structuredError = {
+      code: 'BONFIRE_AUTH_UNKNOWN',
+      message: error.message,
+      category: 'authentication',
+      portal: 'bonfire_hub',
+      recoverable: false,
+      context: errorContext
+    };
+    
     if (error.message.includes('timed out')) {
+      structuredError.code = 'BONFIRE_AUTH_TIMEOUT';
+      structuredError.recoverable = true;
       console.error(`🕒 Bonfire Hub authentication timed out - this may indicate credential issues or Euna system problems`);
+    } else if (error.message.includes('2FA required')) {
+      structuredError.code = 'BONFIRE_AUTH_2FA_REQUIRED';
+      structuredError.category = 'authentication_blocked';
+      structuredError.recoverable = false;
+    } else if (error.message.includes('SSO detected')) {
+      structuredError.code = 'BONFIRE_AUTH_SSO_REQUIRED';
+      structuredError.category = 'authentication_blocked';
+      structuredError.recoverable = false;
+    } else if (error.message.includes('still on login page')) {
+      structuredError.code = 'BONFIRE_AUTH_CREDENTIALS_INVALID';
+      structuredError.recoverable = false;
+    } else if (error.message.includes('Password field never appeared')) {
+      structuredError.code = 'BONFIRE_AUTH_FORM_CHANGED';
+      structuredError.recoverable = true;
     }
     
-    // Rethrow the error so it propagates to portal monitoring service
-    throw error;
+    // Create enhanced error with structured data
+    const enhancedError = new Error(structuredError.message);
+    (enhancedError as any).structured = structuredError;
+    
+    // Rethrow the enhanced error so it propagates to portal monitoring service
+    throw enhancedError;
   }
 }
 

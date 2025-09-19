@@ -129,8 +129,9 @@ export class PortalMonitoringService {
 
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Mastra scraping error';
+        const structuredError = (error as any)?.structured;
         
-        // Enhanced error handling for Bonfire Hub authentication issues
+        // Enhanced error handling for Bonfire Hub authentication issues with structured error support
         const isBonfireHub = portal.url.includes('bonfirehub.com') || portal.url.includes('vendor.bonfire');
         const isAuthError = errorMsg.toLowerCase().includes('authentication') || 
                            errorMsg.toLowerCase().includes('login') ||
@@ -139,25 +140,70 @@ export class PortalMonitoringService {
         
         if (isBonfireHub && isAuthError) {
           let specificGuidance = '💡 Bonfire Hub uses Euna Supplier Network authentication. Verify username/password are correct and account is active.';
+          let errorCode = 'BONFIRE_AUTH_UNKNOWN';
+          let isRecoverable = false;
           
-          // Provide specific guidance based on error type
-          if (errorMsg.includes('Password field never appeared')) {
-            specificGuidance = '🔑 Password field issue: The login form may have changed, or 2FA/SSO is required. Check if your account uses single sign-on.';
-          } else if (errorMsg.includes('timed out')) {
-            specificGuidance = '⏰ Authentication timeout: The portal may be slow or experiencing issues. Try again later or check portal status.';
-          } else if (errorMsg.includes('still on login page')) {
-            specificGuidance = '🚫 Login rejected: Check username/password, account status, or if 2FA is required.';
-          } else if (errorMsg.includes('2FA required')) {
-            specificGuidance = '🔐 Two-factor authentication detected: This portal requires manual 2FA verification.';
-          } else if (errorMsg.includes('No observe results found')) {
-            specificGuidance = '🔍 Form field detection failed: The portal login form may have changed structure or be blocked by security features.';
+          // Use structured error information if available
+          if (structuredError) {
+            errorCode = structuredError.code;
+            isRecoverable = structuredError.recoverable;
+            
+            // Provide specific guidance based on structured error code
+            switch (structuredError.code) {
+              case 'BONFIRE_AUTH_TIMEOUT':
+                specificGuidance = '⏰ Authentication timeout: The portal may be slow or experiencing issues. This is recoverable - retry recommended.';
+                break;
+              case 'BONFIRE_AUTH_2FA_REQUIRED':
+                specificGuidance = '🔐 Two-factor authentication detected: This portal requires manual 2FA verification. Account needs manual intervention.';
+                break;
+              case 'BONFIRE_AUTH_SSO_REQUIRED':
+                specificGuidance = '🔗 Single Sign-On detected: This portal uses SSO authentication. Account needs SSO configuration.';
+                break;
+              case 'BONFIRE_AUTH_CREDENTIALS_INVALID':
+                specificGuidance = '🚫 Login rejected: Credentials appear invalid. Check username/password and account status.';
+                break;
+              case 'BONFIRE_AUTH_FORM_CHANGED':
+                specificGuidance = '🔧 Form structure changed: The login form may have been updated. This is recoverable - form detection will adapt.';
+                break;
+              default:
+                specificGuidance = '💡 Bonfire Hub authentication failed. Check credentials and portal status.';
+            }
+          } else {
+            // Fallback to legacy error pattern matching
+            if (errorMsg.includes('Password field never appeared')) {
+              specificGuidance = '🔑 Password field issue: The login form may have changed, or 2FA/SSO is required. Check if your account uses single sign-on.';
+              errorCode = 'BONFIRE_AUTH_FORM_CHANGED';
+              isRecoverable = true;
+            } else if (errorMsg.includes('timed out')) {
+              specificGuidance = '⏰ Authentication timeout: The portal may be slow or experiencing issues. Try again later or check portal status.';
+              errorCode = 'BONFIRE_AUTH_TIMEOUT';
+              isRecoverable = true;
+            } else if (errorMsg.includes('still on login page')) {
+              specificGuidance = '🚫 Login rejected: Check username/password, account status, or if 2FA is required.';
+              errorCode = 'BONFIRE_AUTH_CREDENTIALS_INVALID';
+            } else if (errorMsg.includes('2FA required')) {
+              specificGuidance = '🔐 Two-factor authentication detected: This portal requires manual 2FA verification.';
+              errorCode = 'BONFIRE_AUTH_2FA_REQUIRED';
+            } else if (errorMsg.includes('No observe results found')) {
+              specificGuidance = '🔍 Form field detection failed: The portal login form may have changed structure or be blocked by security features.';
+              errorCode = 'BONFIRE_AUTH_FORM_CHANGED';
+              isRecoverable = true;
+            }
           }
           
-          const enhancedError = `🔥 Bonfire Hub Authentication Error: ${errorMsg}`;
+          const enhancedError = `🔥 Bonfire Hub Authentication Error [${errorCode}]: ${errorMsg}`;
+          const recoveryNote = isRecoverable ? ' (Recoverable - retry recommended)' : ' (Manual intervention required)';
+          
           errors.push(enhancedError);
-          scanManager.log(scanId, 'error', enhancedError);
+          scanManager.log(scanId, 'error', enhancedError + recoveryNote);
           scanManager.log(scanId, 'info', specificGuidance);
-          console.error(`🔥 Bonfire Hub authentication failed for ${portal.name}:`, error);
+          
+          // Log structured error details for debugging
+          if (structuredError) {
+            scanManager.log(scanId, 'info', `Error context: Phase=${structuredError.context?.phase}, URL=${structuredError.context?.targetUrl}`);
+          }
+          
+          console.error(`🔥 Bonfire Hub authentication failed for ${portal.name} [${errorCode}]:`, error);
         } else {
           errors.push(errorMsg);
           scanManager.log(scanId, 'error', `Error in Mastra/Browserbase scraping: ${errorMsg}`);
