@@ -16,6 +16,8 @@ import { ObjectStorageService } from "./objectStorage";
 import { PortalMonitoringService } from "./services/portal-monitoring-service";
 import { PortalSchedulerService } from "./services/portal-scheduler-service";
 import { aiProposalService } from "./services/ai-proposal-service";
+import { enhancedProposalService } from "./services/enhancedProposalService";
+import { documentIntelligenceService } from "./services/documentIntelligenceService";
 import { scanManager } from "./services/scan-manager";
 import { z } from "zod";
 
@@ -395,6 +397,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error approving proposal:", error);
       res.status(500).json({ error: "Failed to approve proposal" });
+    }
+  });
+
+  // Enhanced Proposal Generation Endpoints
+  app.post("/api/proposals/enhanced/generate", async (req, res) => {
+    try {
+      const { rfpId, companyProfileId, generatePricing = true, autoSubmit = false } = req.body;
+
+      if (!rfpId) {
+        return res.status(400).json({ error: "RFP ID is required" });
+      }
+
+      console.log(`🚀 Starting enhanced proposal generation for RFP: ${rfpId}`);
+
+      // Generate proposal using enhanced service
+      const result = await enhancedProposalService.generateProposal({
+        rfpId,
+        companyProfileId,
+        generatePricing,
+        autoSubmit
+      });
+
+      res.json({
+        message: "Enhanced proposal generation completed",
+        result
+      });
+    } catch (error) {
+      console.error("Error in enhanced proposal generation:", error);
+      res.status(500).json({ 
+        error: "Failed to generate enhanced proposal", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.get("/api/proposals/enhanced/status/:rfpId", async (req, res) => {
+    try {
+      const { rfpId } = req.params;
+      const status = await enhancedProposalService.getGenerationStatus(rfpId);
+      res.json(status);
+    } catch (error) {
+      console.error("Error getting proposal generation status:", error);
+      res.status(500).json({ error: "Failed to get proposal generation status" });
+    }
+  });
+
+  // Document Intelligence Analysis Endpoints
+  app.post("/api/documents/analyze/:rfpId", async (req, res) => {
+    try {
+      const { rfpId } = req.params;
+      
+      console.log(`📊 Analyzing documents for RFP: ${rfpId}`);
+      const analysis = await documentIntelligenceService.analyzeRFPDocuments(rfpId);
+      
+      res.json({
+        message: "Document analysis completed",
+        analysis
+      });
+    } catch (error) {
+      console.error("Error analyzing RFP documents:", error);
+      res.status(500).json({ 
+        error: "Failed to analyze documents", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  app.post("/api/documents/autofill/:rfpId", async (req, res) => {
+    try {
+      const { rfpId } = req.params;
+      const { formFields, companyProfileId } = req.body;
+
+      if (!formFields || !Array.isArray(formFields)) {
+        return res.status(400).json({ error: "Form fields array is required" });
+      }
+
+      console.log(`🏢 Auto-filling ${formFields.length} form fields for RFP: ${rfpId}`);
+      const filledFields = await documentIntelligenceService.autoFillFormFields(
+        rfpId, 
+        formFields, 
+        companyProfileId
+      );
+
+      res.json({
+        message: "Form fields auto-filled",
+        filledFields
+      });
+    } catch (error) {
+      console.error("Error auto-filling form fields:", error);
+      res.status(500).json({ 
+        error: "Failed to auto-fill form fields", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
