@@ -60,10 +60,8 @@ export class ManualRfpService {
       const rfpId = await this.createManualRfpEntry(rfpData, input);
       console.log(`[ManualRfpService] Created manual RFP with ID: ${rfpId}`);
 
-      // Step 4: Trigger document processing if applicable
-      if (rfpData.hasDocuments) {
-        await this.triggerDocumentProcessing(rfpId);
-      }
+      // Step 4: Trigger comprehensive processing for all manual RFPs
+      await this.triggerDocumentProcessing(rfpId);
 
       // Step 5: Create notification
       await storage.createNotification({
@@ -344,7 +342,7 @@ If any field cannot be determined, use null or empty values.`;
 
   private async triggerDocumentProcessing(rfpId: string) {
     try {
-      console.log(`[ManualRfpService] Triggering document processing for RFP: ${rfpId}`);
+      console.log(`[ManualRfpService] Triggering comprehensive processing for RFP: ${rfpId}`);
       
       // Update RFP status to indicate processing has started
       await storage.updateRFP(rfpId, {
@@ -353,28 +351,121 @@ If any field cannot be determined, use null or empty values.`;
         updatedAt: new Date()
       });
 
-      // The document intelligence service will handle the processing
-      // This could be enhanced to queue background jobs
+      // Trigger enhanced proposal generation workflow
+      this.triggerEnhancedProposalGeneration(rfpId);
       
     } catch (error) {
       console.error('[ManualRfpService] Error triggering document processing:', error);
     }
   }
 
+  private async triggerEnhancedProposalGeneration(rfpId: string) {
+    try {
+      console.log(`[ManualRfpService] Starting enhanced proposal generation for RFP: ${rfpId}`);
+      
+      // Import the enhanced proposal service dynamically to avoid circular dependencies
+      const { enhancedProposalService } = await import('./enhancedProposalService.js');
+      
+      // Trigger comprehensive proposal generation in the background
+      enhancedProposalService.generateProposal({
+        rfpId: rfpId,
+        generatePricing: true,
+        autoSubmit: false, // Manual RFPs should not auto-submit
+        companyProfileId: undefined // Use default company profile
+      })
+        .then(result => {
+          console.log(`[ManualRfpService] Enhanced proposal generation completed for RFP: ${rfpId}`, result);
+          
+          // Create success notification
+          storage.createNotification({
+            type: 'success',
+            title: 'Manual RFP Processing Complete',
+            message: `RFP processing has completed. ${result.humanActionItems?.length || 0} action items require your attention.`,
+            relatedEntityType: 'rfp',
+            relatedEntityId: rfpId,
+            isRead: false
+          });
+        })
+        .catch(error => {
+          console.error(`[ManualRfpService] Enhanced proposal generation failed for RFP: ${rfpId}`, error);
+          
+          // Create error notification
+          storage.createNotification({
+            type: 'error',
+            title: 'Manual RFP Processing Failed',
+            message: `Processing failed for manually added RFP. Please review and try again.`,
+            relatedEntityType: 'rfp',
+            relatedEntityId: rfpId,
+            isRead: false
+          });
+          
+          // Update RFP status to indicate error
+          storage.updateRFP(rfpId, {
+            status: 'discovered',
+            progress: 10,
+            updatedAt: new Date()
+          });
+        });
+        
+    } catch (error) {
+      console.error('[ManualRfpService] Error triggering enhanced proposal generation:', error);
+    }
+  }
+
   private async scrapePageContent(url: string): Promise<string> {
     try {
-      // Simple fetch-based scraping for generic pages
-      const response = await fetch(url);
+      // SECURITY: Validate URL and prevent SSRF attacks
+      const parsedUrl = new URL(url);
+      
+      // Only allow HTTP/HTTPS protocols
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new Error('Only HTTP/HTTPS URLs are allowed');
+      }
+      
+      // Block private/local IP ranges and localhost
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const blockedHosts = [
+        'localhost', '127.0.0.1', '::1',
+        '10.', '172.16.', '172.17.', '172.18.', '172.19.', '172.20.',
+        '172.21.', '172.22.', '172.23.', '172.24.', '172.25.', '172.26.',
+        '172.27.', '172.28.', '172.29.', '172.30.', '172.31.',
+        '192.168.', '169.254.'
+      ];
+      
+      if (blockedHosts.some(blocked => hostname.includes(blocked))) {
+        throw new Error('Access to private/local networks is not allowed');
+      }
+      
+      // Fetch with security restrictions
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'RFP-Agent/1.0 (Automated RFP Processing)'
+        }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // Check response size (limit to 5MB)
+      const contentLength = response.headers.get('content-length');
+      if (contentLength && parseInt(contentLength) > 5 * 1024 * 1024) {
+        throw new Error('Response too large (max 5MB)');
+      }
+      
       const html = await response.text();
       
-      // Basic text extraction (could be enhanced with better parsing)
+      // Basic text extraction with size limits
       const textContent = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
                               .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
                               .replace(/<[^>]*>/g, ' ')
                               .replace(/\s+/g, ' ')
-                              .trim();
+                              .trim()
+                              .slice(0, 10000); // Limit content size
                               
-      return textContent.slice(0, 10000); // Limit content size
+      return textContent;
     } catch (error) {
       console.error('[ManualRfpService] Error scraping page content:', error);
       return 'Unable to scrape page content';
