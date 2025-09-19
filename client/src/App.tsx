@@ -6,6 +6,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/dashboard";
 import RFPDiscovery from "@/pages/rfp-discovery";
 import RFPDetails from "@/pages/rfp-details";
+import RFPs from "@/pages/rfps";
+import ScanHistory from "@/pages/scan-history";
 import Proposals from "@/pages/proposals";
 import Compliance from "@/pages/compliance";
 import Submissions from "@/pages/submissions";
@@ -26,7 +28,10 @@ function Router() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/discovery" component={RFPDiscovery} />
+            <Route path="/rfps" component={RFPs} />
             <Route path="/rfps/:id" component={RFPDetails} />
+            <Route path="/scan-history" component={ScanHistory} />
+            <Route path="/portals" component={PortalSettings} />
             <Route path="/proposals" component={Proposals} />
             <Route path="/compliance" component={Compliance} />
             <Route path="/submissions" component={Submissions} />

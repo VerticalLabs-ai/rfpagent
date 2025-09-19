@@ -84,11 +84,37 @@ export class MastraScrapingService {
       // Set cookies if we have session data
       if (sessionData?.cookies) {
         console.log(`🍪 Setting session cookies for authentication`);
-        // Parse cookies and set them
-        const cookies = sessionData.cookies.split(';').map((cookie: string) => {
-          const [name, value] = cookie.trim().split('=');
-          return { name, value, domain: new URL(url).hostname };
-        });
+        // Handle cookie data properly - cookies can be object array or semicolon-delimited string
+        let cookies;
+        if (Array.isArray(sessionData.cookies)) {
+          // Already in the correct format from Stagehand
+          cookies = sessionData.cookies.map((cookie: any) => ({
+            name: cookie.name,
+            value: cookie.value,
+            domain: cookie.domain || new URL(url).hostname,
+            path: cookie.path || '/',
+            httpOnly: cookie.httpOnly,
+            secure: cookie.secure
+          }));
+        } else if (typeof sessionData.cookies === 'string') {
+          // Parse semicolon-delimited string, but only extract name=value pairs
+          cookies = sessionData.cookies.split(';')
+            .map((cookieStr: string) => {
+              const trimmed = cookieStr.trim();
+              const equalPos = trimmed.indexOf('=');
+              if (equalPos === -1) return null; // Skip malformed cookies
+              const name = trimmed.substring(0, equalPos);
+              const value = trimmed.substring(equalPos + 1);
+              // Skip cookie attributes (Path, Domain, Expires, etc.)
+              if (['Path', 'Domain', 'Expires', 'Max-Age', 'Secure', 'HttpOnly', 'SameSite'].includes(name)) {
+                return null;
+              }
+              return { name, value, domain: new URL(url).hostname };
+            })
+            .filter((cookie): cookie is { name: string; value: string; domain: string } => cookie !== null);
+        } else {
+          cookies = [];
+        }
         await page.setCookie(...cookies);
       }
 

@@ -3,11 +3,31 @@ import { storage } from "../storage";
 import type { RFP } from "@shared/schema";
 
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR
 });
 
+// Check if OpenAI API key is available
+if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
+  console.warn("Warning: OpenAI API key not found. AI features will be limited.");
+}
+
 export class AIService {
+  private checkApiKeyAvailable(): boolean {
+    return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
+  }
+
   async analyzeDocumentCompliance(documentText: string, rfpContext: any): Promise<any> {
+    if (!this.checkApiKeyAvailable()) {
+      console.warn("OpenAI API key not available - returning basic compliance analysis");
+      return {
+        requirements: [{ type: "general", description: "Review document for compliance requirements", mandatory: true }],
+        deadlines: [],
+        riskFlags: [],
+        evaluationCriteria: [],
+        mandatoryFields: []
+      };
+    }
+    
     try {
       const prompt = `
 Analyze this RFP document and extract compliance requirements, deadlines, and risk factors. 
@@ -32,7 +52,7 @@ ${documentText}
 `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: process.env.OPENAI_MODEL || "gpt-4", // Use configurable model, fallback to stable gpt-4
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" },
         temperature: 0.3
@@ -47,6 +67,11 @@ ${documentText}
   }
 
   async generateProposal(rfp: RFP): Promise<void> {
+    if (!this.checkApiKeyAvailable()) {
+      console.warn("OpenAI API key not available - skipping proposal generation");
+      return;
+    }
+    
     try {
       // Get related documents for context
       const documents = await storage.getDocumentsByRFP(rfp.id);
@@ -149,7 +174,7 @@ Use professional language suitable for government procurement.
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: process.env.OPENAI_MODEL || "gpt-4", // Use configurable model, fallback to stable gpt-4
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.4
@@ -195,7 +220,7 @@ Target 40% gross margin. Be competitive but profitable.
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+      model: process.env.OPENAI_MODEL || "gpt-4", // Use configurable model, fallback to stable gpt-4
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
       temperature: 0.3
@@ -206,6 +231,11 @@ Target 40% gross margin. Be competitive but profitable.
   }
 
   async extractRFPDetails(scrapedContent: string, sourceUrl: string): Promise<any> {
+    if (!this.checkApiKeyAvailable()) {
+      console.warn("OpenAI API key not available - using basic RFP extraction");
+      return null;
+    }
+    
     try {
       const prompt = `
 Extract structured RFP information from this scraped content. Analyze ANY legitimate government contract, procurement, or solicitation opportunity.
@@ -245,7 +275,7 @@ Content: ${scrapedContent}
 `;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
+        model: process.env.OPENAI_MODEL || "gpt-4", // Use configurable model, fallback to stable gpt-4
         messages: [{ role: "user", content: prompt }],
         response_format: { type: "json_object" }
       });
