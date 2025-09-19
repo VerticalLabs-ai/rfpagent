@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "./ObjectUploader";
@@ -17,6 +19,9 @@ export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
+  const [manualRfpUrl, setManualRfpUrl] = useState("");
+  const [manualRfpNotes, setManualRfpNotes] = useState("");
+  const [manualRfpDialogOpen, setManualRfpDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: rfpData, isLoading } = useQuery({
@@ -78,6 +83,30 @@ export default function ActiveRFPsTable() {
       toast({
         title: "Submission Failed",
         description: "Failed to start the submission process. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const manualRfpMutation = useMutation({
+    mutationFn: async (data: { url: string; userNotes?: string }) => {
+      return apiRequest("POST", "/api/rfps/manual", data);
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Manual RFP Added Successfully",
+        description: `RFP has been added and processing has begun. You can track its progress in the table.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/rfps"] });
+      setManualRfpUrl("");
+      setManualRfpNotes("");
+      setManualRfpDialogOpen(false);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.message || "Failed to process the RFP URL. Please check the URL and try again.";
+      toast({
+        title: "Manual RFP Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -193,7 +222,7 @@ export default function ActiveRFPsTable() {
               </SelectContent>
             </Select>
 
-            <Dialog>
+            <Dialog open={manualRfpDialogOpen} onOpenChange={setManualRfpDialogOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="manual-rfp-button">
                   <i className="fas fa-plus mr-2"></i>Manual RFP
@@ -203,10 +232,109 @@ export default function ActiveRFPsTable() {
                 <DialogHeader>
                   <DialogTitle>Add Manual RFP</DialogTitle>
                 </DialogHeader>
-                <div className="text-center py-8">
-                  <i className="fas fa-file-plus text-4xl text-muted-foreground mb-4"></i>
-                  <p className="text-muted-foreground">Manual RFP entry form would be implemented here</p>
-                </div>
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!manualRfpUrl.trim()) {
+                      toast({
+                        title: "URL Required",
+                        description: "Please enter a valid RFP URL",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    manualRfpMutation.mutate({
+                      url: manualRfpUrl.trim(),
+                      userNotes: manualRfpNotes.trim() || undefined,
+                    });
+                  }}
+                  className="space-y-6"
+                >
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="rfp-url" className="text-sm font-medium">
+                        RFP URL <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="rfp-url"
+                        type="url"
+                        placeholder="https://example.com/rfp/12345"
+                        value={manualRfpUrl}
+                        onChange={(e) => setManualRfpUrl(e.target.value)}
+                        className="mt-1"
+                        required
+                        data-testid="manual-rfp-url-input"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter the URL of any RFP from any portal platform. Our AI will analyze and process it automatically.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="rfp-notes" className="text-sm font-medium">
+                        Notes (Optional)
+                      </Label>
+                      <Textarea
+                        id="rfp-notes"
+                        placeholder="Add any notes, requirements, or special instructions for this RFP..."
+                        value={manualRfpNotes}
+                        onChange={(e) => setManualRfpNotes(e.target.value)}
+                        className="mt-1 min-h-20"
+                        data-testid="manual-rfp-notes-input"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        These notes will be included with the RFP for reference during processing.
+                      </p>
+                    </div>
+
+                    <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="flex items-start space-x-3">
+                        <i className="fas fa-info-circle text-blue-600 mt-0.5"></i>
+                        <div>
+                          <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                            How Manual RFP Processing Works
+                          </h4>
+                          <ul className="text-xs text-blue-800 dark:text-blue-200 mt-2 space-y-1">
+                            <li>• AI analyzes the URL and extracts RFP information</li>
+                            <li>• Documents are automatically downloaded and processed</li>
+                            <li>• Competitive pricing research is conducted</li>
+                            <li>• Human oversight requirements are identified</li>
+                            <li>• Complete proposal generation begins automatically</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4 border-t">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setManualRfpDialogOpen(false)}
+                      disabled={manualRfpMutation.isPending}
+                      data-testid="manual-rfp-cancel-button"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={manualRfpMutation.isPending || !manualRfpUrl.trim()}
+                      data-testid="manual-rfp-submit-button"
+                    >
+                      {manualRfpMutation.isPending ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin mr-2"></i>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-plus mr-2"></i>
+                          Add RFP
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>
