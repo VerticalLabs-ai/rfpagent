@@ -1,6 +1,7 @@
 import {
   users, portals, rfps, proposals, documents, submissions, auditLogs, notifications, scans, scanEvents,
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
+  aiConversations, conversationMessages, researchFindings, historicalBids,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
@@ -8,7 +9,9 @@ import {
   type ScanEvent, type InsertScanEvent, type CompanyProfile, type InsertCompanyProfile,
   type CompanyAddress, type InsertCompanyAddress, type CompanyContact, type InsertCompanyContact,
   type CompanyIdentifier, type InsertCompanyIdentifier, type CompanyCertification, type InsertCompanyCertification,
-  type CompanyInsurance, type InsertCompanyInsurance
+  type CompanyInsurance, type InsertCompanyInsurance, type AiConversation, type InsertAiConversation,
+  type ConversationMessage, type InsertConversationMessage, type ResearchFinding, type InsertResearchFinding,
+  type HistoricalBid, type InsertHistoricalBid
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, gte, lte, count, sql } from "drizzle-orm";
@@ -120,6 +123,34 @@ export interface IStorage {
   appendScanEvent(event: InsertScanEvent): Promise<ScanEvent>;
   getScanEvents(scanId: string): Promise<ScanEvent[]>;
   getScanHistory(portalId: string, limit?: number): Promise<Scan[]>;
+
+  // AI Conversation Operations
+  getAiConversation(id: string): Promise<AiConversation | undefined>;
+  getAiConversations(userId?: string, limit?: number): Promise<AiConversation[]>;
+  createAiConversation(conversation: InsertAiConversation): Promise<AiConversation>;
+  updateAiConversation(id: string, updates: Partial<AiConversation>): Promise<AiConversation>;
+  deleteAiConversation(id: string): Promise<void>;
+
+  // Conversation Messages
+  getConversationMessage(id: string): Promise<ConversationMessage | undefined>;
+  getConversationMessages(conversationId: string, limit?: number): Promise<ConversationMessage[]>;
+  createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage>;
+  updateConversationMessage(id: string, updates: Partial<ConversationMessage>): Promise<ConversationMessage>;
+
+  // Research Findings
+  getResearchFinding(id: string): Promise<ResearchFinding | undefined>;
+  getResearchFindings(conversationId?: string, type?: string, limit?: number): Promise<ResearchFinding[]>;
+  createResearchFinding(finding: InsertResearchFinding): Promise<ResearchFinding>;
+  updateResearchFinding(id: string, updates: Partial<ResearchFinding>): Promise<ResearchFinding>;
+
+  // Historical Bids
+  getHistoricalBid(id: string): Promise<HistoricalBid | undefined>;
+  getHistoricalBids(filters?: { category?: string; agency?: string; limit?: number }): Promise<HistoricalBid[]>;
+  createHistoricalBid(bid: InsertHistoricalBid): Promise<HistoricalBid>;
+  updateHistoricalBid(id: string, updates: Partial<HistoricalBid>): Promise<HistoricalBid>;
+
+  // Additional RFP methods needed by orchestrator
+  getRFPs(filters?: { status?: string; category?: string; location?: string; limit?: number }): Promise<RFP[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -901,6 +932,225 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(scans.portalId, portalId), or(eq(scans.status, 'completed'), eq(scans.status, 'failed'))))
       .orderBy(desc(scans.startedAt))
       .limit(limit);
+  }
+
+  // AI Conversation Operations
+  async getAiConversation(id: string): Promise<AiConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(aiConversations)
+      .where(eq(aiConversations.id, id))
+      .limit(1);
+    return conversation;
+  }
+
+  async getAiConversations(userId?: string, limit: number = 50): Promise<AiConversation[]> {
+    let query = db
+      .select()
+      .from(aiConversations);
+    
+    if (userId) {
+      query = query.where(eq(aiConversations.userId, userId));
+    }
+    
+    return await query
+      .orderBy(desc(aiConversations.createdAt))
+      .limit(limit);
+  }
+
+  async createAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
+    const [newConversation] = await db
+      .insert(aiConversations)
+      .values(conversation)
+      .returning();
+    return newConversation;
+  }
+
+  async updateAiConversation(id: string, updates: Partial<AiConversation>): Promise<AiConversation> {
+    const [updatedConversation] = await db
+      .update(aiConversations)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(aiConversations.id, id))
+      .returning();
+    return updatedConversation;
+  }
+
+  async deleteAiConversation(id: string): Promise<void> {
+    await db
+      .delete(aiConversations)
+      .where(eq(aiConversations.id, id));
+  }
+
+  // Conversation Messages
+  async getConversationMessage(id: string): Promise<ConversationMessage | undefined> {
+    const [message] = await db
+      .select()
+      .from(conversationMessages)
+      .where(eq(conversationMessages.id, id))
+      .limit(1);
+    return message;
+  }
+
+  async getConversationMessages(conversationId: string, limit: number = 100): Promise<ConversationMessage[]> {
+    return await db
+      .select()
+      .from(conversationMessages)
+      .where(eq(conversationMessages.conversationId, conversationId))
+      .orderBy(asc(conversationMessages.createdAt))
+      .limit(limit);
+  }
+
+  async createConversationMessage(message: InsertConversationMessage): Promise<ConversationMessage> {
+    const [newMessage] = await db
+      .insert(conversationMessages)
+      .values(message)
+      .returning();
+    return newMessage;
+  }
+
+  async updateConversationMessage(id: string, updates: Partial<ConversationMessage>): Promise<ConversationMessage> {
+    const [updatedMessage] = await db
+      .update(conversationMessages)
+      .set(updates)
+      .where(eq(conversationMessages.id, id))
+      .returning();
+    return updatedMessage;
+  }
+
+  // Research Findings
+  async getResearchFinding(id: string): Promise<ResearchFinding | undefined> {
+    const [finding] = await db
+      .select()
+      .from(researchFindings)
+      .where(eq(researchFindings.id, id))
+      .limit(1);
+    return finding;
+  }
+
+  async getResearchFindings(conversationId?: string, type?: string, limit: number = 50): Promise<ResearchFinding[]> {
+    let query = db
+      .select()
+      .from(researchFindings);
+    
+    const conditions = [];
+    if (conversationId) {
+      conditions.push(eq(researchFindings.conversationId, conversationId));
+    }
+    if (type) {
+      conditions.push(eq(researchFindings.type, type));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query
+      .orderBy(desc(researchFindings.createdAt))
+      .limit(limit);
+  }
+
+  async createResearchFinding(finding: InsertResearchFinding): Promise<ResearchFinding> {
+    const [newFinding] = await db
+      .insert(researchFindings)
+      .values(finding)
+      .returning();
+    return newFinding;
+  }
+
+  async updateResearchFinding(id: string, updates: Partial<ResearchFinding>): Promise<ResearchFinding> {
+    const [updatedFinding] = await db
+      .update(researchFindings)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(researchFindings.id, id))
+      .returning();
+    return updatedFinding;
+  }
+
+  // Historical Bids
+  async getHistoricalBid(id: string): Promise<HistoricalBid | undefined> {
+    const [bid] = await db
+      .select()
+      .from(historicalBids)
+      .where(eq(historicalBids.id, id))
+      .limit(1);
+    return bid;
+  }
+
+  async getHistoricalBids(filters?: { category?: string; agency?: string; limit?: number }): Promise<HistoricalBid[]> {
+    let query = db
+      .select()
+      .from(historicalBids);
+    
+    const conditions = [];
+    if (filters?.category) {
+      conditions.push(eq(historicalBids.category, filters.category));
+    }
+    if (filters?.agency) {
+      conditions.push(eq(historicalBids.agency, filters.agency));
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query
+      .orderBy(desc(historicalBids.createdAt))
+      .limit(filters?.limit || 50);
+  }
+
+  async createHistoricalBid(bid: InsertHistoricalBid): Promise<HistoricalBid> {
+    const [newBid] = await db
+      .insert(historicalBids)
+      .values(bid)
+      .returning();
+    return newBid;
+  }
+
+  async updateHistoricalBid(id: string, updates: Partial<HistoricalBid>): Promise<HistoricalBid> {
+    const [updatedBid] = await db
+      .update(historicalBids)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(historicalBids.id, id))
+      .returning();
+    return updatedBid;
+  }
+
+  // Additional RFP methods needed by orchestrator
+  async getRFPs(filters?: { status?: string; category?: string; location?: string; limit?: number }): Promise<RFP[]> {
+    let query = db
+      .select()
+      .from(rfps);
+    
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(rfps.status, filters.status));
+    }
+    if (filters?.category) {
+      const categoryTerm = `%${filters.category}%`;
+      conditions.push(
+        or(
+          sql`${rfps.title} ILIKE ${categoryTerm}`,
+          sql`${rfps.description} ILIKE ${categoryTerm}`
+        )
+      );
+    }
+    if (filters?.location) {
+      const locationTerm = `%${filters.location}%`;
+      conditions.push(
+        or(
+          sql`${rfps.title} ILIKE ${locationTerm}`,
+          sql`${rfps.agency} ILIKE ${locationTerm}`
+        )
+      );
+    }
+    
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query
+      .orderBy(desc(rfps.discoveredAt))
+      .limit(filters?.limit || 50);
   }
 }
 

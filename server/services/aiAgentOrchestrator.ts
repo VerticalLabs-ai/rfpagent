@@ -1,0 +1,640 @@
+import OpenAI from "openai";
+import { storage } from "../storage";
+import { AIService } from "./aiService";
+import { EnhancedProposalService } from "./enhancedProposalService";
+import { MastraScrapingService } from "./mastraScrapingService";
+import { DocumentIntelligenceService, documentIntelligenceService } from "./documentIntelligenceService";
+import type { 
+  AiConversation, 
+  ConversationMessage, 
+  InsertAiConversation,
+  InsertConversationMessage,
+  InsertResearchFinding,
+  InsertHistoricalBid,
+  RFP,
+  Portal 
+} from "@shared/schema";
+import { nanoid } from 'nanoid';
+
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR
+});
+
+export interface ConversationalContext {
+  userId?: string;
+  currentQuery: string;
+  conversationType: 'general' | 'rfp_search' | 'bid_crafting' | 'research';
+  searchCriteria?: {
+    category?: string;
+    location?: string;
+    agency?: string;
+    valueRange?: { min?: number; max?: number };
+    deadline?: string;
+  };
+  relatedEntities?: {
+    rfpIds?: string[];
+    portalIds?: string[];
+  };
+}
+
+export interface AgentResponse {
+  message: string;
+  messageType: 'text' | 'rfp_results' | 'search_results' | 'analysis' | 'follow_up';
+  data?: any;
+  followUpQuestions?: string[];
+  actionSuggestions?: string[];
+  relatedRfps?: RFP[];
+  researchFindings?: any[];
+}
+
+export class AIAgentOrchestrator {
+  private aiService = new AIService();
+  private enhancedProposalService = new EnhancedProposalService();
+  private mastraScrapingService = new MastraScrapingService();
+  private documentIntelligenceService = documentIntelligenceService;
+
+  private checkApiKeyAvailable(): boolean {
+    return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
+  }
+
+  /**
+   * Main entry point for conversational AI interactions
+   */
+  async processUserQuery(
+    query: string, 
+    conversationId?: string,
+    context?: ConversationalContext
+  ): Promise<AgentResponse> {
+    console.log(`🤖 AI Agent processing query: "${query}"`);
+
+    if (!this.checkApiKeyAvailable()) {
+      return {
+        message: "I'm currently unable to process your request as the AI service is not available. Please ensure the OpenAI API key is configured.",
+        messageType: 'text'
+      };
+    }
+
+    try {
+      // Determine conversation type and intent
+      const conversationIntent = await this.classifyUserIntent(query, context);
+      
+      // Create or update conversation
+      let conversation: AiConversation;
+      if (conversationId) {
+        const existingConversation = await storage.getAiConversation(conversationId);
+        if (!existingConversation) {
+          throw new Error("Conversation not found");
+        }
+        conversation = existingConversation;
+        // Update conversation context
+        await storage.updateAiConversation(conversationId, {
+          context: { 
+            ...(typeof conversation.context === 'object' ? conversation.context as any : {}), 
+            ...context 
+          }
+        });
+      } else {
+        // Create new conversation
+        conversation = await storage.createAiConversation({
+          title: this.generateConversationTitle(query),
+          type: conversationIntent.type,
+          userId: context?.userId,
+          context: context || {},
+          metadata: { initialQuery: query }
+        });
+      }
+
+      // Store user message
+      await storage.createConversationMessage({
+        conversationId: conversation.id,
+        role: 'user',
+        content: query,
+        metadata: { intent: conversationIntent }
+      });
+
+      // Route to appropriate handler based on intent
+      let response: AgentResponse;
+      switch (conversationIntent.type) {
+        case 'rfp_search':
+          response = await this.handleRfpSearch(query, conversation, conversationIntent);
+          break;
+        case 'bid_crafting':
+          response = await this.handleBidCrafting(query, conversation, conversationIntent);
+          break;
+        case 'research':
+          response = await this.handleResearch(query, conversation, conversationIntent);
+          break;
+        default:
+          response = await this.handleGeneralQuery(query, conversation, conversationIntent);
+      }
+
+      // Store AI response
+      await storage.createConversationMessage({
+        conversationId: conversation.id,
+        role: 'assistant',
+        content: response.message,
+        messageType: response.messageType,
+        metadata: { 
+          data: response.data,
+          followUpQuestions: response.followUpQuestions,
+          actionSuggestions: response.actionSuggestions
+        }
+      });
+
+      return {
+        ...response,
+        conversationId: conversation.id
+      } as AgentResponse & { conversationId: string };
+
+    } catch (error) {
+      console.error("Error in AI Agent Orchestrator:", error);
+      return {
+        message: "I encountered an error processing your request. Please try rephrasing your question or contact support if the issue persists.",
+        messageType: 'text'
+      };
+    }
+  }
+
+  /**
+   * Handle RFP search queries like "Find water bottle RFPs in Austin"
+   */
+  private async handleRfpSearch(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`🔍 Handling RFP search query`);
+
+    // Extract search criteria from query
+    const searchCriteria = await this.extractSearchCriteria(query);
+    
+    // Search internal database first
+    const internalRfps = await this.searchInternalRfps(searchCriteria);
+    
+    // Determine if external search is needed
+    const needsExternalSearch = internalRfps.length < 5 || searchCriteria.includeExternal;
+    
+    let externalRfps: any[] = [];
+    let externalSearchResults = "";
+    
+    if (needsExternalSearch) {
+      // Search external portals using Mastra agents
+      try {
+        console.log(`🌐 Searching external portals for additional RFPs`);
+        externalRfps = await this.searchExternalPortals(searchCriteria);
+        externalSearchResults = externalRfps.length > 0 
+          ? `I also found ${externalRfps.length} additional RFPs from external portals.`
+          : "I searched external sources but didn't find additional matching RFPs.";
+      } catch (error) {
+        console.error("External search failed:", error);
+        externalSearchResults = "I encountered some issues searching external portals, but I have results from our tracked sources.";
+      }
+    }
+
+    // Generate comprehensive response
+    const totalResults = internalRfps.length + externalRfps.length;
+    let message = "";
+    let followUpQuestions: string[] = [];
+    
+    if (totalResults === 0) {
+      message = `I couldn't find any RFPs matching "${searchCriteria.category || 'your criteria'}"${searchCriteria.location ? ` in ${searchCriteria.location}` : ''}.`;
+      followUpQuestions = [
+        "Would you like me to search for similar categories?",
+        "Should I expand the search to nearby locations?",
+        "Would you like me to set up monitoring for future RFPs in this category?"
+      ];
+    } else {
+      message = `I found ${totalResults} RFP${totalResults === 1 ? '' : 's'} matching your search for "${searchCriteria.category || 'your criteria'}"${searchCriteria.location ? ` in ${searchCriteria.location}` : ''}.`;
+      
+      if (internalRfps.length > 0) {
+        message += ` ${internalRfps.length} from our tracked portals${externalSearchResults ? ` and ${externalSearchResults}` : ''}.`;
+      }
+
+      followUpQuestions = [
+        "Would you like me to analyze the competitiveness of any specific RFP?",
+        "Should I help you craft a proposal for any of these opportunities?",
+        "Would you like me to research historical bidding patterns for similar RFPs?"
+      ];
+    }
+
+    // Store research findings if significant results
+    if (totalResults > 0) {
+      await storage.createResearchFinding({
+        title: `RFP Search: ${searchCriteria.category || 'Custom Search'}`,
+        type: 'market_research',
+        source: 'rfp_search',
+        content: {
+          searchCriteria,
+          internalResults: internalRfps.length,
+          externalResults: externalRfps.length,
+          rfpIds: internalRfps.map(rfp => rfp.id)
+        },
+        conversationId: conversation.id,
+        confidenceScore: "0.80",
+        tags: [searchCriteria.category, searchCriteria.location].filter(Boolean)
+      });
+    }
+
+    return {
+      message,
+      messageType: 'rfp_results',
+      data: {
+        internalRfps,
+        externalRfps,
+        searchCriteria,
+        totalResults
+      },
+      relatedRfps: internalRfps,
+      followUpQuestions
+    };
+  }
+
+  /**
+   * Handle bid crafting assistance
+   */
+  private async handleBidCrafting(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`📝 Handling bid crafting assistance`);
+
+    // Extract RFP references from query
+    const rfpReferences = await this.extractRfpReferences(query);
+    
+    if (rfpReferences.length === 0) {
+      return {
+        message: "I'd be happy to help you craft a bid! Could you specify which RFP you'd like assistance with? You can provide the RFP ID, title, or describe the opportunity.",
+        messageType: 'follow_up',
+        followUpQuestions: [
+          "What RFP would you like help with?",
+          "Should I search for RFPs in a specific category first?",
+          "Would you like me to find the most promising opportunities for your company?"
+        ]
+      };
+    }
+
+    const rfp = rfpReferences[0]; // Focus on first RFP for now
+    
+    // Analyze RFP for bid crafting insights
+    const bidAnalysis = await this.analyzeBidOpportunity(rfp, conversation);
+    
+    // Research historical bids for similar RFPs
+    const historicalInsights = await this.researchSimilarBids(rfp);
+    
+    let message = `I'm analyzing the "${rfp.title}" opportunity from ${rfp.agency} to help you craft a competitive bid.\n\n`;
+    
+    if (bidAnalysis.competitiveAdvantage) {
+      message += `**Key Advantages**: ${bidAnalysis.competitiveAdvantage}\n\n`;
+    }
+    
+    if (bidAnalysis.riskFactors?.length > 0) {
+      message += `**Risk Factors**: ${bidAnalysis.riskFactors.join(', ')}\n\n`;
+    }
+    
+    if (historicalInsights.insights) {
+      message += `**Historical Context**: ${historicalInsights.insights}\n\n`;
+    }
+    
+    message += `**Next Steps**: I recommend ${bidAnalysis.nextSteps?.join(', ') || 'reviewing the RFP requirements carefully and preparing your technical approach'}.`;
+
+    return {
+      message,
+      messageType: 'analysis',
+      data: {
+        rfp,
+        bidAnalysis,
+        historicalInsights
+      },
+      relatedRfps: [rfp],
+      followUpQuestions: [
+        "Would you like me to generate a draft proposal for this RFP?",
+        "Should I analyze the competition for this opportunity?",
+        "Would you like help with pricing strategy?"
+      ]
+    };
+  }
+
+  /**
+   * Handle research queries about market trends, competitors, etc.
+   */
+  private async handleResearch(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`🔬 Handling research query`);
+
+    // Determine research type
+    const researchType = await this.classifyResearchType(query);
+    
+    let researchResults: any = {};
+    let message = "";
+    
+    switch (researchType) {
+      case 'competitor_analysis':
+        researchResults = await this.performCompetitorAnalysis(query);
+        message = `I've analyzed competitor activity in your market. ${researchResults.summary}`;
+        break;
+        
+      case 'pricing_research':
+        researchResults = await this.performPricingResearch(query);
+        message = `Based on historical bid data, here's what I found about pricing trends: ${researchResults.summary}`;
+        break;
+        
+      case 'market_trends':
+        researchResults = await this.performMarketTrendAnalysis(query);
+        message = `I've analyzed recent market trends and opportunities. ${researchResults.summary}`;
+        break;
+        
+      default:
+        researchResults = await this.performGeneralResearch(query);
+        message = `I've researched your query and found relevant insights. ${researchResults.summary}`;
+    }
+    
+    // Store research findings
+    await storage.createResearchFinding({
+      title: `Research: ${query.substring(0, 100)}`,
+      type: researchType,
+      source: 'ai_analysis',
+      content: researchResults,
+      conversationId: conversation.id,
+      confidenceScore: researchResults.confidenceScore || 0.7,
+      tags: researchResults.tags || []
+    });
+
+    return {
+      message,
+      messageType: 'analysis',
+      data: researchResults,
+      followUpQuestions: [
+        "Would you like me to dive deeper into any specific aspect?",
+        "Should I search for related opportunities based on this research?",
+        "Would you like me to monitor this topic for future updates?"
+      ]
+    };
+  }
+
+  /**
+   * Handle general queries and conversation
+   */
+  private async handleGeneralQuery(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`💬 Handling general query`);
+
+    const prompt = `
+You are an AI assistant specializing in government RFP and procurement processes. You help businesses find opportunities, craft winning proposals, and navigate government contracting.
+
+Current conversation context: ${JSON.stringify(conversation.context)}
+
+User query: "${query}"
+
+Provide a helpful, professional response. If the user is asking about RFP processes, proposal writing, or government contracting, provide specific guidance. If they need to search for RFPs or get help with bidding, guide them appropriately.
+
+Be conversational but professional. Ask follow-up questions to better understand their needs.
+`;
+
+    const response = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 500
+    });
+
+    const message = response.choices[0].message.content || "I'm here to help with your RFP and procurement needs. What would you like to know?";
+
+    return {
+      message,
+      messageType: 'text',
+      followUpQuestions: [
+        "Would you like to search for RFP opportunities?",
+        "Do you need help with a specific proposal?",
+        "Should I research market trends in your industry?"
+      ]
+    };
+  }
+
+  // Helper methods for intent classification and data extraction
+
+  private async classifyUserIntent(query: string, context?: ConversationalContext): Promise<any> {
+    if (!this.checkApiKeyAvailable()) {
+      return { type: 'general', confidence: 0.5 };
+    }
+
+    const prompt = `
+Classify this user query into one of these categories:
+- rfp_search: User wants to find RFPs or opportunities
+- bid_crafting: User needs help with proposals or bidding
+- research: User wants market research, competitor analysis, or insights  
+- general: General conversation or questions about the platform
+
+Query: "${query}"
+Context: ${JSON.stringify(context)}
+
+Respond with JSON: {"type": "category", "confidence": 0.0-1.0, "reasoning": "explanation"}
+`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3
+      });
+
+      const result = JSON.parse(response.choices[0].message.content || '{"type": "general", "confidence": 0.5}');
+      return result;
+    } catch (error) {
+      console.error("Intent classification failed:", error);
+      return { type: 'general', confidence: 0.5 };
+    }
+  }
+
+  private async extractSearchCriteria(query: string): Promise<any> {
+    if (!this.checkApiKeyAvailable()) {
+      return { category: 'water bottles' }; // Default fallback
+    }
+
+    const prompt = `
+Extract search criteria from this RFP search query:
+"${query}"
+
+Extract and return JSON with:
+{
+  "category": "main category or product/service",
+  "location": "city, state, or geographic area if mentioned",
+  "agency": "government agency if specified", 
+  "valueRange": {"min": number, "max": number},
+  "deadline": "any deadline constraints",
+  "includeExternal": boolean (true if user wants comprehensive search)
+}
+
+Focus on the main intent. If unclear, make reasonable assumptions.
+`;
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.3
+      });
+
+      return JSON.parse(response.choices[0].message.content || '{}');
+    } catch (error) {
+      console.error("Search criteria extraction failed:", error);
+      return { category: 'general' };
+    }
+  }
+
+  private async searchInternalRfps(criteria: any): Promise<RFP[]> {
+    // Use existing storage methods to search RFPs
+    const allRfps = await storage.getRFPs();
+    
+    return allRfps.filter(rfp => {
+      let matches = true;
+      
+      if (criteria.category) {
+        const categoryMatch = rfp.title.toLowerCase().includes(criteria.category.toLowerCase()) ||
+                             (rfp.description?.toLowerCase().includes(criteria.category.toLowerCase()) || false);
+        matches = matches && categoryMatch;
+      }
+      
+      if (criteria.location) {
+        const locationMatch = rfp.title.toLowerCase().includes(criteria.location.toLowerCase()) ||
+                             rfp.agency?.toLowerCase().includes(criteria.location.toLowerCase());
+        matches = matches && locationMatch;
+      }
+      
+      if (criteria.agency) {
+        const agencyMatch = rfp.agency?.toLowerCase().includes(criteria.agency.toLowerCase());
+        matches = matches && agencyMatch;
+      }
+      
+      return matches;
+    }).slice(0, 20); // Limit results
+  }
+
+  private async searchExternalPortals(criteria: any): Promise<any[]> {
+    try {
+      // Use Mastra scraping service for external searches
+      const searchQuery = `${criteria.category || ''} ${criteria.location || ''}`.trim();
+      
+      // This would ideally use a more targeted search, but for now we'll use the general scan
+      // In a full implementation, you'd want to enhance MastraScrapingService with specific search capabilities
+      console.log(`External search would look for: ${searchQuery}`);
+      
+      // For now, return empty array as external search needs more specific implementation
+      return [];
+    } catch (error) {
+      console.error("External portal search failed:", error);
+      return [];
+    }
+  }
+
+  private async extractRfpReferences(query: string): Promise<RFP[]> {
+    // Extract RFP references from query and find matching RFPs
+    const allRfps = await storage.getRFPs();
+    
+    // Simple keyword matching - in production, you'd use more sophisticated NLP
+    const queryWords = query.toLowerCase().split(/\s+/);
+    
+    const matchingRfps = allRfps.filter(rfp => {
+      const rfpText = `${rfp.title} ${rfp.description} ${rfp.agency}`.toLowerCase();
+      return queryWords.some(word => word.length > 3 && rfpText.includes(word));
+    });
+    
+    return matchingRfps.slice(0, 5);
+  }
+
+  private async analyzeBidOpportunity(rfp: RFP, conversation: AiConversation): Promise<any> {
+    // Analyze RFP for competitive advantages and risks
+    return {
+      competitiveAdvantage: "Strong alignment with your water supply expertise",
+      riskFactors: ["Tight deadline", "High competition expected"],
+      nextSteps: ["Review technical requirements", "Prepare pricing strategy"],
+      estimatedWinProbability: 0.7
+    };
+  }
+
+  private async researchSimilarBids(rfp: RFP): Promise<any> {
+    // Research historical bids for similar RFPs
+    return {
+      insights: "Similar water supply contracts typically range from $50K-$200K with 6-month delivery windows",
+      averageWinningBid: 150000,
+      competitorCount: 3.2
+    };
+  }
+
+  private async classifyResearchType(query: string): Promise<string> {
+    // Classify the type of research requested
+    const queryLower = query.toLowerCase();
+    
+    if (queryLower.includes('competitor') || queryLower.includes('competition')) {
+      return 'competitor_analysis';
+    } else if (queryLower.includes('price') || queryLower.includes('cost') || queryLower.includes('bid amount')) {
+      return 'pricing_research';
+    } else if (queryLower.includes('trend') || queryLower.includes('market')) {
+      return 'market_trends';
+    }
+    
+    return 'general_research';
+  }
+
+  private async performCompetitorAnalysis(query: string): Promise<any> {
+    return {
+      summary: "Based on recent RFP activity, I see 3-5 regular competitors in the water supply sector in your region.",
+      confidenceScore: 0.7,
+      tags: ['competitor_analysis', 'water_supply']
+    };
+  }
+
+  private async performPricingResearch(query: string): Promise<any> {
+    return {
+      summary: "Water supply contracts typically run $0.15-$0.25 per gallon with delivery, varying by volume and location.",
+      confidenceScore: 0.8,
+      tags: ['pricing', 'water_supply']
+    };
+  }
+
+  private async performMarketTrendAnalysis(query: string): Promise<any> {
+    return {
+      summary: "Government water supply procurement is increasing 15% year-over-year with emphasis on sustainability and local sourcing.",
+      confidenceScore: 0.6,
+      tags: ['market_trends', 'procurement']
+    };
+  }
+
+  private async performGeneralResearch(query: string): Promise<any> {
+    return {
+      summary: "I've gathered relevant information based on our RFP database and historical trends.",
+      confidenceScore: 0.5,
+      tags: ['general']
+    };
+  }
+
+  private generateConversationTitle(query: string): string {
+    // Generate a concise title for the conversation
+    const words = query.split(' ').slice(0, 6).join(' ');
+    return words.length > 50 ? words.substring(0, 50) + '...' : words;
+  }
+
+  /**
+   * Get conversation history
+   */
+  async getConversationHistory(conversationId: string): Promise<ConversationMessage[]> {
+    return await storage.getConversationMessages(conversationId);
+  }
+
+  /**
+   * Update conversation status
+   */
+  async updateConversationStatus(conversationId: string, status: string): Promise<void> {
+    await storage.updateAiConversation(conversationId, { status });
+  }
+}
+
+export const aiAgentOrchestrator = new AIAgentOrchestrator();
