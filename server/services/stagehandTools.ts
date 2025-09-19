@@ -351,8 +351,9 @@ async function performBonfireLoginOnly(
         
         if (passwordFieldFound) break;
         console.log(`⏳ Password field not yet visible, attempt ${attempt + 1}/10...`);
-      } catch (checkError) {
-        console.log(`⏳ Error checking for password field, attempt ${attempt + 1}/10:`, checkError.message);
+      } catch (checkError: unknown) {
+        const errorMessage = checkError instanceof Error ? checkError.message : 'Unknown error';
+        console.log(`⏳ Error checking for password field, attempt ${attempt + 1}/10:`, errorMessage);
       }
     }
     
@@ -417,9 +418,10 @@ async function performBonfireLoginOnly(
         console.log('❌ Login phase failed - still on login page');
         throw new Error('Authentication failed - still on login page. Check credentials and account status.');
       }
-    } catch (checkError) {
-      console.log('⚠️ Login verification error:', checkError.message);
-      throw new Error(checkError.message || 'Could not verify login success');
+    } catch (checkError: unknown) {
+      const errorMessage = checkError instanceof Error ? checkError.message : 'Login verification failed';
+      console.log('⚠️ Login verification error:', errorMessage);
+      throw new Error(errorMessage || 'Could not verify login success');
     }
     
   } catch (error: any) {
@@ -491,7 +493,7 @@ async function performPostLoginNavigation(
       console.log(`🍪 Retrieved ${stagehandCookies.length} cookies from authenticated session`);
       
       // Convert Stagehand cookies to Puppeteer-compatible format
-      const puppeteerCookies = stagehandCookies.map(cookie => {
+      const puppeteerCookies = stagehandCookies.map((cookie: any) => {
         let expires = undefined;
         if (cookie.expires) {
           // Handle both milliseconds and seconds - if > 10^12, treat as milliseconds
