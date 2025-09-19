@@ -598,8 +598,16 @@ ${portal.loginRequired ? `2. Authenticate using provided credentials` : '2. Acce
    - Deadline/Due Date
    - Estimated Value (if available)
    - Description/Summary
-   - Source URL/Link
+   - Source URL/Link - **CRITICAL: Extract the SPECIFIC detail page URL for each RFP, not category/listing page URLs**
    - Category/Type
+
+IMPORTANT URL EXTRACTION RULES:
+- For FindRFP: Look for specific RFP detail URLs like "detail.aspx?rfpid=" or "service/detail.aspx?rfpid=" 
+- For Bonfire: Extract direct solicitation URLs with specific IDs
+- For SAM.gov: Get specific opportunity detail URLs with opportunity IDs
+- NEVER use generic category URLs like "/construction-contracts/", "/services/", or listing page URLs
+- If only a category URL is found, try to navigate to the specific opportunity detail page and get that URL
+- Each RFP must have a unique, specific detail page URL that leads directly to that opportunity
 
 Focus on active, open opportunities only. Return results as structured JSON with confidence scores.
 
@@ -1019,11 +1027,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       
       console.log(`✅ AI analysis passed: ${opportunity.title || opportunity.solicitationId} (confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%)`);
 
+      // Validate and fix sourceUrl - ensure it points to specific RFP detail page
+      const sourceUrl = this.validateAndFixSourceUrl(opportunity.link || opportunity.url, portal, opportunity);
+      if (!sourceUrl) {
+        console.log(`🚫 Skipping opportunity - invalid or generic URL: ${opportunity.link || opportunity.url}`);
+        return;
+      }
+
       // Check for duplicates
       const existingRfps = await storage.getRFPsByPortal(portal.id);
       const exists = existingRfps.some(rfp => 
         rfp.title === rfpDetails.title || 
-        rfp.sourceUrl === (opportunity.link || opportunity.url)
+        rfp.sourceUrl === sourceUrl
       );
 
       if (exists) {
@@ -1036,7 +1051,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         description: rfpDetails.description,
         agency: rfpDetails.agency || opportunity.agency,
         portalId: portal.id,
-        sourceUrl: opportunity.link || opportunity.url,
+        sourceUrl: sourceUrl,
         deadline: rfpDetails.deadline ? new Date(rfpDetails.deadline) : null,
         estimatedValue: rfpDetails.estimatedValue?.toString(),
         status: "discovered",
@@ -1050,7 +1065,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         action: "discovered",
         details: { 
           portal: portal.name,
-          sourceUrl: opportunity.link || opportunity.url,
+          sourceUrl: sourceUrl,
           confidence: rfpDetails.confidence,
           agent: this.selectAgent(portal).name
         }
@@ -1071,6 +1086,187 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     } catch (error) {
       console.error("Error processing opportunity:", error);
     }
+  }
+
+  /**
+   * Validate and fix source URLs to ensure they point to specific RFP detail pages
+   * instead of generic category or listing pages
+   */
+  private validateAndFixSourceUrl(url: string, portal: Portal, opportunity: any): string | null {
+    if (!url) {
+      console.log(`🚫 No URL provided for opportunity: ${opportunity.title}`);
+      return null;
+    }
+
+    console.log(`🔍 Validating URL for ${portal.name}: ${url}`);
+
+    // List of generic/category URL patterns that should be rejected
+    const genericPatterns = [
+      '/construction-contracts/',
+      '/services/',
+      '/bids/',
+      '/rfps/',
+      '/opportunities/',
+      '/solicitations/',
+      'bid.aspx$', // Generic bid page without specific ID
+      'rfp.aspx$', // Generic RFP page without specific ID
+      'search.aspx', // Search result pages
+      'category.aspx', // Category pages
+      'browse.aspx' // Browse pages
+    ];
+
+    // Check if URL is a generic category URL
+    for (const pattern of genericPatterns) {
+      if (url.match(new RegExp(pattern, 'i'))) {
+        console.log(`🚫 Rejecting generic URL pattern "${pattern}": ${url}`);
+        return null;
+      }
+    }
+
+    // Portal-specific URL validation and fixing
+    if (portal.url.includes('findrfp.com')) {
+      return this.validateFindRFPUrl(url, opportunity);
+    } else if (portal.url.includes('austintexas.gov')) {
+      return this.validateAustinFinanceUrl(url, opportunity);
+    } else if (portal.url.includes('bonfire')) {
+      return this.validateBonfireUrl(url, opportunity);
+    } else if (portal.url.includes('sam.gov')) {
+      return this.validateSAMGovUrl(url, opportunity);
+    }
+
+    // For other portals, basic validation
+    return this.validateGenericUrl(url, opportunity);
+  }
+
+  private validateFindRFPUrl(url: string, opportunity: any): string | null {
+    // FindRFP specific URLs must contain detail pages with rfpid parameter
+    if (url.includes('detail.aspx?rfpid=') || url.includes('service/detail.aspx?rfpid=')) {
+      console.log(`✅ Valid FindRFP detail URL: ${url}`);
+      return url;
+    }
+
+    // Try to construct a proper URL if we have an RFP ID
+    const rfpId = this.extractRFPId(opportunity);
+    if (rfpId && url.includes('findrfp.com')) {
+      const baseUrl = 'https://findrfp.com/service/detail.aspx';
+      const constructedUrl = `${baseUrl}?rfpid=${rfpId}&s=${encodeURIComponent(opportunity.title || 'RFP')}&t=CA&ID=${Date.now()}`;
+      console.log(`🔧 Constructed FindRFP URL: ${constructedUrl}`);
+      return constructedUrl;
+    }
+
+    console.log(`🚫 Invalid FindRFP URL (missing rfpid): ${url}`);
+    return null;
+  }
+
+  private validateAustinFinanceUrl(url: string, opportunity: any): string | null {
+    // Austin Finance URLs must contain solicitation_details.cfm with sid parameter
+    if (url.includes('solicitation_details.cfm?sid=')) {
+      console.log(`✅ Valid Austin Finance detail URL: ${url}`);
+      return url;
+    }
+
+    // Try to construct a proper URL if we have a solicitation ID
+    const solicitationId = this.extractSolicitationId(opportunity);
+    if (solicitationId) {
+      const baseUrl = 'https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitation_details.cfm';
+      const constructedUrl = `${baseUrl}?sid=${solicitationId}`;
+      console.log(`🔧 Constructed Austin Finance URL: ${constructedUrl}`);
+      return constructedUrl;
+    }
+
+    console.log(`🚫 Invalid Austin Finance URL (missing sid): ${url}`);
+    return null;
+  }
+
+  private validateBonfireUrl(url: string, opportunity: any): string | null {
+    // Bonfire URLs typically contain opportunity or bid IDs
+    if (url.includes('/opportunities/') || url.includes('/bids/') || url.includes('opportunity_id=') || url.includes('bid_id=')) {
+      console.log(`✅ Valid Bonfire detail URL: ${url}`);
+      return url;
+    }
+
+    console.log(`🚫 Invalid Bonfire URL (missing specific ID): ${url}`);
+    return null;
+  }
+
+  private validateSAMGovUrl(url: string, opportunity: any): string | null {
+    // SAM.gov URLs typically contain opportunity IDs
+    if (url.includes('/opportunities/') && (url.includes('opp-') || url.includes('opportunity-'))) {
+      console.log(`✅ Valid SAM.gov detail URL: ${url}`);
+      return url;
+    }
+
+    console.log(`🚫 Invalid SAM.gov URL (missing opportunity ID): ${url}`);
+    return null;
+  }
+
+  private validateGenericUrl(url: string, opportunity: any): string | null {
+    // For generic portals, ensure URL contains some form of ID or specific identifier
+    const hasId = /[?&](id|rfp|bid|opp|solicitation)=/i.test(url) || 
+                  /\/\d+\/?$/.test(url) || // Ends with numeric ID
+                  /[?&]\w+id=\w+/i.test(url); // Contains some form of ID parameter
+
+    if (hasId) {
+      console.log(`✅ Valid generic detail URL: ${url}`);
+      return url;
+    }
+
+    console.log(`🚫 Invalid generic URL (no specific ID found): ${url}`);
+    return null;
+  }
+
+  private extractRFPId(opportunity: any): string | null {
+    // Try to extract RFP ID from various fields
+    const idSources = [
+      opportunity.rfpId,
+      opportunity.id,
+      opportunity.solicitationId,
+      opportunity.opportunityId
+    ];
+
+    for (const id of idSources) {
+      if (id && typeof id === 'string' && id.trim()) {
+        return id.trim();
+      }
+    }
+
+    // Try to extract from title or description
+    const text = `${opportunity.title || ''} ${opportunity.description || ''}`;
+    const idMatch = text.match(/(?:RFP|ID|rfpid)[:\s]*([A-Z0-9-]+)/i);
+    if (idMatch) {
+      return idMatch[1];
+    }
+
+    return null;
+  }
+
+  private extractSolicitationId(opportunity: any): string | null {
+    // Try to extract solicitation ID from various fields
+    const idSources = [
+      opportunity.solicitationId,
+      opportunity.sid,
+      opportunity.id,
+      opportunity.rfpId
+    ];
+
+    for (const id of idSources) {
+      if (id && typeof id === 'string' && id.trim()) {
+        return id.trim();
+      }
+    }
+
+    // Try to extract from title (Austin Finance format: IFQ 1100 BAS1065)
+    const title = opportunity.title || '';
+    const solicitationMatch = title.match(/(?:IFQ|IFB|RFP|RFQS)\s+\d+\s+\w+/i);
+    if (solicitationMatch) {
+      // Look for a numeric ID that might be the solicitation ID
+      const numericMatch = title.match(/\b\d{5,}\b/);
+      if (numericMatch) {
+        return numericMatch[0];
+      }
+    }
+
+    return null;
   }
 
   private redactSensitiveCookies(cookies: string | null): string {
