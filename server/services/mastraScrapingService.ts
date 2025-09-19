@@ -991,7 +991,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         deadline: rfpDetails.deadline ? new Date(rfpDetails.deadline) : null,
         estimatedValue: rfpDetails.estimatedValue?.toString(),
         status: "discovered",
-        progress: 10
+        progress: 0
       });
 
       // Create audit log

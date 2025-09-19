@@ -107,7 +107,7 @@ ${documentText}
       // Update RFP status to indicate error
       await storage.updateRFP(rfp.id, { 
         status: "discovered", 
-        progress: 25 
+        progress: 0 
       });
 
       // Create notification about error

@@ -18,7 +18,7 @@ export default function RFPDetails() {
   const getProgressFromStatus = (status: string) => {
     // Step-based progress based on actual work completed
     switch (status) {
-      case "discovered": return 5;   // Just found, no work done yet
+      case "discovered": return 0;   // Just found, no work done yet
       case "parsing": return 25;     // Analyzing documents
       case "drafting": return 50;    // AI drafting proposal
       case "review": return 75;      // Under review
