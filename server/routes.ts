@@ -19,6 +19,7 @@ import { aiProposalService } from "./services/ai-proposal-service";
 import { enhancedProposalService } from "./services/enhancedProposalService";
 import { documentIntelligenceService } from "./services/documentIntelligenceService";
 import { scanManager } from "./services/scan-manager";
+import { ManualRfpService } from "./services/manualRfpService";
 import { z } from "zod";
 
 // Zod schemas for AI API endpoints
@@ -66,6 +67,12 @@ const GenerateProposalRequestSchema = z.object({
   rfpText: z.string().min(1).max(50000),
   companyProfileId: z.string().uuid(),
   proposalType: z.enum(['standard', 'technical', 'construction', 'professional_services']).optional(),
+});
+
+// Manual RFP Input Schema
+const ManualRfpInputSchema = z.object({
+  url: z.string().url("Please provide a valid URL"),
+  userNotes: z.string().optional(),
 });
 
 // Portal Monitoring Validation Schemas
@@ -310,6 +317,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating document:", error);
       res.status(500).json({ error: "Failed to create document" });
+    }
+  });
+
+  // Manual RFP Processing
+  const manualRfpService = new ManualRfpService();
+
+  app.post("/api/rfps/manual", async (req, res) => {
+    try {
+      const validationResult = ManualRfpInputSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid input data",
+          details: validationResult.error.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+
+      console.log(`📝 Processing manual RFP submission: ${validationResult.data.url}`);
+      
+      const result = await manualRfpService.processManualRfp(validationResult.data);
+      
+      if (result.success) {
+        // Create audit log for manual RFP addition
+        await storage.createAuditLog({
+          entityType: "rfp",
+          entityId: result.rfpId!,
+          action: "created_manually",
+          details: { 
+            url: validationResult.data.url,
+            userNotes: validationResult.data.userNotes 
+          }
+        });
+
+        res.status(201).json(result);
+      } else {
+        res.status(400).json(result);
+      }
+
+    } catch (error) {
+      console.error("Error processing manual RFP:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Internal server error",
+        message: "Failed to process the manual RFP. Please try again." 
+      });
+    }
+  });
+
+  app.get("/api/rfps/manual/status/:rfpId", async (req, res) => {
+    try {
+      const { rfpId } = req.params;
+      
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        return res.status(404).json({ error: "RFP not found" });
+      }
+
+      // Check if it's a manually added RFP
+      if (rfp.addedBy !== 'manual') {
+        return res.status(400).json({ error: "Not a manually added RFP" });
+      }
+
+      const documents = await storage.getDocumentsByRFP(rfpId);
+      const proposal = await storage.getProposalByRFP(rfpId);
+
+      res.json({
+        rfp,
+        documentsCount: documents.length,
+        hasProposal: !!proposal,
+        processingStatus: rfp.status,
+        progress: rfp.progress,
+        manuallyAddedAt: rfp.manuallyAddedAt
+      });
+
+    } catch (error) {
+      console.error("Error fetching manual RFP status:", error);
+      res.status(500).json({ error: "Failed to fetch RFP status" });
     }
   });
 
