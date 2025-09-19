@@ -240,6 +240,70 @@ export const companyInsurance = pgTable("company_insurance", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// AI Agent and Conversation Tables
+export const aiConversations = pgTable("ai_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  type: text("type").notNull().default("general"), // general, rfp_search, bid_crafting, research
+  userId: varchar("user_id").references(() => users.id),
+  status: text("status").notNull().default("active"), // active, completed, archived
+  context: jsonb("context"), // conversation context and state
+  metadata: jsonb("metadata"), // additional conversation metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const conversationMessages = pgTable("conversation_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").references(() => aiConversations.id).notNull(),
+  role: text("role").notNull(), // user, assistant, system
+  content: text("content").notNull(),
+  messageType: text("message_type").notNull().default("text"), // text, rfp_results, search_results, analysis
+  metadata: jsonb("metadata"), // additional message metadata like search parameters, RFP IDs, etc.
+  relatedEntityType: text("related_entity_type"), // rfp, proposal, portal
+  relatedEntityId: varchar("related_entity_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const researchFindings = pgTable("research_findings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // bid_analysis, market_research, competitor_analysis, pricing_research
+  source: text("source").notNull(), // web_search, portal_analysis, historical_data
+  sourceUrl: text("source_url"),
+  content: jsonb("content").notNull(), // structured research data
+  relatedRfpId: varchar("related_rfp_id").references(() => rfps.id),
+  relatedProposalId: varchar("related_proposal_id").references(() => proposals.id),
+  conversationId: varchar("conversation_id").references(() => aiConversations.id),
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }), // 0.00 to 1.00
+  isVerified: boolean("is_verified").default(false).notNull(),
+  tags: text("tags").array(), // array of tags for categorization
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const historicalBids = pgTable("historical_bids", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  rfpTitle: text("rfp_title").notNull(),
+  agency: text("agency").notNull(),
+  category: text("category"),
+  bidAmount: decimal("bid_amount", { precision: 12, scale: 2 }),
+  winningBid: decimal("winning_bid", { precision: 12, scale: 2 }),
+  isWinner: boolean("is_winner").notNull(),
+  bidder: text("bidder"), // company name that placed the bid
+  sourcePortal: text("source_portal"),
+  sourceUrl: text("source_url"),
+  rfpValue: decimal("rfp_value", { precision: 12, scale: 2 }),
+  bidDate: timestamp("bid_date"),
+  awardDate: timestamp("award_date"),
+  location: text("location"),
+  description: text("description"),
+  metadata: jsonb("metadata"), // additional structured data about the bid
+  researchFindingId: varchar("research_finding_id").references(() => researchFindings.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const portalsRelations = relations(portals, ({ many }) => ({
   rfps: many(rfps),
@@ -346,6 +410,46 @@ export const scanEventsRelations = relations(scanEvents, ({ one }) => ({
   }),
 }));
 
+// AI Conversation Relations
+export const aiConversationsRelations = relations(aiConversations, ({ one, many }) => ({
+  user: one(users, {
+    fields: [aiConversations.userId],
+    references: [users.id],
+  }),
+  messages: many(conversationMessages),
+  researchFindings: many(researchFindings),
+}));
+
+export const conversationMessagesRelations = relations(conversationMessages, ({ one }) => ({
+  conversation: one(aiConversations, {
+    fields: [conversationMessages.conversationId],
+    references: [aiConversations.id],
+  }),
+}));
+
+export const researchFindingsRelations = relations(researchFindings, ({ one, many }) => ({
+  rfp: one(rfps, {
+    fields: [researchFindings.relatedRfpId],
+    references: [rfps.id],
+  }),
+  proposal: one(proposals, {
+    fields: [researchFindings.relatedProposalId],
+    references: [proposals.id],
+  }),
+  conversation: one(aiConversations, {
+    fields: [researchFindings.conversationId],
+    references: [aiConversations.id],
+  }),
+  historicalBids: many(historicalBids),
+}));
+
+export const historicalBidsRelations = relations(historicalBids, ({ one }) => ({
+  researchFinding: one(researchFindings, {
+    fields: [historicalBids.researchFindingId],
+    references: [researchFindings.id],
+  }),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -437,6 +541,30 @@ export const insertCompanyInsuranceSchema = createInsertSchema(companyInsurance)
   updatedAt: true,
 });
 
+// AI Conversation Insert Schemas
+export const insertAiConversationSchema = createInsertSchema(aiConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertConversationMessageSchema = createInsertSchema(conversationMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertResearchFindingSchema = createInsertSchema(researchFindings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertHistoricalBidSchema = createInsertSchema(historicalBids).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -487,3 +615,16 @@ export type InsertCompanyCertification = z.infer<typeof insertCompanyCertificati
 
 export type CompanyInsurance = typeof companyInsurance.$inferSelect;
 export type InsertCompanyInsurance = z.infer<typeof insertCompanyInsuranceSchema>;
+
+// AI Conversation Types
+export type AiConversation = typeof aiConversations.$inferSelect;
+export type InsertAiConversation = z.infer<typeof insertAiConversationSchema>;
+
+export type ConversationMessage = typeof conversationMessages.$inferSelect;
+export type InsertConversationMessage = z.infer<typeof insertConversationMessageSchema>;
+
+export type ResearchFinding = typeof researchFindings.$inferSelect;
+export type InsertResearchFinding = z.infer<typeof insertResearchFindingSchema>;
+
+export type HistoricalBid = typeof historicalBids.$inferSelect;
+export type InsertHistoricalBid = z.infer<typeof insertHistoricalBidSchema>;
