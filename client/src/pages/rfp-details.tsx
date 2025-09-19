@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { RFP } from "@shared/schema";
+import type { RFP, Document } from "@shared/schema";
 
 export default function RFPDetails() {
   const { id } = useParams();
@@ -31,6 +31,16 @@ export default function RFPDetails() {
 
   const { data: rfp, isLoading, error } = useQuery<RFP>({
     queryKey: ['/api/rfps', id],
+    enabled: !!id,
+  });
+  
+  const { data: documents = [], isLoading: documentsLoading } = useQuery<Document[]>({
+    queryKey: ['/api/rfps', id, 'documents'],
+    queryFn: async () => {
+      const response = await fetch(`/api/rfps/${id}/documents`);
+      if (!response.ok) throw new Error('Failed to fetch documents');
+      return response.json();
+    },
     enabled: !!id,
   });
 
@@ -271,6 +281,93 @@ export default function RFPDetails() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Downloaded Documents */}
+          <Card data-testid="card-documents">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Paperclip className="w-5 h-5" />
+                RFP Documents ({documents.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {documentsLoading ? (
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="space-y-4">
+                  {/* Fillable Documents */}
+                  {documents.filter(doc => (doc.parsedData as any)?.needsFillOut).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <CheckSquare className="w-4 h-4 text-orange-500" />
+                        Forms to Complete
+                      </h4>
+                      <div className="space-y-2">
+                        {documents
+                          .filter(doc => (doc.parsedData as any)?.needsFillOut)
+                          .map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950/20 rounded" data-testid={`fillable-doc-${doc.id}`}>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-orange-500" />
+                                <div>
+                                  <p className="text-sm font-medium">{doc.filename}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {doc.fileType.toUpperCase()} • {(doc.parsedData as any)?.category || 'Document'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className="text-orange-600">
+                                Needs Completion
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Reference Documents */}
+                  {documents.filter(doc => !(doc.parsedData as any)?.needsFillOut).length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <FileQuestion className="w-4 h-4 text-blue-500" />
+                        Reference Documents
+                      </h4>
+                      <div className="space-y-2">
+                        {documents
+                          .filter(doc => !(doc.parsedData as any)?.needsFillOut)
+                          .map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-muted/50 rounded" data-testid={`reference-doc-${doc.id}`}>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <p className="text-sm">{doc.filename}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {doc.fileType.toUpperCase()} • {(doc.parsedData as any)?.category || 'Document'}
+                                  </p>
+                                </div>
+                              </div>
+                              <Badge variant="secondary">
+                                Reference
+                              </Badge>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription>
+                    No documents have been downloaded for this RFP yet. Documents will be automatically captured during the next portal scan.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
 

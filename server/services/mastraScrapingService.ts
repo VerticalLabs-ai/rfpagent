@@ -15,6 +15,7 @@ import {
   scrapeWithAuthenticatedSession,
   sessionManager
 } from "./stagehandTools";
+import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -1057,6 +1058,22 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         status: "discovered",
         progress: 0
       });
+      
+      // Download documents for Austin Finance RFPs
+      if (portal.url.includes('austintexas.gov') && sourceUrl) {
+        try {
+          console.log(`📄 Downloading documents for Austin Finance RFP: ${rfp.title}`);
+          const documents = await austinFinanceDocumentScraper.scrapeRFPDocuments(rfp.id, sourceUrl);
+          console.log(`✅ Downloaded ${documents.length} documents for RFP ${rfp.id}`);
+          
+          // Analyze documents to identify what needs to be filled out
+          const analysis = await austinFinanceDocumentScraper.analyzeDocumentsForFillOut(rfp.id);
+          console.log(`📊 Document analysis complete:\n${analysis.summary}`);
+        } catch (error) {
+          console.error(`❌ Failed to download documents for RFP ${rfp.id}:`, error);
+          // Continue with RFP creation even if document download fails
+        }
+      }
 
       // Create audit log
       await storage.createAuditLog({

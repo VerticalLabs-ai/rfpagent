@@ -218,6 +218,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch RFP" });
     }
   });
+  
+  // Get documents for a specific RFP
+  app.get("/api/rfps/:id/documents", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const documents = await storage.getDocumentsByRFP(id);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error getting RFP documents:", error);
+      res.status(500).json({ error: "Failed to get RFP documents" });
+    }
+  });
 
   app.post("/api/rfps", async (req, res) => {
     try {
