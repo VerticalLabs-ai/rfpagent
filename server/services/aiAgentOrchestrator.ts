@@ -86,13 +86,24 @@ export class AIAgentOrchestrator {
           throw new Error("Conversation not found");
         }
         conversation = existingConversation;
-        // Update conversation context
-        await storage.updateAiConversation(conversationId, {
+        
+        // Update conversation context and type if intent has changed
+        const updates: any = {
           context: { 
             ...(typeof conversation.context === 'object' ? conversation.context as any : {}), 
             ...context 
           }
-        });
+        };
+        
+        // Update conversation type if intent has changed
+        if (conversationIntent.type !== conversation.type) {
+          console.log(`🔄 Updating conversation type from "${conversation.type}" to "${conversationIntent.type}"`);
+          updates.type = conversationIntent.type;
+        }
+        
+        await storage.updateAiConversation(conversationId, updates);
+        // Update local conversation object to reflect changes
+        conversation = { ...conversation, ...updates };
       } else {
         // Create new conversation
         conversation = await storage.createAiConversation({
@@ -434,18 +445,21 @@ Classify this user query into one of these categories:
 Query: "${query}"
 Context: ${JSON.stringify(context)}
 
-Respond with JSON: {"type": "category", "confidence": 0.0-1.0, "reasoning": "explanation"}
+Return ONLY a valid JSON object: {"type": "category", "confidence": 0.0-1.0, "reasoning": "explanation"}
 `;
 
     try {
       const response = await openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || "gpt-4",
         messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
         temperature: 0.3
       });
 
-      const result = JSON.parse(response.choices[0].message.content || '{"type": "general", "confidence": 0.5}');
+      const content = response.choices[0].message.content || '{"type": "general", "confidence": 0.5}';
+      // Extract JSON from response if it contains other text
+      const jsonMatch = content.match(/\{.*\}/s);
+      const jsonString = jsonMatch ? jsonMatch[0] : content;
+      const result = JSON.parse(jsonString);
       return result;
     } catch (error) {
       console.error("Intent classification failed:", error);
@@ -462,28 +476,39 @@ Respond with JSON: {"type": "category", "confidence": 0.0-1.0, "reasoning": "exp
 Extract search criteria from this RFP search query:
 "${query}"
 
-Extract and return JSON with:
+Return ONLY a valid JSON object with:
 {
   "category": "main category or product/service",
   "location": "city, state, or geographic area if mentioned",
   "agency": "government agency if specified", 
   "valueRange": {"min": number, "max": number},
   "deadline": "any deadline constraints",
-  "includeExternal": boolean (true if user wants comprehensive search)
+  "includeExternal": boolean
 }
 
-Focus on the main intent. If unclear, make reasonable assumptions.
+Set includeExternal to true if the user mentions:
+- Searching beyond tracked portals
+- Federal portals like SAM.gov
+- State procurement sites
+- External sources
+- Comprehensive search
+- Sites not in tracked list
+
+Return only the JSON object, no other text.
 `;
 
     try {
       const response = await openai.chat.completions.create({
         model: process.env.OPENAI_MODEL || "gpt-4",
         messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
         temperature: 0.3
       });
 
-      return JSON.parse(response.choices[0].message.content || '{}');
+      const content = response.choices[0].message.content || '{}';
+      // Extract JSON from response if it contains other text
+      const jsonMatch = content.match(/\{.*\}/s);
+      const jsonString = jsonMatch ? jsonMatch[0] : content;
+      return JSON.parse(jsonString);
     } catch (error) {
       console.error("Search criteria extraction failed:", error);
       return { category: 'general' };
@@ -497,20 +522,40 @@ Focus on the main intent. If unclear, make reasonable assumptions.
     return allRfps.filter(rfp => {
       let matches = true;
       
-      if (criteria.category) {
+      if (criteria.category && typeof criteria.category === 'string') {
         const categoryMatch = rfp.title.toLowerCase().includes(criteria.category.toLowerCase()) ||
                              (rfp.description?.toLowerCase().includes(criteria.category.toLowerCase()) || false);
         matches = matches && categoryMatch;
       }
       
       if (criteria.location) {
-        const locationMatch = rfp.title.toLowerCase().includes(criteria.location.toLowerCase()) ||
-                             rfp.agency?.toLowerCase().includes(criteria.location.toLowerCase());
+        // Handle location as string, array, or other formats
+        let locationMatch = false;
+        
+        if (typeof criteria.location === 'string') {
+          // Single location string
+          locationMatch = rfp.title.toLowerCase().includes(criteria.location.toLowerCase()) ||
+                         (rfp.agency?.toLowerCase().includes(criteria.location.toLowerCase()) || false);
+        } else if (Array.isArray(criteria.location)) {
+          // Multiple locations in array
+          locationMatch = criteria.location.some((loc: string) => 
+            typeof loc === 'string' && (
+              rfp.title.toLowerCase().includes(loc.toLowerCase()) ||
+              (rfp.agency?.toLowerCase().includes(loc.toLowerCase()) || false)
+            )
+          );
+        } else if (criteria.location && typeof criteria.location === 'object') {
+          // Handle object format - convert to string
+          const locationStr = String(criteria.location);
+          locationMatch = rfp.title.toLowerCase().includes(locationStr.toLowerCase()) ||
+                         (rfp.agency?.toLowerCase().includes(locationStr.toLowerCase()) || false);
+        }
+        
         matches = matches && locationMatch;
       }
       
-      if (criteria.agency) {
-        const agencyMatch = rfp.agency?.toLowerCase().includes(criteria.agency.toLowerCase());
+      if (criteria.agency && typeof criteria.agency === 'string') {
+        const agencyMatch = rfp.agency?.toLowerCase().includes(criteria.agency.toLowerCase()) || false;
         matches = matches && agencyMatch;
       }
       

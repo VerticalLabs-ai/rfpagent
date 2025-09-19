@@ -120,7 +120,8 @@ export default function AIChat() {
 
   const selectConversation = (conversationId: string) => {
     setCurrentConversationId(conversationId);
-    refetchHistory();
+    // The query will automatically refetch when currentConversationId changes
+    // due to the query key dependency, so we don't need to manually refetch
   };
 
   const getMessageIcon = (messageType: string) => {
