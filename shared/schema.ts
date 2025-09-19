@@ -34,7 +34,7 @@ export const rfps = pgTable("rfps", {
   title: text("title").notNull(),
   description: text("description"),
   agency: text("agency").notNull(),
-  portalId: varchar("portal_id").references(() => portals.id).notNull(),
+  portalId: varchar("portal_id").references(() => portals.id),
   sourceUrl: text("source_url").notNull(),
   deadline: timestamp("deadline"),
   estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
@@ -43,6 +43,8 @@ export const rfps = pgTable("rfps", {
   requirements: jsonb("requirements"), // parsed requirements object
   complianceItems: jsonb("compliance_items"), // compliance checklist
   riskFlags: jsonb("risk_flags"), // high-risk items
+  addedBy: text("added_by").notNull().default("automatic"), // "manual" or "automatic"
+  manuallyAddedAt: timestamp("manually_added_at"), // Only set if manually added
   discoveredAt: timestamp("discovered_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
