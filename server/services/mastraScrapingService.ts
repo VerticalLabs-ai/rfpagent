@@ -233,26 +233,49 @@ export class MastraScrapingService {
       instructions: `You are a specialized agent for Bonfire Hub procurement portals. You understand:
 
       - Bonfire's specific layout patterns and data structures
-      - Euna Supplier Network authentication system used by Bonfire portals
+      - Euna Supplier Network (ESN) authentication system used by Bonfire portals
       - How to navigate Bonfire's opportunity listings and filters
       - Bonfire's typical RFP presentation format
       - Agency-specific customizations within Bonfire portals
 
-      AUTHENTICATION EXPERTISE:
-      - Bonfire portals use the "Euna Supplier Network" login system
-      - Login pages typically show "Welcome Back!" and "Login to Euna Supplier Network" dialogs
-      - Authentication may require clicking a "Log In" button before accessing the form fields
-      - Form fields may be labeled as "email", "username", or "user" for the username field
-      - Post-authentication success is indicated by reaching dashboard/opportunities pages
-      - Sessions must be maintained for continued access to procurement opportunities
-
-      Key patterns to recognize:
-      - Opportunity cards with standardized layouts
-      - Deadline formats and timezone handling
-      - Attachment and document links
-      - Vendor registration requirements
-      - Category and classification systems
-      - "Welcome Back!" login screens with Euna Supplier Network branding`,
+      COMPREHENSIVE ESN AUTHENTICATION EXPERTISE:
+      
+      INITIAL SETUP:
+      - Bonfire portals redirect to "network.euna.com" for authentication
+      - Look for cookie consent banners and dismiss them first ("Accept", "I agree", etc.)
+      - Login pages show "Welcome Back!" and "Login to Euna Supplier Network" dialogs
+      
+      MULTI-STEP AUTHENTICATION FLOW:
+      1. Email Entry: Enter email in username/email field (various selectors: input[type="email"], input[name*="email"], input[name*="username"])
+      2. Continue Step: Click "Continue", "Next", or similar button to proceed
+      3. Password Detection: Wait for password field to appear (may take several seconds with retry logic)
+      4. Password Entry: Use multiple selector patterns for password fields
+      5. Login Submission: Click final login/submit button
+      
+      ERROR DETECTION & HANDLING:
+      - 2FA Detection: Watch for "verification code", "two-factor", "authenticator" indicators
+      - SSO Detection: Monitor for redirects to "microsoft", "google", "okta", "azure" domains
+      - Timeout Management: Authentication has 90-second timeout, post-login navigation is separate
+      - Failure Indicators: Still on login page, title contains "login"/"sign in" after submission
+      
+      CLOUDFLARE PROTECTION:
+      - May encounter "Just a moment" or "Please wait" pages after login
+      - Wait for protection to clear before proceeding
+      - Verify final page shows opportunities/dashboard content
+      
+      SUCCESS VERIFICATION:
+      - URL no longer contains "login"
+      - Page title doesn't contain "login" or "sign in"
+      - Look for opportunity listings, vendor portal content, or dashboard elements
+      - Session cookies are properly set for authenticated scraping
+      
+      SCRAPING PATTERNS:
+      - Opportunity cards with standardized layouts and clear title/deadline structure
+      - Deadline formats with timezone handling (watch for EST/PST variations)
+      - Document attachment links (PDFs, Word docs, specifications)
+      - Vendor registration requirements and eligibility criteria
+      - Category and classification systems specific to each agency
+      - Pre-bid conference information and contact details`,
 
       model: openai("gpt-4o"),
       // memory: this.memory, // Disabled pending vector store configuration
