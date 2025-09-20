@@ -1739,6 +1739,12 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(workItems.priority), asc(workItems.deadline));
   }
 
+  async getPendingWorkItems(): Promise<WorkItem[]> {
+    return await db.select().from(workItems)
+      .where(eq(workItems.status, 'pending'))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
   async getWorkQueue(agentId?: string, taskType?: string, limit?: number): Promise<WorkItem[]> {
     const conditions = [eq(workItems.status, 'pending')];
     
