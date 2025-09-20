@@ -101,7 +101,7 @@ export class WorkflowCoordinator {
           
           Find and evaluate opportunities, assess their fit, and prioritize them based on strategic value.`;
         
-        await discoveryAgent.generate(discoveryPrompt);
+        await discoveryAgent.generateVNext(discoveryPrompt);
       }
 
       // Perform actual portal scraping
@@ -121,7 +121,7 @@ export class WorkflowCoordinator {
           
           Provide compliance assessment, identify requirements, and highlight any risk factors.`;
         
-        const analysisResult = await complianceAgent.generate(analysisPrompt);
+        const analysisResult = await complianceAgent.generateVNext(analysisPrompt);
         context.data.complianceAnalysis = analysisResult.text;
       }
 
@@ -137,7 +137,7 @@ export class WorkflowCoordinator {
           Focus on: historical bidding patterns, competitor landscape, market conditions, and pricing strategies.
           Provide strategic recommendations for bidding approach.`;
         
-        const researchResult = await researchAgent.generate(researchPrompt);
+        const researchResult = await researchAgent.generateVNext(researchPrompt);
         context.data.marketResearch = researchResult.text;
       }
 
@@ -220,7 +220,7 @@ export class WorkflowCoordinator {
           - Human oversight needs
           - Processing recommendations`;
         
-        await documentAgent.generate(analysisPrompt);
+        await documentAgent.generateVNext(analysisPrompt);
       }
 
       // Perform actual document analysis
@@ -240,7 +240,7 @@ export class WorkflowCoordinator {
           - Team qualifications
           - Pricing strategy`;
         
-        const proposalResult = await proposalAgent.generate(generationPrompt);
+        const proposalResult = await proposalAgent.generateVNext(generationPrompt);
         context.data.proposalContent = proposalResult.text;
       }
 
@@ -329,7 +329,7 @@ export class WorkflowCoordinator {
           4. Generate compliance checklist and recommendations
           5. Identify any potential showstoppers or high-risk areas`;
         
-        const complianceResult = await complianceAgent.generate(compliancePrompt);
+        const complianceResult = await complianceAgent.generateVNext(compliancePrompt);
         context.data.complianceReport = complianceResult.text;
       }
 

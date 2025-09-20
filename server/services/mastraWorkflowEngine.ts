@@ -95,7 +95,7 @@ export class MastraWorkflowEngine {
         - Extract key details like deadlines, values, and requirements
         - Prioritize opportunities based on strategic value
         - Provide recommendations for next actions`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     const marketResearchAgent = new Agent({
@@ -106,7 +106,7 @@ export class MastraWorkflowEngine {
         - Identify key competitors and their strategies
         - Assess market conditions and trends
         - Provide strategic bidding recommendations`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     // Analysis & Processing Agents
@@ -118,7 +118,7 @@ export class MastraWorkflowEngine {
         - Assess risk factors and complexity
         - Map requirements to company capabilities
         - Generate compliance checklists and recommendations`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     const documentIntelligenceAgent = new Agent({
@@ -129,7 +129,7 @@ export class MastraWorkflowEngine {
         - Identify human oversight needs
         - Auto-populate forms with company data
         - Generate processing recommendations`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     // Generation & Submission Agents
@@ -141,7 +141,7 @@ export class MastraWorkflowEngine {
         - Develop pricing strategies and tables
         - Ensure compliance with all requirements
         - Optimize proposals for maximum win probability`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     const submissionAgent = new Agent({
@@ -152,7 +152,7 @@ export class MastraWorkflowEngine {
         - Track submission status and deadlines
         - Coordinate follow-up activities
         - Ensure all submission requirements are met`,
-      model: openai("gpt-4-turbo")
+      model: openai("gpt-5-2025-08-07")
     });
 
     // Store agents for reference
@@ -446,8 +446,8 @@ export class MastraWorkflowEngine {
       instructions: 'Use your memories and knowledge to provide the most accurate and helpful response'
     };
 
-    // Use the agent to process the enhanced context
-    const response = await agent.generate(JSON.stringify(promptContext));
+    // Use the agent to process the enhanced context with generateVNext for GPT-5 models
+    const response = await agent.generateVNext(JSON.stringify(promptContext));
     
     return {
       agentId: agent.name,
@@ -562,7 +562,7 @@ export class MastraWorkflowEngine {
     // Generate appropriate prompt based on context
     const prompt = this.generateAgentPrompt(agentId, context);
     
-    const response = await agent.generate(prompt);
+    const response = await agent.generateVNext(prompt);
     
     return {
       agentId,
