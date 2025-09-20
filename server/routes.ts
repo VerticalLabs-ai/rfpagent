@@ -2075,26 +2075,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get real-time system health metrics
+  // Get real-time system health metrics  
   app.get("/api/system-health", async (req, res) => {
     try {
-      // Get active and suspended workflows directly from storage for now
-      const activeWorkflowsList = await storage.getActiveWorkflows();
-      const suspendedWorkflowsList = await storage.getSuspendedWorkflows();
+      // Get workflow metrics for comprehensive health data
+      const workflowMetrics = await storage.getWorkflowExecutionMetrics();
+      const agentHealthSummary = await storage.getAgentHealthSummary();
+      const portalHealthSummary = await storage.getPortalHealthSummary();
+      
+      // Get active agents for enhanced agent status
+      const activeAgents = await storage.getActiveAgents();
       
       const health = {
-        activeWorkflows: activeWorkflowsList.length,
-        suspendedWorkflows: suspendedWorkflowsList.length,
         systemStatus: 'healthy',
+        activeWorkflows: workflowMetrics.total || 0,
+        suspendedWorkflows: workflowMetrics.suspended || 0,
+        completedWorkflows: workflowMetrics.completed || 0,
+        failedWorkflows: workflowMetrics.failed || 0,
+        successRate: workflowMetrics.total > 0 ? 
+          ((workflowMetrics.completed / workflowMetrics.total) * 100) : 0,
+        avgExecutionTimeSeconds: workflowMetrics.avgExecutionTimeSeconds || 0,
+        agentStatus: {
+          total: activeAgents.length,
+          active: activeAgents.filter(a => a.status === 'active').length,
+          orchestrators: activeAgents.filter(a => a.tier === 'orchestrator').length,
+          managers: activeAgents.filter(a => a.tier === 'manager').length,
+          specialists: activeAgents.filter(a => a.tier === 'specialist').length,
+          ...agentHealthSummary
+        },
+        portalStatus: portalHealthSummary,
         timestamp: new Date(),
-        portalStatus: await storage.getPortalHealthSummary(),
-        agentStatus: await storage.getAgentHealthSummary()
       };
       
       res.json(health);
     } catch (error) {
       console.error("Error fetching system health:", error);
       res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
+  // Get agent registry status for 3-tier system monitoring
+  app.get("/api/agent-registry", async (req, res) => {
+    try {
+      const agents = await storage.getActiveAgents();
+      const agentsByTier = {
+        orchestrator: agents.filter(a => a.tier === 'orchestrator'),
+        manager: agents.filter(a => a.tier === 'manager'), 
+        specialist: agents.filter(a => a.tier === 'specialist'),
+      };
+
+      res.json({
+        agents,
+        agentsByTier,
+        summary: {
+          total: agents.length,
+          active: agents.filter(a => a.status === 'active').length,
+          byTier: {
+            orchestrator: agentsByTier.orchestrator.length,
+            manager: agentsByTier.manager.length,
+            specialist: agentsByTier.specialist.length,
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching agent registry status:", error);
+      res.status(500).json({ error: "Failed to fetch agent registry status" });
+    }
+  });
+
+  // Get work items status for 3-tier system monitoring
+  app.get("/api/work-items", async (req, res) => {
+    try {
+      const { status, agentId, limit = 50 } = req.query;
+      
+      let workItems = [];
+      const summary = {
+        pending: await storage.getWorkItemsByStatus('pending'),
+        inProgress: await storage.getWorkItemsByStatus('in_progress'), 
+        completed: await storage.getWorkItemsByStatus('completed'),
+        failed: await storage.getWorkItemsByStatus('failed'),
+      };
+
+      if (status) {
+        workItems = await storage.getWorkItemsByStatus(status as string);
+      } else if (agentId) {
+        workItems = await storage.getWorkItemsByAgent(agentId as string);
+      } else {
+        workItems = [...summary.pending, ...summary.inProgress, ...summary.completed, ...summary.failed]
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, Number(limit));
+      }
+
+      res.json({
+        workItems,
+        summary: {
+          pending: summary.pending.length,
+          inProgress: summary.inProgress.length,
+          completed: summary.completed.length,
+          failed: summary.failed.length,
+          total: summary.pending.length + summary.inProgress.length + 
+                 summary.completed.length + summary.failed.length,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching work items:", error);
+      res.status(500).json({ error: "Failed to fetch work items" });
     }
   });
 

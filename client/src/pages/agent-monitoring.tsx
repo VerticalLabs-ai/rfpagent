@@ -12,9 +12,19 @@ export default function AgentMonitoring() {
     refetchInterval: 5000, // Refresh every 5 seconds for real-time monitoring
   });
 
-  const { data: workflowMetrics, isLoading: workflowLoading } = useQuery({
-    queryKey: ["/api/workflow-metrics"],
-    refetchInterval: 5000,
+  const { data: systemHealth, isLoading: healthLoading } = useQuery({
+    queryKey: ["/api/system-health"],
+    refetchInterval: 5000, // Single source of truth for system metrics
+  });
+
+  const { data: agentRegistry, isLoading: registryLoading } = useQuery({
+    queryKey: ["/api/agent-registry"],
+    refetchInterval: 3000, // More frequent updates for agent registry
+  });
+
+  const { data: workItems, isLoading: workItemsLoading } = useQuery({
+    queryKey: ["/api/work-items"],
+    refetchInterval: 3000, // Real-time work item tracking
   });
 
   const { data: agentActivities, isLoading: activitiesLoading } = useQuery({
@@ -22,18 +32,20 @@ export default function AgentMonitoring() {
     refetchInterval: 3000, // More frequent updates for activities
   });
 
-  const { data: systemHealth, isLoading: healthLoading } = useQuery({
-    queryKey: ["/api/system-health"],
-    refetchInterval: 10000,
-  });
-
   const { data: coordination, isLoading: coordLoading } = useQuery({
     queryKey: ["/api/agent-coordination"],
     refetchInterval: 5000,
   });
 
-  const isLoading = perfLoading || workflowLoading || activitiesLoading || healthLoading || coordLoading;
-  const hasError = !isLoading && (!agentPerformance && !workflowMetrics && !agentActivities && !systemHealth && !coordination);
+  const isLoading = perfLoading || healthLoading || registryLoading || workItemsLoading || activitiesLoading || coordLoading;
+  const hasError = !isLoading && (!agentPerformance && !systemHealth && !agentRegistry && !workItems && !agentActivities && !coordination);
+
+  // Provide default values for missing data
+  const safeSystemHealth = systemHealth || {};
+  const safeAgentRegistry = agentRegistry || { summary: { byTier: {} } };
+  const safeWorkItems = workItems || { summary: {} };
+  const safeAgentActivities = agentActivities || [];
+  const safeCoordination = coordination || [];
 
   if (isLoading) {
     return (
@@ -102,14 +114,15 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600" data-testid="text-system-status">
-              {systemHealth?.systemStatus || 'Unknown'}
+              {safeSystemHealth?.systemStatus || 'Unknown'}
             </div>
             <div className="flex items-center space-x-2 mt-2">
               <div className="text-sm text-muted-foreground">
-                Agents: {systemHealth?.agentStatus?.activeAgents || 0}/{systemHealth?.agentStatus?.totalAgents || 0}
+                Agents: {safeSystemHealth?.agentStatus?.active || 0}/{safeSystemHealth?.agentStatus?.total || 0}
               </div>
               <Progress 
-                value={systemHealth?.agentStatus?.healthPercentage || 0} 
+                value={safeSystemHealth?.agentStatus?.total > 0 ? 
+                  (safeSystemHealth?.agentStatus?.active / safeSystemHealth?.agentStatus?.total) * 100 : 0} 
                 className="flex-1 h-2"
                 data-testid="progress-agent-health" 
               />
@@ -124,10 +137,10 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-active-workflows">
-              {systemHealth?.activeWorkflows || 0}
+              {safeSystemHealth?.activeWorkflows || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              {systemHealth?.suspendedWorkflows || 0} suspended
+              {safeSystemHealth?.suspendedWorkflows || 0} suspended
             </p>
           </CardContent>
         </Card>
@@ -139,10 +152,10 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-success-rate">
-              {workflowMetrics?.successRate?.toFixed(1) || 0}%
+              {safeSystemHealth?.successRate?.toFixed(1) || 0}%
             </div>
             <Progress 
-              value={workflowMetrics?.successRate || 0} 
+              value={safeSystemHealth?.successRate || 0} 
               className="mt-2 h-2"
               data-testid="progress-success-rate" 
             />
@@ -156,7 +169,7 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-avg-execution">
-              {Math.round(workflowMetrics?.avgExecutionTimeSeconds || 0)}s
+              {Math.round(safeSystemHealth?.avgExecutionTimeSeconds || 0)}s
             </div>
             <p className="text-xs text-muted-foreground">
               per workflow
@@ -183,7 +196,7 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agentActivities?.slice(0, 10).map((activity: any, index: number) => (
+                {safeAgentActivities?.slice(0, 10).map((activity: any, index: number) => (
                   <div 
                     key={activity.id} 
                     className="flex items-center justify-between p-3 border rounded-lg"
@@ -289,7 +302,7 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {coordination?.slice(0, 8).map((coord: any, index: number) => (
+                {safeCoordination?.slice(0, 8).map((coord: any, index: number) => (
                   <div 
                     key={coord.id} 
                     className="flex items-center justify-between p-3 border rounded-lg"
@@ -334,10 +347,10 @@ export default function AgentMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-green-600" data-testid="text-success-percentage">
-                  {workflowMetrics?.successRate?.toFixed(1) || 0}%
+                  {safeSystemHealth?.successRate?.toFixed(1) || 0}%
                 </div>
                 <Progress 
-                  value={workflowMetrics?.successRate || 0} 
+                  value={safeSystemHealth?.successRate || 0} 
                   className="mt-2"
                   data-testid="progress-success-percentage" 
                 />
@@ -350,7 +363,7 @@ export default function AgentMonitoring() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold" data-testid="text-execution-time">
-                  {Math.round(workflowMetrics?.avgExecutionTimeSeconds || 0)}s
+                  {Math.round(safeSystemHealth?.avgExecutionTimeSeconds || 0)}s
                 </div>
                 <p className="text-sm text-muted-foreground">per workflow</p>
               </CardContent>
