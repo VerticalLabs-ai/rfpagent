@@ -12,6 +12,11 @@ import { EnhancedProposalService } from "./enhancedProposalService";
 import { discoveryManager } from "./discoveryManager";
 import { discoveryOrchestrator } from "./discoveryOrchestrator";
 import { DiscoveryWorkflowProcessors } from "./discoveryWorkflowProcessors";
+import { 
+  documentProcessorSpecialist, 
+  requirementsExtractorSpecialist, 
+  complianceCheckerSpecialist 
+} from "./analysisSpecialists";
 import type { RFP, Portal, Proposal, WorkItem, InsertWorkItem, AgentRegistry } from "@shared/schema";
 import { nanoid } from 'nanoid';
 
@@ -337,10 +342,16 @@ export class WorkflowCoordinator {
       'rfp_discovery': ['portal_scanning', 'data_extraction'],
       'portal_authentication': ['authentication', 'portal_management'],
       
-      // Analysis Phase Tasks
+      // Analysis Phase Tasks - New Specialist Tasks
+      'document_validation': ['document_processing', 'validation'],
+      'text_extraction': ['text_extraction', 'ocr_processing'],
+      'requirement_parsing': ['requirement_extraction', 'data_parsing'],
+      'compliance_analysis': ['compliance_analysis', 'risk_assessment'],
+      
+      // Legacy Analysis Phase Tasks
       'document_analysis': ['document_processing', 'text_extraction'],
       'requirement_extraction': ['structure_analysis', 'data_parsing'],
-      'compliance_analysis': ['compliance_checking', 'requirement_validation'],
+      'compliance_check': ['compliance_checking', 'requirement_validation'],
       'risk_assessment': ['risk_assessment', 'compliance_checking'],
       'market_analysis': ['market_research', 'competitive_analysis'],
       'historical_analysis': ['historical_analysis', 'pattern_recognition'],
@@ -403,9 +414,16 @@ export class WorkflowCoordinator {
       'portal_scanning': 'specialist',
       'rfp_extraction': 'specialist',
       'portal_monitoring': 'specialist',
+      // New Analysis Specialist Tasks
+      'document_validation': 'specialist',
+      'text_extraction': 'specialist', 
+      'requirement_parsing': 'specialist',
+      'compliance_analysis': 'specialist',
+      
+      // Legacy Analysis Tasks
       'document_analysis': 'specialist',
       'requirement_extraction': 'specialist',
-      'compliance_analysis': 'specialist',
+      'compliance_check': 'specialist',
       'risk_assessment': 'specialist',
       'historical_analysis': 'specialist',
       'proposal_generate': 'specialist',
@@ -455,13 +473,25 @@ export class WorkflowCoordinator {
         case 'portal_monitor':
           return await this.processPortalMonitoringTask(workItem);
         
-        // Analysis Phase Tasks
+        // Analysis Phase Tasks - New Specialist Tasks
+        case 'document_validation':
+          return await this.processDocumentValidationTask(workItem);
+        
+        case 'text_extraction':
+          return await this.processTextExtractionTask(workItem);
+        
+        case 'requirement_parsing':
+          return await this.processRequirementParsingTask(workItem);
+        
+        case 'compliance_analysis':
+          return await this.processComplianceAnalysisTask(workItem);
+        
+        // Legacy Analysis Phase Tasks  
         case 'document_analysis':
         case 'requirement_extraction':
           return await this.processDocumentAnalysisTask(workItem);
         
         case 'compliance_check':
-        case 'compliance_analysis':
         case 'risk_assessment':
           return await this.processComplianceCheckTask(workItem);
         
@@ -670,6 +700,90 @@ export class WorkflowCoordinator {
       };
     }
   }
+
+  // ============ NEW ANALYSIS SPECIALIST TASK HANDLERS ============
+
+  /**
+   * Process document validation task using document processor specialist
+   */
+  private async processDocumentValidationTask(workItem: WorkItem): Promise<WorkflowResult> {
+    try {
+      const result = await documentProcessorSpecialist.processDocumentValidation(workItem);
+      
+      return {
+        success: result.success,
+        data: result.success ? result.result : undefined,
+        error: result.success ? undefined : result.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Document validation failed'
+      };
+    }
+  }
+
+  /**
+   * Process text extraction task using document processor specialist
+   */
+  private async processTextExtractionTask(workItem: WorkItem): Promise<WorkflowResult> {
+    try {
+      const result = await documentProcessorSpecialist.processTextExtraction(workItem);
+      
+      return {
+        success: result.success,
+        data: result.success ? result.result : undefined,
+        error: result.success ? undefined : result.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Text extraction failed'
+      };
+    }
+  }
+
+  /**
+   * Process requirement parsing task using requirements extractor specialist
+   */
+  private async processRequirementParsingTask(workItem: WorkItem): Promise<WorkflowResult> {
+    try {
+      const result = await requirementsExtractorSpecialist.processRequirementParsing(workItem);
+      
+      return {
+        success: result.success,
+        data: result.success ? result.result : undefined,
+        error: result.success ? undefined : result.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Requirement parsing failed'
+      };
+    }
+  }
+
+  /**
+   * Process compliance analysis task using compliance checker specialist
+   */
+  private async processComplianceAnalysisTask(workItem: WorkItem): Promise<WorkflowResult> {
+    try {
+      const result = await complianceCheckerSpecialist.processComplianceAnalysis(workItem);
+      
+      return {
+        success: result.success,
+        data: result.success ? result.result : undefined,
+        error: result.success ? undefined : result.error
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Compliance analysis failed'
+      };
+    }
+  }
+
+  // ============ LEGACY TASK HANDLERS ============
 
   /**
    * Process document analysis task
@@ -1545,4 +1659,38 @@ export class WorkflowCoordinator {
   /**
    * Process portal monitoring task
    */
-  private async processPortalMonitoringTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { portalId?: string; healthCheck?: boolean };\n    const { portalId, healthCheck } = inputs;\n    \n    try {\n      if (!portalId) {\n        throw new Error('Portal ID is required for portal monitoring');\n      }\n\n      const portal = await storage.getPortal(portalId);\n      if (!portal) {\n        throw new Error(`Portal not found: ${portalId}`);\n      }\n\n      return {\n        success: true,\n        data: {\n          portalId,\n          portalName: portal.name,\n          status: portal.status,\n          lastScanned: portal.lastScanned,\n          errorCount: portal.errorCount,\n          healthStatus: portal.status === 'active' ? 'healthy' : 'unhealthy'\n        }\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'Portal monitoring failed'\n      };\n    }\n  }\n\n  /**\n   * Process template processing task\n   */\n  private async processTemplateProcessingTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { templateType?: string; rfpId?: string; data?: any };\n    const { templateType, rfpId, data } = inputs;\n    \n    try {\n      return {\n        success: true,\n        data: {\n          templateType: templateType || 'standard',\n          rfpId,\n          processedTemplate: 'Template processed with enhanced proposal service',\n          generatedAt: new Date()\n        }\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'Template processing failed'\n      };\n    }\n  }\n\n  /**\n   * Process pricing analysis task\n   */\n  private async processPricingAnalysisTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { rfpId?: string; basePrice?: number };\n    const { rfpId, basePrice } = inputs;\n    \n    try {\n      let pricingResults: any = {\n        rfpId,\n        basePrice,\n        analysisDate: new Date(),\n        pricingStrategy: 'competitive'\n      };\n\n      if (rfpId) {\n        const rfp = await storage.getRFP(rfpId);\n        if (rfp) {\n          pricingResults.estimatedValue = rfp.estimatedValue;\n        }\n      }\n\n      return {\n        success: true,\n        data: pricingResults\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'Pricing analysis failed'\n      };\n    }\n  }\n\n  /**\n   * Process status monitoring task\n   */\n  private async processStatusMonitoringTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { entityType?: string; entityId?: string };\n    const { entityType, entityId } = inputs;\n    \n    try {\n      let statusResults: any = {\n        entityType,\n        entityId,\n        monitoredAt: new Date()\n      };\n\n      if (entityType === 'rfp' && entityId) {\n        const rfp = await storage.getRFP(entityId);\n        statusResults.currentStatus = rfp?.status;\n        statusResults.progress = rfp?.progress;\n      }\n\n      return {\n        success: true,\n        data: statusResults\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'Status monitoring failed'\n      };\n    }\n  }\n\n  /**\n   * Process notification task\n   */\n  private async processNotificationTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { type?: string; title?: string; message?: string };\n    const { type, title, message } = inputs;\n    \n    try {\n      const notification = await storage.createNotification({\n        type: type || 'general',\n        title: title || 'System Notification',\n        message: message || 'A notification was generated by the system'\n      });\n\n      return {\n        success: true,\n        data: {\n          notificationId: notification.id,\n          type: notification.type,\n          title: notification.title,\n          createdAt: notification.createdAt\n        }\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'Notification processing failed'\n      };\n    }\n  }\n\n  /**\n   * Process user interaction task\n   */\n  private async processUserInteractionTask(workItem: WorkItem): Promise<WorkflowResult> {\n    const inputs = workItem.inputs as { sessionId?: string; userQuery?: string; context?: any };\n    const { sessionId, userQuery, context } = inputs;\n    \n    try {\n      const response = {\n        sessionId,\n        userQuery,\n        response: {\n          message: 'User interaction processed successfully',\n          context: context || {},\n          suggestions: ['Continue workflow', 'Review results', 'Get status update'],\n          timestamp: new Date()\n        }\n      };\n\n      return {\n        success: true,\n        data: response\n      };\n    } catch (error) {\n      return {\n        success: false,\n        error: error instanceof Error ? error.message : 'User interaction processing failed'\n      };\n    }\n  }\n}\n\nexport const workflowCoordinator = new WorkflowCoordinator();
+  private async processPortalMonitoringTask(workItem: WorkItem): Promise<WorkflowResult> {
+    const inputs = workItem.inputs as { portalId?: string; healthCheck?: boolean };
+    const { portalId, healthCheck } = inputs;
+    
+    try {
+      if (!portalId) {
+        throw new Error('Portal ID is required for portal monitoring');
+      }
+
+      const portal = await storage.getPortal(portalId);
+      if (!portal) {
+        throw new Error(`Portal not found: ${portalId}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          portalId,
+          portalName: portal.name,
+          status: portal.status,
+          lastScanned: portal.lastScanned,
+          errorCount: portal.errorCount,
+          healthStatus: portal.status === 'active' ? 'healthy' : 'unhealthy'
+        }
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Portal monitoring failed'
+      };
+    }
+  }
+}
+
+export const workflowCoordinator = new WorkflowCoordinator();

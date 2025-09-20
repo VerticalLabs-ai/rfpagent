@@ -2,7 +2,7 @@ import { storage } from '../storage';
 import { agentRegistryService } from './agentRegistryService';
 import { workflowCoordinator } from './workflowCoordinator';
 import { scanManager } from './scan-manager';
-import { portalMonitoringService } from './portal-monitoring-service';
+import { PortalMonitoringService } from './portal-monitoring-service';
 import { agentMemoryService } from './agentMemoryService';
 import type { Portal, AgentRegistry, WorkItem, InsertWorkItem, AgentSession } from '@shared/schema';
 import { nanoid } from 'nanoid';
@@ -58,7 +58,7 @@ export interface WorkItemSequence {
  */
 export class DiscoveryOrchestrator {
   private activeWorkflows = new Map<string, WorkItemSequence[]>();
-  private portalMonitoringService = new (require('./portal-monitoring-service').PortalMonitoringService)(storage);
+  private portalMonitoring = new PortalMonitoringService(storage);
 
   constructor() {
     this.initializeDiscoveryAgents();

@@ -24,6 +24,7 @@ import { scanManager } from "./services/scan-manager";
 import { ManualRfpService } from "./services/manualRfpService";
 import { aiAgentOrchestrator } from "./services/aiAgentOrchestrator";
 import { mastraWorkflowEngine } from "./services/mastraWorkflowEngine";
+import analysisRoutes from "./routes/analysis";
 import { z } from "zod";
 
 // Zod schemas for AI API endpoints
@@ -170,6 +171,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize new portal monitoring scheduler
   console.log("Initializing Portal Monitoring Scheduler...");
   portalSchedulerService.initialize().catch(console.error);
+
+  // Mount Analysis Routes (Phase 7: Analysis Pipeline Integration)
+  console.log("Mounting Analysis Routes...");
+  app.use('/api/analysis', analysisRoutes);
 
   // Dashboard metrics
   app.get("/api/dashboard/metrics", async (req, res) => {
