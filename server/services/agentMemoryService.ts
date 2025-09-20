@@ -354,6 +354,44 @@ export class AgentMemoryService {
     return await storage.getAgentPerformanceSummary(agentId);
   }
 
+  // AGENT ACTIVITY MONITORING METHODS
+
+  async getRecentAgentActivities(limit: number = 50): Promise<any[]> {
+    // Get recent agent metrics and coordination activities
+    const recentMetrics = await storage.getAllAgentPerformanceMetrics('24h');
+    const recentCoordination = await this.getCoordinationLogs(limit);
+    
+    // Combine and format activities
+    const activities = [
+      ...recentMetrics.map(metric => ({
+        id: metric.id,
+        type: 'performance_metric',
+        agentId: metric.agentId,
+        activity: `${metric.metricType}: ${metric.metricValue}`,
+        timestamp: metric.recordedAt,
+        context: metric.context || {}
+      })),
+      ...recentCoordination.map(coord => ({
+        id: coord.id,
+        type: 'coordination',
+        agentId: coord.initiatorAgentId,
+        activity: `${coord.coordinationType} with ${coord.targetAgentId}`,
+        timestamp: coord.createdAt,
+        context: coord.context || {}
+      }))
+    ];
+
+    // Sort by timestamp and limit
+    return activities
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, limit);
+  }
+
+  async getCoordinationLogs(limit: number = 50): Promise<any[]> {
+    // Get coordination logs from storage
+    return await storage.getCoordinationLogs(limit);
+  }
+
   // Memory Cleanup and Maintenance
   async cleanupExpiredMemories(): Promise<void> {
     console.log('Starting memory cleanup process...');

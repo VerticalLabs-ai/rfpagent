@@ -189,6 +189,13 @@ export interface IStorage {
   recordAgentMetric(metric: any): Promise<any>;
   getAgentPerformanceSummary(agentId: string): Promise<any>;
 
+  // Agent Monitoring and Analytics Operations
+  getAllAgentPerformanceMetrics(timeRange?: string): Promise<any[]>;
+  getWorkflowExecutionMetrics(): Promise<any>;
+  getPortalHealthSummary(): Promise<any>;
+  getAgentHealthSummary(): Promise<any>;
+  getCoordinationLogs(limit?: number): Promise<any[]>;
+
   // Additional RFP methods needed by orchestrator
   getRFPs(filters?: { status?: string; category?: string; location?: string; limit?: number }): Promise<RFP[]>;
 }
@@ -627,6 +634,110 @@ export class DatabaseStorage implements IStorage {
       totalValue: totalValue[0].total || 0,
       portalsTracked: portalsCount[0].count
     };
+  }
+
+  // AGENT PERFORMANCE MONITORING METHODS
+
+  async getAllAgentPerformanceMetrics(timeRange: string = '7d'): Promise<any[]> {
+    const daysBack = timeRange === '24h' ? 1 : timeRange === '7d' ? 7 : 30;
+    const since = new Date();
+    since.setDate(since.getDate() - daysBack);
+
+    return await db
+      .select()
+      .from(agentPerformanceMetrics)
+      .where(gte(agentPerformanceMetrics.recordedAt, since))
+      .orderBy(desc(agentPerformanceMetrics.recordedAt));
+  }
+
+  async getWorkflowExecutionMetrics(): Promise<any> {
+    const totalWorkflows = await db
+      .select({ count: count() })
+      .from(workflowState);
+
+    const suspendedWorkflows = await db
+      .select({ count: count() })
+      .from(workflowState)
+      .where(eq(workflowState.status, 'suspended'));
+
+    const completedWorkflows = await db
+      .select({ count: count() })
+      .from(workflowState)
+      .where(eq(workflowState.status, 'completed'));
+
+    const failedWorkflows = await db
+      .select({ count: count() })
+      .from(workflowState)
+      .where(eq(workflowState.status, 'failed'));
+
+    // Average execution time for completed workflows using correct column names
+    const avgExecutionTime = await db
+      .select({ 
+        avg: sql`AVG(EXTRACT(EPOCH FROM (${workflowState.updatedAt} - ${workflowState.createdAt})))` 
+      })
+      .from(workflowState)
+      .where(eq(workflowState.status, 'completed'));
+
+    return {
+      totalWorkflows: totalWorkflows[0].count,
+      suspendedWorkflows: suspendedWorkflows[0].count,
+      completedWorkflows: completedWorkflows[0].count,
+      failedWorkflows: failedWorkflows[0].count,
+      successRate: totalWorkflows[0].count > 0 ? (Number(completedWorkflows[0].count) / Number(totalWorkflows[0].count)) * 100 : 0,
+      avgExecutionTimeSeconds: Number(avgExecutionTime[0].avg) || 0
+    };
+  }
+
+  async getPortalHealthSummary(): Promise<any> {
+    const totalPortals = await db
+      .select({ count: count() })
+      .from(portals);
+
+    const activePortals = await db
+      .select({ count: count() })
+      .from(portals)
+      .where(eq(portals.status, 'active'));
+
+    const errorPortals = await db
+      .select({ count: count() })
+      .from(portals)
+      .where(eq(portals.status, 'error'));
+
+    return {
+      total: totalPortals[0].count,
+      active: activePortals[0].count,
+      errors: errorPortals[0].count,
+      healthPercentage: totalPortals[0].count > 0 ? (Number(activePortals[0].count) / Number(totalPortals[0].count)) * 100 : 0
+    };
+  }
+
+  async getAgentHealthSummary(): Promise<any> {
+    const totalAgents = await db
+      .select({ 
+        count: sql`COUNT(DISTINCT agent_id)` 
+      })
+      .from(agentPerformanceMetrics);
+
+    const recentActivity = await db
+      .select({ 
+        count: sql`COUNT(DISTINCT agent_id)` 
+      })
+      .from(agentPerformanceMetrics)
+      .where(gte(agentPerformanceMetrics.recordedAt, new Date(Date.now() - 24 * 60 * 60 * 1000))); // Last 24 hours
+
+    return {
+      totalAgents: Number(totalAgents[0].count),
+      activeAgents: Number(recentActivity[0].count),
+      healthPercentage: Number(totalAgents[0].count) > 0 ? (Number(recentActivity[0].count) / Number(totalAgents[0].count)) * 100 : 0
+    };
+  }
+
+  async getCoordinationLogs(limit: number = 50): Promise<any[]> {
+    return await db
+      .select()
+      .from(agentCoordinationLog)
+      .orderBy(desc(agentCoordinationLog.startedAt))
+      .limit(limit);
   }
 
   async getPortalActivity(): Promise<any> {

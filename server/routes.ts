@@ -2017,6 +2017,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AGENT PERFORMANCE MONITORING ENDPOINTS
+  
+  // Get all agent activity for monitoring dashboard  
+  app.get("/api/agent-activity", async (req, res) => {
+    try {
+      const agentMemoryService = await import("./services/agentMemoryService");
+      const activities = await agentMemoryService.AgentMemoryService.getInstance().getRecentAgentActivities();
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching agent activities:", error);
+      res.status(500).json({ error: "Failed to fetch agent activities" });
+    }
+  });
+
+  // Get agent performance metrics
+  app.get("/api/agent-performance", async (req, res) => {
+    try {
+      const { agentId, timeRange = '7d' } = req.query;
+      const agentMemoryService = await import("./services/agentMemoryService");
+      
+      if (agentId) {
+        const summary = await agentMemoryService.AgentMemoryService.getInstance().getAgentPerformanceSummary(agentId as string);
+        res.json(summary);
+      } else {
+        // Get all agent performance metrics
+        const allMetrics = await storage.getAllAgentPerformanceMetrics(timeRange as string);
+        res.json(allMetrics);
+      }
+    } catch (error) {
+      console.error("Error fetching agent performance:", error);
+      res.status(500).json({ error: "Failed to fetch agent performance" });
+    }
+  });
+
+  // Get workflow execution metrics
+  app.get("/api/workflow-metrics", async (req, res) => {
+    try {
+      const metrics = await storage.getWorkflowExecutionMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching workflow metrics:", error);
+      res.status(500).json({ error: "Failed to fetch workflow metrics" });
+    }
+  });
+
+  // Get agent coordination logs for monitoring
+  app.get("/api/agent-coordination", async (req, res) => {
+    try {
+      const { limit = 50 } = req.query;
+      const agentMemoryService = await import("./services/agentMemoryService");
+      const coordinationLogs = await agentMemoryService.AgentMemoryService.getInstance().getCoordinationLogs(parseInt(limit as string));
+      res.json(coordinationLogs);
+    } catch (error) {
+      console.error("Error fetching coordination logs:", error);
+      res.status(500).json({ error: "Failed to fetch coordination logs" });
+    }
+  });
+
+  // Get real-time system health metrics
+  app.get("/api/system-health", async (req, res) => {
+    try {
+      // Get active and suspended workflows directly from storage for now
+      const activeWorkflowsList = await storage.getActiveWorkflows();
+      const suspendedWorkflowsList = await storage.getSuspendedWorkflows();
+      
+      const health = {
+        activeWorkflows: activeWorkflowsList.length,
+        suspendedWorkflows: suspendedWorkflowsList.length,
+        systemStatus: 'healthy',
+        timestamp: new Date(),
+        portalStatus: await storage.getPortalHealthSummary(),
+        agentStatus: await storage.getAgentHealthSummary()
+      };
+      
+      res.json(health);
+    } catch (error) {
+      console.error("Error fetching system health:", error);
+      res.status(500).json({ error: "Failed to fetch system health" });
+    }
+  });
+
   // Suspend a workflow
   app.post("/api/workflows/:workflowId/suspend", async (req, res) => {
     try {

@@ -720,6 +720,16 @@ export class WorkflowCoordinator {
     }
   }
 
+  async getActiveWorkflowsCount(): Promise<number> {
+    try {
+      const activeWorkflows = await storage.getActiveWorkflows();
+      return activeWorkflows.length;
+    } catch (error) {
+      console.error('❌ Failed to get active workflows count:', error);
+      return 0;
+    }
+  }
+
   /**
    * Cancel a workflow
    */

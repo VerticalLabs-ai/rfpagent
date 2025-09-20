@@ -16,6 +16,7 @@ import Analytics from "@/pages/analytics";
 import CompanyProfiles from "@/pages/company-profiles";
 import AIChat from "@/pages/ai-chat";
 import WorkflowManagement from "@/pages/workflow-management";
+import AgentMonitoring from "@/pages/agent-monitoring";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
@@ -42,6 +43,7 @@ function Router() {
             <Route path="/analytics" component={Analytics} />
             <Route path="/ai-chat" component={AIChat} />
             <Route path="/workflow-management" component={WorkflowManagement} />
+            <Route path="/agent-monitoring" component={AgentMonitoring} />
             <Route component={NotFound} />
           </Switch>
         </main>
