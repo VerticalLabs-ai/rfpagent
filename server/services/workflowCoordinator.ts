@@ -9,6 +9,9 @@ import { DocumentParsingService } from "./documentParsingService";
 import { PortalMonitoringService } from "./portal-monitoring-service";
 import { scanManager } from "./scan-manager";
 import { EnhancedProposalService } from "./enhancedProposalService";
+import { discoveryManager } from "./discoveryManager";
+import { discoveryOrchestrator } from "./discoveryOrchestrator";
+import { DiscoveryWorkflowProcessors } from "./discoveryWorkflowProcessors";
 import type { RFP, Portal, Proposal, WorkItem, InsertWorkItem, AgentRegistry } from "@shared/schema";
 import { nanoid } from 'nanoid';
 
@@ -397,6 +400,9 @@ export class WorkflowCoordinator {
       'portal_monitor': 'specialist',
       'rfp_discovery': 'specialist',
       'portal_authentication': 'specialist',
+      'portal_scanning': 'specialist',
+      'rfp_extraction': 'specialist',
+      'portal_monitoring': 'specialist',
       'document_analysis': 'specialist',
       'requirement_extraction': 'specialist',
       'compliance_analysis': 'specialist',
@@ -428,7 +434,20 @@ export class WorkflowCoordinator {
   private async processWorkItemByType(workItem: WorkItem): Promise<WorkflowResult> {
     try {
       switch (workItem.taskType) {
-        // Discovery Phase Tasks
+        // New Discovery Pipeline Tasks - Sequenced workflow
+        case 'portal_authentication':
+          return await DiscoveryWorkflowProcessors.processPortalAuthentication(workItem);
+        
+        case 'portal_scanning':
+          return await DiscoveryWorkflowProcessors.processPortalScanning(workItem);
+        
+        case 'rfp_extraction':
+          return await DiscoveryWorkflowProcessors.processRFPExtraction(workItem);
+        
+        case 'portal_monitoring':
+          return await DiscoveryWorkflowProcessors.processPortalMonitoring(workItem);
+        
+        // Legacy Discovery Phase Tasks
         case 'portal_scan':
         case 'rfp_discovery':
           return await this.processPortalScanTask(workItem);
