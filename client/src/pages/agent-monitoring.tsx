@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Bot, Zap, Clock, AlertCircle, CheckCircle, TrendingUp, Users } from "lucide-react";
+import { Activity, Bot, Zap, Clock, AlertCircle, CheckCircle, TrendingUp, Users, Workflow, PlayCircle, PauseCircle, XCircle, RotateCcw } from "lucide-react";
 
 export default function AgentMonitoring() {
   const { data: agentPerformance, isLoading: perfLoading } = useQuery({
@@ -37,8 +37,19 @@ export default function AgentMonitoring() {
     refetchInterval: 5000,
   });
 
-  const isLoading = perfLoading || healthLoading || registryLoading || workItemsLoading || activitiesLoading || coordLoading;
-  const hasError = !isLoading && (!agentPerformance && !systemHealth && !agentRegistry && !workItems && !agentActivities && !coordination);
+  // Add workflow state monitoring for Phase 11 E2E validation
+  const { data: workflowStates, isLoading: workflowLoading } = useQuery({
+    queryKey: ["/api/workflows/state"],
+    refetchInterval: 3000, // Real-time workflow state updates
+  });
+
+  const { data: phaseStats, isLoading: phaseStatsLoading } = useQuery({
+    queryKey: ["/api/workflows/phase-stats"],
+    refetchInterval: 5000, // Phase statistics for monitoring
+  });
+
+  const isLoading = perfLoading || healthLoading || registryLoading || workItemsLoading || activitiesLoading || coordLoading || workflowLoading || phaseStatsLoading;
+  const hasError = !isLoading && (!agentPerformance && !systemHealth && !agentRegistry && !workItems && !agentActivities && !coordination && !workflowStates && !phaseStats);
 
   // Provide default values for missing data
   const safeSystemHealth = systemHealth || {};
@@ -46,6 +57,8 @@ export default function AgentMonitoring() {
   const safeWorkItems = workItems || { summary: {} };
   const safeAgentActivities = agentActivities || [];
   const safeCoordination = coordination || [];
+  const safeWorkflowStates = workflowStates || { workflows: [], summary: { phaseDistribution: {} } };
+  const safePhaseStats = phaseStats || { phaseStats: {}, transitionMetrics: {} };
 
   if (isLoading) {
     return (
@@ -184,6 +197,7 @@ export default function AgentMonitoring() {
           <TabsTrigger value="performance" data-testid="tab-performance">Agent Performance</TabsTrigger>
           <TabsTrigger value="coordination" data-testid="tab-coordination">Agent Coordination</TabsTrigger>
           <TabsTrigger value="workflows" data-testid="tab-workflows">Workflow Analytics</TabsTrigger>
+          <TabsTrigger value="workflow-phases" data-testid="tab-workflow-phases">Workflow Phases</TabsTrigger>
         </TabsList>
 
         <TabsContent value="activities" className="space-y-6">
@@ -369,6 +383,180 @@ export default function AgentMonitoring() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="workflow-phases" className="space-y-6">
+          {/* Phase Distribution Overview */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+            <Card data-testid="card-discovery-phase">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Discovery</CardTitle>
+                <PlayCircle className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600" data-testid="text-discovery-count">
+                  {safeWorkflowStates?.summary?.phaseDistribution?.discovery || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">Active workflows</div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-analysis-phase">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Analysis</CardTitle>
+                <Bot className="h-4 w-4 text-amber-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-amber-600" data-testid="text-analysis-count">
+                  {safeWorkflowStates?.summary?.phaseDistribution?.analysis || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">Being analyzed</div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-generation-phase">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Generation</CardTitle>
+                <Zap className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-purple-600" data-testid="text-generation-count">
+                  {safeWorkflowStates?.summary?.phaseDistribution?.generation || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">Generating proposals</div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-submission-phase">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Submission</CardTitle>
+                <TrendingUp className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-orange-600" data-testid="text-submission-count">
+                  {safeWorkflowStates?.summary?.phaseDistribution?.submission || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">Being submitted</div>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-completed-phase">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600" data-testid="text-completed-count">
+                  {safeWorkflowStates?.summary?.phaseDistribution?.completed || 0}
+                </div>
+                <div className="text-xs text-muted-foreground">Successfully completed</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Phase Transition Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <Card data-testid="card-transition-rate">
+              <CardHeader>
+                <CardTitle>Transition Success Rate</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-green-600" data-testid="text-transition-success-rate">
+                  {safePhaseStats?.transitionMetrics?.totalTransitions > 0 ? 
+                    Math.round((safePhaseStats?.transitionMetrics?.successfulTransitions / safePhaseStats?.transitionMetrics?.totalTransitions) * 100) : 0}%
+                </div>
+                <div className="text-sm text-muted-foreground mt-2">
+                  {safePhaseStats?.transitionMetrics?.successfulTransitions || 0} / {safePhaseStats?.transitionMetrics?.totalTransitions || 0} transitions
+                </div>
+                <Progress 
+                  value={safePhaseStats?.transitionMetrics?.totalTransitions > 0 ? 
+                    (safePhaseStats?.transitionMetrics?.successfulTransitions / safePhaseStats?.transitionMetrics?.totalTransitions) * 100 : 0} 
+                  className="mt-2"
+                  data-testid="progress-transition-success"
+                />
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-average-transition-time">
+              <CardHeader>
+                <CardTitle>Avg Transition Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold" data-testid="text-avg-transition-time">
+                  {Math.round(safePhaseStats?.transitionMetrics?.averageTransitionTime || 0)}s
+                </div>
+                <p className="text-sm text-muted-foreground">per phase transition</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-failed-transitions">
+              <CardHeader>
+                <CardTitle>Failed Transitions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-red-600" data-testid="text-failed-transitions">
+                  {safePhaseStats?.transitionMetrics?.failedTransitions || 0}
+                </div>
+                <p className="text-sm text-muted-foreground">requiring intervention</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Active Workflow Status Table */}
+          <Card data-testid="card-active-workflows">
+            <CardHeader>
+              <CardTitle>Active Workflows Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {safeWorkflowStates?.workflows?.slice(0, 10).map((workflow: any, index: number) => (
+                  <div key={workflow.workflowId || index} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        {workflow.currentPhase === 'discovery' && <PlayCircle className="h-4 w-4 text-blue-500" />}
+                        {workflow.currentPhase === 'analysis' && <Bot className="h-4 w-4 text-amber-500" />}
+                        {workflow.currentPhase === 'generation' && <Zap className="h-4 w-4 text-purple-500" />}
+                        {workflow.currentPhase === 'submission' && <TrendingUp className="h-4 w-4 text-orange-500" />}
+                        {workflow.currentPhase === 'completed' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        <span className="font-medium capitalize">{workflow.currentPhase}</span>
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">{workflow.title || 'Untitled RFP'}</div>
+                        <div className="text-xs text-muted-foreground">{workflow.agency || 'Unknown Agency'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={workflow.status === 'completed' ? 'default' : 
+                                  workflow.status === 'failed' ? 'destructive' : 
+                                  workflow.status === 'in_progress' ? 'secondary' : 'outline'}
+                          data-testid={`badge-workflow-status-${index}`}
+                        >
+                          {workflow.status === 'in_progress' && <RotateCcw className="h-3 w-3 mr-1" />}
+                          {workflow.status === 'completed' && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {workflow.status === 'failed' && <XCircle className="h-3 w-3 mr-1" />}
+                          {workflow.status === 'pending' && <PauseCircle className="h-3 w-3 mr-1" />}
+                          {workflow.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium">{workflow.progress}%</div>
+                        <Progress value={workflow.progress} className="w-20" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {(!safeWorkflowStates?.workflows || safeWorkflowStates.workflows.length === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Workflow className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No active workflows found</p>
+                    <p className="text-sm">Start scanning portals to discover RFPs</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

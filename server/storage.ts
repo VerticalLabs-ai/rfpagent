@@ -4,7 +4,7 @@ import {
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   aiConversations, conversationMessages, researchFindings, historicalBids,
   agentMemory, agentKnowledgeBase, agentCoordinationLog, workflowState, agentPerformanceMetrics,
-  agentRegistry, workItems, agentSessions,
+  agentRegistry, workItems, agentSessions, phaseStateTransitions, deadLetterQueue,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type SubmissionPipeline, type InsertSubmissionPipeline,
@@ -248,6 +248,7 @@ export interface IStorage {
   getWorkItemsBySession(sessionId: string): Promise<WorkItem[]>;
   getWorkItemsByAgent(agentId: string, status?: string): Promise<WorkItem[]>;
   getWorkItemsByStatus(status: string): Promise<WorkItem[]>;
+  getWorkItems(filter?: { status?: string; dlq?: boolean; scheduledBefore?: Date; workflowId?: string }): Promise<WorkItem[]>;
   getWorkQueue(agentId?: string, taskType?: string, limit?: number): Promise<WorkItem[]>;
   assignWorkItem(workItemId: string, agentId: string): Promise<WorkItem>;
   completeWorkItem(workItemId: string, result: any): Promise<WorkItem>;
@@ -1792,8 +1793,26 @@ export class DatabaseStorage implements IStorage {
 
   // Agent Registry Operations (3-Tier Agentic System)
   async registerAgent(agent: InsertAgentRegistry): Promise<AgentRegistry> {
-    const [newAgent] = await db.insert(agentRegistry).values(agent).returning();
-    return newAgent;
+    try {
+      const [newAgent] = await db.insert(agentRegistry).values(agent).returning();
+      return newAgent;
+    } catch (error: any) {
+      // Handle duplicate registration gracefully (idempotency)
+      if (error.code === '23505' && error.constraint === 'agent_registry_agent_id_unique') {
+        // Agent already exists, update instead of insert
+        const [existingAgent] = await db
+          .update(agentRegistry)
+          .set({
+            ...agent,
+            lastHeartbeat: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(agentRegistry.agentId, agent.agentId))
+          .returning();
+        return existingAgent;
+      }
+      throw error;
+    }
   }
 
   async updateAgent(agentId: string, updates: Partial<AgentRegistry>): Promise<AgentRegistry> {
@@ -1922,6 +1941,27 @@ export class DatabaseStorage implements IStorage {
   async getWorkItemsByStatus(status: string): Promise<WorkItem[]> {
     return await db.select().from(workItems)
       .where(eq(workItems.status, status))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getWorkItems(filter?: { status?: string; dlq?: boolean; scheduledBefore?: Date; workflowId?: string }): Promise<WorkItem[]> {
+    const conditions = [];
+    
+    if (filter?.status) {
+      conditions.push(eq(workItems.status, filter.status));
+    }
+    if (filter?.dlq !== undefined) {
+      conditions.push(eq(workItems.dlq, filter.dlq));
+    }
+    if (filter?.scheduledBefore) {
+      conditions.push(lte(workItems.nextRetryAt, filter.scheduledBefore));
+    }
+    if (filter?.workflowId) {
+      conditions.push(eq(workItems.workflowId, filter.workflowId));
+    }
+
+    return await db.select().from(workItems)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(workItems.priority), asc(workItems.deadline));
   }
 
@@ -2209,7 +2249,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(phaseStateTransitions)
       .where(eq(phaseStateTransitions.workflowId, workflowId))
-      .orderBy(asc(phaseStateTransitions.transitionTime));
+      .orderBy(asc(phaseStateTransitions.timestamp));
   }
 
   async getPhaseTransitionsByStatus(fromPhase: string, toPhase: string): Promise<any[]> {
@@ -2220,14 +2260,14 @@ export class DatabaseStorage implements IStorage {
         eq(phaseStateTransitions.fromPhase, fromPhase),
         eq(phaseStateTransitions.toPhase, toPhase)
       ))
-      .orderBy(desc(phaseStateTransitions.transitionTime));
+      .orderBy(desc(phaseStateTransitions.timestamp));
   }
 
   async getRecentPhaseTransitions(limit: number = 50): Promise<any[]> {
     return await db
       .select()
       .from(phaseStateTransitions)
-      .orderBy(desc(phaseStateTransitions.transitionTime))
+      .orderBy(desc(phaseStateTransitions.timestamp))
       .limit(limit);
   }
 

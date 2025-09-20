@@ -669,8 +669,11 @@ export const workItems = pgTable("work_items", {
   error: text("error"), // error message if failed
   metadata: jsonb("metadata"), // additional task metadata
   // Enhanced Retry/Backoff/DLQ fields
-  retryPolicy: jsonb("retry_policy"), // task-specific retry configuration
+  retryPolicy: jsonb("retry_policy").default('{}').notNull(), // task-specific retry configuration
+  retryCount: integer("retry_count").default(0).notNull(), // number of retry attempts made
   nextRetryAt: timestamp("next_retry_at"), // when to retry next
+  lastError: text("last_error"), // last error message for retry tracking
+  dlq: boolean("dlq").default(false).notNull(), // dead letter queue flag
   backoffMultiplier: decimal("backoff_multiplier", { precision: 3, scale: 2 }).default('2.0'), // exponential backoff multiplier
   lastRetryAt: timestamp("last_retry_at"),
   dlqReason: text("dlq_reason"), // reason for DLQ placement

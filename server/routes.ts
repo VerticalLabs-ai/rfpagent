@@ -3014,5 +3014,654 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ PHASE 11: E2E WORKFLOW STATE OBSERVABILITY ENDPOINTS ============
+  
+  // Get comprehensive workflow state for all RFPs with phase visibility
+  app.get("/api/workflows/state", async (req, res) => {
+    try {
+      const { status, phase, limit = 50 } = req.query;
+      
+      // Get active workflows from storage
+      const activeWorkflows = await storage.getActiveWorkflows();
+      const suspendedWorkflows = await storage.getSuspendedWorkflows();
+      
+      // Get all RFPs with their current status as workflow state proxy
+      const allRFPs = await storage.getAllRFPs({ 
+        status: status as string, 
+        limit: Number(limit) 
+      });
+      
+      // Map RFPs to workflow state format
+      const workflowStates = allRFPs.rfps.map(rfp => ({
+        workflowId: `rfp-workflow-${rfp.id}`,
+        rfpId: rfp.id,
+        currentPhase: determinePhaseFromStatus(rfp.status),
+        status: mapRFPStatusToWorkflowStatus(rfp.status),
+        progress: rfp.progress || 0,
+        title: rfp.title,
+        agency: rfp.agency,
+        deadline: rfp.deadline,
+        estimatedValue: rfp.estimatedValue,
+        portalId: rfp.portalId,
+        lastUpdated: rfp.updatedAt,
+        phaseHistory: [] // TODO: Get from phase transition records
+      }));
+      
+      // Filter by phase if requested
+      const filteredWorkflows = phase ? 
+        workflowStates.filter(w => w.currentPhase === phase) : 
+        workflowStates;
+      
+      // Get phase distribution
+      const phaseDistribution = {
+        discovery: workflowStates.filter(w => w.currentPhase === 'discovery').length,
+        analysis: workflowStates.filter(w => w.currentPhase === 'analysis').length,
+        generation: workflowStates.filter(w => w.currentPhase === 'generation').length,
+        submission: workflowStates.filter(w => w.currentPhase === 'submission').length,
+        completed: workflowStates.filter(w => w.currentPhase === 'completed').length
+      };
+      
+      res.json({
+        success: true,
+        workflows: filteredWorkflows,
+        summary: {
+          total: workflowStates.length,
+          active: workflowStates.filter(w => ['pending', 'in_progress'].includes(w.status)).length,
+          completed: workflowStates.filter(w => w.status === 'completed').length,
+          failed: workflowStates.filter(w => w.status === 'failed').length,
+          suspended: workflowStates.filter(w => w.status === 'suspended').length,
+          phaseDistribution
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching workflow state:", error);
+      res.status(500).json({ error: "Failed to fetch workflow state" });
+    }
+  });
+  
+  // Get detailed workflow state for specific RFP
+  app.get("/api/workflows/state/:rfpId", async (req, res) => {
+    try {
+      const { rfpId } = req.params;
+      
+      // Get RFP details
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        return res.status(404).json({ error: "RFP not found" });
+      }
+      
+      // Get related entities
+      const documents = await storage.getDocumentsByRFP(rfpId);
+      const proposals = await storage.getProposalByRFP(rfpId);
+      const submissions = await storage.getSubmissionsByRFP(rfpId);
+      const workItems = await storage.getWorkItemsByWorkflow(`rfp-workflow-${rfpId}`);
+      
+      // Get workflow state from storage
+      const workflowState = await storage.getWorkflowStateByWorkflowId(`rfp-workflow-${rfpId}`);
+      
+      // Get phase transitions
+      const phaseTransitions = await storage.getPhaseStateTransitions(`rfp-workflow-${rfpId}`);
+      
+      // Determine current phase and status
+      const currentPhase = determinePhaseFromStatus(rfp.status);
+      const workflowStatus = mapRFPStatusToWorkflowStatus(rfp.status);
+      
+      // Build comprehensive workflow state
+      const detailedState = {
+        workflowId: `rfp-workflow-${rfpId}`,
+        rfp: {
+          id: rfp.id,
+          title: rfp.title,
+          description: rfp.description,
+          agency: rfp.agency,
+          status: rfp.status,
+          progress: rfp.progress || 0,
+          deadline: rfp.deadline,
+          estimatedValue: rfp.estimatedValue,
+          requirements: rfp.requirements,
+          complianceItems: rfp.complianceItems,
+          riskFlags: rfp.riskFlags
+        },
+        currentPhase,
+        status: workflowStatus,
+        progress: rfp.progress || 0,
+        phaseHistory: phaseTransitions || [],
+        entities: {
+          documents: documents.length,
+          proposals: proposals ? 1 : 0,
+          submissions: submissions.length,
+          workItems: workItems.length
+        },
+        workItems: workItems.slice(0, 10), // Recent work items
+        canTransitionTo: getValidPhaseTransitions(currentPhase, workflowStatus),
+        estimatedCompletion: calculateEstimatedCompletion(currentPhase, rfp.deadline),
+        healthStatus: assessWorkflowHealth(rfp, documents, workItems),
+        lastActivity: rfp.updatedAt,
+        metadata: workflowState || {}
+      };
+      
+      res.json({
+        success: true,
+        workflowState: detailedState
+      });
+    } catch (error) {
+      console.error("Error fetching detailed workflow state:", error);
+      res.status(500).json({ error: "Failed to fetch workflow state" });
+    }
+  });
+  
+  // Get workflow phase statistics for monitoring dashboard
+  app.get("/api/workflows/phase-stats", async (req, res) => {
+    try {
+      const { timeRange = '24h' } = req.query;
+      
+      // Get all RFPs
+      const allRFPs = await storage.getAllRFPs({ limit: 1000 });
+      
+      // Get phase transitions within time range  
+      const recentTransitions = await storage.getRecentPhaseTransitions(100);
+      
+      // Calculate phase statistics with real data
+      const phases = ['discovery', 'analysis', 'generation', 'submission', 'completed'];
+      const phaseStats: any = {};
+      
+      for (const phase of phases) {
+        if (phase === 'completed') {
+          const completedRFPs = allRFPs.rfps.filter(r => r.status === 'submitted' || r.status === 'closed');
+          const phaseTransitions = recentTransitions.filter(t => t.toPhase === phase);
+          
+          phaseStats[phase] = {
+            count: completedRFPs.length,
+            avgTotalDuration: calculateAverageTransitionTime(phaseTransitions) || 0,
+            successRate: completedRFPs.length > 0 ? completedRFPs.length / allRFPs.rfps.length : 0,
+            common_issues: []
+          };
+        } else {
+          const activeRFPs = allRFPs.rfps.filter(r => determinePhaseFromStatus(r.status) === phase);
+          const phaseTransitions = recentTransitions.filter(t => t.toPhase === phase);
+          const successfulTransitions = phaseTransitions.filter(t => t.toStatus !== 'failed' && t.toStatus !== 'error');
+          
+          phaseStats[phase] = {
+            active: activeRFPs.length,
+            avgDuration: calculateAverageTransitionTime(phaseTransitions) || 0,
+            successRate: phaseTransitions.length > 0 ? successfulTransitions.length / phaseTransitions.length : 1.0,
+            common_issues: []
+          };
+        }
+      }
+      
+      // Calculate transition metrics
+      const transitionMetrics = {
+        totalTransitions: recentTransitions.length,
+        successfulTransitions: recentTransitions.filter(t => t.toStatus !== 'failed').length,
+        failedTransitions: recentTransitions.filter(t => t.toStatus === 'failed').length,
+        averageTransitionTime: calculateAverageTransitionTime(recentTransitions)
+      };
+      
+      res.json({
+        success: true,
+        phaseStats,
+        transitionMetrics,
+        timeRange,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error fetching phase statistics:", error);
+      res.status(500).json({ error: "Failed to fetch phase statistics" });
+    }
+  });
+  
+  // Trigger phase transition for workflow
+  app.post("/api/workflows/:workflowId/transition", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { toPhase, reason, metadata } = req.body;
+      
+      if (!toPhase) {
+        return res.status(400).json({ error: "Target phase is required" });
+      }
+      
+      // Extract RFP ID from workflow ID
+      const rfpId = workflowId.replace('rfp-workflow-', '');
+      const rfp = await storage.getRFP(rfpId);
+      
+      if (!rfp) {
+        return res.status(404).json({ error: "RFP workflow not found" });
+      }
+      
+      const currentPhase = determinePhaseFromStatus(rfp.status);
+      
+      // Validate transition
+      const validTransitions = getValidPhaseTransitions(currentPhase, rfp.status);
+      if (!validTransitions.includes(toPhase)) {
+        return res.status(400).json({ 
+          error: "Invalid phase transition",
+          current: currentPhase,
+          requested: toPhase,
+          valid: validTransitions
+        });
+      }
+      
+      // Execute phase transition
+      const newStatus = mapPhaseToRFPStatus(toPhase);
+      const newProgress = calculatePhaseProgress(toPhase);
+      
+      // Update RFP status
+      const updatedRFP = await storage.updateRFP(rfpId, {
+        status: newStatus,
+        progress: newProgress
+      });
+      
+      // Record phase transition
+      await storage.createPhaseStateTransition({
+        workflowId,
+        fromPhase: currentPhase,
+        toPhase,
+        fromStatus: rfp.status,
+        toStatus: newStatus,
+        transitionType: 'manual',
+        triggeredBy: 'api_request',
+        reason: reason || 'Manual transition',
+        metadata: metadata || {},
+        timestamp: new Date()
+      });
+      
+      res.json({
+        success: true,
+        workflowId,
+        transition: {
+          from: currentPhase,
+          to: toPhase,
+          status: newStatus,
+          progress: newProgress
+        },
+        rfp: updatedRFP
+      });
+    } catch (error) {
+      console.error("Error executing phase transition:", error);
+      res.status(500).json({ 
+        error: "Failed to execute phase transition",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // ============ PHASE 11: E2E TESTING ORCHESTRATOR ENDPOINTS ============
+
+  // Initialize E2E Test Orchestrator (lazy loading to avoid circular dependencies)
+  let e2eOrchestrator: any = null;
+  const initE2EOrchestrator = async () => {
+    if (!e2eOrchestrator) {
+      const { E2ETestOrchestrator } = await import('./services/e2eTestOrchestrator.js');
+      const { WorkflowCoordinator } = await import('./services/workflowCoordinator.js');
+      const { DiscoveryOrchestrator } = await import('./services/discoveryOrchestrator.js');
+      const { SubmissionOrchestrator } = await import('./services/submissionOrchestrator.js');
+      const { AgentRegistryService } = await import('./services/agentRegistryService.js');
+      const { MastraWorkflowEngine } = await import('./services/mastraWorkflowEngine.js');
+
+      const workflowCoordinator = new WorkflowCoordinator(storage);
+      const discoveryOrchestrator = new DiscoveryOrchestrator(storage);
+      const submissionOrchestrator = new SubmissionOrchestrator(storage);
+      const agentRegistry = new AgentRegistryService(storage);
+      const mastraEngine = new MastraWorkflowEngine(storage);
+
+      e2eOrchestrator = new E2ETestOrchestrator(
+        storage,
+        workflowCoordinator,
+        discoveryOrchestrator,
+        submissionOrchestrator,
+        agentRegistry,
+        mastraEngine
+      );
+    }
+    return e2eOrchestrator;
+  };
+
+  // Get available E2E test scenarios
+  app.get("/api/e2e/scenarios", async (req, res) => {
+    try {
+      const orchestrator = await initE2EOrchestrator();
+      const scenarios = orchestrator.getTestScenarios();
+      
+      res.json({
+        success: true,
+        scenarios: scenarios.map(scenario => ({
+          id: scenario.id,
+          name: scenario.name,
+          description: scenario.description,
+          phases: scenario.phases,
+          expectedDuration: scenario.expectedDuration
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching E2E test scenarios:", error);
+      res.status(500).json({ error: "Failed to fetch test scenarios" });
+    }
+  });
+
+  // Execute E2E test scenario
+  app.post("/api/e2e/tests/:scenarioId/execute", async (req, res) => {
+    try {
+      const { scenarioId } = req.params;
+      const orchestrator = await initE2EOrchestrator();
+      
+      const testId = await orchestrator.executeTestScenario(scenarioId);
+      
+      res.json({
+        success: true,
+        testId,
+        message: `E2E test scenario '${scenarioId}' started`,
+        status: 'running'
+      });
+    } catch (error) {
+      console.error("Error executing E2E test scenario:", error);
+      res.status(500).json({ 
+        error: "Failed to execute test scenario",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get E2E test result
+  app.get("/api/e2e/tests/:testId", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const orchestrator = await initE2EOrchestrator();
+      
+      const testResult = orchestrator.getTestResult(testId);
+      
+      if (!testResult) {
+        return res.status(404).json({ error: "Test result not found" });
+      }
+      
+      res.json({
+        success: true,
+        testResult
+      });
+    } catch (error) {
+      console.error("Error fetching E2E test result:", error);
+      res.status(500).json({ error: "Failed to fetch test result" });
+    }
+  });
+
+  // Get all active E2E tests
+  app.get("/api/e2e/tests", async (req, res) => {
+    try {
+      const orchestrator = await initE2EOrchestrator();
+      const activeTests = orchestrator.getAllActiveTests();
+      
+      res.json({
+        success: true,
+        tests: activeTests.map(test => ({
+          scenarioId: test.scenarioId,
+          status: test.status,
+          startTime: test.startTime,
+          endTime: test.endTime,
+          duration: test.duration,
+          overallResults: {
+            systemHealthScore: test.overallResults.systemHealthScore,
+            totalValidations: test.overallResults.totalValidations,
+            passedValidations: test.overallResults.passedValidations,
+            failedValidations: test.overallResults.failedValidations
+          }
+        }))
+      });
+    } catch (error) {
+      console.error("Error fetching active E2E tests:", error);
+      res.status(500).json({ error: "Failed to fetch active tests" });
+    }
+  });
+
+  // Cancel E2E test
+  app.post("/api/e2e/tests/:testId/cancel", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const orchestrator = await initE2EOrchestrator();
+      
+      const cancelled = await orchestrator.cancelTest(testId);
+      
+      if (!cancelled) {
+        return res.status(400).json({ error: "Test not found or cannot be cancelled" });
+      }
+      
+      res.json({
+        success: true,
+        message: "Test cancelled successfully"
+      });
+    } catch (error) {
+      console.error("Error cancelling E2E test:", error);
+      res.status(500).json({ error: "Failed to cancel test" });
+    }
+  });
+
+  // Clean up test data
+  app.post("/api/e2e/tests/:testId/cleanup", async (req, res) => {
+    try {
+      const { testId } = req.params;
+      const orchestrator = await initE2EOrchestrator();
+      
+      await orchestrator.cleanupTestData(testId);
+      
+      res.json({
+        success: true,
+        message: "Test data cleaned up successfully"
+      });
+    } catch (error) {
+      console.error("Error cleaning up test data:", error);
+      res.status(500).json({ error: "Failed to clean up test data" });
+    }
+  });
+
+  // Get system readiness assessment
+  app.get("/api/e2e/system-readiness", async (req, res) => {
+    try {
+      const orchestrator = await initE2EOrchestrator();
+      const assessment = orchestrator.getSystemReadinessAssessment();
+      
+      res.json({
+        success: true,
+        assessment: {
+          overallReadiness: assessment.overallReadiness,
+          score: assessment.score,
+          details: assessment.details,
+          timestamp: new Date().toISOString(),
+          recommendations: assessment.details.recommendations || []
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching system readiness assessment:", error);
+      res.status(500).json({ error: "Failed to fetch system readiness" });
+    }
+  });
+
+  // Execute comprehensive E2E validation suite
+  app.post("/api/e2e/validate-all", async (req, res) => {
+    try {
+      const orchestrator = await initE2EOrchestrator();
+      const scenarios = orchestrator.getTestScenarios();
+      
+      // Execute all test scenarios
+      const testPromises = scenarios.map(scenario => 
+        orchestrator.executeTestScenario(scenario.id)
+      );
+      
+      const testIds = await Promise.all(testPromises);
+      
+      res.json({
+        success: true,
+        message: "Comprehensive E2E validation suite started",
+        testIds,
+        scenariosCount: scenarios.length,
+        estimatedDuration: Math.max(...scenarios.map(s => s.expectedDuration)) + ' minutes'
+      });
+    } catch (error) {
+      console.error("Error executing comprehensive E2E validation:", error);
+      res.status(500).json({ 
+        error: "Failed to execute comprehensive validation",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Execute comprehensive data persistence validation
+  app.post("/api/e2e/validate-data-persistence", async (req, res) => {
+    try {
+      const orchestrator = await initE2EOrchestrator();
+      const validation = await orchestrator.executeComprehensiveDataValidation();
+      
+      res.json({
+        success: true,
+        validation: {
+          overallStatus: validation.overallStatus,
+          dataIntegrityScore: validation.dataIntegrityScore,
+          totalValidations: validation.validations.length,
+          passedValidations: validation.validations.filter(v => v.status === 'passed').length,
+          failedValidations: validation.validations.filter(v => v.status === 'failed').length,
+          validations: validation.validations,
+          issues: validation.issues,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error executing data persistence validation:", error);
+      res.status(500).json({ 
+        error: "Failed to execute data persistence validation",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   return server;
+}
+
+// Helper functions for workflow state mapping
+export function determinePhaseFromStatus(status: string): string {
+  const phaseMap: { [key: string]: string } = {
+    'discovered': 'discovery',
+    'parsing': 'analysis', 
+    'analyzing': 'analysis',
+    'drafting': 'generation',
+    'generating': 'generation',
+    'review': 'generation',
+    'approved': 'submission',
+    'submitting': 'submission',
+    'submitted': 'completed',
+    'closed': 'completed'
+  };
+  
+  return phaseMap[status] || 'discovery';
+}
+
+export function mapRFPStatusToWorkflowStatus(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'discovered': 'pending',
+    'parsing': 'in_progress',
+    'analyzing': 'in_progress', 
+    'drafting': 'in_progress',
+    'generating': 'in_progress',
+    'review': 'pending',
+    'approved': 'pending',
+    'submitting': 'in_progress',
+    'submitted': 'completed',
+    'closed': 'completed',
+    'error': 'failed'
+  };
+  
+  return statusMap[status] || 'pending';
+}
+
+function mapPhaseToRFPStatus(phase: string): string {
+  const phaseMap: { [key: string]: string } = {
+    'discovery': 'discovered',
+    'analysis': 'analyzing',
+    'generation': 'generating', 
+    'submission': 'submitting',
+    'completed': 'submitted'
+  };
+  
+  return phaseMap[phase] || 'discovered';
+}
+
+function calculatePhaseProgress(phase: string): number {
+  const progressMap: { [key: string]: number } = {
+    'discovery': 20,
+    'analysis': 40,
+    'generation': 70,
+    'submission': 90,
+    'completed': 100
+  };
+  
+  return progressMap[phase] || 0;
+}
+
+function getValidPhaseTransitions(currentPhase: string, currentStatus: string): string[] {
+  const transitions: { [key: string]: string[] } = {
+    'discovery': ['analysis'],
+    'analysis': ['generation', 'discovery'], // Can go back if analysis fails
+    'generation': ['submission', 'analysis'], // Can go back for revision  
+    'submission': ['completed', 'generation'], // Can go back if submission fails
+    'completed': [] // Terminal state
+  };
+  
+  return transitions[currentPhase] || [];
+}
+
+function calculateEstimatedCompletion(phase: string, deadline: Date | null): Date | null {
+  if (!deadline) return null;
+  
+  const avgDurations: { [key: string]: number } = {
+    'discovery': 2, // days
+    'analysis': 3,
+    'generation': 5, 
+    'submission': 1,
+    'completed': 0
+  };
+  
+  const remainingPhases = getValidPhaseTransitions(phase, '');
+  const totalDays = remainingPhases.reduce((sum, p) => sum + (avgDurations[p] || 0), 0);
+  
+  const estimated = new Date();
+  estimated.setDate(estimated.getDate() + totalDays);
+  
+  return estimated;
+}
+
+function calculateAverageTransitionTime(transitions: any[]): number {
+  if (transitions.length === 0) return 0;
+  
+  const durations = transitions
+    .filter(t => t.duration)
+    .map(t => t.duration);
+    
+  return durations.length > 0 
+    ? durations.reduce((sum, d) => sum + d, 0) / durations.length 
+    : 0;
+}
+
+function assessWorkflowHealth(rfp: any, documents: any[], workItems: any[]): string {
+  const now = new Date();
+  const updated = new Date(rfp.updatedAt);
+  const hoursSinceUpdate = (now.getTime() - updated.getTime()) / (1000 * 60 * 60);
+  
+  // Check for stalled workflow
+  if (hoursSinceUpdate > 24 && rfp.status !== 'submitted' && rfp.status !== 'closed') {
+    return 'warning';
+  }
+  
+  // Check for failed work items
+  const failedItems = workItems.filter(w => w.status === 'failed');
+  if (failedItems.length > 0) {
+    return 'error';
+  }
+  
+  // Check deadline proximity
+  if (rfp.deadline) {
+    const deadline = new Date(rfp.deadline);
+    const daysUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    if (daysUntilDeadline < 3 && rfp.status !== 'submitted') {
+      return 'critical';
+    }
+  }
+  
+  return 'healthy';
 }

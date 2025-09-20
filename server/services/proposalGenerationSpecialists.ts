@@ -2,9 +2,12 @@ import { storage } from '../storage';
 import { aiProposalService } from './ai-proposal-service';
 import { enhancedProposalService } from './enhancedProposalService';
 import { agentMemoryService } from './agentMemoryService';
-import { aiService } from './aiService';
+import { AIService } from './aiService';
 import type { WorkItem, RFP, CompanyProfile } from '@shared/schema';
 import { nanoid } from 'nanoid';
+
+// Create shared instance
+const aiService = new AIService();
 
 export interface SpecialistWorkResult {
   success: boolean;
