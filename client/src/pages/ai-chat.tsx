@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Bot, User, Loader2, Search, FileText, Lightbulb, Trash2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Search, FileText, Lightbulb, Trash2, Clock, BarChart3, CheckSquare, Calendar, Download, TrendingUp, FileEdit, FileSearch } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -20,13 +20,24 @@ interface ChatMessage {
   createdAt: Date;
 }
 
+interface ActionSuggestion {
+  id: string;
+  label: string;
+  action: 'workflow' | 'agent' | 'tool' | 'navigation';
+  priority: 'high' | 'medium' | 'low';
+  estimatedTime: string;
+  description: string;
+  icon: string;
+  payload?: Record<string, any>;
+}
+
 interface ChatResponse {
   conversationId: string;
   message: string;
   messageType: 'text' | 'rfp_results' | 'search_results' | 'analysis' | 'follow_up';
   data?: any;
   followUpQuestions?: string[];
-  actionSuggestions?: string[];
+  actionSuggestions?: ActionSuggestion[];
   relatedRfps?: any[];
   researchFindings?: any[];
 }
@@ -125,6 +136,40 @@ export default function AIChat() {
     },
   });
 
+  // Execute action suggestion mutation
+  const executeActionMutation = useMutation({
+    mutationFn: async (data: { suggestionId: string; conversationId: string; suggestion: ActionSuggestion }) => {
+      const response = await fetch("/api/ai/execute-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (response) => {
+      toast({
+        title: "Action Executed",
+        description: response.message || "Action completed successfully",
+      });
+      // Refetch conversation history to show results
+      refetchHistory();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to execute action",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
@@ -179,9 +224,51 @@ export default function AIChat() {
     }
   };
 
+  const getSuggestionIcon = (iconName: string) => {
+    const icons: Record<string, any> = {
+      'FileSearch': FileSearch,
+      'TrendingUp': TrendingUp,
+      'FileEdit': FileEdit,
+      'CheckSquare': CheckSquare,
+      'Calendar': Calendar,
+      'Download': Download,
+      'BarChart3': BarChart3,
+      'Search': Search,
+      'Clock': Clock,
+      'Bot': Bot,
+      'FileText': FileText,
+      'Lightbulb': Lightbulb
+    };
+    const IconComponent = icons[iconName] || FileText;
+    return <IconComponent className="h-4 w-4" />;
+  };
+
+  const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
+    switch (priority) {
+      case 'high': return 'border-red-200 bg-red-50 hover:bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
+      case 'medium': return 'border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
+      case 'low': return 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
+      default: return 'border-gray-200 bg-gray-50 hover:bg-gray-100';
+    }
+  };
+
+  const handleActionClick = async (suggestion: ActionSuggestion) => {
+    if (!currentConversationId) return;
+    
+    executeActionMutation.mutate({
+      suggestionId: suggestion.id,
+      conversationId: currentConversationId,
+      suggestion
+    });
+  };
+
   const renderMessageContent = (message: any) => {
-    // Only render additional content for non-text message types
-    if (message.messageType === 'text') {
+    // Always render action suggestions and follow-up questions, regardless of message type
+    const hasAdditionalContent = 
+      (message.followUpQuestions && message.followUpQuestions.length > 0) ||
+      (message.actionSuggestions && message.actionSuggestions.length > 0);
+    
+    if (!hasAdditionalContent) {
       return null;
     }
     
@@ -208,13 +295,56 @@ export default function AIChat() {
         )}
 
         {message.actionSuggestions && message.actionSuggestions.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">Suggested actions:</h4>
-            <div className="flex flex-wrap gap-2">
-              {message.actionSuggestions.map((suggestion: string, index: number) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {suggestion}
-                </Badge>
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">Suggested Actions:</h4>
+            <div className="grid gap-2">
+              {message.actionSuggestions.map((suggestion: ActionSuggestion) => (
+                <div
+                  key={suggestion.id}
+                  className={`p-3 rounded-lg border transition-colors cursor-pointer ${getPriorityColor(suggestion.priority)}`}
+                  onClick={() => handleActionClick(suggestion)}
+                  data-testid={`action-suggestion-${suggestion.id}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {getSuggestionIcon(suggestion.icon)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h5 className="text-sm font-medium truncate">{suggestion.label}</h5>
+                        <div className="flex items-center gap-1 text-xs opacity-75">
+                          <Clock className="h-3 w-3" />
+                          {suggestion.estimatedTime}
+                        </div>
+                      </div>
+                      <p className="text-xs opacity-75 mt-1 line-clamp-2">{suggestion.description}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Badge 
+                          variant="outline" 
+                          className="text-xs px-1.5 py-0.5"
+                        >
+                          {suggestion.action}
+                        </Badge>
+                        <Badge 
+                          variant="secondary" 
+                          className={`text-xs px-1.5 py-0.5 ${
+                            suggestion.priority === 'high' ? 'bg-red-100 text-red-800' : 
+                            suggestion.priority === 'medium' ? 'bg-orange-100 text-orange-800' : 
+                            'bg-blue-100 text-blue-800'
+                          }`}
+                        >
+                          {suggestion.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  {executeActionMutation.isPending && (
+                    <div className="flex items-center gap-2 mt-2 text-xs opacity-75">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Executing...
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>

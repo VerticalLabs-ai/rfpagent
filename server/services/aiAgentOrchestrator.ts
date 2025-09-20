@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { AIService } from "./aiService";
 import { EnhancedProposalService } from "./enhancedProposalService";
 import { MastraScrapingService } from "./mastraScrapingService";
+import { mastraWorkflowEngine, type ActionSuggestion } from "./mastraWorkflowEngine";
 import { DocumentIntelligenceService, documentIntelligenceService } from "./documentIntelligenceService";
 import type { 
   AiConversation, 
@@ -42,7 +43,7 @@ export interface AgentResponse {
   messageType: 'text' | 'rfp_results' | 'search_results' | 'analysis' | 'follow_up';
   data?: any;
   followUpQuestions?: string[];
-  actionSuggestions?: string[];
+  actionSuggestions?: ActionSuggestion[];
   relatedRfps?: RFP[];
   researchFindings?: any[];
 }
@@ -289,6 +290,14 @@ export class AIAgentOrchestrator {
       });
     }
 
+    // Generate contextual action suggestions using the workflow engine
+    const actionSuggestions = await mastraWorkflowEngine.generateActionSuggestions({
+      messageType: 'rfp_results',
+      lastMessage: message,
+      availableRfps: internalRfps,
+      userIntent: intent.type
+    });
+
     return {
       message,
       messageType: 'rfp_results',
@@ -299,7 +308,8 @@ export class AIAgentOrchestrator {
         totalResults
       },
       relatedRfps: internalRfps,
-      followUpQuestions
+      followUpQuestions,
+      actionSuggestions
     };
   }
 
@@ -352,6 +362,14 @@ export class AIAgentOrchestrator {
     
     message += `**Next Steps**: I recommend ${bidAnalysis.nextSteps?.join(', ') || 'reviewing the RFP requirements carefully and preparing your technical approach'}.`;
 
+    // Generate contextual action suggestions for bid crafting
+    const actionSuggestions = await mastraWorkflowEngine.generateActionSuggestions({
+      messageType: 'analysis',
+      lastMessage: message,
+      availableRfps: [rfp],
+      userIntent: 'bid_crafting'
+    });
+
     return {
       message,
       messageType: 'analysis',
@@ -365,7 +383,8 @@ export class AIAgentOrchestrator {
         "Would you like me to generate a draft proposal for this RFP?",
         "Should I analyze the competition for this opportunity?",
         "Would you like help with pricing strategy?"
-      ]
+      ],
+      actionSuggestions
     };
   }
 
@@ -460,6 +479,13 @@ Be conversational but professional. Ask follow-up questions to better understand
 
     const message = response.choices[0].message.content || "I'm here to help with your RFP and procurement needs. What would you like to know?";
 
+    // Generate contextual action suggestions for general queries
+    const actionSuggestions = await mastraWorkflowEngine.generateActionSuggestions({
+      messageType: 'general',
+      lastMessage: message,
+      userIntent: 'general'
+    });
+
     return {
       message,
       messageType: 'text',
@@ -467,7 +493,8 @@ Be conversational but professional. Ask follow-up questions to better understand
         "Would you like to search for RFP opportunities?",
         "Do you need help with a specific proposal?",
         "Should I research market trends in your industry?"
-      ]
+      ],
+      actionSuggestions
     };
   }
 

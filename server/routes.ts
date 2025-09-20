@@ -23,6 +23,7 @@ import { documentIntelligenceService } from "./services/documentIntelligenceServ
 import { scanManager } from "./services/scan-manager";
 import { ManualRfpService } from "./services/manualRfpService";
 import { aiAgentOrchestrator } from "./services/aiAgentOrchestrator";
+import { mastraWorkflowEngine } from "./services/mastraWorkflowEngine";
 import { z } from "zod";
 
 // Zod schemas for AI API endpoints
@@ -84,6 +85,21 @@ const ProcessQueryRequestSchema = z.object({
   conversationId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
   conversationType: z.enum(['general', 'rfp_search', 'bid_crafting', 'research']).optional(),
+});
+
+const ExecuteActionRequestSchema = z.object({
+  suggestionId: z.string().min(1),
+  conversationId: z.string().uuid(),
+  suggestion: z.object({
+    id: z.string(),
+    label: z.string(),
+    action: z.enum(['workflow', 'agent', 'tool', 'navigation']),
+    priority: z.enum(['high', 'medium', 'low']),
+    estimatedTime: z.string(),
+    description: z.string(),
+    icon: z.string(),
+    payload: z.record(z.any()).optional()
+  })
 });
 
 const ProcessQueryResponseSchema = z.object({
@@ -1761,6 +1777,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error processing AI chat query:", error);
       res.status(500).json({ 
         error: "Failed to process chat query", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Execute action suggestion
+  app.post("/api/ai/execute-action", async (req, res) => {
+    try {
+      const validationResult = ExecuteActionRequestSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          error: "Invalid request data", 
+          details: validationResult.error.issues 
+        });
+      }
+
+      const { suggestionId, conversationId, suggestion } = validationResult.data;
+      
+      console.log(`🚀 Executing action suggestion: ${suggestion.label} (${suggestion.action})`);
+      
+      // Execute the action using the workflow engine
+      const result = await mastraWorkflowEngine.executeActionSuggestion(suggestion, conversationId);
+      
+      // Create a conversation message to record the action execution
+      await storage.createConversationMessage({
+        conversationId,
+        role: 'system',
+        content: `Executed action: ${suggestion.label}`,
+        messageType: 'action_executed',
+        metadata: { 
+          suggestionId,
+          suggestion,
+          result
+        }
+      });
+
+      res.json({
+        success: true,
+        message: `Action "${suggestion.label}" executed successfully`,
+        result
+      });
+    } catch (error) {
+      console.error("Error executing action suggestion:", error);
+      res.status(500).json({ 
+        error: "Failed to execute action", 
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
