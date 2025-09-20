@@ -387,6 +387,70 @@ export const historicalBids = pgTable("historical_bids", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// 3-Tier Agentic System Tables
+export const agentRegistry = pgTable("agent_registry", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull().unique(), // rfp-orchestrator, portal-manager, austin-specialist, etc.
+  tier: text("tier").notNull(), // orchestrator, manager, specialist
+  role: text("role").notNull(), // primary-orchestrator, portal-manager, proposal-manager, austin-specialist, etc.
+  displayName: text("display_name").notNull(),
+  description: text("description"),
+  capabilities: text("capabilities").array().notNull(), // portal_scraping, proposal_generation, compliance_checking
+  tools: text("tools").array(), // browser, openai, document_parser, etc.
+  maxConcurrency: integer("max_concurrency").default(1).notNull(),
+  status: text("status").default("active").notNull(), // active, busy, offline, error
+  lastHeartbeat: timestamp("last_heartbeat"),
+  version: text("version").default("1.0.0").notNull(),
+  configuration: jsonb("configuration"), // agent-specific config
+  parentAgentId: text("parent_agent_id"), // for hierarchy (specialists report to managers)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const workItems = pgTable("work_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().references(() => agentSessions.sessionId), // links to user session
+  workflowId: varchar("workflow_id").references(() => workflowState.id), // optional link to workflow
+  contextRef: varchar("context_ref"), // rfpId, portalId, profileId for traceability
+  taskType: text("task_type").notNull(), // portal_scan, proposal_generate, compliance_check
+  inputs: jsonb("inputs").notNull(), // structured task inputs
+  expectedOutputs: text("expected_outputs").array(), // what outputs are expected
+  priority: integer("priority").default(5).notNull(), // 1-10 priority
+  deadline: timestamp("deadline"),
+  retries: integer("retries").default(0).notNull(),
+  maxRetries: integer("max_retries").default(3).notNull(),
+  assignedAgentId: text("assigned_agent_id").references(() => agentRegistry.agentId), // which agent is handling this
+  createdByAgentId: text("created_by_agent_id").notNull().references(() => agentRegistry.agentId), // which agent created this
+  status: text("status").default("pending").notNull(), // pending, assigned, in_progress, completed, failed
+  result: jsonb("result"), // task result when completed
+  error: text("error"), // error message if failed
+  metadata: jsonb("metadata"), // additional task metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
+export const agentSessions = pgTable("agent_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull().unique(),
+  userId: varchar("user_id"), // optional user association
+  conversationId: varchar("conversation_id").references(() => aiConversations.id),
+  orchestratorAgentId: text("orchestrator_agent_id").notNull().references(() => agentRegistry.agentId),
+  sessionType: text("session_type").notNull(), // rfp_discovery, proposal_generation, compliance_review
+  intent: text("intent").notNull(), // user's primary intent for this session
+  context: jsonb("context").notNull(), // session context and working memory
+  currentPhase: text("current_phase"), // discovery, analysis, generation, submission
+  status: text("status").default("active").notNull(), // active, suspended, completed, failed
+  priority: integer("priority").default(5).notNull(),
+  workItemCount: integer("work_item_count").default(0).notNull(),
+  completedWorkItems: integer("completed_work_items").default(0).notNull(),
+  estimatedCompletion: timestamp("estimated_completion"),
+  lastActivity: timestamp("last_activity").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+});
+
 // Relations
 export const portalsRelations = relations(portals, ({ many }) => ({
   rfps: many(rfps),
@@ -534,6 +598,52 @@ export const historicalBidsRelations = relations(historicalBids, ({ one }) => ({
   }),
 }));
 
+// 3-Tier Agentic System Relations
+export const agentRegistryRelations = relations(agentRegistry, ({ many, one }) => ({
+  assignedWorkItems: many(workItems, { relationName: "assignedAgent" }),
+  createdWorkItems: many(workItems, { relationName: "createdByAgent" }),
+  orchestratedSessions: many(agentSessions),
+  parentAgent: one(agentRegistry, {
+    fields: [agentRegistry.parentAgentId],
+    references: [agentRegistry.agentId],
+    relationName: "agentHierarchy",
+  }),
+  childAgents: many(agentRegistry, { relationName: "agentHierarchy" }),
+}));
+
+export const workItemsRelations = relations(workItems, ({ one }) => ({
+  session: one(agentSessions, {
+    fields: [workItems.sessionId],
+    references: [agentSessions.sessionId],
+  }),
+  workflow: one(workflowState, {
+    fields: [workItems.workflowId],
+    references: [workflowState.id],
+  }),
+  assignedAgent: one(agentRegistry, {
+    fields: [workItems.assignedAgentId],
+    references: [agentRegistry.agentId],
+    relationName: "assignedAgent",
+  }),
+  createdByAgent: one(agentRegistry, {
+    fields: [workItems.createdByAgentId],
+    references: [agentRegistry.agentId],
+    relationName: "createdByAgent",
+  }),
+}));
+
+export const agentSessionsRelations = relations(agentSessions, ({ one, many }) => ({
+  orchestrator: one(agentRegistry, {
+    fields: [agentSessions.orchestratorAgentId],
+    references: [agentRegistry.agentId],
+  }),
+  conversation: one(aiConversations, {
+    fields: [agentSessions.conversationId],
+    references: [aiConversations.id],
+  }),
+  workItems: many(workItems),
+}));
+
 // Agent Memory and Knowledge Relations
 export const agentMemoryRelations = relations(agentMemory, ({ many }) => ({
   // Memory can be linked to knowledge for learning
@@ -582,6 +692,29 @@ export const insertAgentPerformanceMetricsSchema = createInsertSchema(agentPerfo
   id: true,
   recordedAt: true,
   createdAt: true,
+});
+
+// 3-Tier Agentic System Insert Schemas
+export const insertAgentRegistrySchema = createInsertSchema(agentRegistry).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastHeartbeat: true,
+});
+
+export const insertWorkItemSchema = createInsertSchema(workItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
+export const insertAgentSessionSchema = createInsertSchema(agentSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  lastActivity: true,
 });
 
 // Insert schemas
@@ -762,3 +895,13 @@ export type InsertResearchFinding = z.infer<typeof insertResearchFindingSchema>;
 
 export type HistoricalBid = typeof historicalBids.$inferSelect;
 export type InsertHistoricalBid = z.infer<typeof insertHistoricalBidSchema>;
+
+// 3-Tier Agentic System Types
+export type AgentRegistry = typeof agentRegistry.$inferSelect;
+export type InsertAgentRegistry = z.infer<typeof insertAgentRegistrySchema>;
+
+export type WorkItem = typeof workItems.$inferSelect;
+export type InsertWorkItem = z.infer<typeof insertWorkItemSchema>;
+
+export type AgentSession = typeof agentSessions.$inferSelect;
+export type InsertAgentSession = z.infer<typeof insertAgentSessionSchema>;
