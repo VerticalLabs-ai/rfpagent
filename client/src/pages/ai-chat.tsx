@@ -180,10 +180,13 @@ export default function AIChat() {
   };
 
   const renderMessageContent = (message: any) => {
+    // Only render additional content for non-text message types
+    if (message.messageType === 'text') {
+      return null;
+    }
+    
     return (
-      <div className="space-y-3">
-        <p className="text-foreground whitespace-pre-wrap">{message.content}</p>
-        
+      <div className="space-y-3 mt-3 border-t border-border pt-3">
         {message.followUpQuestions && message.followUpQuestions.length > 0 && (
           <div className="space-y-2">
             <h4 className="text-sm font-semibold text-foreground">Follow-up questions:</h4>
@@ -349,7 +352,7 @@ export default function AIChat() {
                   {message.role === 'user' ? (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   ) : (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="space-y-3 text-foreground">
                       <ReactMarkdown
                         components={{
                           a: ({ href, children }) => (
@@ -357,16 +360,37 @@ export default function AIChat() {
                               href={href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                              className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
                             >
                               {children}
                             </a>
+                          ),
+                          p: ({ children }) => (
+                            <p className="text-foreground leading-relaxed mb-2">{children}</p>
+                          ),
+                          ul: ({ children }) => (
+                            <ul className="text-foreground space-y-1 ml-4 list-disc">{children}</ul>
+                          ),
+                          li: ({ children }) => (
+                            <li className="text-foreground">{children}</li>
+                          ),
+                          h3: ({ children }) => (
+                            <h3 className="text-foreground font-semibold text-sm mb-2">{children}</h3>
+                          ),
+                          h4: ({ children }) => (
+                            <h4 className="text-foreground font-medium text-sm mb-1">{children}</h4>
+                          ),
+                          strong: ({ children }) => (
+                            <strong className="text-foreground font-semibold">{children}</strong>
+                          ),
+                          em: ({ children }) => (
+                            <em className="text-foreground italic">{children}</em>
                           ),
                         }}
                       >
                         {message.content}
                       </ReactMarkdown>
-                      {message.messageType !== 'text' && renderMessageContent(message)}
+                      {renderMessageContent(message)}
                     </div>
                   )}
                 </div>
