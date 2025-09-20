@@ -3,6 +3,7 @@ import {
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   aiConversations, conversationMessages, researchFindings, historicalBids,
   agentMemory, agentKnowledgeBase, agentCoordinationLog, workflowState, agentPerformanceMetrics,
+  agentRegistry, workItems, agentSessions,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
@@ -13,8 +14,11 @@ import {
   type CompanyInsurance, type InsertCompanyInsurance, type AiConversation, type InsertAiConversation,
   type ConversationMessage, type InsertConversationMessage, type ResearchFinding, type InsertResearchFinding,
   type HistoricalBid, type InsertHistoricalBid,
+  type AgentRegistry, type InsertAgentRegistry, type WorkItem, type InsertWorkItem, 
+  type AgentSession, type InsertAgentSession,
   insertAgentMemorySchema, insertAgentKnowledgeSchema, insertAgentCoordinationLogSchema,
-  insertWorkflowStateSchema, insertAgentPerformanceMetricsSchema
+  insertWorkflowStateSchema, insertAgentPerformanceMetricsSchema, insertAgentRegistrySchema,
+  insertWorkItemSchema, insertAgentSessionSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, gte, lte, count, sql } from "drizzle-orm";
@@ -198,6 +202,40 @@ export interface IStorage {
 
   // Additional RFP methods needed by orchestrator
   getRFPs(filters?: { status?: string; category?: string; location?: string; limit?: number }): Promise<RFP[]>;
+
+  // Agent Registry Operations (3-Tier Agentic System)
+  registerAgent(agent: InsertAgentRegistry): Promise<AgentRegistry>;
+  updateAgent(agentId: string, updates: Partial<AgentRegistry>): Promise<AgentRegistry>;
+  deregisterAgent(agentId: string): Promise<void>;
+  getAgent(agentId: string): Promise<AgentRegistry | undefined>;
+  getAgentsByTier(tier: string): Promise<AgentRegistry[]>;
+  getAgentsByCapability(capability: string): Promise<AgentRegistry[]>;
+  getActiveAgents(): Promise<AgentRegistry[]>;
+  updateAgentHeartbeat(agentId: string): Promise<void>;
+  updateAgentStatus(agentId: string, status: string): Promise<AgentRegistry>;
+  findAvailableAgents(capabilities: string[], tier?: string): Promise<AgentRegistry[]>;
+
+  // Work Item Operations (3-Tier Agentic System)
+  createWorkItem(workItem: InsertWorkItem): Promise<WorkItem>;
+  updateWorkItem(id: string, updates: Partial<WorkItem>): Promise<WorkItem>;
+  getWorkItem(id: string): Promise<WorkItem | undefined>;
+  getWorkItemsBySession(sessionId: string): Promise<WorkItem[]>;
+  getWorkItemsByAgent(agentId: string, status?: string): Promise<WorkItem[]>;
+  getWorkItemsByStatus(status: string): Promise<WorkItem[]>;
+  getWorkQueue(agentId?: string, taskType?: string, limit?: number): Promise<WorkItem[]>;
+  assignWorkItem(workItemId: string, agentId: string): Promise<WorkItem>;
+  completeWorkItem(workItemId: string, result: any): Promise<WorkItem>;
+  failWorkItem(workItemId: string, error: string): Promise<WorkItem>;
+
+  // Agent Session Operations (3-Tier Agentic System)
+  createAgentSession(session: InsertAgentSession): Promise<AgentSession>;
+  updateAgentSession(sessionId: string, updates: Partial<AgentSession>): Promise<AgentSession>;
+  getAgentSession(sessionId: string): Promise<AgentSession | undefined>;
+  getAgentSessionsByUser(userId: string): Promise<AgentSession[]>;
+  getActiveAgentSessions(): Promise<AgentSession[]>;
+  getAgentSessionsByOrchestrator(orchestratorAgentId: string): Promise<AgentSession[]>;
+  completeAgentSession(sessionId: string): Promise<AgentSession>;
+  updateSessionActivity(sessionId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1564,6 +1602,256 @@ export class DatabaseStorage implements IStorage {
     return await query
       .orderBy(desc(rfps.discoveredAt))
       .limit(filters?.limit || 50);
+  }
+
+  // Agent Registry Operations (3-Tier Agentic System)
+  async registerAgent(agent: InsertAgentRegistry): Promise<AgentRegistry> {
+    const [newAgent] = await db.insert(agentRegistry).values(agent).returning();
+    return newAgent;
+  }
+
+  async updateAgent(agentId: string, updates: Partial<AgentRegistry>): Promise<AgentRegistry> {
+    const [updatedAgent] = await db
+      .update(agentRegistry)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(agentRegistry.agentId, agentId))
+      .returning();
+    return updatedAgent;
+  }
+
+  async deregisterAgent(agentId: string): Promise<void> {
+    await db.delete(agentRegistry).where(eq(agentRegistry.agentId, agentId));
+  }
+
+  async getAgent(agentId: string): Promise<AgentRegistry | undefined> {
+    const [agent] = await db.select().from(agentRegistry).where(eq(agentRegistry.agentId, agentId));
+    return agent || undefined;
+  }
+
+  async getAgentsByTier(tier: string): Promise<AgentRegistry[]> {
+    return await db.select().from(agentRegistry)
+      .where(eq(agentRegistry.tier, tier))
+      .orderBy(asc(agentRegistry.displayName));
+  }
+
+  async getAgentsByCapability(capability: string): Promise<AgentRegistry[]> {
+    return await db.select().from(agentRegistry)
+      .where(sql`${agentRegistry.capabilities} && ARRAY[${capability}]`)
+      .orderBy(asc(agentRegistry.displayName));
+  }
+
+  async getActiveAgents(): Promise<AgentRegistry[]> {
+    return await db.select().from(agentRegistry)
+      .where(eq(agentRegistry.status, 'active'))
+      .orderBy(asc(agentRegistry.tier), asc(agentRegistry.displayName));
+  }
+
+  async updateAgentHeartbeat(agentId: string): Promise<void> {
+    await db
+      .update(agentRegistry)
+      .set({ lastHeartbeat: sql`NOW()`, updatedAt: sql`NOW()` })
+      .where(eq(agentRegistry.agentId, agentId));
+  }
+
+  async updateAgentStatus(agentId: string, status: string): Promise<AgentRegistry> {
+    const [updatedAgent] = await db
+      .update(agentRegistry)
+      .set({ status, updatedAt: sql`NOW()` })
+      .where(eq(agentRegistry.agentId, agentId))
+      .returning();
+    return updatedAgent;
+  }
+
+  async findAvailableAgents(capabilities: string[], tier?: string): Promise<AgentRegistry[]> {
+    // Build capability check for PostgreSQL array overlap
+    const capabilityCheck = capabilities.map(cap => `'${cap}'`).join(',');
+    
+    const conditions = [
+      eq(agentRegistry.status, 'active'),
+      sql`${agentRegistry.capabilities} && ARRAY[${capabilityCheck}]`,
+      // Ensure heartbeat is recent (within 5 minutes)
+      sql`${agentRegistry.lastHeartbeat} > NOW() - INTERVAL '5 minutes'`
+    ];
+
+    if (tier) {
+      conditions.push(eq(agentRegistry.tier, tier));
+    }
+
+    const agents = await db.select().from(agentRegistry)
+      .where(and(...conditions))
+      .orderBy(asc(agentRegistry.lastHeartbeat));
+
+    // Filter by capacity - check current load vs maxConcurrency
+    const availableAgents = [];
+    for (const agent of agents) {
+      const activeWork = await this.getWorkItemsByAgent(agent.agentId, 'in_progress');
+      const assignedWork = await this.getWorkItemsByAgent(agent.agentId, 'assigned');
+      const currentLoad = activeWork.length + assignedWork.length;
+      
+      if (currentLoad < agent.maxConcurrency) {
+        availableAgents.push(agent);
+      }
+    }
+
+    return availableAgents;
+  }
+
+  // Work Item Operations (3-Tier Agentic System)
+  async createWorkItem(workItem: InsertWorkItem): Promise<WorkItem> {
+    const [newWorkItem] = await db.insert(workItems).values(workItem).returning();
+    return newWorkItem;
+  }
+
+  async updateWorkItem(id: string, updates: Partial<WorkItem>): Promise<WorkItem> {
+    const [updatedWorkItem] = await db
+      .update(workItems)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(workItems.id, id))
+      .returning();
+    return updatedWorkItem;
+  }
+
+  async getWorkItem(id: string): Promise<WorkItem | undefined> {
+    const [workItem] = await db.select().from(workItems).where(eq(workItems.id, id));
+    return workItem || undefined;
+  }
+
+  async getWorkItemsBySession(sessionId: string): Promise<WorkItem[]> {
+    return await db.select().from(workItems)
+      .where(eq(workItems.sessionId, sessionId))
+      .orderBy(desc(workItems.createdAt));
+  }
+
+  async getWorkItemsByAgent(agentId: string, status?: string): Promise<WorkItem[]> {
+    const conditions = [eq(workItems.assignedAgentId, agentId)];
+    if (status) {
+      conditions.push(eq(workItems.status, status));
+    }
+    
+    return await db.select().from(workItems)
+      .where(and(...conditions))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getWorkItemsByStatus(status: string): Promise<WorkItem[]> {
+    return await db.select().from(workItems)
+      .where(eq(workItems.status, status))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getWorkQueue(agentId?: string, taskType?: string, limit?: number): Promise<WorkItem[]> {
+    const conditions = [eq(workItems.status, 'pending')];
+    
+    if (agentId) {
+      conditions.push(eq(workItems.assignedAgentId, agentId));
+    }
+    if (taskType) {
+      conditions.push(eq(workItems.taskType, taskType));
+    }
+
+    return await db.select().from(workItems)
+      .where(and(...conditions))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline))
+      .limit(limit || 10);
+  }
+
+  async assignWorkItem(workItemId: string, agentId: string): Promise<WorkItem> {
+    const [assignedWorkItem] = await db
+      .update(workItems)
+      .set({ 
+        assignedAgentId: agentId, 
+        status: 'assigned',
+        updatedAt: sql`NOW()` 
+      })
+      .where(eq(workItems.id, workItemId))
+      .returning();
+    return assignedWorkItem;
+  }
+
+  async completeWorkItem(workItemId: string, result: any): Promise<WorkItem> {
+    const [completedWorkItem] = await db
+      .update(workItems)
+      .set({ 
+        status: 'completed',
+        result,
+        completedAt: sql`NOW()`,
+        updatedAt: sql`NOW()` 
+      })
+      .where(eq(workItems.id, workItemId))
+      .returning();
+    return completedWorkItem;
+  }
+
+  async failWorkItem(workItemId: string, error: string): Promise<WorkItem> {
+    const [failedWorkItem] = await db
+      .update(workItems)
+      .set({ 
+        status: 'failed',
+        error,
+        retries: sql`${workItems.retries} + 1`,
+        updatedAt: sql`NOW()` 
+      })
+      .where(eq(workItems.id, workItemId))
+      .returning();
+    return failedWorkItem;
+  }
+
+  // Agent Session Operations (3-Tier Agentic System)
+  async createAgentSession(session: InsertAgentSession): Promise<AgentSession> {
+    const [newSession] = await db.insert(agentSessions).values(session).returning();
+    return newSession;
+  }
+
+  async updateAgentSession(sessionId: string, updates: Partial<AgentSession>): Promise<AgentSession> {
+    const [updatedSession] = await db
+      .update(agentSessions)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(agentSessions.sessionId, sessionId))
+      .returning();
+    return updatedSession;
+  }
+
+  async getAgentSession(sessionId: string): Promise<AgentSession | undefined> {
+    const [session] = await db.select().from(agentSessions).where(eq(agentSessions.sessionId, sessionId));
+    return session || undefined;
+  }
+
+  async getAgentSessionsByUser(userId: string): Promise<AgentSession[]> {
+    return await db.select().from(agentSessions)
+      .where(eq(agentSessions.userId, userId))
+      .orderBy(desc(agentSessions.lastActivity));
+  }
+
+  async getActiveAgentSessions(): Promise<AgentSession[]> {
+    return await db.select().from(agentSessions)
+      .where(eq(agentSessions.status, 'active'))
+      .orderBy(desc(agentSessions.lastActivity));
+  }
+
+  async getAgentSessionsByOrchestrator(orchestratorAgentId: string): Promise<AgentSession[]> {
+    return await db.select().from(agentSessions)
+      .where(eq(agentSessions.orchestratorAgentId, orchestratorAgentId))
+      .orderBy(desc(agentSessions.lastActivity));
+  }
+
+  async completeAgentSession(sessionId: string): Promise<AgentSession> {
+    const [completedSession] = await db
+      .update(agentSessions)
+      .set({ 
+        status: 'completed',
+        completedAt: sql`NOW()`,
+        updatedAt: sql`NOW()` 
+      })
+      .where(eq(agentSessions.sessionId, sessionId))
+      .returning();
+    return completedSession;
+  }
+
+  async updateSessionActivity(sessionId: string): Promise<void> {
+    await db
+      .update(agentSessions)
+      .set({ lastActivity: sql`NOW()`, updatedAt: sql`NOW()` })
+      .where(eq(agentSessions.sessionId, sessionId));
   }
 }
 

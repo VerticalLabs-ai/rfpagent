@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { agentRegistryService } from "./services/agentRegistryService";
 
 const app = express();
 app.use(express.json());
@@ -54,6 +55,14 @@ app.use((req, res, next) => {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+  }
+
+  // Bootstrap 3-tier agentic system with default agents
+  try {
+    await agentRegistryService.bootstrapDefaultAgents();
+    log("🤖 3-tier agentic system initialized with default agents");
+  } catch (error) {
+    log("⚠️ Failed to bootstrap default agents:", error);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
