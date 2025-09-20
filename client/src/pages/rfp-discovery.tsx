@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getStatusBadgeVariant, getStatusBadgeClassName, getStatusLabel, getStatusIcon } from "@/lib/badge-utils";
 
 export default function RFPDiscovery() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,12 +186,12 @@ export default function RFPDiscovery() {
                   {item.rfp.title}
                 </CardTitle>
                 <Badge 
-                  className={`status-badge status-${item.rfp.status} ml-2`}
+                  variant={getStatusBadgeVariant(item.rfp.status)}
+                  className={`${getStatusBadgeClassName(item.rfp.status)} ml-2`}
                   data-testid={`rfp-status-${item.rfp.id}`}
                 >
-                  {item.rfp.status === "discovered" && <i className="fas fa-eye mr-1"></i>}
-                  {item.rfp.status === "parsing" && <i className="fas fa-file-search mr-1"></i>}
-                  {item.rfp.status.charAt(0).toUpperCase() + item.rfp.status.slice(1)}
+                  <i className={`${getStatusIcon(item.rfp.status)} mr-1`}></i>
+                  {getStatusLabel(item.rfp.status)}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground" data-testid={`rfp-agency-${item.rfp.id}`}>

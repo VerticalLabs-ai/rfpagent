@@ -14,40 +14,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "./ObjectUploader";
-
-// Helper functions for status badge styling
-const getStatusBadgeVariant = (status: string) => {
-  switch (status) {
-    case "discovered": return "secondary" as const;
-    case "parsing": return "outline" as const;
-    case "drafting": return "default" as const;
-    case "review": return "secondary" as const;
-    case "approved": return "outline" as const;
-    case "submitted": return "default" as const;
-    default: return "outline" as const;
-  }
-};
-
-const getStatusBadgeClassName = (status: string) => {
-  switch (status) {
-    case "approved": return "border-green-500 text-green-700 dark:text-green-400";
-    case "submitted": return "bg-green-600 hover:bg-green-700 text-white border-transparent";
-    case "drafting": return "bg-purple-600 hover:bg-purple-700 text-white border-transparent";
-    default: return "";
-  }
-};
-
-const getStatusLabel = (status: string) => {
-  switch (status) {
-    case "discovered": return "Discovered";
-    case "parsing": return "Parsing";
-    case "drafting": return "AI Drafting";
-    case "review": return "Pending Review";
-    case "approved": return "Approved";
-    case "submitted": return "Submitted";
-    default: return status;
-  }
-};
+import { getStatusBadgeVariant, getStatusBadgeClassName, getStatusLabel } from "@/lib/badge-utils";
 
 export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState("");

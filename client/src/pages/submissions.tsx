@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getStatusBadgeVariant, getStatusBadgeClassName, getStatusLabel, getStatusIcon } from "@/lib/badge-utils";
 
 export default function Submissions() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -156,12 +157,12 @@ function SubmissionCard({ item, onSubmit, submitting }: any) {
             {item.rfp.title}
           </CardTitle>
           <Badge 
-            className={`status-badge status-${item.rfp.status} ml-2`}
+            variant={getStatusBadgeVariant(item.rfp.status)}
+            className={`${getStatusBadgeClassName(item.rfp.status)} ml-2`}
             data-testid={`submission-status-${item.rfp.id}`}
           >
-            {isSubmitted && <i className="fas fa-paper-plane mr-1"></i>}
-            {canSubmit && <i className="fas fa-check mr-1"></i>}
-            {isSubmitted ? "Submitted" : "Ready"}
+            <i className={`${getStatusIcon(item.rfp.status)} mr-1`}></i>
+            {getStatusLabel(item.rfp.status)}
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground" data-testid={`submission-agency-${item.rfp.id}`}>
@@ -271,8 +272,12 @@ function SubmissionDetailsModal({ item }: any) {
         <div>
           <label className="font-medium text-muted-foreground">Status:</label>
           <p className="mt-1" data-testid="modal-rfp-status">
-            <Badge className={`status-badge status-${item.rfp.status}`}>
-              {item.rfp.status.charAt(0).toUpperCase() + item.rfp.status.slice(1)}
+            <Badge 
+              variant={getStatusBadgeVariant(item.rfp.status)}
+              className={getStatusBadgeClassName(item.rfp.status)}
+            >
+              <i className={`${getStatusIcon(item.rfp.status)} mr-1`}></i>
+              {getStatusLabel(item.rfp.status)}
             </Badge>
           </p>
         </div>

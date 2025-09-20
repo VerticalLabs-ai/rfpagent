@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { getStatusBadgeVariant, getStatusBadgeClassName, getStatusLabel, getStatusIcon } from "@/lib/badge-utils";
 
 export default function Proposals() {
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
@@ -154,11 +155,12 @@ export default function Proposals() {
                     <h4 className="font-medium text-sm leading-tight" data-testid={`rfp-item-title-${item.rfp.id}`}>
                       {item.rfp.title}
                     </h4>
-                    <Badge className={`status-badge status-${item.rfp.status} ml-2`}>
-                      {item.rfp.status === "drafting" && <i className="fas fa-edit mr-1"></i>}
-                      {item.rfp.status === "review" && <i className="fas fa-eye mr-1"></i>}
-                      {item.rfp.status === "approved" && <i className="fas fa-check mr-1"></i>}
-                      {item.rfp.status.charAt(0).toUpperCase() + item.rfp.status.slice(1)}
+                    <Badge 
+                      variant={getStatusBadgeVariant(item.rfp.status)}
+                      className={`${getStatusBadgeClassName(item.rfp.status)} ml-2`}
+                    >
+                      <i className={`${getStatusIcon(item.rfp.status)} mr-1`}></i>
+                      {getStatusLabel(item.rfp.status)}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2" data-testid={`rfp-item-agency-${item.rfp.id}`}>
