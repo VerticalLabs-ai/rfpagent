@@ -323,6 +323,92 @@ export class AgentRegistryService {
         });
       }
     }
+
+    // Register Specialist Agents
+    const specialists = [
+      // Portal Management Specialists
+      {
+        agentId: 'portal-scanner',
+        parentAgentId: 'portal-manager',
+        role: 'portal-scanner',
+        displayName: 'Portal Scanner',
+        description: 'Specialized in automated portal scanning and RFP discovery',
+        capabilities: ['portal_scanning', 'rfp_discovery', 'data_extraction', 'authentication'],
+        tools: ['puppeteer', 'stagehand', 'database']
+      },
+      {
+        agentId: 'portal-monitor',
+        parentAgentId: 'portal-manager',
+        role: 'portal-monitor',
+        displayName: 'Portal Monitor',
+        description: 'Monitors portal health, schedules scans, and tracks portal status',
+        capabilities: ['portal_monitoring', 'scheduling', 'health_checking', 'alerts'],
+        tools: ['cron', 'database', 'notification']
+      },
+      // Proposal Generation Specialists
+      {
+        agentId: 'content-generator',
+        parentAgentId: 'proposal-manager',
+        role: 'content-generator',
+        displayName: 'Content Generator',
+        description: 'Generates proposal content, narratives, and technical sections',
+        capabilities: ['content_generation', 'narrative_writing', 'technical_writing', 'template_processing'],
+        tools: ['openai', 'document_templates', 'database']
+      },
+      {
+        agentId: 'compliance-checker',
+        parentAgentId: 'proposal-manager',
+        role: 'compliance-checker',
+        displayName: 'Compliance Checker',
+        description: 'Validates proposal compliance and identifies risk factors',
+        capabilities: ['compliance_checking', 'risk_assessment', 'requirement_validation', 'quality_assurance'],
+        tools: ['openai', 'compliance_rules', 'database']
+      },
+      {
+        agentId: 'document-processor',
+        parentAgentId: 'proposal-manager',
+        role: 'document-processor',
+        displayName: 'Document Processor',
+        description: 'Processes, parses, and analyzes RFP documents and attachments',
+        capabilities: ['document_processing', 'text_extraction', 'structure_analysis', 'data_parsing'],
+        tools: ['pdf_parser', 'mammoth', 'openai', 'database']
+      },
+      // Research Specialists
+      {
+        agentId: 'market-analyst',
+        parentAgentId: 'research-manager',
+        role: 'market-analyst',
+        displayName: 'Market Analyst',
+        description: 'Performs market research and competitive analysis',
+        capabilities: ['market_research', 'competitive_analysis', 'pricing_analysis', 'trend_analysis'],
+        tools: ['web_search', 'openai', 'database']
+      },
+      {
+        agentId: 'historical-analyzer',
+        parentAgentId: 'research-manager',
+        role: 'historical-analyzer',
+        displayName: 'Historical Analyzer',
+        description: 'Analyzes historical bid data and performance metrics',
+        capabilities: ['historical_analysis', 'performance_tracking', 'success_prediction', 'pattern_recognition'],
+        tools: ['database', 'analytics', 'openai']
+      }
+    ];
+
+    for (const specialist of specialists) {
+      const existing = await storage.getAgent(specialist.agentId);
+      if (!existing) {
+        await this.registerAgent({
+          ...specialist,
+          tier: 'specialist',
+          maxConcurrency: 2
+        });
+      }
+    }
+
+    console.log('🤖 Bootstrap completed: 3-tier agentic system initialized');
+    console.log('   - 1 Orchestrator Agent');
+    console.log('   - 3 Manager Agents');
+    console.log('   - 7 Specialist Agents');
   }
 }
 
