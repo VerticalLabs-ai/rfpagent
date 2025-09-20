@@ -213,7 +213,7 @@ export default function AIChat() {
               {(conversations as Conversation[])?.map((conversation: Conversation) => (
                 <Card
                   key={conversation.id}
-                  className={`cursor-pointer transition-colors hover:bg-accent ${
+                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${
                     currentConversationId === conversation.id ? 'ring-2 ring-primary' : ''
                   }`}
                   onClick={() => selectConversation(conversation.id)}
