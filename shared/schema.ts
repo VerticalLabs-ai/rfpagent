@@ -282,6 +282,89 @@ export const researchFindings = pgTable("research_findings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Agent Memory and Knowledge Persistence Tables
+export const agentMemory = pgTable("agent_memory", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull(), // discovery-specialist, compliance-specialist, etc.
+  memoryType: text("memory_type").notNull(), // episodic, semantic, procedural, working
+  contextKey: text("context_key").notNull(), // unique identifier for this memory context
+  title: text("title").notNull(),
+  content: jsonb("content").notNull(), // structured memory data
+  importance: integer("importance").default(1).notNull(), // 1-10 importance score
+  accessCount: integer("access_count").default(0).notNull(),
+  lastAccessed: timestamp("last_accessed"),
+  expiresAt: timestamp("expires_at"), // null = permanent memory
+  tags: text("tags").array(),
+  metadata: jsonb("metadata"), // additional context data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const agentKnowledgeBase = pgTable("agent_knowledge_base", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull(),
+  knowledgeType: text("knowledge_type").notNull(), // rfp_pattern, compliance_rule, market_insight, pricing_data
+  domain: text("domain").notNull(), // technology, healthcare, construction, etc.
+  title: text("title").notNull(),
+  description: text("description"),
+  content: jsonb("content").notNull(), // structured knowledge data
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }).default('0.50'),
+  validationStatus: text("validation_status").default("pending").notNull(), // pending, validated, disputed, obsolete
+  sourceType: text("source_type").notNull(), // experience, training, research, feedback
+  sourceId: varchar("source_id"), // references source entity (RFP, conversation, etc.)
+  usageCount: integer("usage_count").default(0).notNull(),
+  successRate: decimal("success_rate", { precision: 3, scale: 2 }), // success rate when this knowledge is applied
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const agentCoordinationLog = pgTable("agent_coordination_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sessionId: varchar("session_id").notNull(), // coordination session identifier
+  initiatorAgentId: text("initiator_agent_id").notNull(),
+  targetAgentId: text("target_agent_id").notNull(),
+  coordinationType: text("coordination_type").notNull(), // handoff, collaboration, consultation, delegation
+  context: jsonb("context").notNull(), // coordination context and state
+  request: jsonb("request").notNull(), // what was requested
+  response: jsonb("response"), // response received
+  status: text("status").default("pending").notNull(), // pending, in_progress, completed, failed
+  priority: integer("priority").default(5).notNull(), // 1-10 priority
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+  metadata: jsonb("metadata"),
+});
+
+export const workflowState = pgTable("workflow_state", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: text("workflow_id").notNull(),
+  conversationId: varchar("conversation_id").references(() => aiConversations.id),
+  currentPhase: text("current_phase").notNull(), // discovery, analysis, generation, submission, monitoring
+  status: text("status").default("active").notNull(), // active, suspended, completed, failed
+  progress: integer("progress").default(0).notNull(), // 0-100 percentage
+  context: jsonb("context").notNull(), // workflow execution context
+  agentAssignments: jsonb("agent_assignments"), // which agents are handling which tasks
+  suspensionReason: text("suspension_reason"), // reason for suspension (human_input_required, etc.)
+  suspensionData: jsonb("suspension_data"), // data needed to resume
+  resumeInstructions: text("resume_instructions"), // instructions for resuming
+  estimatedCompletion: timestamp("estimated_completion"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const agentPerformanceMetrics = pgTable("agent_performance_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  agentId: text("agent_id").notNull(),
+  metricType: text("metric_type").notNull(), // task_completion, response_time, accuracy, user_satisfaction
+  metricValue: decimal("metric_value", { precision: 10, scale: 4 }).notNull(),
+  context: jsonb("context"), // context for this metric (task type, domain, etc.)
+  referenceEntityType: text("reference_entity_type"), // conversation, workflow, rfp
+  referenceEntityId: varchar("reference_entity_id"),
+  aggregationPeriod: text("aggregation_period"), // daily, weekly, monthly
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const historicalBids = pgTable("historical_bids", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   rfpTitle: text("rfp_title").notNull(),
@@ -418,6 +501,7 @@ export const aiConversationsRelations = relations(aiConversations, ({ one, many 
   }),
   messages: many(conversationMessages),
   researchFindings: many(researchFindings),
+  workflowStates: many(workflowState),
 }));
 
 export const conversationMessagesRelations = relations(conversationMessages, ({ one }) => ({
@@ -449,6 +533,56 @@ export const historicalBidsRelations = relations(historicalBids, ({ one }) => ({
     references: [researchFindings.id],
   }),
 }));
+
+// Agent Memory and Knowledge Relations
+export const agentMemoryRelations = relations(agentMemory, ({ many }) => ({
+  // Memory can be linked to knowledge for learning
+}));
+
+export const agentKnowledgeBaseRelations = relations(agentKnowledgeBase, ({ many }) => ({
+  // Knowledge can reference multiple memories
+}));
+
+export const workflowStateRelations = relations(workflowState, ({ one }) => ({
+  conversation: one(aiConversations, {
+    fields: [workflowState.conversationId],
+    references: [aiConversations.id],
+  }),
+}));
+
+// Insert schemas for Agent Memory and Knowledge
+export const insertAgentMemorySchema = createInsertSchema(agentMemory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  accessCount: true,
+  lastAccessed: true,
+});
+
+export const insertAgentKnowledgeSchema = createInsertSchema(agentKnowledgeBase).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  usageCount: true,
+});
+
+export const insertAgentCoordinationLogSchema = createInsertSchema(agentCoordinationLog).omit({
+  id: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertWorkflowStateSchema = createInsertSchema(workflowState).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAgentPerformanceMetricsSchema = createInsertSchema(agentPerformanceMetrics).omit({
+  id: true,
+  recordedAt: true,
+  createdAt: true,
+});
 
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({

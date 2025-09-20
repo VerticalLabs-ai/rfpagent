@@ -8,6 +8,7 @@ import { AIService } from "./aiService";
 import { aiProposalService } from "./ai-proposal-service";
 import { documentIntelligenceService } from "./documentIntelligenceService";
 import { MastraScrapingService } from "./mastraScrapingService";
+import { agentMemoryService } from './agentMemoryService';
 import type { RFP, Portal, CompanyProfile } from "@shared/schema";
 import { nanoid } from 'nanoid';
 
@@ -73,10 +74,12 @@ export class MastraWorkflowEngine {
   private mastraScrapingService = new MastraScrapingService();
   private agents: Map<string, Agent> = new Map();
   private activeWorkflows: Map<string, any> = new Map();
+  private agentCoordinator: Map<string, any> = new Map();
 
   constructor() {
     this.initializeSpecializedAgents();
     this.initializeWorkflows();
+    this.initializeAgentCoordination();
   }
 
   /**
@@ -92,7 +95,7 @@ export class MastraWorkflowEngine {
         - Extract key details like deadlines, values, and requirements
         - Prioritize opportunities based on strategic value
         - Provide recommendations for next actions`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     const marketResearchAgent = new Agent({
@@ -103,7 +106,7 @@ export class MastraWorkflowEngine {
         - Identify key competitors and their strategies
         - Assess market conditions and trends
         - Provide strategic bidding recommendations`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     // Analysis & Processing Agents
@@ -115,7 +118,7 @@ export class MastraWorkflowEngine {
         - Assess risk factors and complexity
         - Map requirements to company capabilities
         - Generate compliance checklists and recommendations`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     const documentIntelligenceAgent = new Agent({
@@ -126,7 +129,7 @@ export class MastraWorkflowEngine {
         - Identify human oversight needs
         - Auto-populate forms with company data
         - Generate processing recommendations`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     // Generation & Submission Agents
@@ -138,7 +141,7 @@ export class MastraWorkflowEngine {
         - Develop pricing strategies and tables
         - Ensure compliance with all requirements
         - Optimize proposals for maximum win probability`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     const submissionAgent = new Agent({
@@ -149,7 +152,7 @@ export class MastraWorkflowEngine {
         - Track submission status and deadlines
         - Coordinate follow-up activities
         - Ensure all submission requirements are met`,
-      model: openai("gpt-4o")
+      model: openai("gpt-4-turbo")
     });
 
     // Store agents for reference
@@ -311,6 +314,178 @@ export class MastraWorkflowEngine {
     }
 
     return suggestions;
+  }
+
+  /**
+   * Initialize agent coordination system
+   */
+  private async initializeAgentCoordination(): Promise<void> {
+    console.log('🤝 Initializing enhanced agent coordination with memory persistence...');
+    
+    // Set up agent coordination protocols
+    this.agentCoordinator.set('rfp-discovery-specialist', {
+      canDelegate: ['market-research-analyst', 'compliance-specialist'],
+      canConsult: ['document-processor'],
+      memoryRetention: 'high',
+      learningEnabled: true
+    });
+    
+    this.agentCoordinator.set('market-research-analyst', {
+      canDelegate: ['proposal-writer'],
+      canConsult: ['compliance-specialist', 'rfp-discovery-specialist'],
+      memoryRetention: 'high',
+      learningEnabled: true
+    });
+    
+    this.agentCoordinator.set('compliance-specialist', {
+      canDelegate: ['document-processor'],
+      canConsult: ['proposal-writer', 'market-research-analyst'],
+      memoryRetention: 'critical',
+      learningEnabled: true
+    });
+    
+    this.agentCoordinator.set('document-processor', {
+      canConsult: ['compliance-specialist'],
+      memoryRetention: 'medium',
+      learningEnabled: true
+    });
+    
+    this.agentCoordinator.set('proposal-writer', {
+      canConsult: ['compliance-specialist', 'market-research-analyst'],
+      canDelegate: ['document-processor'],
+      memoryRetention: 'medium',
+      learningEnabled: true
+    });
+  }
+
+  /**
+   * Enhanced agent delegation with memory and coordination
+   */
+  async delegateToAgent(agentId: string, context: any, conversationId: string): Promise<any> {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      throw new Error(`Agent not found: ${agentId}`);
+    }
+
+    try {
+      // Retrieve relevant memories for the agent
+      const relevantMemories = await agentMemoryService.getRelevantMemories(agentId, {
+        keywords: context?.keywords || [],
+        tags: context?.tags || [],
+        domain: context?.domain
+      });
+
+      // Retrieve relevant knowledge
+      const relevantKnowledge = await agentMemoryService.getRelevantKnowledge(agentId, {
+        domain: context?.domain,
+        knowledgeType: context?.knowledgeType,
+        tags: context?.tags || []
+      });
+
+      // Enhanced context with memory and knowledge
+      const enhancedContext = {
+        ...context,
+        memories: relevantMemories.slice(0, 5), // Top 5 relevant memories
+        knowledge: relevantKnowledge.slice(0, 3), // Top 3 relevant knowledge items
+        conversationId,
+        agentId
+      };
+
+      // Record agent coordination request
+      const coordinationId = await agentMemoryService.createCoordinationRequest({
+        sessionId: conversationId,
+        initiatorAgentId: 'system',
+        targetAgentId: agentId,
+        coordinationType: 'delegation',
+        context: enhancedContext,
+        request: { action: 'process', context: enhancedContext },
+        priority: context?.priority || 5
+      });
+
+      // Process with enhanced context
+      const result = await this.processWithAgent(agent, enhancedContext);
+
+      // Record the successful coordination
+      await agentMemoryService.updateCoordinationStatus(coordinationId, 'completed', result);
+
+      // Learn from the experience
+      await this.recordAgentExperience(agentId, {
+        context: enhancedContext,
+        outcome: result,
+        success: true,
+        conversationId
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error(`Error delegating to agent ${agentId}:`, error);
+      
+      // Record the failed experience for learning
+      await this.recordAgentExperience(agentId, {
+        context,
+        outcome: { error: error.message },
+        success: false,
+        conversationId
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Process context with an agent using enhanced capabilities
+   */
+  private async processWithAgent(agent: Agent, context: any): Promise<any> {
+    // Create a comprehensive prompt that includes memory context
+    const promptContext = {
+      task: context.task || 'Analyze and provide recommendations',
+      currentContext: context,
+      relevantMemories: context.memories || [],
+      availableKnowledge: context.knowledge || [],
+      instructions: 'Use your memories and knowledge to provide the most accurate and helpful response'
+    };
+
+    // Use the agent to process the enhanced context
+    const response = await agent.generate(JSON.stringify(promptContext));
+    
+    return {
+      agentId: agent.name,
+      response: response.text,
+      context: promptContext,
+      timestamp: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Record agent experience for learning and improvement
+   */
+  private async recordAgentExperience(agentId: string, experience: any): Promise<void> {
+    try {
+      await agentMemoryService.learnFromExperience(agentId, experience);
+      
+      // Record performance metrics
+      await agentMemoryService.recordPerformanceMetric(
+        agentId,
+        'task_completion',
+        experience.success ? 1 : 0,
+        {
+          entityType: 'conversation',
+          entityId: experience.conversationId,
+          domain: experience.context?.domain
+        }
+      );
+
+    } catch (error) {
+      console.error(`Error recording experience for agent ${agentId}:`, error);
+    }
+  }
+
+  /**
+   * Get agent performance summary
+   */
+  async getAgentPerformance(agentId: string): Promise<any> {
+    return await agentMemoryService.getAgentPerformanceSummary(agentId);
   }
 
   /**

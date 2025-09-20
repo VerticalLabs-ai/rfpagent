@@ -2,6 +2,7 @@ import {
   users, portals, rfps, proposals, documents, submissions, auditLogs, notifications, scans, scanEvents,
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   aiConversations, conversationMessages, researchFindings, historicalBids,
+  agentMemory, agentKnowledgeBase, agentCoordinationLog, workflowState, agentPerformanceMetrics,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
   type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
@@ -11,7 +12,9 @@ import {
   type CompanyIdentifier, type InsertCompanyIdentifier, type CompanyCertification, type InsertCompanyCertification,
   type CompanyInsurance, type InsertCompanyInsurance, type AiConversation, type InsertAiConversation,
   type ConversationMessage, type InsertConversationMessage, type ResearchFinding, type InsertResearchFinding,
-  type HistoricalBid, type InsertHistoricalBid
+  type HistoricalBid, type InsertHistoricalBid,
+  insertAgentMemorySchema, insertAgentKnowledgeSchema, insertAgentCoordinationLogSchema,
+  insertWorkflowStateSchema, insertAgentPerformanceMetricsSchema
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, asc, and, or, gte, lte, count, sql } from "drizzle-orm";
@@ -148,6 +151,43 @@ export interface IStorage {
   getHistoricalBids(filters?: { category?: string; agency?: string; limit?: number }): Promise<HistoricalBid[]>;
   createHistoricalBid(bid: InsertHistoricalBid): Promise<HistoricalBid>;
   updateHistoricalBid(id: string, updates: Partial<HistoricalBid>): Promise<HistoricalBid>;
+
+  // Agent Memory Operations
+  getAgentMemory(id: string): Promise<any>;
+  getAgentMemoryByAgent(agentId: string, memoryType?: string, limit?: number): Promise<any[]>;
+  getAgentMemoryByContext(agentId: string, contextKey: string): Promise<any>;
+  createAgentMemory(memory: any): Promise<any>;
+  updateAgentMemory(id: string, updates: any): Promise<any>;
+  deleteAgentMemory(id: string): Promise<void>;
+  recordMemoryAccess(id: string): Promise<void>;
+
+  // Agent Knowledge Base Operations
+  getAgentKnowledge(id: string): Promise<any>;
+  getAgentKnowledgeByAgent(agentId: string, knowledgeType?: string, domain?: string, limit?: number): Promise<any[]>;
+  createAgentKnowledge(knowledge: any): Promise<any>;
+  updateAgentKnowledge(id: string, updates: any): Promise<any>;
+  validateKnowledge(id: string, status: string): Promise<any>;
+  recordKnowledgeUsage(id: string, success: boolean): Promise<void>;
+
+  // Agent Coordination Operations
+  getAgentCoordination(id: string): Promise<any>;
+  getAgentCoordinationBySession(sessionId: string): Promise<any[]>;
+  createAgentCoordination(coordination: any): Promise<any>;
+  updateAgentCoordination(id: string, updates: any): Promise<any>;
+  getPendingCoordinations(agentId: string): Promise<any[]>;
+
+  // Workflow State Operations
+  getWorkflowState(id: string): Promise<any>;
+  getWorkflowStateByWorkflowId(workflowId: string): Promise<any>;
+  createWorkflowState(state: any): Promise<any>;
+  updateWorkflowState(id: string, updates: any): Promise<any>;
+  getActiveWorkflows(): Promise<any[]>;
+  getSuspendedWorkflows(): Promise<any[]>;
+
+  // Agent Performance Metrics Operations
+  getAgentPerformanceMetrics(agentId: string, metricType?: string, period?: string): Promise<any[]>;
+  recordAgentMetric(metric: any): Promise<any>;
+  getAgentPerformanceSummary(agentId: string): Promise<any>;
 
   // Additional RFP methods needed by orchestrator
   getRFPs(filters?: { status?: string; category?: string; location?: string; limit?: number }): Promise<RFP[]>;
@@ -1119,6 +1159,262 @@ export class DatabaseStorage implements IStorage {
       .where(eq(historicalBids.id, id))
       .returning();
     return updatedBid;
+  }
+
+  // Agent Memory Operations
+  async getAgentMemory(id: string): Promise<any> {
+    const [memory] = await db.select().from(agentMemory).where(eq(agentMemory.id, id));
+    return memory || undefined;
+  }
+
+  async getAgentMemoryByAgent(agentId: string, memoryType?: string, limit?: number): Promise<any[]> {
+    let query = db.select().from(agentMemory).where(eq(agentMemory.agentId, agentId));
+    
+    if (memoryType) {
+      query = query.where(and(eq(agentMemory.agentId, agentId), eq(agentMemory.memoryType, memoryType)));
+    }
+    
+    return await query
+      .orderBy(desc(agentMemory.importance), desc(agentMemory.lastAccessed))
+      .limit(limit || 50);
+  }
+
+  async getAgentMemoryByContext(agentId: string, contextKey: string): Promise<any> {
+    const [memory] = await db.select().from(agentMemory)
+      .where(and(eq(agentMemory.agentId, agentId), eq(agentMemory.contextKey, contextKey)));
+    return memory || undefined;
+  }
+
+  async createAgentMemory(memory: any): Promise<any> {
+    const [newMemory] = await db.insert(agentMemory).values(memory).returning();
+    return newMemory;
+  }
+
+  async updateAgentMemory(id: string, updates: any): Promise<any> {
+    const [updatedMemory] = await db
+      .update(agentMemory)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(agentMemory.id, id))
+      .returning();
+    return updatedMemory;
+  }
+
+  async deleteAgentMemory(id: string): Promise<void> {
+    await db.delete(agentMemory).where(eq(agentMemory.id, id));
+  }
+
+  async recordMemoryAccess(id: string): Promise<void> {
+    await db
+      .update(agentMemory)
+      .set({ 
+        accessCount: sql`${agentMemory.accessCount} + 1`,
+        lastAccessed: sql`NOW()`,
+        updatedAt: sql`NOW()`
+      })
+      .where(eq(agentMemory.id, id));
+  }
+
+  // Agent Knowledge Base Operations
+  async getAgentKnowledge(id: string): Promise<any> {
+    const [knowledge] = await db.select().from(agentKnowledgeBase).where(eq(agentKnowledgeBase.id, id));
+    return knowledge || undefined;
+  }
+
+  async getAgentKnowledgeByAgent(agentId: string, knowledgeType?: string, domain?: string, limit?: number): Promise<any[]> {
+    let query = db.select().from(agentKnowledgeBase).where(eq(agentKnowledgeBase.agentId, agentId));
+    
+    const conditions = [eq(agentKnowledgeBase.agentId, agentId)];
+    if (knowledgeType) {
+      conditions.push(eq(agentKnowledgeBase.knowledgeType, knowledgeType));
+    }
+    if (domain) {
+      conditions.push(eq(agentKnowledgeBase.domain, domain));
+    }
+    
+    if (conditions.length > 1) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query
+      .orderBy(desc(agentKnowledgeBase.confidenceScore), desc(agentKnowledgeBase.usageCount))
+      .limit(limit || 50);
+  }
+
+  async createAgentKnowledge(knowledge: any): Promise<any> {
+    const [newKnowledge] = await db.insert(agentKnowledgeBase).values(knowledge).returning();
+    return newKnowledge;
+  }
+
+  async updateAgentKnowledge(id: string, updates: any): Promise<any> {
+    const [updatedKnowledge] = await db
+      .update(agentKnowledgeBase)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(agentKnowledgeBase.id, id))
+      .returning();
+    return updatedKnowledge;
+  }
+
+  async validateKnowledge(id: string, status: string): Promise<any> {
+    const [validatedKnowledge] = await db
+      .update(agentKnowledgeBase)
+      .set({ validationStatus: status, updatedAt: sql`NOW()` })
+      .where(eq(agentKnowledgeBase.id, id))
+      .returning();
+    return validatedKnowledge;
+  }
+
+  async recordKnowledgeUsage(id: string, success: boolean): Promise<void> {
+    const knowledge = await this.getAgentKnowledge(id);
+    if (!knowledge) return;
+
+    const currentUsage = knowledge.usageCount || 0;
+    const currentSuccess = knowledge.successRate || 0.5;
+    const newUsageCount = currentUsage + 1;
+    const newSuccessRate = success 
+      ? (currentSuccess * currentUsage + 1) / newUsageCount
+      : (currentSuccess * currentUsage) / newUsageCount;
+
+    await db
+      .update(agentKnowledgeBase)
+      .set({ 
+        usageCount: newUsageCount,
+        successRate: newSuccessRate.toFixed(2),
+        updatedAt: sql`NOW()`
+      })
+      .where(eq(agentKnowledgeBase.id, id));
+  }
+
+  // Agent Coordination Operations
+  async getAgentCoordination(id: string): Promise<any> {
+    const [coordination] = await db.select().from(agentCoordinationLog).where(eq(agentCoordinationLog.id, id));
+    return coordination || undefined;
+  }
+
+  async getAgentCoordinationBySession(sessionId: string): Promise<any[]> {
+    return await db.select().from(agentCoordinationLog)
+      .where(eq(agentCoordinationLog.sessionId, sessionId))
+      .orderBy(asc(agentCoordinationLog.startedAt));
+  }
+
+  async createAgentCoordination(coordination: any): Promise<any> {
+    const [newCoordination] = await db.insert(agentCoordinationLog).values(coordination).returning();
+    return newCoordination;
+  }
+
+  async updateAgentCoordination(id: string, updates: any): Promise<any> {
+    const [updatedCoordination] = await db
+      .update(agentCoordinationLog)
+      .set(updates)
+      .where(eq(agentCoordinationLog.id, id))
+      .returning();
+    return updatedCoordination;
+  }
+
+  async getPendingCoordinations(agentId: string): Promise<any[]> {
+    return await db.select().from(agentCoordinationLog)
+      .where(and(
+        eq(agentCoordinationLog.targetAgentId, agentId),
+        eq(agentCoordinationLog.status, 'pending')
+      ))
+      .orderBy(desc(agentCoordinationLog.priority), asc(agentCoordinationLog.startedAt));
+  }
+
+  // Workflow State Operations
+  async getWorkflowState(id: string): Promise<any> {
+    const [state] = await db.select().from(workflowState).where(eq(workflowState.id, id));
+    return state || undefined;
+  }
+
+  async getWorkflowStateByWorkflowId(workflowId: string): Promise<any> {
+    const [state] = await db.select().from(workflowState).where(eq(workflowState.workflowId, workflowId));
+    return state || undefined;
+  }
+
+  async createWorkflowState(state: any): Promise<any> {
+    const [newState] = await db.insert(workflowState).values(state).returning();
+    return newState;
+  }
+
+  async updateWorkflowState(id: string, updates: any): Promise<any> {
+    const [updatedState] = await db
+      .update(workflowState)
+      .set({ ...updates, updatedAt: sql`NOW()` })
+      .where(eq(workflowState.id, id))
+      .returning();
+    return updatedState;
+  }
+
+  async getActiveWorkflows(): Promise<any[]> {
+    return await db.select().from(workflowState)
+      .where(eq(workflowState.status, 'active'))
+      .orderBy(desc(workflowState.updatedAt));
+  }
+
+  async getSuspendedWorkflows(): Promise<any[]> {
+    return await db.select().from(workflowState)
+      .where(eq(workflowState.status, 'suspended'))
+      .orderBy(desc(workflowState.updatedAt));
+  }
+
+  // Agent Performance Metrics Operations
+  async getAgentPerformanceMetrics(agentId: string, metricType?: string, period?: string): Promise<any[]> {
+    let query = db.select().from(agentPerformanceMetrics).where(eq(agentPerformanceMetrics.agentId, agentId));
+    
+    const conditions = [eq(agentPerformanceMetrics.agentId, agentId)];
+    if (metricType) {
+      conditions.push(eq(agentPerformanceMetrics.metricType, metricType));
+    }
+    if (period) {
+      conditions.push(eq(agentPerformanceMetrics.aggregationPeriod, period));
+    }
+    
+    if (conditions.length > 1) {
+      query = query.where(and(...conditions));
+    }
+    
+    return await query.orderBy(desc(agentPerformanceMetrics.recordedAt));
+  }
+
+  async recordAgentMetric(metric: any): Promise<any> {
+    const [newMetric] = await db.insert(agentPerformanceMetrics).values(metric).returning();
+    return newMetric;
+  }
+
+  async getAgentPerformanceSummary(agentId: string): Promise<any> {
+    // Get average metrics for different types
+    const metrics = await db.select().from(agentPerformanceMetrics)
+      .where(eq(agentPerformanceMetrics.agentId, agentId));
+    
+    const summary = {
+      agentId,
+      totalMetrics: metrics.length,
+      averageResponseTime: 0,
+      averageAccuracy: 0,
+      averageSatisfaction: 0,
+      taskCompletionRate: 0,
+    };
+    
+    if (metrics.length > 0) {
+      const responseTimeMetrics = metrics.filter(m => m.metricType === 'response_time');
+      const accuracyMetrics = metrics.filter(m => m.metricType === 'accuracy');
+      const satisfactionMetrics = metrics.filter(m => m.metricType === 'user_satisfaction');
+      const completionMetrics = metrics.filter(m => m.metricType === 'task_completion');
+      
+      if (responseTimeMetrics.length > 0) {
+        summary.averageResponseTime = responseTimeMetrics.reduce((sum, m) => sum + Number(m.metricValue), 0) / responseTimeMetrics.length;
+      }
+      if (accuracyMetrics.length > 0) {
+        summary.averageAccuracy = accuracyMetrics.reduce((sum, m) => sum + Number(m.metricValue), 0) / accuracyMetrics.length;
+      }
+      if (satisfactionMetrics.length > 0) {
+        summary.averageSatisfaction = satisfactionMetrics.reduce((sum, m) => sum + Number(m.metricValue), 0) / satisfactionMetrics.length;
+      }
+      if (completionMetrics.length > 0) {
+        summary.taskCompletionRate = completionMetrics.reduce((sum, m) => sum + Number(m.metricValue), 0) / completionMetrics.length;
+      }
+    }
+    
+    return summary;
   }
 
   // Additional RFP methods needed by orchestrator

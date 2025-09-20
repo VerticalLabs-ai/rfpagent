@@ -5,6 +5,7 @@ import { EnhancedProposalService } from "./enhancedProposalService";
 import { MastraScrapingService } from "./mastraScrapingService";
 import { mastraWorkflowEngine, type ActionSuggestion } from "./mastraWorkflowEngine";
 import { DocumentIntelligenceService, documentIntelligenceService } from "./documentIntelligenceService";
+import { agentMemoryService } from './agentMemoryService';
 import type { 
   AiConversation, 
   ConversationMessage, 
@@ -124,17 +125,20 @@ export class AIAgentOrchestrator {
         metadata: { intent: conversationIntent }
       });
 
-      // Route to appropriate handler based on intent
+      // Store memory about user preferences and query patterns
+      await this.storeUserInteractionMemory(conversation, query, conversationIntent, context);
+
+      // Route to appropriate handler based on intent with enhanced agent coordination
       let response: AgentResponse;
       switch (conversationIntent.type) {
         case 'rfp_search':
-          response = await this.handleRfpSearch(query, conversation, conversationIntent);
+          response = await this.handleRfpSearchWithAgents(query, conversation, conversationIntent);
           break;
         case 'bid_crafting':
-          response = await this.handleBidCrafting(query, conversation, conversationIntent);
+          response = await this.handleBidCraftingWithAgents(query, conversation, conversationIntent);
           break;
         case 'research':
-          response = await this.handleResearch(query, conversation, conversationIntent);
+          response = await this.handleResearchWithAgents(query, conversation, conversationIntent);
           break;
         default:
           response = await this.handleGeneralQuery(query, conversation, conversationIntent);
@@ -939,6 +943,225 @@ Return only the JSON object, no other text.
     // Generate a concise title for the conversation
     const words = query.split(' ').slice(0, 6).join(' ');
     return words.length > 50 ? words.substring(0, 50) + '...' : words;
+  }
+
+  /**
+   * Store user interaction memory for agent learning
+   */
+  private async storeUserInteractionMemory(
+    conversation: AiConversation, 
+    query: string, 
+    intent: any, 
+    context?: ConversationalContext
+  ): Promise<void> {
+    try {
+      // Store memory about user preferences
+      await agentMemoryService.storeMemory({
+        agentId: 'rfp-discovery-specialist',
+        memoryType: 'user_interaction',
+        contextKey: `conversation_${conversation.id}`,
+        title: `User Query: ${intent.type}`,
+        content: {
+          query,
+          intent: intent.type,
+          confidence: intent.confidence,
+          userId: context?.userId,
+          timestamp: new Date().toISOString()
+        },
+        importance: Math.max(1, Math.min(10, Math.floor((intent.confidence || 0.5) * 10))),
+        tags: [intent.type, 'user_query', 'conversation'],
+        metadata: {
+          conversationId: conversation.id,
+          conversationType: conversation.type,
+          context
+        }
+      });
+
+      // Store search criteria patterns if it's an RFP search
+      if (intent.type === 'rfp_search' && context?.searchCriteria) {
+        await agentMemoryService.storeMemory({
+          agentId: 'market-research-analyst',
+          memoryType: 'search_pattern',
+          contextKey: `search_criteria_${Date.now()}`,
+          title: `Search Pattern: ${context.searchCriteria.category || 'General'}`,
+          content: {
+            criteria: context.searchCriteria,
+            query,
+            userId: context.userId
+          },
+          importance: 7,
+          tags: ['search_pattern', 'rfp_search', context.searchCriteria.category || 'general'],
+          metadata: { conversationId: conversation.id }
+        });
+      }
+    } catch (error) {
+      console.error('Error storing interaction memory:', error);
+      // Don't fail the main conversation flow due to memory storage issues
+    }
+  }
+
+  /**
+   * Enhanced RFP search with agent coordination
+   */
+  private async handleRfpSearchWithAgents(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`🔍 Handling RFP search with enhanced agent coordination`);
+
+    try {
+      // Use agent coordination for RFP discovery
+      const agentContext = {
+        task: 'rfp_discovery',
+        query,
+        domain: 'government_rfp',
+        conversationId: conversation.id,
+        tags: ['rfp_search', 'discovery'],
+        keywords: [query]
+      };
+
+      const agentResult = await mastraWorkflowEngine.delegateToAgent(
+        'rfp-discovery-specialist',
+        agentContext,
+        conversation.id
+      );
+
+      // Store knowledge about search results for future learning
+      await agentMemoryService.storeKnowledge({
+        agentId: 'rfp-discovery-specialist',
+        knowledgeType: 'rfp_pattern',
+        domain: 'government_procurement',
+        title: `RFP Search: ${query}`,
+        description: `Search patterns and results for ${query}`,
+        content: {
+          query,
+          agentResult,
+          timestamp: new Date().toISOString(),
+          successful: true
+        },
+        confidenceScore: 0.8,
+        sourceType: 'experience',
+        sourceId: conversation.id,
+        tags: ['rfp_search', 'search_results', 'agent_coordination']
+      });
+
+      // Fallback to original method with agent coordination logged
+      return this.handleRfpSearch(query, conversation, intent);
+
+    } catch (error) {
+      console.error("Enhanced RFP search failed:", error);
+      // Fallback to original method
+      return this.handleRfpSearch(query, conversation, intent);
+    }
+  }
+
+  /**
+   * Enhanced bid crafting with agent coordination
+   */
+  private async handleBidCraftingWithAgents(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`📝 Handling bid crafting with enhanced agent coordination`);
+
+    try {
+      // Use compliance specialist for requirement analysis
+      const complianceContext = {
+        task: 'compliance_analysis',
+        query,
+        domain: 'compliance',
+        conversationId: conversation.id,
+        tags: ['compliance', 'bid_crafting'],
+        keywords: [query]
+      };
+
+      const complianceResult = await mastraWorkflowEngine.delegateToAgent(
+        'compliance-specialist',
+        complianceContext,
+        conversation.id
+      );
+
+      // Store knowledge about bid crafting patterns
+      await agentMemoryService.storeKnowledge({
+        agentId: 'proposal-writer',
+        knowledgeType: 'strategy',
+        domain: 'proposal_writing',
+        title: `Bid Crafting: ${query}`,
+        description: `Strategy and approach for ${query}`,
+        content: {
+          query,
+          complianceAnalysis: complianceResult,
+          conversationContext: conversation.context
+        },
+        confidenceScore: 0.7,
+        sourceType: 'experience',
+        sourceId: conversation.id,
+        tags: ['bid_crafting', 'strategy', 'proposal']
+      });
+
+      // Fallback to original method with enhanced context
+      return this.handleBidCrafting(query, conversation, intent);
+
+    } catch (error) {
+      console.error("Enhanced bid crafting failed:", error);
+      return this.handleBidCrafting(query, conversation, intent);
+    }
+  }
+
+  /**
+   * Enhanced research with agent coordination
+   */
+  private async handleResearchWithAgents(
+    query: string, 
+    conversation: AiConversation, 
+    intent: any
+  ): Promise<AgentResponse> {
+    console.log(`📊 Handling research with enhanced agent coordination`);
+
+    try {
+      // Use market research analyst for comprehensive analysis
+      const researchContext = {
+        task: 'market_research',
+        query,
+        domain: 'market_analysis',
+        conversationId: conversation.id,
+        tags: ['research', 'market_analysis'],
+        keywords: [query]
+      };
+
+      const researchResult = await mastraWorkflowEngine.delegateToAgent(
+        'market-research-analyst',
+        researchContext,
+        conversation.id
+      );
+
+      // Store research findings as knowledge
+      await agentMemoryService.storeKnowledge({
+        agentId: 'market-research-analyst',
+        knowledgeType: 'market_insight',
+        domain: 'market_research',
+        title: `Research: ${query}`,
+        description: `Market research results for ${query}`,
+        content: {
+          query,
+          researchResult,
+          timestamp: new Date().toISOString()
+        },
+        confidenceScore: 0.8,
+        sourceType: 'research',
+        sourceId: conversation.id,
+        tags: ['research', 'market_insight', 'findings']
+      });
+
+      // Fallback to original method with enhanced context
+      return this.handleResearch(query, conversation, intent);
+
+    } catch (error) {
+      console.error("Enhanced research failed:", error);
+      return this.handleResearch(query, conversation, intent);
+    }
   }
 
   /**
