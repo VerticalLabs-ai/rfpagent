@@ -262,6 +262,60 @@ export interface IStorage {
   getAgentSessionsByOrchestrator(orchestratorAgentId: string): Promise<AgentSession[]>;
   completeAgentSession(sessionId: string): Promise<AgentSession>;
   updateSessionActivity(sessionId: string): Promise<void>;
+
+  // Pipeline Orchestration Operations
+  createPipelineOrchestration(orchestration: any): Promise<any>;
+  updatePipelineOrchestration(orchestrationId: string, updates: any): Promise<any>;
+  getPipelineOrchestration(orchestrationId: string): Promise<any>;
+  getAllPipelineOrchestrations(): Promise<any[]>;
+  getActivePipelineOrchestrations(): Promise<any[]>;
+  getOrchestrationsByStatus(status: string): Promise<any[]>;
+  deletePipelineOrchestration(orchestrationId: string): Promise<void>;
+
+  // Dead Letter Queue Operations
+  createDeadLetterQueueEntry(entry: any): Promise<any>;
+  updateDeadLetterQueueEntry(entryId: string, updates: any): Promise<any>;
+  getDeadLetterQueueEntry(entryId: string): Promise<any>;
+  getDeadLetterQueueEntries(filters?: { canBeReprocessed?: boolean; escalated?: boolean }): Promise<any[]>;
+  getDeadLetterQueueByWorkItem(workItemId: string): Promise<any>;
+  escalateDeadLetterQueueEntry(entryId: string, reason: string): Promise<any>;
+  reprocessDeadLetterQueueEntry(entryId: string, triggeredBy: string): Promise<any>;
+
+  // Phase State Transitions Operations
+  createPhaseStateTransition(transition: any): Promise<any>;
+  getPhaseStateTransitions(workflowId: string): Promise<any[]>;
+  getPhaseTransitionsByStatus(fromPhase: string, toPhase: string): Promise<any[]>;
+  getRecentPhaseTransitions(limit?: number): Promise<any[]>;
+
+  // System Health Operations
+  recordSystemHealth(health: any): Promise<any>;
+  getSystemHealthHistory(timeRange?: string): Promise<any[]>;
+  getLatestSystemHealth(): Promise<any>;
+
+  // Pipeline Metrics Operations
+  createPipelineMetrics(metrics: any): Promise<any>;
+  getPipelineMetrics(pipelineId: string, timeRange?: string): Promise<any[]>;
+  getAggregatedPipelineMetrics(timeRange?: string): Promise<any>;
+  getPipelineSuccessRates(timeRange?: string): Promise<any[]>;
+  getAverageCompletionTimes(taskType?: string, timeRange?: string): Promise<any[]>;
+
+  // Workflow Dependencies Operations
+  createWorkflowDependency(dependency: any): Promise<any>;
+  getWorkflowDependencies(workflowId: string): Promise<any[]>;
+  updateWorkflowDependency(dependencyId: string, updates: any): Promise<any>;
+  deleteWorkflowDependency(dependencyId: string): Promise<void>;
+
+  // Enhanced Work Item Operations
+  getWorkItemById(workItemId: string): Promise<WorkItem | undefined>;
+  getWorkItemsByWorkflow(workflowId: string): Promise<WorkItem[]>;
+  getCompletedWorkItemsByAgentInTimeRange(agentId: string, startDate: Date, endDate: Date): Promise<WorkItem[]>;
+  getWorkItemsByPhase(phase: string): Promise<WorkItem[]>;
+  getFailedWorkItemsForRetry(): Promise<WorkItem[]>;
+
+  // Enhanced Agent Registry Operations
+  getAllAgentRegistries(): Promise<AgentRegistry[]>;
+  getAgentUtilizationMetrics(): Promise<any[]>;
+  updateAgentWorkload(agentId: string, workload: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1990,6 +2044,499 @@ export class DatabaseStorage implements IStorage {
       .update(agentSessions)
       .set({ lastActivity: sql`NOW()`, updatedAt: sql`NOW()` })
       .where(eq(agentSessions.sessionId, sessionId));
+  }
+
+  // Pipeline Orchestration Operations
+  async createPipelineOrchestration(orchestration: any): Promise<any> {
+    const [newOrchestration] = await db
+      .insert(pipelineOrchestration)
+      .values({
+        ...orchestration,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newOrchestration;
+  }
+
+  async updatePipelineOrchestration(orchestrationId: string, updates: any): Promise<any> {
+    const [updatedOrchestration] = await db
+      .update(pipelineOrchestration)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(pipelineOrchestration.orchestrationId, orchestrationId))
+      .returning();
+    return updatedOrchestration;
+  }
+
+  async getPipelineOrchestration(orchestrationId: string): Promise<any> {
+    const [orchestration] = await db
+      .select()
+      .from(pipelineOrchestration)
+      .where(eq(pipelineOrchestration.orchestrationId, orchestrationId));
+    return orchestration || undefined;
+  }
+
+  async getAllPipelineOrchestrations(): Promise<any[]> {
+    return await db
+      .select()
+      .from(pipelineOrchestration)
+      .orderBy(desc(pipelineOrchestration.createdAt));
+  }
+
+  async getActivePipelineOrchestrations(): Promise<any[]> {
+    return await db
+      .select()
+      .from(pipelineOrchestration)
+      .where(eq(pipelineOrchestration.status, 'active'))
+      .orderBy(desc(pipelineOrchestration.createdAt));
+  }
+
+  async getOrchestrationsByStatus(status: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(pipelineOrchestration)
+      .where(eq(pipelineOrchestration.status, status))
+      .orderBy(desc(pipelineOrchestration.createdAt));
+  }
+
+  async deletePipelineOrchestration(orchestrationId: string): Promise<void> {
+    await db
+      .delete(pipelineOrchestration)
+      .where(eq(pipelineOrchestration.orchestrationId, orchestrationId));
+  }
+
+  // Dead Letter Queue Operations
+  async createDeadLetterQueueEntry(entry: any): Promise<any> {
+    const [newEntry] = await db
+      .insert(deadLetterQueue)
+      .values({
+        ...entry,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newEntry;
+  }
+
+  async updateDeadLetterQueueEntry(entryId: string, updates: any): Promise<any> {
+    const [updatedEntry] = await db
+      .update(deadLetterQueue)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(deadLetterQueue.id, entryId))
+      .returning();
+    return updatedEntry;
+  }
+
+  async getDeadLetterQueueEntry(entryId: string): Promise<any> {
+    const [entry] = await db
+      .select()
+      .from(deadLetterQueue)
+      .where(eq(deadLetterQueue.id, entryId));
+    return entry || undefined;
+  }
+
+  async getDeadLetterQueueEntries(filters: { canBeReprocessed?: boolean; escalated?: boolean } = {}): Promise<any[]> {
+    const conditions = [];
+    
+    if (filters.canBeReprocessed !== undefined) {
+      conditions.push(eq(deadLetterQueue.canBeReprocessed, filters.canBeReprocessed));
+    }
+    
+    if (filters.escalated !== undefined) {
+      if (filters.escalated) {
+        conditions.push(sql`${deadLetterQueue.escalatedAt} IS NOT NULL`);
+      } else {
+        conditions.push(sql`${deadLetterQueue.escalatedAt} IS NULL`);
+      }
+    }
+
+    return await db
+      .select()
+      .from(deadLetterQueue)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(deadLetterQueue.lastFailureAt));
+  }
+
+  async getDeadLetterQueueByWorkItem(workItemId: string): Promise<any> {
+    const [entry] = await db
+      .select()
+      .from(deadLetterQueue)
+      .where(eq(deadLetterQueue.originalWorkItemId, workItemId));
+    return entry || undefined;
+  }
+
+  async escalateDeadLetterQueueEntry(entryId: string, reason: string): Promise<any> {
+    const [escalatedEntry] = await db
+      .update(deadLetterQueue)
+      .set({ 
+        escalatedAt: new Date(),
+        escalationReason: reason,
+        updatedAt: new Date() 
+      })
+      .where(eq(deadLetterQueue.id, entryId))
+      .returning();
+    return escalatedEntry;
+  }
+
+  async reprocessDeadLetterQueueEntry(entryId: string, triggeredBy: string): Promise<any> {
+    const [reprocessedEntry] = await db
+      .update(deadLetterQueue)
+      .set({ 
+        reprocessAttempts: sql`${deadLetterQueue.reprocessAttempts} + 1`,
+        lastReprocessedAt: new Date(),
+        lastReprocessedBy: triggeredBy,
+        updatedAt: new Date() 
+      })
+      .where(eq(deadLetterQueue.id, entryId))
+      .returning();
+    return reprocessedEntry;
+  }
+
+  // Phase State Transitions Operations
+  async createPhaseStateTransition(transition: any): Promise<any> {
+    const [newTransition] = await db
+      .insert(phaseStateTransitions)
+      .values({
+        ...transition,
+        createdAt: new Date()
+      })
+      .returning();
+    return newTransition;
+  }
+
+  async getPhaseStateTransitions(workflowId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(phaseStateTransitions)
+      .where(eq(phaseStateTransitions.workflowId, workflowId))
+      .orderBy(asc(phaseStateTransitions.transitionTime));
+  }
+
+  async getPhaseTransitionsByStatus(fromPhase: string, toPhase: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(phaseStateTransitions)
+      .where(and(
+        eq(phaseStateTransitions.fromPhase, fromPhase),
+        eq(phaseStateTransitions.toPhase, toPhase)
+      ))
+      .orderBy(desc(phaseStateTransitions.transitionTime));
+  }
+
+  async getRecentPhaseTransitions(limit: number = 50): Promise<any[]> {
+    return await db
+      .select()
+      .from(phaseStateTransitions)
+      .orderBy(desc(phaseStateTransitions.transitionTime))
+      .limit(limit);
+  }
+
+  // System Health Operations
+  async recordSystemHealth(health: any): Promise<any> {
+    const [newHealth] = await db
+      .insert(systemHealth)
+      .values({
+        ...health,
+        timestamp: new Date()
+      })
+      .returning();
+    return newHealth;
+  }
+
+  async getSystemHealthHistory(timeRange: string = '24h'): Promise<any[]> {
+    const now = new Date();
+    let startTime: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    return await db
+      .select()
+      .from(systemHealth)
+      .where(gte(systemHealth.timestamp, startTime))
+      .orderBy(desc(systemHealth.timestamp));
+  }
+
+  async getLatestSystemHealth(): Promise<any> {
+    const [health] = await db
+      .select()
+      .from(systemHealth)
+      .orderBy(desc(systemHealth.timestamp))
+      .limit(1);
+    return health || undefined;
+  }
+
+  // Pipeline Metrics Operations
+  async createPipelineMetrics(metrics: any): Promise<any> {
+    const [newMetrics] = await db
+      .insert(pipelineMetrics)
+      .values({
+        ...metrics,
+        timestamp: new Date()
+      })
+      .returning();
+    return newMetrics;
+  }
+
+  async getPipelineMetrics(pipelineId: string, timeRange: string = '24h'): Promise<any[]> {
+    const now = new Date();
+    let startTime: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    return await db
+      .select()
+      .from(pipelineMetrics)
+      .where(and(
+        eq(pipelineMetrics.pipelineId, pipelineId),
+        gte(pipelineMetrics.timestamp, startTime)
+      ))
+      .orderBy(desc(pipelineMetrics.timestamp));
+  }
+
+  async getAggregatedPipelineMetrics(timeRange: string = '24h'): Promise<any> {
+    const now = new Date();
+    let startTime: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    const [result] = await db
+      .select({
+        totalPipelines: count(),
+        avgCompletionTime: sql<number>`AVG(${pipelineMetrics.completionTimeMinutes})`,
+        successRate: sql<number>`AVG(CASE WHEN ${pipelineMetrics.success} THEN 1.0 ELSE 0.0 END)`,
+        avgWorkItemsProcessed: sql<number>`AVG(${pipelineMetrics.workItemsProcessed})`
+      })
+      .from(pipelineMetrics)
+      .where(gte(pipelineMetrics.timestamp, startTime));
+    
+    return result || {};
+  }
+
+  async getPipelineSuccessRates(timeRange: string = '24h'): Promise<any[]> {
+    const now = new Date();
+    let startTime: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    return await db
+      .select({
+        taskType: pipelineMetrics.taskType,
+        successRate: sql<number>`AVG(CASE WHEN ${pipelineMetrics.success} THEN 1.0 ELSE 0.0 END)`,
+        totalCount: count(),
+        avgCompletionTime: sql<number>`AVG(${pipelineMetrics.completionTimeMinutes})`
+      })
+      .from(pipelineMetrics)
+      .where(gte(pipelineMetrics.timestamp, startTime))
+      .groupBy(pipelineMetrics.taskType);
+  }
+
+  async getAverageCompletionTimes(taskType?: string, timeRange: string = '24h'): Promise<any[]> {
+    const now = new Date();
+    let startTime: Date;
+    
+    switch (timeRange) {
+      case '1h':
+        startTime = new Date(now.getTime() - 60 * 60 * 1000);
+        break;
+      case '24h':
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    const conditions = [gte(pipelineMetrics.timestamp, startTime)];
+    if (taskType) {
+      conditions.push(eq(pipelineMetrics.taskType, taskType));
+    }
+
+    return await db
+      .select({
+        taskType: pipelineMetrics.taskType,
+        avgCompletionTime: sql<number>`AVG(${pipelineMetrics.completionTimeMinutes})`,
+        minCompletionTime: sql<number>`MIN(${pipelineMetrics.completionTimeMinutes})`,
+        maxCompletionTime: sql<number>`MAX(${pipelineMetrics.completionTimeMinutes})`,
+        totalCount: count()
+      })
+      .from(pipelineMetrics)
+      .where(and(...conditions))
+      .groupBy(pipelineMetrics.taskType);
+  }
+
+  // Workflow Dependencies Operations
+  async createWorkflowDependency(dependency: any): Promise<any> {
+    const [newDependency] = await db
+      .insert(workflowDependencies)
+      .values({
+        ...dependency,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    return newDependency;
+  }
+
+  async getWorkflowDependencies(workflowId: string): Promise<any[]> {
+    return await db
+      .select()
+      .from(workflowDependencies)
+      .where(eq(workflowDependencies.workflowId, workflowId))
+      .orderBy(asc(workflowDependencies.order));
+  }
+
+  async updateWorkflowDependency(dependencyId: string, updates: any): Promise<any> {
+    const [updatedDependency] = await db
+      .update(workflowDependencies)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(workflowDependencies.id, dependencyId))
+      .returning();
+    return updatedDependency;
+  }
+
+  async deleteWorkflowDependency(dependencyId: string): Promise<void> {
+    await db
+      .delete(workflowDependencies)
+      .where(eq(workflowDependencies.id, dependencyId));
+  }
+
+  // Enhanced Work Item Operations
+  async getWorkItemById(workItemId: string): Promise<WorkItem | undefined> {
+    const [workItem] = await db
+      .select()
+      .from(workItems)
+      .where(eq(workItems.id, workItemId));
+    return workItem || undefined;
+  }
+
+  async getWorkItemsByWorkflow(workflowId: string): Promise<WorkItem[]> {
+    return await db
+      .select()
+      .from(workItems)
+      .where(eq(workItems.workflowId, workflowId))
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getCompletedWorkItemsByAgentInTimeRange(agentId: string, startDate: Date, endDate: Date): Promise<WorkItem[]> {
+    return await db
+      .select()
+      .from(workItems)
+      .where(and(
+        eq(workItems.assignedAgentId, agentId),
+        sql`${workItems.status} IN ('completed', 'failed')`,
+        gte(workItems.updatedAt, startDate),
+        lte(workItems.updatedAt, endDate)
+      ))
+      .orderBy(desc(workItems.completedAt));
+  }
+
+  async getWorkItemsByPhase(phase: string): Promise<WorkItem[]> {
+    return await db
+      .select()
+      .from(workItems)
+      .where(sql`${workItems.metadata}->>'phase' = ${phase}`)
+      .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getFailedWorkItemsForRetry(): Promise<WorkItem[]> {
+    return await db
+      .select()
+      .from(workItems)
+      .where(and(
+        eq(workItems.status, 'failed'),
+        eq(workItems.canRetry, true),
+        or(
+          sql`${workItems.nextRetryAt} IS NULL`,
+          lte(workItems.nextRetryAt, new Date())
+        )
+      ))
+      .orderBy(asc(workItems.priority), asc(workItems.nextRetryAt));
+  }
+
+  // Enhanced Agent Registry Operations
+  async getAllAgentRegistries(): Promise<AgentRegistry[]> {
+    return await db
+      .select()
+      .from(agentRegistry)
+      .orderBy(desc(agentRegistry.lastHeartbeat));
+  }
+
+  async getAgentUtilizationMetrics(): Promise<any[]> {
+    // This would typically be computed from current work item assignments
+    return await db
+      .select({
+        agentId: agentRegistry.agentId,
+        tier: agentRegistry.tier,
+        status: agentRegistry.status,
+        activeWorkItems: sql<number>`(
+          SELECT COUNT(*)
+          FROM ${workItems}
+          WHERE ${workItems.assignedAgentId} = ${agentRegistry.agentId}
+          AND ${workItems.status} IN ('assigned', 'in_progress')
+        )`
+      })
+      .from(agentRegistry)
+      .where(eq(agentRegistry.status, 'active'));
+  }
+
+  async updateAgentWorkload(agentId: string, workload: number): Promise<void> {
+    await db
+      .update(agentRegistry)
+      .set({ 
+        workload,
+        updatedAt: new Date()
+      })
+      .where(eq(agentRegistry.agentId, agentId));
   }
 }
 

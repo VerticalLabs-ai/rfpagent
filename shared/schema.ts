@@ -410,7 +410,8 @@ export const workflowState = pgTable("workflow_state", {
   workflowId: text("workflow_id").notNull(),
   conversationId: varchar("conversation_id").references(() => aiConversations.id),
   currentPhase: text("current_phase").notNull(), // discovery, analysis, generation, submission, monitoring
-  status: text("status").default("active").notNull(), // active, suspended, completed, failed
+  status: text("status").default("pending").notNull(), // pending, in_progress, suspended, completed, failed, cancelled
+  previousStatus: text("previous_status"), // for state rollback capabilities
   progress: integer("progress").default(0).notNull(), // 0-100 percentage
   context: jsonb("context").notNull(), // workflow execution context
   agentAssignments: jsonb("agent_assignments"), // which agents are handling which tasks
@@ -418,9 +419,31 @@ export const workflowState = pgTable("workflow_state", {
   suspensionData: jsonb("suspension_data"), // data needed to resume
   resumeInstructions: text("resume_instructions"), // instructions for resuming
   estimatedCompletion: timestamp("estimated_completion"),
+  // Enhanced Phase State Machine fields
+  phaseTransitions: jsonb("phase_transitions"), // track all phase transitions with timestamps
+  phaseStartTimes: jsonb("phase_start_times"), // start time for each phase
+  phaseCompletionTimes: jsonb("phase_completion_times"), // completion time for each phase
+  phaseDependencies: jsonb("phase_dependencies"), // dependencies between phases
+  // Advanced State Management fields
+  canBePaused: boolean("can_be_paused").default(true).notNull(),
+  canBeCancelled: boolean("can_be_cancelled").default(true).notNull(),
+  parentWorkflowId: varchar("parent_workflow_id"), // for cascading operations
+  childWorkflowIds: text("child_workflow_ids").array(), // child workflows for coordination
+  priority: integer("priority").default(5).notNull(), // 1-10 priority for resource management
+  resourceAllocation: jsonb("resource_allocation"), // allocated resources (agents, compute, etc.)
+  retryPolicy: jsonb("retry_policy"), // workflow-level retry configuration
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+  pausedAt: timestamp("paused_at"),
+  resumedAt: timestamp("resumed_at"),
+  completedAt: timestamp("completed_at"),
+  cancelledAt: timestamp("cancelled_at"),
+}, (table) => ({
+  statusIdx: index("workflow_state_status_idx").on(table.status),
+  phaseIdx: index("workflow_state_phase_idx").on(table.currentPhase),
+  priorityIdx: index("workflow_state_priority_idx").on(table.priority),
+  parentWorkflowIdx: index("workflow_state_parent_idx").on(table.parentWorkflowId),
+}));
 
 export const agentPerformanceMetrics = pgTable("agent_performance_metrics", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -433,7 +456,152 @@ export const agentPerformanceMetrics = pgTable("agent_performance_metrics", {
   aggregationPeriod: text("aggregation_period"), // daily, weekly, monthly
   recordedAt: timestamp("recorded_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  agentIdx: index("agent_performance_metrics_agent_idx").on(table.agentId),
+  metricTypeIdx: index("agent_performance_metrics_metric_type_idx").on(table.metricType),
+  recordedAtIdx: index("agent_performance_metrics_recorded_at_idx").on(table.recordedAt),
+}));
+
+// Dead Letter Queue for failed work items
+export const deadLetterQueue = pgTable("dead_letter_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  originalWorkItemId: varchar("original_work_item_id").notNull(),
+  workItemData: jsonb("work_item_data").notNull(), // snapshot of failed work item
+  failureReason: text("failure_reason").notNull(),
+  failureCount: integer("failure_count").default(1).notNull(),
+  lastFailureAt: timestamp("last_failure_at").defaultNow().notNull(),
+  canBeReprocessed: boolean("can_be_reprocessed").default(true).notNull(),
+  reprocessAttempts: integer("reprocess_attempts").default(0).notNull(),
+  maxReprocessAttempts: integer("max_reprocess_attempts").default(5).notNull(),
+  escalatedAt: timestamp("escalated_at"),
+  resolvedAt: timestamp("resolved_at"),
+  resolution: text("resolution"), // manual_fix, automatic_retry, permanent_failure
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  failureReasonIdx: index("dlq_failure_reason_idx").on(table.failureReason),
+  canBeReprocessedIdx: index("dlq_can_be_reprocessed_idx").on(table.canBeReprocessed),
+  escalatedAtIdx: index("dlq_escalated_at_idx").on(table.escalatedAt),
+}));
+
+// Phase State Transitions for detailed tracking
+export const phaseStateTransitions = pgTable("phase_state_transitions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").references(() => workflowState.id).notNull(),
+  workItemId: varchar("work_item_id").references(() => workItems.id),
+  entityType: text("entity_type").notNull(), // workflow, work_item, submission_pipeline
+  entityId: varchar("entity_id").notNull(),
+  fromPhase: text("from_phase"),
+  toPhase: text("to_phase").notNull(),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  transitionType: text("transition_type").notNull(), // automatic, manual, retry, rollback, escalation
+  triggeredBy: text("triggered_by").notNull(), // agent_id or 'system'
+  reason: text("reason"), // why this transition occurred
+  duration: integer("duration"), // time spent in previous phase (seconds)
+  metadata: jsonb("metadata"), // additional transition data
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  workflowIdx: index("phase_transitions_workflow_idx").on(table.workflowId),
+  entityIdx: index("phase_transitions_entity_idx").on(table.entityType, table.entityId),
+  timestampIdx: index("phase_transitions_timestamp_idx").on(table.timestamp),
+  transitionTypeIdx: index("phase_transitions_type_idx").on(table.transitionType),
+}));
+
+// Pipeline Orchestration for cross-pipeline coordination
+export const pipelineOrchestration = pgTable("pipeline_orchestration", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orchestrationId: varchar("orchestration_id").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  pipelineIds: text("pipeline_ids").array().notNull(), // workflows being coordinated
+  coordinationType: text("coordination_type").notNull(), // sequential, parallel, conditional, priority_based
+  status: text("status").default("pending").notNull(), // pending, running, suspended, completed, failed
+  currentStage: integer("current_stage").default(0).notNull(),
+  totalStages: integer("total_stages").notNull(),
+  priority: integer("priority").default(5).notNull(),
+  resourceConstraints: jsonb("resource_constraints"), // max agents, memory, etc.
+  allocatedResources: jsonb("allocated_resources"), // currently allocated resources
+  dependencies: text("dependencies").array(), // other orchestration IDs this depends on
+  completionCriteria: jsonb("completion_criteria"), // conditions for completion
+  failureHandling: jsonb("failure_handling"), // how to handle pipeline failures
+  estimatedDuration: integer("estimated_duration"), // estimated minutes to complete
+  actualDuration: integer("actual_duration"), // actual minutes taken
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  suspendedAt: timestamp("suspended_at"),
+  failedAt: timestamp("failed_at"),
+}, (table) => ({
+  statusIdx: index("pipeline_orchestration_status_idx").on(table.status),
+  priorityIdx: index("pipeline_orchestration_priority_idx").on(table.priority),
+  coordinationTypeIdx: index("pipeline_orchestration_coordination_type_idx").on(table.coordinationType),
+}));
+
+// System Health Monitoring
+export const systemHealth = pgTable("system_health", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  component: text("component").notNull(), // agent_registry, workflow_engine, database, etc.
+  healthStatus: text("health_status").notNull(), // healthy, degraded, unhealthy, critical
+  lastCheckAt: timestamp("last_check_at").defaultNow().notNull(),
+  responseTime: integer("response_time"), // milliseconds
+  errorRate: decimal("error_rate", { precision: 5, scale: 4 }).default('0.0000'), // percentage
+  throughput: decimal("throughput", { precision: 10, scale: 2 }), // operations per minute
+  resourceUtilization: jsonb("resource_utilization"), // CPU, memory, etc.
+  activeConnections: integer("active_connections"),
+  queueSize: integer("queue_size"), // pending work items
+  alertThresholds: jsonb("alert_thresholds"), // when to trigger alerts
+  lastAlert: timestamp("last_alert"),
+  metadata: jsonb("metadata"), // component-specific health data
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  componentIdx: index("system_health_component_idx").on(table.component),
+  statusIdx: index("system_health_status_idx").on(table.healthStatus),
+  lastCheckIdx: index("system_health_last_check_idx").on(table.lastCheckAt),
+}));
+
+// Enhanced Analytics and Metrics
+export const pipelineMetrics = pgTable("pipeline_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  metricType: text("metric_type").notNull(), // success_rate, avg_duration, error_rate, throughput
+  entityType: text("entity_type").notNull(), // workflow, phase, agent, system
+  entityId: varchar("entity_id"), // specific entity ID or null for system-wide
+  timeframe: text("timeframe").notNull(), // hourly, daily, weekly, monthly
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time").notNull(),
+  value: decimal("value", { precision: 12, scale: 4 }).notNull(),
+  unit: text("unit"), // percentage, seconds, count, etc.
+  breakdown: jsonb("breakdown"), // detailed breakdown by subcategory
+  comparisonPeriod: jsonb("comparison_period"), // comparison with previous period
+  trends: jsonb("trends"), // trending data
+  metadata: jsonb("metadata"),
+  calculatedAt: timestamp("calculated_at").defaultNow().notNull(),
+}, (table) => ({
+  metricTypeIdx: index("pipeline_metrics_metric_type_idx").on(table.metricType),
+  entityIdx: index("pipeline_metrics_entity_idx").on(table.entityType, table.entityId),
+  timeframeIdx: index("pipeline_metrics_timeframe_idx").on(table.timeframe),
+  startTimeIdx: index("pipeline_metrics_start_time_idx").on(table.startTime),
+}));
+
+// Workflow Dependencies for complex orchestration
+export const workflowDependencies = pgTable("workflow_dependencies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  workflowId: varchar("workflow_id").references(() => workflowState.id).notNull(),
+  dependsOnWorkflowId: varchar("depends_on_workflow_id").references(() => workflowState.id).notNull(),
+  dependencyType: text("dependency_type").notNull(), // hard, soft, conditional
+  condition: jsonb("condition"), // conditions that must be met
+  isBlocking: boolean("is_blocking").default(true).notNull(), // blocks execution if true
+  status: text("status").default("pending").notNull(), // pending, satisfied, failed
+  satisfiedAt: timestamp("satisfied_at"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  workflowIdx: index("workflow_dependencies_workflow_idx").on(table.workflowId),
+  dependencyIdx: index("workflow_dependencies_dependency_idx").on(table.dependsOnWorkflowId),
+  statusIdx: index("workflow_dependencies_status_idx").on(table.status),
+}));
 
 export const historicalBids = pgTable("historical_bids", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -496,13 +664,30 @@ export const workItems = pgTable("work_items", {
   maxRetries: integer("max_retries").default(3).notNull(),
   assignedAgentId: text("assigned_agent_id").references(() => agentRegistry.agentId), // which agent is handling this
   createdByAgentId: text("created_by_agent_id").notNull().references(() => agentRegistry.agentId), // which agent created this
-  status: text("status").default("pending").notNull(), // pending, assigned, in_progress, completed, failed
+  status: text("status").default("pending").notNull(), // pending, assigned, in_progress, completed, failed, cancelled, dlq
   result: jsonb("result"), // task result when completed
   error: text("error"), // error message if failed
   metadata: jsonb("metadata"), // additional task metadata
+  // Enhanced Retry/Backoff/DLQ fields
+  retryPolicy: jsonb("retry_policy"), // task-specific retry configuration
+  nextRetryAt: timestamp("next_retry_at"), // when to retry next
+  backoffMultiplier: decimal("backoff_multiplier", { precision: 3, scale: 2 }).default('2.0'), // exponential backoff multiplier
+  lastRetryAt: timestamp("last_retry_at"),
+  dlqReason: text("dlq_reason"), // reason for DLQ placement
+  dlqTimestamp: timestamp("dlq_timestamp"), // when moved to DLQ
+  canRetry: boolean("can_retry").default(true).notNull(),
+  isBlocking: boolean("is_blocking").default(false).notNull(), // blocks other items if true
+  dependencies: text("dependencies").array(), // work item IDs this depends on
+  dependents: text("dependents").array(), // work item IDs that depend on this
+  estimatedDuration: integer("estimated_duration"), // estimated duration in minutes
+  actualDuration: integer("actual_duration"), // actual duration in minutes
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  assignedAt: timestamp("assigned_at"),
+  startedAt: timestamp("started_at"),
   completedAt: timestamp("completed_at"),
+  failedAt: timestamp("failed_at"),
+  cancelledAt: timestamp("cancelled_at"),
 }, (table) => ({
   statusIdx: index("work_items_status_idx").on(table.status),
   priorityIdx: index("work_items_priority_idx").on(table.priority),
@@ -980,6 +1165,38 @@ export const insertHistoricalBidSchema = createInsertSchema(historicalBids).omit
   updatedAt: true,
 });
 
+// Enhanced Orchestration Insert Schemas
+export const insertDeadLetterQueueSchema = createInsertSchema(deadLetterQueue).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPhaseStateTransitionsSchema = createInsertSchema(phaseStateTransitions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPipelineOrchestrationSchema = createInsertSchema(pipelineOrchestration).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSystemHealthSchema = createInsertSchema(systemHealth).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPipelineMetricsSchema = createInsertSchema(pipelineMetrics).omit({
+  id: true,
+  calculatedAt: true,
+});
+
+export const insertWorkflowDependenciesSchema = createInsertSchema(workflowDependencies).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1064,3 +1281,22 @@ export type InsertWorkItem = z.infer<typeof insertWorkItemSchema>;
 
 export type AgentSession = typeof agentSessions.$inferSelect;
 export type InsertAgentSession = z.infer<typeof insertAgentSessionSchema>;
+
+// Enhanced Orchestration Types
+export type DeadLetterQueue = typeof deadLetterQueue.$inferSelect;
+export type InsertDeadLetterQueue = z.infer<typeof insertDeadLetterQueueSchema>;
+
+export type PhaseStateTransition = typeof phaseStateTransitions.$inferSelect;
+export type InsertPhaseStateTransition = z.infer<typeof insertPhaseStateTransitionsSchema>;
+
+export type PipelineOrchestration = typeof pipelineOrchestration.$inferSelect;
+export type InsertPipelineOrchestration = z.infer<typeof insertPipelineOrchestrationSchema>;
+
+export type SystemHealth = typeof systemHealth.$inferSelect;
+export type InsertSystemHealth = z.infer<typeof insertSystemHealthSchema>;
+
+export type PipelineMetrics = typeof pipelineMetrics.$inferSelect;
+export type InsertPipelineMetrics = z.infer<typeof insertPipelineMetricsSchema>;
+
+export type WorkflowDependency = typeof workflowDependencies.$inferSelect;
+export type InsertWorkflowDependency = z.infer<typeof insertWorkflowDependenciesSchema>;
