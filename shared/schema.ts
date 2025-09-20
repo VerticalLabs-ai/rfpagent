@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, decimal, jsonb, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, decimal, jsonb, boolean, integer, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -405,7 +405,12 @@ export const agentRegistry = pgTable("agent_registry", {
   parentAgentId: text("parent_agent_id"), // for hierarchy (specialists report to managers)
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  tierIdx: index("agent_registry_tier_idx").on(table.tier),
+  statusIdx: index("agent_registry_status_idx").on(table.status),
+  parentAgentIdx: index("agent_registry_parent_agent_idx").on(table.parentAgentId),
+  parentStatusIdx: index("agent_registry_parent_status_idx").on(table.parentAgentId, table.status),
+}));
 
 export const workItems = pgTable("work_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -428,7 +433,16 @@ export const workItems = pgTable("work_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => ({
+  statusIdx: index("work_items_status_idx").on(table.status),
+  priorityIdx: index("work_items_priority_idx").on(table.priority),
+  deadlineIdx: index("work_items_deadline_idx").on(table.deadline),
+  assignedAgentIdx: index("work_items_assigned_agent_idx").on(table.assignedAgentId),
+  sessionIdx: index("work_items_session_idx").on(table.sessionId),
+  createdByAgentIdx: index("work_items_created_by_agent_idx").on(table.createdByAgentId),
+  agentSchedulingIdx: index("work_items_agent_scheduling_idx").on(table.status, table.assignedAgentId, table.priority, table.deadline),
+  globalQueueIdx: index("work_items_global_queue_idx").on(table.status, table.taskType, table.priority, table.deadline),
+}));
 
 export const agentSessions = pgTable("agent_sessions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -449,7 +463,13 @@ export const agentSessions = pgTable("agent_sessions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
-});
+}, (table) => ({
+  statusIdx: index("agent_sessions_status_idx").on(table.status),
+  orchestratorIdx: index("agent_sessions_orchestrator_idx").on(table.orchestratorAgentId),
+  userIdx: index("agent_sessions_user_idx").on(table.userId),
+  lastActivityIdx: index("agent_sessions_last_activity_idx").on(table.lastActivity),
+  statusActivityIdx: index("agent_sessions_status_activity_idx").on(table.status, table.lastActivity),
+}));
 
 // Relations
 export const portalsRelations = relations(portals, ({ many }) => ({
@@ -895,6 +915,7 @@ export type InsertResearchFinding = z.infer<typeof insertResearchFindingSchema>;
 
 export type HistoricalBid = typeof historicalBids.$inferSelect;
 export type InsertHistoricalBid = z.infer<typeof insertHistoricalBidSchema>;
+
 
 // 3-Tier Agentic System Types
 export type AgentRegistry = typeof agentRegistry.$inferSelect;
