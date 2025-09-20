@@ -638,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const submission = await storage.createSubmission({
         rfpId: rfp.id,
         proposalId,
-        portalId: rfp.portalId,
+        portalId: rfp.portalId || "", // Handle null portalId
         status: "pending"
       });
 
@@ -1823,6 +1823,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching conversations:", error);
       res.status(500).json({ 
         error: "Failed to fetch conversations", 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Delete conversation
+  app.delete("/api/ai/conversations/:conversationId", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      
+      if (!conversationId) {
+        return res.status(400).json({ error: "Conversation ID is required" });
+      }
+
+      // Check if conversation exists
+      const conversation = await storage.getAiConversation(conversationId);
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      // Basic authorization check - in production, this should validate actual user ownership
+      // For now, we'll allow deletion but log it for security auditing
+      console.log(`🔒 Conversation delete requested: ${conversationId} (userId: ${conversation.userId || 'anonymous'})`);
+      
+      // TODO: Add proper user authentication and ownership validation
+      // Example: if (req.user?.id !== conversation.userId) { return res.status(403).json({ error: "Unauthorized" }); }
+
+      // Delete the conversation (this should cascade delete messages)
+      await storage.deleteAiConversation(conversationId);
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting conversation:", error);
+      res.status(500).json({ 
+        error: "Failed to delete conversation", 
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }

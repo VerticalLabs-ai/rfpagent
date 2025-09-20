@@ -186,19 +186,30 @@ export class AIAgentOrchestrator {
     const needsExternalSearch = internalRfps.length < 5 || searchCriteria.includeExternal;
     
     let externalRfps: any[] = [];
-    let externalSearchResults = "";
+    let externalSearchDetails = "";
     
     if (needsExternalSearch) {
       // Search external portals using Mastra agents
       try {
         console.log(`🌐 Searching external portals for additional RFPs`);
         externalRfps = await this.searchExternalPortals(searchCriteria);
-        externalSearchResults = externalRfps.length > 0 
-          ? `I also found ${externalRfps.length} additional RFPs from external portals.`
-          : "I searched external sources but didn't find additional matching RFPs.";
+        
+        // Build detailed search results message
+        const searchedSources = [
+          "USAspending.gov (federal contracts)",
+          "SAM.gov (procurement opportunities)", 
+          "BidNet (state/local opportunities)",
+          "Government procurement websites"
+        ];
+        
+        if (externalRfps.length > 0) {
+          externalSearchDetails = `\n\n**External Search Results:**\nI searched ${searchedSources.join(", ")} and found ${externalRfps.length} additional RFPs.`;
+        } else {
+          externalSearchDetails = `\n\n**External Search Results:**\nI searched ${searchedSources.join(", ")} but didn't find additional matching RFPs.`;
+        }
       } catch (error) {
         console.error("External search failed:", error);
-        externalSearchResults = "I encountered some issues searching external portals, but I have results from our tracked sources.";
+        externalSearchDetails = "\n\n**External Search Results:**\nI encountered some issues searching external portals, but I have results from our tracked sources.";
       }
     }
 
@@ -208,7 +219,7 @@ export class AIAgentOrchestrator {
     let followUpQuestions: string[] = [];
     
     if (totalResults === 0) {
-      message = `I couldn't find any RFPs matching "${searchCriteria.category || 'your criteria'}"${searchCriteria.location ? ` in ${searchCriteria.location}` : ''}.`;
+      message = `I couldn't find any RFPs matching "${searchCriteria.category || 'your criteria'}"${searchCriteria.location ? ` in ${searchCriteria.location}` : ''}.${externalSearchDetails}`;
       followUpQuestions = [
         "Would you like me to search for similar categories?",
         "Should I expand the search to nearby locations?",
@@ -218,7 +229,39 @@ export class AIAgentOrchestrator {
       message = `I found ${totalResults} RFP${totalResults === 1 ? '' : 's'} matching your search for "${searchCriteria.category || 'your criteria'}"${searchCriteria.location ? ` in ${searchCriteria.location}` : ''}.`;
       
       if (internalRfps.length > 0) {
-        message += ` ${internalRfps.length} from our tracked portals${externalSearchResults ? ` and ${externalSearchResults}` : ''}.`;
+        message += ` ${internalRfps.length} from our tracked portals.`;
+        
+        // Add RFP links for internal results
+        message += "\n\n**Found RFPs from Tracked Portals:**";
+        internalRfps.slice(0, 5).forEach((rfp, index) => {
+          message += `\n${index + 1}. **${rfp.title}** (${rfp.agency || 'Government Agency'})`;
+          if (rfp.sourceUrl) {
+            message += ` - [View RFP](${rfp.sourceUrl})`;
+          }
+          if (rfp.deadline) {
+            message += ` | Deadline: ${new Date(rfp.deadline).toLocaleDateString()}`;
+          }
+        });
+        
+        if (internalRfps.length > 5) {
+          message += `\n... and ${internalRfps.length - 5} more RFPs available.`;
+        }
+      }
+      
+      message += externalSearchDetails;
+      
+      // Add external RFP links if found
+      if (externalRfps.length > 0) {
+        message += "\n\n**External Opportunities:**";
+        externalRfps.slice(0, 3).forEach((rfp, index) => {
+          message += `\n${index + 1}. **${rfp.title}** (${rfp.agency || rfp.source})`;
+          if (rfp.sourceUrl && rfp.sourceUrl !== "https://example.gov/rfp") {
+            message += ` - [View Opportunity](${rfp.sourceUrl})`;
+          }
+          if (rfp.deadline) {
+            message += ` | Deadline: ${rfp.deadline}`;
+          }
+        });
       }
 
       followUpQuestions = [

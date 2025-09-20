@@ -976,6 +976,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAiConversation(id: string): Promise<void> {
+    // First delete all conversation messages
+    await db
+      .delete(conversationMessages)
+      .where(eq(conversationMessages.conversationId, id));
+    
+    // Then delete the conversation
     await db
       .delete(aiConversations)
       .where(eq(aiConversations.id, id));

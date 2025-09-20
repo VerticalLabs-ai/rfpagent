@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Send, Bot, User, Loader2, Search, FileText, Lightbulb } from "lucide-react";
+import { Send, Bot, User, Loader2, Search, FileText, Lightbulb, Trash2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   id: string;
@@ -90,6 +91,40 @@ export default function AIChat() {
     },
   });
 
+  // Delete conversation mutation
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const response = await fetch(`/api/ai/conversations/${conversationId}`, {
+        method: "DELETE",
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+    onSuccess: (_, conversationId) => {
+      // If deleted conversation was currently selected, clear selection
+      if (currentConversationId === conversationId) {
+        setCurrentConversationId(null);
+      }
+      // Refetch conversations list
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
+      toast({
+        title: "Success",
+        description: "Conversation deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete conversation",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
@@ -122,6 +157,12 @@ export default function AIChat() {
     setCurrentConversationId(conversationId);
     // The query will automatically refetch when currentConversationId changes
     // due to the query key dependency, so we don't need to manually refetch
+  };
+
+  const handleDeleteConversation = async (conversationId: string) => {
+    if (window.confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+      await deleteConversationMutation.mutateAsync(conversationId);
+    }
   };
 
   const getMessageIcon = (messageType: string) => {
@@ -221,12 +262,26 @@ export default function AIChat() {
                 >
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-foreground truncate">
+                      <h3 className="text-sm font-medium text-foreground truncate flex-1">
                         {conversation.title}
                       </h3>
-                      <Badge variant="secondary" className="text-xs">
-                        {conversation.type}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {conversation.type}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conversation.id);
+                          }}
+                          data-testid={`button-delete-conversation-${conversation.id}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(conversation.updatedAt).toLocaleDateString()}
@@ -294,7 +349,25 @@ export default function AIChat() {
                   {message.role === 'user' ? (
                     <p className="whitespace-pre-wrap">{message.content}</p>
                   ) : (
-                    renderMessageContent(message)
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown
+                        components={{
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+                            >
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                      {message.messageType !== 'text' && renderMessageContent(message)}
+                    </div>
                   )}
                 </div>
 
