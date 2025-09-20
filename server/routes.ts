@@ -1971,5 +1971,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Workflow suspension/resume management routes
+  
+  // Get all suspended workflows
+  app.get("/api/workflows/suspended", async (req, res) => {
+    try {
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      const suspendedWorkflows = await workflowCoordinator.getSuspendedWorkflows();
+      
+      res.json(suspendedWorkflows);
+    } catch (error) {
+      console.error("Error fetching suspended workflows:", error);
+      res.status(500).json({
+        error: "Failed to fetch suspended workflows",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get workflow status
+  app.get("/api/workflows/:workflowId/status", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      
+      const activeWorkflow = workflowCoordinator.getWorkflowStatus(workflowId);
+      
+      if (activeWorkflow) {
+        res.json(activeWorkflow);
+      } else {
+        // Check database for workflow state
+        const workflowState = await storage.getWorkflowStateByWorkflowId(workflowId);
+        if (workflowState) {
+          res.json(workflowState);
+        } else {
+          res.status(404).json({ error: "Workflow not found" });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching workflow status:", error);
+      res.status(500).json({
+        error: "Failed to fetch workflow status",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Suspend a workflow
+  app.post("/api/workflows/:workflowId/suspend", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { reason, data, instructions } = req.body;
+      
+      if (!reason) {
+        return res.status(400).json({ error: "Suspension reason is required" });
+      }
+      
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      const success = await workflowCoordinator.suspendWorkflow(workflowId, reason, data, instructions);
+      
+      if (success) {
+        res.json({ success: true, message: "Workflow suspended successfully" });
+      } else {
+        res.status(404).json({ error: "Workflow not found or already suspended" });
+      }
+    } catch (error) {
+      console.error("Error suspending workflow:", error);
+      res.status(500).json({
+        error: "Failed to suspend workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Resume a workflow with optional human input
+  app.post("/api/workflows/:workflowId/resume", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { humanInput } = req.body;
+      
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      const result = await workflowCoordinator.resumeWorkflow(workflowId, humanInput);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error resuming workflow:", error);
+      res.status(500).json({
+        error: "Failed to resume workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Cancel a workflow
+  app.post("/api/workflows/:workflowId/cancel", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      const success = await workflowCoordinator.cancelWorkflow(workflowId);
+      
+      if (success) {
+        res.json({ success: true, message: "Workflow cancelled successfully" });
+      } else {
+        res.status(404).json({ error: "Workflow not found" });
+      }
+    } catch (error) {
+      console.error("Error cancelling workflow:", error);
+      res.status(500).json({
+        error: "Failed to cancel workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   return server;
 }

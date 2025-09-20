@@ -376,13 +376,372 @@ export class WorkflowCoordinator {
   }
 
   /**
+   * Suspend a workflow for human input
+   */
+  async suspendWorkflow(workflowId: string, reason: string, data: any = {}, instructions?: string): Promise<boolean> {
+    const workflow = this.activeWorkflows.get(workflowId);
+    if (!workflow) {
+      return false;
+    }
+
+    try {
+      // Update workflow status
+      workflow.status = 'suspended';
+      
+      // Persist workflow state to database
+      await storage.createWorkflowState({
+        workflowId: workflow.workflowId,
+        conversationId: workflow.conversationId,
+        currentPhase: workflow.currentPhase,
+        status: 'suspended',
+        progress: Math.round(workflow.progress * 100), // Convert to percentage
+        context: workflow.data,
+        agentAssignments: data.agentAssignments || {},
+        suspensionReason: reason,
+        suspensionData: data,
+        resumeInstructions: instructions || `Resume workflow from ${workflow.currentPhase} phase`
+      });
+
+      console.log(`🛑 Workflow ${workflowId} suspended: ${reason}`);
+      return true;
+    } catch (error) {
+      console.error(`❌ Failed to suspend workflow ${workflowId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Resume a suspended workflow
+   */
+  async resumeWorkflow(workflowId: string, humanInput?: any): Promise<WorkflowResult> {
+    try {
+      // Get workflow state from database
+      const latestState = await storage.getWorkflowStateByWorkflowId(workflowId);
+      
+      if (!latestState || latestState.status !== 'suspended') {
+        return {
+          success: false,
+          error: 'Workflow not found or not in suspended state'
+        };
+      }
+
+      // Reconstruct workflow context
+      const context: WorkflowExecutionContext = {
+        workflowId: latestState.workflowId,
+        conversationId: latestState.conversationId || undefined,
+        currentPhase: latestState.currentPhase as any,
+        data: {
+          ...latestState.context,
+          humanInput: humanInput // Merge human input
+        },
+        progress: latestState.progress / 100, // Convert back from percentage
+        status: 'running'
+      };
+
+      // Add back to active workflows
+      this.activeWorkflows.set(workflowId, context);
+
+      // Update database status
+      await storage.updateWorkflowState(latestState.id, {
+        status: 'active',
+        updatedAt: new Date()
+      });
+
+      console.log(`▶️ Workflow ${workflowId} resumed from ${context.currentPhase} phase`);
+
+      // Continue execution based on current phase
+      return await this.continueWorkflowExecution(context, humanInput);
+      
+    } catch (error) {
+      console.error(`❌ Failed to resume workflow ${workflowId}:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to resume workflow'
+      };
+    }
+  }
+
+  /**
+   * Execute discovery phase with optional human input
+   */
+  private async executeDiscoveryPhase(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    context.currentPhase = 'discovery';
+    context.progress = 0.2;
+    
+    if (humanInput?.action === 'override_search') {
+      // Human provided custom search criteria
+      let searchCriteria = humanInput.data?.searchCriteria || humanInput.searchCriteria;
+      
+      // Parse JSON string if needed
+      if (typeof searchCriteria === 'string') {
+        try {
+          searchCriteria = JSON.parse(searchCriteria);
+        } catch (error) {
+          // If JSON parsing fails, treat as keywords string
+          searchCriteria = { keywords: searchCriteria };
+        }
+      }
+      
+      // Ensure we have a proper object with keywords
+      if (!searchCriteria || typeof searchCriteria !== 'object') {
+        searchCriteria = { keywords: searchCriteria || '' };
+      }
+      
+      context.data.searchCriteria = searchCriteria;
+    }
+    
+    // Continue discovery within the existing workflow context instead of creating new workflow
+    try {
+      const searchCriteria = context.data.searchCriteria || {};
+      console.log(`🔍 Continuing discovery phase for workflow ${context.workflowId} with criteria:`, searchCriteria);
+      
+      // Perform portal search directly without creating new workflow
+      const results = await this.performPortalSearch(searchCriteria.keywords || '');
+      
+      context.data.discoveryResults = results;
+      context.progress = 0.4;
+      
+      return {
+        success: true,
+        data: { results, searchCriteria },
+        nextPhase: 'analysis',
+        suggestions: await mastraWorkflowEngine.generateActionSuggestions({
+          messageType: 'discovery',
+          lastMessage: `Found ${results.length} RFP opportunities`,
+          availableRfps: results,
+          userIntent: 'discovery_complete'
+        })
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Discovery failed'
+      };
+    }
+  }
+
+  /**
+   * Execute analysis phase with optional human input
+   */
+  private async executeAnalysisPhase(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    context.currentPhase = 'analysis';
+    context.progress = 0.4;
+    
+    if (humanInput?.action === 'approve_rfp_selection') {
+      // Human approved specific RFPs for analysis
+      context.data.selectedRfps = humanInput.data?.selectedRfps || humanInput.selectedRfps;
+    }
+    
+    // Continue with existing analysis logic
+    try {
+      const rfpId = context.data.selectedRfps?.[0] || context.data.rfpId;
+      const rfp = await storage.getRFP(rfpId);
+      
+      if (!rfp) {
+        throw new Error('RFP not found for analysis');
+      }
+      
+      context.data.rfp = rfp;
+      context.progress = 0.6;
+      
+      return {
+        success: true,
+        data: { rfp, analysisComplete: true },
+        nextPhase: 'generation',
+        suggestions: await mastraWorkflowEngine.generateActionSuggestions({
+          messageType: 'analysis',
+          lastMessage: 'RFP analysis completed',
+          availableRfps: [rfp],
+          userIntent: 'analysis_review'
+        })
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Analysis failed'
+      };
+    }
+  }
+
+  /**
+   * Execute generation phase with optional human input
+   */
+  private async executeGenerationPhase(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    context.currentPhase = 'generation';
+    context.progress = 0.6;
+    
+    if (humanInput?.action === 'provide_requirements') {
+      // Human provided additional requirements or feedback
+      context.data.additionalRequirements = humanInput.data?.requirements || humanInput.requirements;
+    }
+    
+    // Continue with proposal generation logic
+    try {
+      const rfp = context.data.rfp || await storage.getRFP(context.data.rfpId);
+      if (!rfp) {
+        throw new Error('RFP not found for proposal generation');
+      }
+      
+      // Generate proposal using AI service
+      const proposalData = {
+        rfpId: rfp.id,
+        requirements: context.data.additionalRequirements || {},
+        context: `Generate proposal for ${rfp.title}`
+      };
+      
+      const result = await aiProposalService.createProposal(proposalData);
+      
+      context.data.proposal = result;
+      context.progress = 0.8;
+      
+      return {
+        success: true,
+        data: result,
+        nextPhase: 'submission',
+        suggestions: await mastraWorkflowEngine.generateActionSuggestions({
+          messageType: 'generation',
+          lastMessage: 'Proposal generated successfully',
+          availableRfps: [rfp],
+          userIntent: 'proposal_review'
+        })
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Proposal generation failed'
+      };
+    }
+  }
+
+  /**
+   * Execute submission phase with optional human input
+   */
+  private async executeSubmissionPhase(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    context.currentPhase = 'submission';
+    context.progress = 0.8;
+    
+    if (humanInput?.action === 'approve_submission') {
+      // Human approved proposal for submission
+      context.data.submissionApproved = true;
+    } else if (humanInput?.action === 'request_changes') {
+      // Human requested changes, suspend for revisions
+      await this.suspendWorkflow(
+        context.workflowId,
+        'human_input_required',
+        { requestedChanges: humanInput.data?.changes || humanInput.changes },
+        'Please review and incorporate the requested changes before resubmitting'
+      );
+      return {
+        success: true,
+        data: { suspended: true, reason: 'Changes requested' }
+      };
+    }
+    
+    // Continue with submission logic
+    try {
+      context.progress = 1.0;
+      context.status = 'completed';
+      
+      return {
+        success: true,
+        data: { submitted: true, proposal: context.data.proposal },
+        suggestions: await mastraWorkflowEngine.generateActionSuggestions({
+          messageType: 'submission',
+          lastMessage: 'Proposal submitted successfully',
+          availableRfps: [context.data.rfp],
+          userIntent: 'submission_complete'
+        })
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Submission failed'
+      };
+    }
+  }
+
+  /**
+   * Execute monitoring phase with optional human input
+   */
+  private async executeMonitoringPhase(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    context.currentPhase = 'monitoring';
+    context.progress = 1.0;
+    
+    // Monitoring is typically a completed state
+    return {
+      success: true,
+      data: { status: 'monitoring', proposal: context.data.proposal },
+      suggestions: await mastraWorkflowEngine.generateActionSuggestions({
+        messageType: 'monitoring',
+        lastMessage: 'Monitoring proposal status',
+        availableRfps: [context.data.rfp],
+        userIntent: 'monitor_progress'
+      })
+    };
+  }
+
+  /**
+   * Continue workflow execution after resumption
+   */
+  private async continueWorkflowExecution(context: WorkflowExecutionContext, humanInput?: any): Promise<WorkflowResult> {
+    try {
+      switch (context.currentPhase) {
+        case 'discovery':
+          return await this.executeDiscoveryPhase(context, humanInput);
+        case 'analysis':
+          return await this.executeAnalysisPhase(context, humanInput);
+        case 'generation':
+          return await this.executeGenerationPhase(context, humanInput);
+        case 'submission':
+          return await this.executeSubmissionPhase(context, humanInput);
+        case 'monitoring':
+          return await this.executeMonitoringPhase(context, humanInput);
+        default:
+          throw new Error(`Unknown workflow phase: ${context.currentPhase}`);
+      }
+    } catch (error) {
+      context.status = 'failed';
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Workflow execution failed'
+      };
+    }
+  }
+
+  /**
+   * Get all suspended workflows
+   */
+  async getSuspendedWorkflows(): Promise<any[]> {
+    try {
+      return await storage.getSuspendedWorkflows();
+    } catch (error) {
+      console.error('❌ Failed to get suspended workflows:', error);
+      return [];
+    }
+  }
+
+  /**
    * Cancel a workflow
    */
-  cancelWorkflow(workflowId: string): boolean {
+  async cancelWorkflow(workflowId: string): Promise<boolean> {
     const workflow = this.activeWorkflows.get(workflowId);
     if (workflow) {
-      workflow.status = 'suspended';
+      workflow.status = 'failed';
       this.activeWorkflows.delete(workflowId);
+      
+      // Update database if workflow state exists
+      try {
+        const workflowState = await storage.getWorkflowStateByWorkflowId(workflowId);
+        if (workflowState) {
+          await storage.updateWorkflowState(workflowState.id, {
+            status: 'failed',
+            updatedAt: new Date()
+          });
+        }
+      } catch (error) {
+        console.error(`❌ Failed to update cancelled workflow state:`, error);
+      }
+      
       return true;
     }
     return false;

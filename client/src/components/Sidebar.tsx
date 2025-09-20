@@ -13,6 +13,7 @@ export default function Sidebar() {
     { path: "/", label: "Dashboard", icon: "fas fa-tachometer-alt" },
     { path: "/discovery", label: "RFP Discovery", icon: "fas fa-search" },
     { path: "/ai-chat", label: "AI Agent", icon: "fas fa-robot" },
+    { path: "/workflow-management", label: "Workflow Management", icon: "fas fa-cogs" },
     { path: "/proposals", label: "Proposals", icon: "fas fa-file-alt" },
     { path: "/compliance", label: "Compliance", icon: "fas fa-tasks" },
     { path: "/submissions", label: "Submissions", icon: "fas fa-paper-plane" },
