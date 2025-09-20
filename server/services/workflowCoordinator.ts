@@ -443,7 +443,7 @@ export class WorkflowCoordinator {
 
       // Update database status
       await storage.updateWorkflowState(latestState.id, {
-        status: 'active',
+        status: 'running',
         updatedAt: new Date()
       });
 
