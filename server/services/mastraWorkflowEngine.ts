@@ -95,7 +95,9 @@ export class MastraWorkflowEngine {
         - Extract key details like deadlines, values, and requirements
         - Prioritize opportunities based on strategic value
         - Provide recommendations for next actions`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     const marketResearchAgent = new Agent({
@@ -106,7 +108,9 @@ export class MastraWorkflowEngine {
         - Identify key competitors and their strategies
         - Assess market conditions and trends
         - Provide strategic bidding recommendations`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     // Analysis & Processing Agents
@@ -118,7 +122,9 @@ export class MastraWorkflowEngine {
         - Assess risk factors and complexity
         - Map requirements to company capabilities
         - Generate compliance checklists and recommendations`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     const documentIntelligenceAgent = new Agent({
@@ -129,7 +135,9 @@ export class MastraWorkflowEngine {
         - Identify human oversight needs
         - Auto-populate forms with company data
         - Generate processing recommendations`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     // Generation & Submission Agents
@@ -141,7 +149,9 @@ export class MastraWorkflowEngine {
         - Develop pricing strategies and tables
         - Ensure compliance with all requirements
         - Optimize proposals for maximum win probability`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     const submissionAgent = new Agent({
@@ -152,7 +162,9 @@ export class MastraWorkflowEngine {
         - Track submission status and deadlines
         - Coordinate follow-up activities
         - Ensure all submission requirements are met`,
-      model: openai("gpt-5-2025-08-07")
+      model: openai("gpt-5-2025-08-07", {
+        structuredOutputs: true
+      })
     });
 
     // Store agents for reference
@@ -392,7 +404,8 @@ export class MastraWorkflowEngine {
       };
 
       // Record agent coordination request
-      const coordinationId = await agentMemoryService.createCoordinationRequest({
+      console.log(`🤝 Creating coordination request for agent: ${agentId}`);
+      const coordinationRecord = await agentMemoryService.createCoordinationRequest({
         sessionId: conversationId,
         initiatorAgentId: 'system',
         targetAgentId: agentId,
@@ -401,12 +414,17 @@ export class MastraWorkflowEngine {
         request: { action: 'process', context: enhancedContext },
         priority: context?.priority || 5
       });
+      const coordinationId = coordinationRecord.id;
+      console.log(`✅ Coordination request created with ID: ${coordinationId}`);
 
       // Process with enhanced context
+      console.log(`🎯 Processing with agent: ${agentId}`);
       const result = await this.processWithAgent(agent, enhancedContext);
+      console.log(`📝 Agent processing completed, updating coordination status`);
 
       // Record the successful coordination
       await agentMemoryService.updateCoordinationStatus(coordinationId, 'completed', result);
+      console.log(`✅ Coordination status updated to completed for ID: ${coordinationId}`);
 
       // Learn from the experience
       await this.recordAgentExperience(agentId, {
@@ -424,7 +442,7 @@ export class MastraWorkflowEngine {
       // Record the failed experience for learning
       await this.recordAgentExperience(agentId, {
         context,
-        outcome: { error: error.message },
+        outcome: { error: error instanceof Error ? error.message : String(error) },
         success: false,
         conversationId
       });
@@ -550,29 +568,6 @@ export class MastraWorkflowEngine {
     }
   }
 
-  /**
-   * Delegate task to a specific agent
-   */
-  private async delegateToAgent(agentId: string, context: any, conversationId: string): Promise<any> {
-    const agent = this.agents.get(agentId);
-    if (!agent) {
-      throw new Error(`Agent not found: ${agentId}`);
-    }
-
-    // Generate appropriate prompt based on context
-    const prompt = this.generateAgentPrompt(agentId, context);
-    
-    const response = await agent.generateVNext(prompt);
-    
-    return {
-      agentId,
-      response: response.text,
-      suggestions: await this.generateActionSuggestions({
-        messageType: 'analysis',
-        lastMessage: response.text
-      })
-    };
-  }
 
   /**
    * Execute a specific tool
