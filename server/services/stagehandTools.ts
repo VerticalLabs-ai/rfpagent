@@ -25,12 +25,33 @@ class StagehandSessionManager {
       }
     }
 
-    // Create new Stagehand instance
+    // Create new Stagehand instance with Advanced Stealth and Browser Context
     const stagehand = new Stagehand({
       env: "BROWSERBASE",
       apiKey: process.env.BROWSERBASE_API_KEY,
       projectId: process.env.BROWSERBASE_PROJECT_ID,
       verbose: 1,
+      browserbaseSessionCreateParams: {
+        projectId: process.env.BROWSERBASE_PROJECT_ID!,
+        keepAlive: true,
+        timeout: 3600, // 1 hour session timeout
+        browserSettings: {
+          advancedStealth: true,
+          solveCaptchas: true,
+          blockAds: true,
+          recordSession: true,
+          logSession: true,
+          context: {
+            // Enable browser context persistence for maintaining login sessions
+            id: `rfp-agent-context-${sessionId}`,
+          },
+          viewport: {
+            width: 1920,
+            height: 1080
+          }
+        },
+        region: "us-west-2"
+      }
     });
 
     await stagehand.init();
