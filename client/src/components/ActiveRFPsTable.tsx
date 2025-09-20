@@ -15,6 +15,40 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ObjectUploader } from "./ObjectUploader";
 
+// Helper functions for status badge styling
+const getStatusBadgeVariant = (status: string) => {
+  switch (status) {
+    case "discovered": return "secondary" as const;
+    case "parsing": return "outline" as const;
+    case "drafting": return "default" as const;
+    case "review": return "secondary" as const;
+    case "approved": return "outline" as const;
+    case "submitted": return "default" as const;
+    default: return "outline" as const;
+  }
+};
+
+const getStatusBadgeClassName = (status: string) => {
+  switch (status) {
+    case "approved": return "border-green-500 text-green-700 dark:text-green-400";
+    case "submitted": return "bg-green-600 hover:bg-green-700 text-white border-transparent";
+    case "drafting": return "bg-purple-600 hover:bg-purple-700 text-white border-transparent";
+    default: return "";
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case "discovered": return "Discovered";
+    case "parsing": return "Parsing";
+    case "drafting": return "AI Drafting";
+    case "review": return "Pending Review";
+    case "approved": return "Approved";
+    case "submitted": return "Submitted";
+    default: return status;
+  }
+};
+
 export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -132,17 +166,7 @@ export default function ActiveRFPsTable() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "discovered": return "Discovered";
-      case "parsing": return "Parsing";
-      case "drafting": return "AI Drafting";
-      case "review": return "Pending Review";
-      case "approved": return "Approved";
-      case "submitted": return "Submitted";
-      default: return status;
-    }
-  };
+
 
   // Use actual progress values from database instead of hardcoded status mapping
   const getProgressValue = (rfp: any) => {
@@ -406,7 +430,8 @@ export default function ActiveRFPsTable() {
                     </td>
                     <td className="py-4 px-6">
                       <Badge 
-                        className={`status-badge status-${item.rfp.status}`}
+                        variant={getStatusBadgeVariant(item.rfp.status)}
+                        className={getStatusBadgeClassName(item.rfp.status)}
                         data-testid={`rfp-status-${item.rfp.id}`}
                       >
                         <i className={`${getStatusIcon(item.rfp.status)} mr-1`}></i>
@@ -647,8 +672,12 @@ function RFPDetailsModal({ rfp, proposal, portal }: any) {
           <div>
             <label className="text-sm font-medium text-muted-foreground">Status</label>
             <div className="mt-1">
-              <Badge className={`status-badge status-${rfp.status}`} data-testid="modal-rfp-status">
-                {rfp.status.charAt(0).toUpperCase() + rfp.status.slice(1)}
+              <Badge 
+                variant={getStatusBadgeVariant(rfp.status)}
+                className={getStatusBadgeClassName(rfp.status)}
+                data-testid="modal-rfp-status"
+              >
+                {getStatusLabel(rfp.status)}
               </Badge>
             </div>
           </div>
