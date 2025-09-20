@@ -87,6 +87,76 @@ export const submissions = pgTable("submissions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Submission Pipeline Tables
+export const submissionPipelines = pgTable("submission_pipelines", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").references(() => submissions.id).notNull(),
+  sessionId: varchar("session_id").notNull(), // agent session reference
+  workflowId: varchar("workflow_id"), // optional workflow reference
+  currentPhase: text("current_phase").notNull().default("queued"), // queued, preflight, authenticating, filling, uploading, submitting, verifying, completed, failed
+  status: text("status").notNull().default("pending"), // pending, in_progress, suspended, completed, failed
+  progress: integer("progress").default(0).notNull(), // 0-100 percentage
+  preflightChecks: jsonb("preflight_checks"), // results of preflight validation
+  authenticationData: jsonb("authentication_data"), // portal login session data
+  formData: jsonb("form_data"), // structured form data for submission
+  uploadedDocuments: jsonb("uploaded_documents"), // list of uploaded documents with URLs
+  submissionReceipt: jsonb("submission_receipt"), // final submission confirmation data
+  errorData: jsonb("error_data"), // detailed error information if failed
+  retryCount: integer("retry_count").default(0).notNull(),
+  maxRetries: integer("max_retries").default(3).notNull(),
+  estimatedCompletion: timestamp("estimated_completion"),
+  metadata: jsonb("metadata"), // additional pipeline metadata
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => ({
+  sessionIdx: index("submission_pipelines_session_idx").on(table.sessionId),
+  statusIdx: index("submission_pipelines_status_idx").on(table.status),
+  phaseIdx: index("submission_pipelines_phase_idx").on(table.currentPhase),
+  completionIdx: index("submission_pipelines_completion_idx").on(table.estimatedCompletion),
+}));
+
+export const submissionEvents = pgTable("submission_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  pipelineId: varchar("pipeline_id").references(() => submissionPipelines.id).notNull(),
+  submissionId: varchar("submission_id").references(() => submissions.id).notNull(),
+  eventType: text("event_type").notNull(), // phase_started, phase_completed, error, retry, status_change, authentication_success, form_filled, document_uploaded, submission_executed
+  phase: text("phase").notNull(), // current phase when event occurred
+  level: text("level").notNull().default("info"), // info, warn, error, debug
+  message: text("message").notNull(),
+  details: jsonb("details"), // detailed event data
+  agentId: text("agent_id"), // which agent triggered this event
+  browserSessionId: text("browser_session_id"), // Stagehand session reference
+  portalResponse: jsonb("portal_response"), // portal response data if applicable
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  pipelineIdx: index("submission_events_pipeline_idx").on(table.pipelineId),
+  typeIdx: index("submission_events_type_idx").on(table.eventType),
+  phaseIdx: index("submission_events_phase_idx").on(table.phase),
+  timestampIdx: index("submission_events_timestamp_idx").on(table.timestamp),
+  agentIdx: index("submission_events_agent_idx").on(table.agentId),
+}));
+
+export const submissionStatusHistory = pgTable("submission_status_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  submissionId: varchar("submission_id").references(() => submissions.id).notNull(),
+  pipelineId: varchar("pipeline_id").references(() => submissionPipelines.id),
+  fromStatus: text("from_status"),
+  toStatus: text("to_status").notNull(),
+  fromPhase: text("from_phase"),
+  toPhase: text("to_phase"),
+  reason: text("reason"), // reason for status change
+  triggeredBy: text("triggered_by"), // agent or system that triggered the change
+  additionalData: jsonb("additional_data"), // additional context for the change
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  submissionIdx: index("submission_status_history_submission_idx").on(table.submissionId),
+  statusIdx: index("submission_status_history_status_idx").on(table.toStatus),
+  timestampIdx: index("submission_status_history_timestamp_idx").on(table.timestamp),
+}));
+
 export const auditLogs = pgTable("audit_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   entityType: text("entity_type").notNull(), // rfp, proposal, submission
@@ -546,7 +616,7 @@ export const documentsRelations = relations(documents, ({ one }) => ({
   }),
 }));
 
-export const submissionsRelations = relations(submissions, ({ one }) => ({
+export const submissionsRelations = relations(submissions, ({ one, many }) => ({
   rfp: one(rfps, {
     fields: [submissions.rfpId],
     references: [rfps.id],
@@ -558,6 +628,44 @@ export const submissionsRelations = relations(submissions, ({ one }) => ({
   portal: one(portals, {
     fields: [submissions.portalId],
     references: [portals.id],
+  }),
+  pipeline: one(submissionPipelines, {
+    fields: [submissions.id],
+    references: [submissionPipelines.submissionId],
+  }),
+  events: many(submissionEvents),
+  statusHistory: many(submissionStatusHistory),
+}));
+
+// Submission Pipeline Relations
+export const submissionPipelinesRelations = relations(submissionPipelines, ({ one, many }) => ({
+  submission: one(submissions, {
+    fields: [submissionPipelines.submissionId],
+    references: [submissions.id],
+  }),
+  events: many(submissionEvents),
+  statusHistory: many(submissionStatusHistory),
+}));
+
+export const submissionEventsRelations = relations(submissionEvents, ({ one }) => ({
+  pipeline: one(submissionPipelines, {
+    fields: [submissionEvents.pipelineId],
+    references: [submissionPipelines.id],
+  }),
+  submission: one(submissions, {
+    fields: [submissionEvents.submissionId],
+    references: [submissions.id],
+  }),
+}));
+
+export const submissionStatusHistoryRelations = relations(submissionStatusHistory, ({ one }) => ({
+  submission: one(submissions, {
+    fields: [submissionStatusHistory.submissionId],
+    references: [submissions.id],
+  }),
+  pipeline: one(submissionPipelines, {
+    fields: [submissionStatusHistory.pipelineId],
+    references: [submissionPipelines.id],
   }),
 }));
 
@@ -773,6 +881,26 @@ export const insertSubmissionSchema = createInsertSchema(submissions).omit({
   confirmedAt: true,
 });
 
+// Submission Pipeline Insert Schemas
+export const insertSubmissionPipelineSchema = createInsertSchema(submissionPipelines).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
+export const insertSubmissionEventSchema = createInsertSchema(submissionEvents).omit({
+  id: true,
+  timestamp: true,
+  createdAt: true,
+});
+
+export const insertSubmissionStatusHistorySchema = createInsertSchema(submissionStatusHistory).omit({
+  id: true,
+  timestamp: true,
+  createdAt: true,
+});
+
 export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   id: true,
   timestamp: true,
@@ -870,6 +998,16 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 
 export type Submission = typeof submissions.$inferSelect;
 export type InsertSubmission = z.infer<typeof insertSubmissionSchema>;
+
+// Submission Pipeline Types
+export type SubmissionPipeline = typeof submissionPipelines.$inferSelect;
+export type InsertSubmissionPipeline = z.infer<typeof insertSubmissionPipelineSchema>;
+
+export type SubmissionEvent = typeof submissionEvents.$inferSelect;
+export type InsertSubmissionEvent = z.infer<typeof insertSubmissionEventSchema>;
+
+export type SubmissionStatusHistory = typeof submissionStatusHistory.$inferSelect;
+export type InsertSubmissionStatusHistory = z.infer<typeof insertSubmissionStatusHistorySchema>;
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

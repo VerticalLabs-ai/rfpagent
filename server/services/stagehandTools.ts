@@ -636,12 +636,12 @@ export async function performBrowserAuthentication(
     const loginObservations = await page.observe('find the login form with username and password fields');
     console.log('🔍 Login form observations:', loginObservations);
     
-    // Fill in username
-    console.log(`👤 Entering username: ${username}`);
+    // Fill in username (SECURITY: Never log actual credentials)
+    console.log(`👤 Entering username: [REDACTED]`);
     await page.act(`type "${username}" in the username field`);
     
-    // Fill in password
-    console.log('🔑 Entering password...');
+    // Fill in password (SECURITY: Never log actual credentials)
+    console.log('🔑 Entering password: [REDACTED]');
     await page.act(`type "${password}" in the password field`);
     
     // Submit the form

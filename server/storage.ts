@@ -1,12 +1,15 @@
 import {
-  users, portals, rfps, proposals, documents, submissions, auditLogs, notifications, scans, scanEvents,
+  users, portals, rfps, proposals, documents, submissions, submissionPipelines, submissionEvents, submissionStatusHistory,
+  auditLogs, notifications, scans, scanEvents,
   companyProfiles, companyAddresses, companyContacts, companyIdentifiers, companyCertifications, companyInsurance,
   aiConversations, conversationMessages, researchFindings, historicalBids,
   agentMemory, agentKnowledgeBase, agentCoordinationLog, workflowState, agentPerformanceMetrics,
   agentRegistry, workItems, agentSessions,
   type User, type InsertUser, type Portal, type InsertPortal, type RFP, type InsertRFP,
   type Proposal, type InsertProposal, type Document, type InsertDocument,
-  type Submission, type InsertSubmission, type AuditLog, type InsertAuditLog,
+  type Submission, type InsertSubmission, type SubmissionPipeline, type InsertSubmissionPipeline,
+  type SubmissionEvent, type InsertSubmissionEvent, type SubmissionStatusHistory, type InsertSubmissionStatusHistory,
+  type AuditLog, type InsertAuditLog,
   type Notification, type InsertNotification, type Scan, type InsertScan,
   type ScanEvent, type InsertScanEvent, type CompanyProfile, type InsertCompanyProfile,
   type CompanyAddress, type InsertCompanyAddress, type CompanyContact, type InsertCompanyContact,
@@ -65,6 +68,29 @@ export interface IStorage {
   getSubmissionsByRFP(rfpId: string): Promise<Submission[]>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(id: string, updates: Partial<Submission>): Promise<Submission>;
+
+  // Submission Pipelines
+  getSubmissionPipeline(id: string): Promise<SubmissionPipeline | undefined>;
+  getSubmissionPipelineBySubmission(submissionId: string): Promise<SubmissionPipeline | undefined>;
+  getSubmissionPipelinesByStatus(status: string): Promise<SubmissionPipeline[]>;
+  getSubmissionPipelinesByPhase(phase: string): Promise<SubmissionPipeline[]>;
+  getActiveSubmissionPipelines(): Promise<SubmissionPipeline[]>;
+  createSubmissionPipeline(pipeline: InsertSubmissionPipeline): Promise<SubmissionPipeline>;
+  updateSubmissionPipeline(id: string, updates: Partial<SubmissionPipeline>): Promise<SubmissionPipeline>;
+  deleteSubmissionPipeline(id: string): Promise<void>;
+
+  // Submission Events
+  getSubmissionEvent(id: string): Promise<SubmissionEvent | undefined>;
+  getSubmissionEventsByPipeline(pipelineId: string): Promise<SubmissionEvent[]>;
+  getSubmissionEventsBySubmission(submissionId: string): Promise<SubmissionEvent[]>;
+  getSubmissionEventsByType(eventType: string): Promise<SubmissionEvent[]>;
+  getRecentSubmissionEvents(limit?: number): Promise<SubmissionEvent[]>;
+  createSubmissionEvent(event: InsertSubmissionEvent): Promise<SubmissionEvent>;
+
+  // Submission Status History
+  getSubmissionStatusHistory(submissionId: string): Promise<SubmissionStatusHistory[]>;
+  getSubmissionStatusHistoryByPipeline(pipelineId: string): Promise<SubmissionStatusHistory[]>;
+  createSubmissionStatusHistory(statusHistory: InsertSubmissionStatusHistory): Promise<SubmissionStatusHistory>;
 
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
@@ -583,6 +609,112 @@ export class DatabaseStorage implements IStorage {
       .where(eq(submissions.id, id))
       .returning();
     return updatedSubmission;
+  }
+
+  // Submission Pipelines
+  async getSubmissionPipeline(id: string): Promise<SubmissionPipeline | undefined> {
+    const [pipeline] = await db.select().from(submissionPipelines).where(eq(submissionPipelines.id, id));
+    return pipeline || undefined;
+  }
+
+  async getSubmissionPipelineBySubmission(submissionId: string): Promise<SubmissionPipeline | undefined> {
+    const [pipeline] = await db.select().from(submissionPipelines).where(eq(submissionPipelines.submissionId, submissionId));
+    return pipeline || undefined;
+  }
+
+  async getSubmissionPipelinesByStatus(status: string): Promise<SubmissionPipeline[]> {
+    return await db.select().from(submissionPipelines).where(eq(submissionPipelines.status, status));
+  }
+
+  async getSubmissionPipelinesByPhase(phase: string): Promise<SubmissionPipeline[]> {
+    return await db.select().from(submissionPipelines).where(eq(submissionPipelines.currentPhase, phase));
+  }
+
+  async getActiveSubmissionPipelines(): Promise<SubmissionPipeline[]> {
+    return await db.select().from(submissionPipelines).where(or(
+      eq(submissionPipelines.status, 'pending'),
+      eq(submissionPipelines.status, 'in_progress')
+    ));
+  }
+
+  async createSubmissionPipeline(pipeline: InsertSubmissionPipeline): Promise<SubmissionPipeline> {
+    const [newPipeline] = await db
+      .insert(submissionPipelines)
+      .values(pipeline)
+      .returning();
+    return newPipeline;
+  }
+
+  async updateSubmissionPipeline(id: string, updates: Partial<SubmissionPipeline>): Promise<SubmissionPipeline> {
+    const [updatedPipeline] = await db
+      .update(submissionPipelines)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(submissionPipelines.id, id))
+      .returning();
+    return updatedPipeline;
+  }
+
+  async deleteSubmissionPipeline(id: string): Promise<void> {
+    await db.delete(submissionPipelines).where(eq(submissionPipelines.id, id));
+  }
+
+  // Submission Events
+  async getSubmissionEvent(id: string): Promise<SubmissionEvent | undefined> {
+    const [event] = await db.select().from(submissionEvents).where(eq(submissionEvents.id, id));
+    return event || undefined;
+  }
+
+  async getSubmissionEventsByPipeline(pipelineId: string): Promise<SubmissionEvent[]> {
+    return await db.select().from(submissionEvents)
+      .where(eq(submissionEvents.pipelineId, pipelineId))
+      .orderBy(desc(submissionEvents.timestamp));
+  }
+
+  async getSubmissionEventsBySubmission(submissionId: string): Promise<SubmissionEvent[]> {
+    return await db.select().from(submissionEvents)
+      .where(eq(submissionEvents.submissionId, submissionId))
+      .orderBy(desc(submissionEvents.timestamp));
+  }
+
+  async getSubmissionEventsByType(eventType: string): Promise<SubmissionEvent[]> {
+    return await db.select().from(submissionEvents)
+      .where(eq(submissionEvents.eventType, eventType))
+      .orderBy(desc(submissionEvents.timestamp));
+  }
+
+  async getRecentSubmissionEvents(limit: number = 50): Promise<SubmissionEvent[]> {
+    return await db.select().from(submissionEvents)
+      .orderBy(desc(submissionEvents.timestamp))
+      .limit(limit);
+  }
+
+  async createSubmissionEvent(event: InsertSubmissionEvent): Promise<SubmissionEvent> {
+    const [newEvent] = await db
+      .insert(submissionEvents)
+      .values(event)
+      .returning();
+    return newEvent;
+  }
+
+  // Submission Status History
+  async getSubmissionStatusHistory(submissionId: string): Promise<SubmissionStatusHistory[]> {
+    return await db.select().from(submissionStatusHistory)
+      .where(eq(submissionStatusHistory.submissionId, submissionId))
+      .orderBy(desc(submissionStatusHistory.timestamp));
+  }
+
+  async getSubmissionStatusHistoryByPipeline(pipelineId: string): Promise<SubmissionStatusHistory[]> {
+    return await db.select().from(submissionStatusHistory)
+      .where(eq(submissionStatusHistory.pipelineId, pipelineId))
+      .orderBy(desc(submissionStatusHistory.timestamp));
+  }
+
+  async createSubmissionStatusHistory(statusHistory: InsertSubmissionStatusHistory): Promise<SubmissionStatusHistory> {
+    const [newStatusHistory] = await db
+      .insert(submissionStatusHistory)
+      .values(statusHistory)
+      .returning();
+    return newStatusHistory;
   }
 
   // Audit Logs
