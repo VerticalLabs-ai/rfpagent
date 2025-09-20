@@ -404,6 +404,137 @@ export class AgentMemoryService {
     // This would identify similar memories and consolidate them
     // Implementation would involve semantic similarity analysis
   }
+
+  // Session Management for 3-Tier Agentic System
+  async createSession(sessionData: {
+    sessionId?: string;
+    userId: string;
+    orchestratorAgentId: string;
+    sessionType: string;
+    intent: string;
+    context: any;
+    metadata?: any;
+  }): Promise<any> {
+    const newSession = {
+      sessionId: sessionData.sessionId || nanoid(),
+      userId: sessionData.userId,
+      orchestratorAgentId: sessionData.orchestratorAgentId,
+      sessionType: sessionData.sessionType,
+      intent: sessionData.intent,
+      context: sessionData.context,
+      status: 'active' as const,
+      metadata: sessionData.metadata || {},
+      startedAt: new Date(),
+      lastActivity: new Date(),
+    };
+
+    return await storage.createAgentSession(newSession);
+  }
+
+  async getSession(sessionId: string): Promise<any> {
+    const session = await storage.getAgentSession(sessionId);
+    if (session) {
+      // Update last activity timestamp
+      await storage.updateAgentSession(sessionId, { lastActivity: new Date() });
+    }
+    return session;
+  }
+
+  async updateSession(sessionId: string, updates: {
+    context?: any;
+    status?: string;
+    metadata?: any;
+    intent?: string;
+    currentAgentId?: string;
+  }): Promise<any> {
+    const updateData = {
+      ...updates,
+      lastActivity: new Date(),
+    };
+
+    // If session is being completed or failed, set endedAt timestamp in metadata
+    if (updates.status === 'completed' || updates.status === 'failed') {
+      updateData.metadata = { 
+        ...updateData.metadata, 
+        endedAt: new Date() 
+      };
+    }
+
+    return await storage.updateAgentSession(sessionId, updateData);
+  }
+
+  async getSessionContext(sessionId: string): Promise<any> {
+    const session = await this.getSession(sessionId);
+    return session?.context || {};
+  }
+
+  async updateSessionContext(sessionId: string, contextUpdates: any): Promise<any> {
+    const session = await this.getSession(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+
+    const updatedContext = {
+      ...session.context,
+      ...contextUpdates,
+    };
+
+    return await this.updateSession(sessionId, { context: updatedContext });
+  }
+
+  async endSession(sessionId: string, reason?: string): Promise<any> {
+    return await this.updateSession(sessionId, {
+      status: 'completed',
+      metadata: { endReason: reason || 'normal_completion' },
+    });
+  }
+
+  async getActiveSessions(orchestratorAgentId?: string): Promise<any[]> {
+    const allActiveSessions = await storage.getActiveAgentSessions();
+    
+    if (orchestratorAgentId) {
+      return allActiveSessions.filter(session => session.orchestratorAgentId === orchestratorAgentId);
+    }
+    return allActiveSessions;
+  }
+
+  async getSessionHistory(userId: string, limit: number = 50): Promise<any[]> {
+    const sessions = await storage.getAgentSessionsByUser(userId);
+    return sessions.slice(0, limit);
+  }
+
+  // Context-aware memory retrieval for sessions
+  async getSessionMemories(sessionId: string, memoryType?: string): Promise<any[]> {
+    const session = await this.getSession(sessionId);
+    if (!session) {
+      throw new Error(`Session not found: ${sessionId}`);
+    }
+
+    // Get memories for the orchestrator agent in this session context
+    const memories = await this.getAgentMemories(session.orchestratorAgentId, memoryType);
+    
+    // Filter and score memories based on session context
+    return this.getRelevantMemories(session.orchestratorAgentId, {
+      sessionId,
+      sessionType: session.sessionType,
+      intent: session.intent,
+      keywords: this.extractKeywords(session.context),
+      tags: [session.sessionType, session.intent],
+    });
+  }
+
+  // Helper method to extract keywords from context
+  private extractKeywords(context: any): string[] {
+    if (!context) return [];
+    
+    const text = JSON.stringify(context).toLowerCase();
+    const words = text.match(/\b\w{3,}\b/g) || [];
+    
+    // Filter common words and return unique keywords
+    const commonWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'its', 'may', 'new', 'now', 'old', 'see', 'two', 'who', 'boy', 'did', 'man', 'way', 'too'];
+    
+    return Array.from(new Set(words.filter(word => !commonWords.includes(word)))).slice(0, 10);
+  }
 }
 
 export const agentMemoryService = AgentMemoryService.getInstance();
