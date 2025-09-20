@@ -43,6 +43,7 @@ export class MastraScrapingService {
   private agents: Map<string, Agent> = new Map();
   private requestLimiter = pLimit(3); // Limit concurrent requests
   private aiLimiter = pLimit(2); // Limit concurrent AI calls
+  private activeCoordinationIds: Map<string, string> = new Map(); // portalId -> coordinationId
 
   constructor() {
     // Temporarily disable memory features to avoid vector store requirement
@@ -408,14 +409,54 @@ export class MastraScrapingService {
       // Create scraping context with portal-specific knowledge and search filter
       const context = await this.buildPortalContext(portal, searchFilter);
       
-      // For Austin Finance, bypass agent and go direct to working scraper
+      // Create coordination record for tracking agent performance
       let opportunities: any[] = [];
+      let coordinationId: string | null = null;
+      
+      try {
+        // Create coordination request for this portal scraping session
+        const sessionId = `portal-scrape-${portal.id}-${Date.now()}`;
+        const agentId = this.getAgentIdForPortal(portal);
+        
+        console.log(`🤝 Creating coordination request for portal ${portal.name} with agent ${agentId}`);
+        const coordinationRecord = await storage.createAgentCoordination({
+          sessionId: sessionId,
+          initiatorAgentId: 'mastra-scraping-service',
+          targetAgentId: agentId,
+          coordinationType: 'portal_scraping',
+          context: context,
+          request: {
+            action: 'scrape_portal',
+            portalId: portal.id,
+            portalName: portal.name,
+            searchFilter: searchFilter
+          },
+          priority: 5,
+          status: 'pending',
+          metadata: {
+            portalUrl: portal.url,
+            requiresAuth: portal.loginRequired,
+            startTime: new Date().toISOString()
+          }
+        });
+        
+        coordinationId = coordinationRecord.id;
+        if (coordinationId) {
+          this.activeCoordinationIds.set(portal.id, coordinationId);
+        }
+        console.log(`✅ Coordination request created with ID: ${coordinationId}`);
+      } catch (coordError) {
+        console.error(`❌ Failed to create coordination request for ${portal.name}:`, coordError);
+        // Continue without coordination tracking
+      }
+      
       if (portal.url.includes('austintexas.gov')) {
         console.log(`🎯 Austin Finance detected: Bypassing agent, using direct scraping only`);
         opportunities = []; // Force direct scraping path
       } else {
-        // Execute intelligent scraping with error handling for other portals
+        // Execute intelligent scraping with enhanced coordination tracking 
         try {
+          console.log(`🚀 Using specialized agent for ${portal.name}`);
           const scrapingPrompt = this.buildScrapingPrompt(portal, context, searchFilter);
           const response = await agent.generateVNext(scrapingPrompt, {
             resourceId: portal.id,
@@ -426,9 +467,30 @@ export class MastraScrapingService {
           console.log(`🤖 Raw agent response (first 500 chars):`, response.text.substring(0, 500));
           opportunities = this.parseAgentResponse(response.text);
           console.log(`🤖 parseAgentResponse returned ${opportunities.length} opportunities`);
+          
+          // Track successful agent execution
+          console.log(`📊 Agent execution successful for ${portal.name}, ${opportunities.length} opportunities found`);
         } catch (agentError) {
           console.error(`🚨 Agent execution failed for ${portal.name}:`, agentError);
           console.log(`🔄 Falling back to direct scraping due to agent error`);
+          
+          // Update coordination with agent failure
+          if (coordinationId) {
+            try {
+              await storage.updateAgentCoordination(coordinationId, {
+                status: 'failed',
+                response: JSON.stringify({
+                  success: false,
+                  error: agentError instanceof Error ? agentError.message : String(agentError),
+                  fallbackUsed: true
+                }),
+                completedAt: new Date()
+              });
+            } catch (updateError) {
+              console.error(`❌ Failed to update coordination with agent failure:`, updateError);
+            }
+          }
+          
           opportunities = []; // Force fallback to intelligentWebScrape
         }
       }
@@ -463,16 +525,42 @@ export class MastraScrapingService {
         }
       }
 
-      // Process discovered opportunities
+      // Process discovered opportunities with coordination tracking
       console.log(`🔧 Processing ${opportunities.length} opportunities for ${portal.name}`);
       for (let i = 0; i < opportunities.length; i++) {
         const opportunity = opportunities[i];
         console.log(`🔧 Processing opportunity ${i + 1}/${opportunities.length}: ${opportunity.title || opportunity.solicitationId || 'Unknown'}`);
         try {
-          await this.processOpportunity(opportunity, portal);
+          await this.processOpportunity(opportunity, portal, coordinationId);
           console.log(`✅ Successfully processed opportunity: ${opportunity.title || opportunity.solicitationId}`);
         } catch (error) {
           console.error(`❌ Error processing opportunity ${opportunity.title || opportunity.solicitationId}:`, error);
+        }
+      }
+      
+      // Finalize coordination with overall results
+      if (coordinationId) {
+        try {
+          // Update coordination with final scraping results
+          await storage.updateAgentCoordination(coordinationId, {
+            status: 'completed',
+            response: JSON.stringify({
+              success: true,
+              totalOpportunities: opportunities.length,
+              portalName: portal.name,
+              portalId: portal.id,
+              searchFilter: searchFilter,
+              agentUsed: opportunities.length > 0 ? 'specialized_agent' : 'direct_scraping',
+              scrapingMethod: portal.url.includes('austintexas.gov') ? 'direct_scraping' : 'agent_coordination',
+              completedAt: new Date().toISOString()
+            }),
+            completedAt: new Date()
+          });
+          console.log(`🔗 Coordination ${coordinationId} completed with ${opportunities.length} opportunities`);
+        } catch (finalizeError) {
+          console.error(`❌ Failed to finalize coordination ${coordinationId}:`, finalizeError);
+        } finally {
+          this.activeCoordinationIds.delete(portal.id);
         }
       }
 
@@ -496,6 +584,21 @@ export class MastraScrapingService {
         relatedEntityId: portal.id
       });
     }
+  }
+
+  /**
+   * Get agent ID string for coordination tracking based on portal type
+   */
+  private getAgentIdForPortal(portal: Portal): string {
+    const portalName = portal.name.toLowerCase().replace(/\s+/g, '_');
+    
+    // Map portal names to agent IDs for coordination tracking
+    if (portalName.includes('bonfire')) return 'bonfire_hub';
+    if (portalName.includes('sam.gov') || portalName.includes('sam_gov')) return 'sam.gov';
+    if (portalName.includes('findrfp')) return 'findrfp';
+    if (portalName.includes('austin')) return 'generic'; // Austin uses direct scraping
+    
+    return 'generic';
   }
 
   private selectAgent(portal: Portal): Agent {
@@ -998,7 +1101,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     });
   }
 
-  private async processOpportunity(opportunity: any, portal: Portal): Promise<void> {
+  private async processOpportunity(opportunity: any, portal: Portal, coordinationId?: string | null): Promise<void> {
     console.log(`🎯 Starting processOpportunity for: ${opportunity.title || opportunity.solicitationId} from ${portal.name}`);
     try {
       // Enhanced AI analysis with confidence scoring
@@ -1058,6 +1161,27 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         status: "discovered",
         progress: 0
       });
+      
+      // Link RFP to coordination log if coordination ID was provided
+      if (coordinationId) {
+        try {
+          await storage.updateAgentCoordination(coordinationId, {
+            status: 'completed',
+            response: JSON.stringify({
+              success: true,
+              rfpCreated: true,
+              rfpId: rfp.id,
+              rfpTitle: rfp.title,
+              confidence: rfpDetails.confidence
+            }),
+            completedAt: new Date()
+          });
+          console.log(`🔗 Linked RFP ${rfp.id} to coordination log ${coordinationId}`);
+        } catch (linkError) {
+          console.error(`❌ Failed to link RFP to coordination log:`, linkError);
+          // Continue with RFP creation even if linking fails
+        }
+      }
       
       // Download documents for Austin Finance RFPs
       if (portal.url.includes('austintexas.gov') && sourceUrl) {
