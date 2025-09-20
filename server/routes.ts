@@ -24,6 +24,7 @@ import { scanManager } from "./services/scan-manager";
 import { ManualRfpService } from "./services/manualRfpService";
 import { aiAgentOrchestrator } from "./services/aiAgentOrchestrator";
 import { mastraWorkflowEngine } from "./services/mastraWorkflowEngine";
+import { proposalGenerationOrchestrator } from "./services/proposalGenerationOrchestrator";
 import analysisRoutes from "./routes/analysis";
 import { z } from "zod";
 
@@ -153,6 +154,27 @@ const PortalMonitoringConfigSchema = z.object({
     keywords: z.array(z.string()).optional(),
     excludeKeywords: z.array(z.string()).optional(),
   }).optional(),
+});
+
+// Proposal Pipeline Validation Schemas
+const ProposalPipelineGenerateRequestSchema = z.object({
+  rfpId: z.string().uuid("RFP ID must be a valid UUID"),
+  companyProfileId: z.string().uuid("Company Profile ID must be a valid UUID").optional(),
+  proposalType: z.enum(['standard', 'technical', 'construction', 'professional_services']).optional(),
+  qualityThreshold: z.number().min(0).max(1).optional(),
+  autoSubmit: z.boolean().optional(),
+  generatePricing: z.boolean().optional(),
+  generateCompliance: z.boolean().optional()
+});
+
+const ProposalPipelineWorkflowsQuerySchema = z.object({
+  status: z.enum(['pending', 'in_progress', 'suspended', 'completed', 'failed']).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional()
+});
+
+const ProposalPipelineStatusParamsSchema = z.object({
+  pipelineId: z.string().uuid("Pipeline ID must be a valid UUID")
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -587,6 +609,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting proposal generation status:", error);
       res.status(500).json({ error: "Failed to get proposal generation status" });
+    }
+  });
+
+  // ============ PROPOSAL GENERATION PIPELINE ENDPOINTS ============
+
+  /**
+   * Start complete proposal generation pipeline
+   */
+  app.post("/api/proposals/pipeline/generate", async (req, res) => {
+    try {
+      // Validate request body with Zod
+      const validationResult = ProposalPipelineGenerateRequestSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid request data',
+          details: validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      }
+
+      const { 
+        rfpId, 
+        companyProfileId, 
+        proposalType = 'standard',
+        qualityThreshold = 0.8,
+        autoSubmit = false,
+        generatePricing = true,
+        generateCompliance = true 
+      } = validationResult.data;
+
+      // Verify RFP exists
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        return res.status(404).json({ 
+          success: false, 
+          error: 'RFP not found' 
+        });
+      }
+
+      console.log(`🚀 Starting proposal generation pipeline for RFP: ${rfpId}`);
+
+      // Start the complete proposal generation pipeline
+      const pipelineResult = await proposalGenerationOrchestrator.createProposalGenerationPipeline({
+        rfpId,
+        companyProfileId,
+        proposalType,
+        qualityThreshold,
+        autoSubmit,
+        generatePricing,
+        generateCompliance
+      });
+
+      if (!pipelineResult.success) {
+        return res.status(500).json({
+          success: false,
+          error: pipelineResult.error || 'Failed to start proposal generation pipeline'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          pipelineId: pipelineResult.pipelineId,
+          currentPhase: pipelineResult.currentPhase,
+          totalPhases: pipelineResult.totalPhases,
+          workItemsCreated: pipelineResult.workItemsCreated,
+          estimatedDuration: pipelineResult.estimatedDuration,
+          message: 'Proposal generation pipeline started successfully'
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Proposal pipeline generation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to start proposal generation pipeline' 
+      });
+    }
+  });
+
+  /**
+   * Get proposal generation pipeline status
+   */
+  app.get("/api/proposals/pipeline/status/:pipelineId", async (req, res) => {
+    try {
+      // Validate path parameters with Zod
+      const validationResult = ProposalPipelineStatusParamsSchema.safeParse(req.params);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid pipeline ID',
+          details: validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      }
+
+      const { pipelineId } = validationResult.data;
+
+      const status = await proposalGenerationOrchestrator.getPipelineStatus(pipelineId);
+
+      if (!status) {
+        return res.status(404).json({
+          success: false,
+          error: 'Pipeline not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: status
+      });
+
+    } catch (error) {
+      console.error('❌ Pipeline status error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to get pipeline status' 
+      });
+    }
+  });
+
+  /**
+   * Cancel proposal generation pipeline
+   */
+  app.delete("/api/proposals/pipeline/:pipelineId", async (req, res) => {
+    try {
+      // Validate path parameters with Zod
+      const validationResult = ProposalPipelineStatusParamsSchema.safeParse(req.params);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid pipeline ID',
+          details: validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      }
+
+      const { pipelineId } = validationResult.data;
+
+      const cancelResult = await proposalGenerationOrchestrator.cancelPipeline(pipelineId);
+
+      if (!cancelResult.success) {
+        return res.status(500).json({
+          success: false,
+          error: cancelResult.error || 'Failed to cancel pipeline'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          pipelineId,
+          message: 'Pipeline cancelled successfully'
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Pipeline cancellation error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to cancel pipeline' 
+      });
+    }
+  });
+
+  /**
+   * Get all active proposal generation workflows
+   */
+  app.get("/api/proposals/pipeline/workflows", async (req, res) => {
+    try {
+      // Validate query parameters with Zod
+      const validationResult = ProposalPipelineWorkflowsQuerySchema.safeParse(req.query);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid query parameters',
+          details: validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      }
+
+      const { status, limit = 50, offset = 0 } = validationResult.data;
+
+      const workflows = await proposalGenerationOrchestrator.getActiveWorkflows({
+        status,
+        limit,
+        offset
+      });
+
+      res.json({
+        success: true,
+        data: {
+          workflows,
+          total: workflows.length,
+          limit: parseInt(limit as string),
+          offset: parseInt(offset as string)
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Get workflows error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to get active workflows' 
+      });
     }
   });
 

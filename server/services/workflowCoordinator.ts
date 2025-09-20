@@ -17,6 +17,12 @@ import {
   requirementsExtractorSpecialist, 
   complianceCheckerSpecialist 
 } from "./analysisSpecialists";
+import {
+  contentGenerationSpecialist,
+  pricingAnalysisSpecialist,
+  complianceValidationSpecialist
+} from "./proposalGenerationSpecialists";
+import { proposalGenerationOrchestrator } from "./proposalGenerationOrchestrator";
 import type { RFP, Portal, Proposal, WorkItem, InsertWorkItem, AgentRegistry } from "@shared/schema";
 import { nanoid } from 'nanoid';
 
@@ -356,13 +362,24 @@ export class WorkflowCoordinator {
       'market_analysis': ['market_research', 'competitive_analysis'],
       'historical_analysis': ['historical_analysis', 'pattern_recognition'],
       
-      // Proposal Generation Phase Tasks
+      // Proposal Generation Phase Tasks - Legacy
       'proposal_generate': ['content_generation', 'proposal_generation'],
       'narrative_generation': ['narrative_writing', 'content_generation'],
       'technical_writing': ['technical_writing', 'content_generation'],
       'pricing_analysis': ['pricing_analysis', 'market_research'],
       'template_processing': ['template_processing', 'content_generation'],
       'compliance_validation': ['compliance_checking', 'quality_assurance'],
+      
+      // New Proposal Generation Pipeline Tasks
+      'proposal_outline_creation': ['content_generation', 'structural_analysis'],
+      'executive_summary_generation': ['narrative_writing', 'content_generation'],
+      'technical_content_generation': ['technical_writing', 'content_generation'],
+      'qualifications_generation': ['content_generation', 'experience_mapping'],
+      'proposal_pricing_analysis': ['pricing_analysis', 'competitive_analysis'],
+      'proposal_compliance_validation': ['compliance_checking', 'risk_assessment'],
+      'proposal_form_completion': ['data_entry', 'form_processing'],
+      'proposal_final_assembly': ['content_assembly', 'document_generation'],
+      'proposal_quality_assurance': ['quality_assurance', 'validation'],
       
       // Submission Phase Tasks
       'form_filling': ['data_entry', 'portal_management'],
@@ -432,6 +449,17 @@ export class WorkflowCoordinator {
       'pricing_analysis': 'specialist',
       'template_processing': 'specialist',
       'compliance_validation': 'specialist',
+      
+      // New Proposal Generation Pipeline Tasks
+      'proposal_outline_creation': 'specialist',
+      'executive_summary_generation': 'specialist',
+      'technical_content_generation': 'specialist',
+      'qualifications_generation': 'specialist',
+      'proposal_pricing_analysis': 'specialist',
+      'proposal_compliance_validation': 'specialist',
+      'proposal_form_completion': 'specialist',
+      'proposal_final_assembly': 'specialist',
+      'proposal_quality_assurance': 'specialist',
       'form_filling': 'specialist',
       'document_upload': 'specialist',
       'submission_tracking': 'specialist',
@@ -500,7 +528,7 @@ export class WorkflowCoordinator {
         case 'historical_analysis':
           return await this.processMarketResearchTask(workItem);
         
-        // Proposal Generation Phase Tasks
+        // Legacy Proposal Generation Phase Tasks
         case 'proposal_generate':
         case 'narrative_generation':
         case 'technical_writing':
@@ -511,6 +539,34 @@ export class WorkflowCoordinator {
         
         case 'pricing_analysis':
           return await this.processPricingAnalysisTask(workItem);
+        
+        // New Proposal Generation Pipeline Tasks
+        case 'proposal_outline_creation':
+          return await this.processProposalOutlineCreation(workItem);
+        
+        case 'executive_summary_generation':
+          return await this.processExecutiveSummaryGeneration(workItem);
+        
+        case 'technical_content_generation':
+          return await this.processTechnicalContentGeneration(workItem);
+        
+        case 'qualifications_generation':
+          return await this.processQualificationsGeneration(workItem);
+        
+        case 'proposal_pricing_analysis':
+          return await this.processProposalPricingAnalysis(workItem);
+        
+        case 'proposal_compliance_validation':
+          return await this.processProposalComplianceValidation(workItem);
+        
+        case 'proposal_form_completion':
+          return await this.processProposalFormCompletion(workItem);
+        
+        case 'proposal_final_assembly':
+          return await this.processProposalFinalAssembly(workItem);
+        
+        case 'proposal_quality_assurance':
+          return await this.processProposalQualityAssurance(workItem);
         
         // Monitoring and Management Tasks
         case 'status_monitoring':
@@ -1690,6 +1746,616 @@ export class WorkflowCoordinator {
         error: error instanceof Error ? error.message : 'Portal monitoring failed'
       };
     }
+  }
+  // ============ NEW PROPOSAL GENERATION PIPELINE PROCESSING METHODS ============
+
+  /**
+   * Process proposal outline creation task
+   */
+  private async processProposalOutlineCreation(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`📋 Processing proposal outline creation for work item ${workItem.id}`);
+    
+    try {
+      const result = await contentGenerationSpecialist.generateProposalOutline(workItem);
+      
+      // Notify orchestrator of completion
+      if (result.success && workItem.metadata?.pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            workItem.metadata.pipelineId,
+            [workItem.id],
+            'content_generation'
+          );
+        }, 1000); // Small delay to ensure work item is marked complete
+      }
+      
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Proposal outline creation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Outline creation failed'
+      };
+    }
+  }
+
+  /**
+   * Process executive summary generation task
+   */
+  private async processExecutiveSummaryGeneration(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`✍️ Processing executive summary generation for work item ${workItem.id}`);
+    
+    try {
+      const result = await contentGenerationSpecialist.generateExecutiveSummary(workItem);
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Executive summary generation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Executive summary generation failed'
+      };
+    }
+  }
+
+  /**
+   * Process technical content generation task
+   */
+  private async processTechnicalContentGeneration(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`🔧 Processing technical content generation for work item ${workItem.id}`);
+    
+    try {
+      const result = await contentGenerationSpecialist.generateTechnicalContent(workItem);
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Technical content generation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Technical content generation failed'
+      };
+    }
+  }
+
+  /**
+   * Process qualifications generation task
+   */
+  private async processQualificationsGeneration(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`🏆 Processing qualifications generation for work item ${workItem.id}`);
+    
+    try {
+      const result = await contentGenerationSpecialist.generateQualifications(workItem);
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Qualifications generation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Qualifications generation failed'
+      };
+    }
+  }
+
+  /**
+   * Process proposal pricing analysis task
+   */
+  private async processProposalPricingAnalysis(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`💰 Processing proposal pricing analysis for work item ${workItem.id}`);
+    
+    try {
+      const result = await pricingAnalysisSpecialist.analyzePricing(workItem);
+      
+      // Notify orchestrator of completion
+      if (result.success && workItem.metadata?.pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            workItem.metadata.pipelineId,
+            [workItem.id],
+            'compliance_validation'
+          );
+        }, 1000);
+      }
+      
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Proposal pricing analysis failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Pricing analysis failed'
+      };
+    }
+  }
+
+  /**
+   * Process proposal compliance validation task
+   */
+  private async processProposalComplianceValidation(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`✅ Processing proposal compliance validation for work item ${workItem.id}`);
+    
+    try {
+      const result = await complianceValidationSpecialist.validateCompliance(workItem);
+      
+      // Notify orchestrator of completion
+      if (result.success && workItem.metadata?.pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            workItem.metadata.pipelineId,
+            [workItem.id],
+            'form_completion'
+          );
+        }, 1000);
+      }
+      
+      return {
+        success: result.success,
+        data: result.data,
+        error: result.error
+      };
+    } catch (error) {
+      console.error('❌ Proposal compliance validation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Compliance validation failed'
+      };
+    }
+  }
+
+  /**
+   * Process proposal form completion task
+   */
+  private async processProposalFormCompletion(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`📄 Processing proposal form completion for work item ${workItem.id}`);
+    
+    try {
+      // Use enhanced proposal service for form completion
+      const { rfpId, companyProfileId, outline, content, pricing, compliance, pipelineId } = workItem.inputs;
+      
+      // Get RFP details
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        throw new Error(`RFP not found: ${rfpId}`);
+      }
+
+      // Use document intelligence service for form processing
+      const documentAnalysis = await documentIntelligenceService.analyzeRFPDocuments(rfpId);
+      
+      // Auto-fill forms with available data
+      const filledForms = await documentIntelligenceService.autoFillFormFields(
+        rfpId,
+        documentAnalysis.formFields,
+        companyProfileId
+      );
+
+      // Create attachments list
+      const attachmentsList = this.generateAttachmentsList(content, pricing, compliance);
+      
+      // Create submission package
+      const submissionPackage = {
+        forms: filledForms,
+        attachments: attachmentsList,
+        metadata: {
+          rfpId,
+          pipelineId,
+          generatedAt: new Date(),
+          readyForSubmission: true
+        }
+      };
+
+      // Notify orchestrator of completion
+      if (pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            pipelineId,
+            [workItem.id],
+            'final_assembly'
+          );
+        }, 1000);
+      }
+
+      return {
+        success: true,
+        data: {
+          completed_forms: filledForms,
+          attachments_list: attachmentsList,
+          submission_package: submissionPackage
+        }
+      };
+    } catch (error) {
+      console.error('❌ Proposal form completion failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Form completion failed'
+      };
+    }
+  }
+
+  /**
+   * Process proposal final assembly task
+   */
+  private async processProposalFinalAssembly(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`🔧 Processing proposal final assembly for work item ${workItem.id}`);
+    
+    try {
+      const { rfpId, companyProfileId, outline, content, pricing, compliance, forms, pipelineId } = workItem.inputs;
+      
+      // Assemble complete proposal
+      const completeProposal = {
+        rfpId,
+        content: {
+          ...content,
+          outline: outline,
+          generatedAt: new Date()
+        },
+        narratives: content ? [
+          content.executive_summary,
+          content.company_overview,
+          content.technical_approach,
+          content.qualifications
+        ].filter(Boolean) : [],
+        pricingTables: pricing?.pricing_breakdown || null,
+        forms: forms?.completed_forms || null,
+        attachments: forms?.attachments_list || [],
+        estimatedMargin: pricing?.competitive_strategy?.margin ? 
+          (pricing.competitive_strategy.margin * 100).toFixed(2) : '15.00',
+        status: 'draft',
+        metadata: {
+          pipelineId,
+          complianceScore: compliance?.qualityScore || 0.8,
+          qualityScore: this.calculateOverallQualityScore(content, pricing, compliance),
+          generationPhases: ['outline', 'content', 'pricing', 'compliance', 'forms', 'assembly'],
+          assemblyDate: new Date()
+        }
+      };
+
+      // Create proposal in database
+      const proposal = await storage.createProposal(completeProposal);
+      console.log(`✅ Created proposal ${proposal.id} for RFP ${rfpId}`);
+
+      // Update RFP status
+      await storage.updateRFP(rfpId, {
+        status: 'review',
+        progress: 90
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        entityType: 'proposal',
+        entityId: proposal.id,
+        action: 'assembled',
+        details: {
+          pipelineId,
+          rfpId,
+          qualityScore: completeProposal.metadata.qualityScore,
+          complianceScore: completeProposal.metadata.complianceScore
+        }
+      });
+
+      // Create notification
+      await storage.createNotification({
+        type: 'approval',
+        title: 'Proposal Assembly Complete',
+        message: `Proposal assembled successfully for ${rfpId}. Ready for quality assurance.`,
+        relatedEntityType: 'proposal',
+        relatedEntityId: proposal.id
+      });
+
+      // Notify orchestrator of completion
+      if (pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            pipelineId,
+            [workItem.id],
+            'quality_assurance'
+          );
+        }, 1000);
+      }
+
+      return {
+        success: true,
+        data: {
+          complete_proposal: completeProposal,
+          proposal_metadata: {
+            proposalId: proposal.id,
+            qualityScore: completeProposal.metadata.qualityScore,
+            complianceScore: completeProposal.metadata.complianceScore
+          },
+          submission_ready: true
+        }
+      };
+    } catch (error) {
+      console.error('❌ Proposal final assembly failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Final assembly failed'
+      };
+    }
+  }
+
+  /**
+   * Process proposal quality assurance task
+   */
+  private async processProposalQualityAssurance(workItem: WorkItem): Promise<WorkflowResult> {
+    console.log(`🔍 Processing proposal quality assurance for work item ${workItem.id}`);
+    
+    try {
+      const { rfpId, proposalId, qualityThreshold, pipelineId } = workItem.inputs;
+      
+      // Get proposal for quality assessment
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) {
+        throw new Error(`Proposal not found: ${proposalId}`);
+      }
+
+      // Get RFP for context
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        throw new Error(`RFP not found: ${rfpId}`);
+      }
+
+      // Perform quality assessment
+      const qualityAssessment = await this.performQualityAssessment(proposal, rfp);
+      
+      // Generate validation report
+      const validationReport = this.generateQualityValidationReport(qualityAssessment, qualityThreshold);
+      
+      // Generate improvement recommendations if needed
+      const improvementRecommendations = qualityAssessment.overallScore < qualityThreshold ?
+        this.generateImprovementRecommendations(qualityAssessment) : [];
+
+      // Update proposal with quality data
+      await storage.updateProposal(proposalId, {
+        status: qualityAssessment.overallScore >= qualityThreshold ? 'review' : 'draft',
+        metadata: {
+          ...proposal.metadata,
+          qualityScore: qualityAssessment.overallScore,
+          qualityAssessment,
+          validationReport,
+          qualityCheckedAt: new Date()
+        }
+      });
+
+      // Update RFP progress
+      await storage.updateRFP(rfpId, {
+        status: qualityAssessment.overallScore >= qualityThreshold ? 'review' : 'drafting',
+        progress: qualityAssessment.overallScore >= qualityThreshold ? 100 : 85
+      });
+
+      // Create notification
+      await storage.createNotification({
+        type: qualityAssessment.overallScore >= qualityThreshold ? 'approval' : 'compliance',
+        title: qualityAssessment.overallScore >= qualityThreshold ? 'Proposal Ready for Review' : 'Proposal Needs Improvement',
+        message: `Quality score: ${(qualityAssessment.overallScore * 100).toFixed(1)}%. ${
+          qualityAssessment.overallScore >= qualityThreshold ? 'Ready for submission.' : 'Improvements needed.'
+        }`,
+        relatedEntityType: 'proposal',
+        relatedEntityId: proposalId
+      });
+
+      // Notify orchestrator of completion
+      if (pipelineId) {
+        setTimeout(() => {
+          proposalGenerationOrchestrator.handlePhaseCompletion(
+            pipelineId,
+            [workItem.id],
+            'completed'
+          );
+        }, 1000);
+      }
+
+      return {
+        success: true,
+        data: {
+          quality_score: qualityAssessment.overallScore,
+          validation_report: validationReport,
+          improvement_recommendations: improvementRecommendations,
+          ready_for_submission: qualityAssessment.overallScore >= qualityThreshold
+        }
+      };
+    } catch (error) {
+      console.error('❌ Proposal quality assurance failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Quality assurance failed'
+      };
+    }
+  }
+
+  // ============ HELPER METHODS FOR PROPOSAL GENERATION ============
+
+  /**
+   * Generate attachments list based on proposal components
+   */
+  private generateAttachmentsList(content: any, pricing: any, compliance: any): string[] {
+    const attachments = [];
+    
+    if (content) {
+      attachments.push('Executive Summary', 'Company Overview', 'Technical Approach');
+    }
+    
+    if (pricing) {
+      attachments.push('Pricing Breakdown', 'Cost Analysis');
+    }
+    
+    if (compliance) {
+      attachments.push('Compliance Matrix', 'Certification Documents');
+    }
+    
+    // Add standard attachments
+    attachments.push('Insurance Certificates', 'Company Profile', 'References');
+    
+    return attachments;
+  }
+
+  /**
+   * Calculate overall quality score based on all components
+   */
+  private calculateOverallQualityScore(content: any, pricing: any, compliance: any): number {
+    let totalScore = 0;
+    let components = 0;
+    
+    if (content?.qualityScore) {
+      totalScore += content.qualityScore;
+      components++;
+    }
+    
+    if (pricing?.qualityScore) {
+      totalScore += pricing.qualityScore;
+      components++;
+    }
+    
+    if (compliance?.qualityScore) {
+      totalScore += compliance.qualityScore;
+      components++;
+    }
+    
+    return components > 0 ? totalScore / components : 0.8;
+  }
+
+  /**
+   * Perform comprehensive quality assessment of proposal
+   */
+  private async performQualityAssessment(proposal: any, rfp: any): Promise<any> {
+    const assessment = {
+      contentQuality: this.assessContentQuality(proposal.content),
+      complianceScore: proposal.metadata?.complianceScore || 0.8,
+      completeness: this.assessCompleteness(proposal),
+      relevance: this.assessRelevance(proposal, rfp),
+      overallScore: 0
+    };
+    
+    // Calculate overall score
+    assessment.overallScore = (
+      assessment.contentQuality * 0.3 +
+      assessment.complianceScore * 0.3 +
+      assessment.completeness * 0.2 +
+      assessment.relevance * 0.2
+    );
+    
+    return assessment;
+  }
+
+  /**
+   * Assess content quality
+   */
+  private assessContentQuality(content: any): number {
+    let score = 0.7; // Base score
+    
+    if (content?.executive_summary && content.executive_summary.length > 100) score += 0.1;
+    if (content?.technical_approach && content.technical_approach.length > 200) score += 0.1;
+    if (content?.qualifications && content.qualifications.length > 150) score += 0.1;
+    
+    return Math.min(1.0, score);
+  }
+
+  /**
+   * Assess proposal completeness
+   */
+  private assessCompleteness(proposal: any): number {
+    let score = 0;
+    const maxScore = 5;
+    
+    if (proposal.content) score += 1;
+    if (proposal.narratives && proposal.narratives.length > 0) score += 1;
+    if (proposal.pricingTables) score += 1;
+    if (proposal.forms) score += 1;
+    if (proposal.attachments && proposal.attachments.length > 0) score += 1;
+    
+    return score / maxScore;
+  }
+
+  /**
+   * Assess proposal relevance to RFP
+   */
+  private assessRelevance(proposal: any, rfp: any): number {
+    // Simple relevance check based on content matching
+    let score = 0.8; // Base relevance score
+    
+    const rfpKeywords = this.extractKeywords(rfp.title + ' ' + (rfp.description || ''));
+    const proposalText = JSON.stringify(proposal.content || '').toLowerCase();
+    
+    const matchingKeywords = rfpKeywords.filter(keyword => 
+      proposalText.includes(keyword.toLowerCase())
+    );
+    
+    if (matchingKeywords.length > rfpKeywords.length * 0.3) {
+      score += 0.1;
+    }
+    
+    return Math.min(1.0, score);
+  }
+
+  /**
+   * Extract keywords from text
+   */
+  private extractKeywords(text: string): string[] {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .split(/\s+/)
+      .filter(word => word.length > 3)
+      .slice(0, 10);
+  }
+
+  /**
+   * Generate quality validation report
+   */
+  private generateQualityValidationReport(assessment: any, threshold: number): any {
+    return {
+      summary: `Quality assessment completed. Overall score: ${(assessment.overallScore * 100).toFixed(1)}%`,
+      scores: {
+        content: (assessment.contentQuality * 100).toFixed(1) + '%',
+        compliance: (assessment.complianceScore * 100).toFixed(1) + '%',
+        completeness: (assessment.completeness * 100).toFixed(1) + '%',
+        relevance: (assessment.relevance * 100).toFixed(1) + '%'
+      },
+      status: assessment.overallScore >= threshold ? 'PASSED' : 'NEEDS_IMPROVEMENT',
+      threshold: (threshold * 100).toFixed(1) + '%',
+      recommendations: assessment.overallScore < threshold ? 
+        'Review and improve areas with lower scores before submission' :
+        'Proposal meets quality standards and is ready for review'
+    };
+  }
+
+  /**
+   * Generate improvement recommendations
+   */
+  private generateImprovementRecommendations(assessment: any): string[] {
+    const recommendations = [];
+    
+    if (assessment.contentQuality < 0.8) {
+      recommendations.push('Enhance content quality by adding more detailed explanations and examples');
+    }
+    
+    if (assessment.complianceScore < 0.8) {
+      recommendations.push('Address compliance issues and ensure all requirements are met');
+    }
+    
+    if (assessment.completeness < 0.8) {
+      recommendations.push('Complete missing sections and attachments');
+    }
+    
+    if (assessment.relevance < 0.8) {
+      recommendations.push('Better align proposal content with RFP requirements and keywords');
+    }
+    
+    return recommendations;
   }
 }
 
