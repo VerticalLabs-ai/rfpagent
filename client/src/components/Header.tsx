@@ -57,7 +57,6 @@ export default function Header() {
           Monitor and manage your automated RFP workflow
         </p>
       </div>
-      
       <div className="flex items-center space-x-4">
         {/* Notifications */}
         <DropdownMenu>
@@ -122,7 +121,7 @@ export default function Header() {
           <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
             <span className="text-xs font-semibold text-primary-foreground">JD</span>
           </div>
-          <span className="text-sm font-medium" data-testid="user-name">John Doe</span>
+          <span className="text-sm font-medium" data-testid="user-name">Valorie Rodriguez</span>
         </div>
       </div>
     </header>
