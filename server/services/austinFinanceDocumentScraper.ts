@@ -1,10 +1,12 @@
-import puppeteer from 'puppeteer';
-import { storage as gcpStorage } from '@google-cloud/storage';
-import { v4 as uuidv4 } from 'uuid';
 import { storage } from '../storage';
 import type { Document } from '@shared/schema';
 import path from 'path';
 import fs from 'fs/promises';
+import { portalManager } from '../../src/mastra/agents/portal-manager';
+import { documentProcessor } from '../../src/mastra/agents/document-processor';
+import { portalScanner } from '../../src/mastra/agents/portal-scanner';
+import { sharedMemory } from '../../src/mastra/tools/shared-memory-provider';
+import { nanoid } from 'nanoid';
 
 interface RFPDocument {
   name: string;
@@ -18,237 +20,299 @@ export class AustinFinanceDocumentScraper {
   private privateDir = process.env.PRIVATE_OBJECT_DIR || '/replit-objstore-8d82d13a-4740-4241-9aba-fbac33f94374/.private';
   
   /**
-   * Scrape and download all documents for a specific Austin Finance RFP
+   * Generate a unique session ID for agent coordination
+   */
+  private generateSessionId(rfpId: string): string {
+    return `austin_finance_${rfpId}_${nanoid(8)}`;
+  }
+  
+  /**
+   * Scrape and download all documents for a specific Austin Finance RFP using Mastra agents
    */
   async scrapeRFPDocuments(rfpId: string, solicitationUrl: string): Promise<Document[]> {
-    console.log(`📄 Starting document scraping for RFP ${rfpId} from ${solicitationUrl}`);
+    console.log(`📄 Starting agent-based document scraping for RFP ${rfpId} from ${solicitationUrl}`);
     
-    let browser;
+    // Generate session ID for agent coordination
+    const sessionId = this.generateSessionId(rfpId);
+    
     try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu'
-        ]
-      });
-
-      const page = await browser.newPage();
+      // Step 1: Store scraping context in shared memory
+      await sharedMemory.store(sessionId, [{
+        role: 'system',
+        content: JSON.stringify({
+          task: 'austin_finance_document_scraping',
+          rfpId: rfpId,
+          solicitationUrl: solicitationUrl,
+          timestamp: new Date().toISOString(),
+          phase: 'initialization'
+        })
+      }]);
       
-      // Set user agent
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-      
-      // Navigate to the RFP detail page
-      console.log(`🌐 Navigating to RFP detail page: ${solicitationUrl}`);
-      await page.goto(solicitationUrl, { 
-        waitUntil: 'networkidle2', 
-        timeout: 30000 
+      // Step 2: Use Portal Manager to navigate to Austin Finance RFP page
+      console.log(`🤖 Portal Manager: Navigating to Austin Finance RFP page`);
+      const navigationResult = await portalManager.run(`Navigate to Austin Finance RFP page at ${solicitationUrl} and authenticate if needed. Set up page for document extraction. Wait for page to load completely including any dynamic content or tables.`, {
+        sessionId: sessionId
       });
       
-      // Wait for the attachments section to load
-      await page.waitForSelector('table', { timeout: 10000 }).catch(() => {
-        console.log('⚠️ Table not found, continuing anyway');
+      if (!navigationResult.success) {
+        throw new Error(`Portal Manager navigation failed: ${navigationResult.error}`);
+      }
+      
+      // Step 3: Use Portal Scanner to extract document information
+      console.log(`🤖 Portal Scanner: Extracting document information`);
+      const extractionResult = await portalScanner.run(`Extract all document information from the Austin Finance RFP page. Look for:
+      - Document names and titles
+      - Download URLs for PDF, DOC, XLS, XLSX files
+      - Document categories (submittal forms, price forms, RFP packages, etc.)
+      - File types
+      Return structured data for each document found.`, {
+        sessionId: sessionId
       });
       
-      // Extract all document information
-      const documents = await this.extractDocumentInfo(page);
-      console.log(`📋 Found ${documents.length} documents to download`);
+      if (!extractionResult.success) {
+        throw new Error(`Portal Scanner extraction failed: ${extractionResult.error}`);
+      }
       
-      // Download each document and store in object storage
+      // Parse extracted document information
+      const extractedDocuments = this.parseExtractedDocuments(extractionResult.output);
+      console.log(`📋 Found ${extractedDocuments.length} documents to download`);
+      
+      // Step 4: Download and process each document
       const savedDocuments: Document[] = [];
       
-      for (const doc of documents) {
+      for (const doc of extractedDocuments) {
         try {
-          console.log(`⬇️ Downloading: ${doc.name}`);
+          console.log(`⬇️ Processing document: ${doc.name}`);
           
-          // Download the document
-          const documentBuffer = await this.downloadDocument(page, doc.downloadUrl);
+          // Use Portal Scanner to download the document
+          const downloadResult = await portalScanner.run(`Download the document from URL: ${doc.downloadUrl}. Return the document content as base64 encoded data.`, {
+            sessionId: sessionId
+          });
           
-          if (documentBuffer) {
-            // Save to object storage
-            const objectPath = await this.saveToObjectStorage(rfpId, doc.name, documentBuffer);
+          if (downloadResult.success && downloadResult.output) {
+            // Convert downloaded content to buffer
+            const documentBuffer = this.processDownloadedContent(downloadResult.output);
             
-            // Save document record to database
-            const savedDoc = await storage.createDocument({
-              rfpId: rfpId,
-              filename: doc.name,
-              fileType: doc.fileType,
-              objectPath: objectPath,
-              extractedText: null,
-              parsedData: {
-                category: doc.category,
-                downloadUrl: doc.downloadUrl,
-                downloadedAt: new Date().toISOString(),
-                size: documentBuffer.length,
-                needsFillOut: this.determineIfNeedsFillOut(doc.name, doc.category)
-              }
-            });
-            
-            savedDocuments.push(savedDoc);
-            console.log(`✅ Successfully downloaded and saved: ${doc.name}`);
+            if (documentBuffer) {
+              // Save to object storage
+              const objectPath = await this.saveToObjectStorage(rfpId, doc.name, documentBuffer);
+              
+              // Use Document Processor to analyze the document
+              const analysisResult = await documentProcessor.run(`Analyze document "${doc.name}" (category: ${doc.category}, type: ${doc.fileType}). Determine:
+              - If this document needs to be filled out
+              - Document category refinement
+              - Any special handling requirements
+              Return analysis as JSON.`, {
+                sessionId: sessionId
+              });
+              
+              const analysis = this.parseDocumentAnalysis(analysisResult.output, doc);
+              
+              // Save document record to database
+              const savedDoc = await storage.createDocument({
+                rfpId: rfpId,
+                filename: doc.name,
+                fileType: doc.fileType,
+                objectPath: objectPath,
+                extractedText: null,
+                parsedData: {
+                  category: analysis.category,
+                  downloadUrl: doc.downloadUrl,
+                  downloadedAt: new Date().toISOString(),
+                  size: documentBuffer.length,
+                  needsFillOut: analysis.needsFillOut,
+                  agentAnalysis: analysis.analysis,
+                  sessionId: sessionId
+                }
+              });
+              
+              savedDocuments.push(savedDoc);
+              console.log(`✅ Successfully processed and saved: ${doc.name}`);
+            }
+          } else {
+            console.error(`❌ Failed to download ${doc.name}: ${downloadResult.error}`);
           }
         } catch (error) {
-          console.error(`❌ Failed to download ${doc.name}:`, error);
+          console.error(`❌ Error processing ${doc.name}:`, error);
         }
       }
+      
+      // Step 5: Store final results in shared memory
+      await sharedMemory.store(sessionId, [{
+        role: 'system',
+        content: JSON.stringify({
+          task: 'austin_finance_document_scraping',
+          phase: 'completed',
+          documentsProcessed: savedDocuments.length,
+          results: savedDocuments.map(d => ({
+            filename: d.filename,
+            category: (d.parsedData as any)?.category,
+            needsFillOut: (d.parsedData as any)?.needsFillOut
+          }))
+        })
+      }]);
       
       return savedDocuments;
       
     } catch (error) {
-      console.error('❌ Error during document scraping:', error);
+      console.error('❌ Error during agent-based document scraping:', error);
+      
+      // Store error in shared memory for debugging
+      await sharedMemory.store(sessionId, [{
+        role: 'system',
+        content: JSON.stringify({
+          task: 'austin_finance_document_scraping',
+          phase: 'error',
+          error: error.message,
+          timestamp: new Date().toISOString()
+        })
+      }]);
+      
       throw error;
-    } finally {
-      if (browser) {
-        await browser.close();
-      }
     }
   }
   
   /**
-   * Extract document information from the RFP page
+   * Parse extracted document information from agent output
    */
-  private async extractDocumentInfo(page: puppeteer.Page): Promise<RFPDocument[]> {
-    return await page.evaluate(() => {
-      // Helper function to categorize documents
-      function categorizeDocument(name: string): string {
-        const lowerName = name.toLowerCase();
-        if (lowerName.includes('price') || lowerName.includes('cost')) return 'price_form';
-        if (lowerName.includes('submittal') || lowerName.includes('submission')) return 'submittal';
-        if (lowerName.includes('insurance')) return 'insurance';
-        if (lowerName.includes('reference')) return 'references';
-        if (lowerName.includes('wage')) return 'wage_compliance';
-        if (lowerName.includes('local') || lowerName.includes('business')) return 'local_business';
-        if (lowerName.includes('rfp') || lowerName.includes('package')) return 'rfp_package';
-        if (lowerName.includes('attachment')) return 'attachment';
-        return 'other';
-      }
-      
-      // Helper function to determine file type
-      function getFileType(name: string, url: string): string {
-        if (url.includes('.pdf') || name.toLowerCase().includes('.pdf')) return 'pdf';
-        if (url.includes('.doc') || name.toLowerCase().includes('.doc')) return 'doc';
-        if (url.includes('.xls') || name.toLowerCase().includes('.xls')) return 'xls';
-        if (url.includes('.xlsx') || name.toLowerCase().includes('.xlsx')) return 'xlsx';
-        if (url.includes('.docx') || name.toLowerCase().includes('.docx')) return 'docx';
-        return 'unknown';
-      }
-      
-      const documents: RFPDocument[] = [];
-      
-      // Find all download links - Austin Finance specific selectors
-      const downloadLinks = Array.from(document.querySelectorAll('a[href*="download"], a[href*=".pdf"], a[href*=".doc"], a[href*=".xls"], a[href*=".xlsx"], a[href*=".docx"]'));
-      
-      // Process direct download links
-      downloadLinks.forEach(link => {
-        const anchor = link as HTMLAnchorElement;
-        if (anchor.href) {
-          // Try to get document name from link text or parent text
-          let name = anchor.textContent?.trim() || '';
-          if (!name || name.toLowerCase() === 'download') {
-            // Look for text in parent elements
-            const parent = anchor.closest('tr, li, div');
-            if (parent) {
-              name = parent.textContent?.replace(/download/gi, '').trim() || 'Unknown Document';
-            }
-          }
-          
-          documents.push({
-            name: name,
-            downloadUrl: anchor.href,
-            fileType: getFileType(name, anchor.href),
-            category: categorizeDocument(name)
-          });
-        }
-      });
-      
-      // Also look for Austin Finance specific table structure
-      const tableRows = Array.from(document.querySelectorAll('table tr'));
-      
-      tableRows.forEach(row => {
-        const cells = row.querySelectorAll('td');
-        if (cells.length >= 2) {
-          // Austin Finance typically has: Type | Description | Download button
-          let documentName = '';
-          let downloadUrl = '';
-          
-          // Check each cell for document info
-          cells.forEach((cell, index) => {
-            const cellText = cell.textContent?.trim() || '';
-            
-            // Look for document name (usually in first or second cell)
-            if (index < 2 && cellText && !cellText.toLowerCase().includes('download')) {
-              documentName = documentName || cellText;
-            }
-            
-            // Look for download link
-            const downloadLink = cell.querySelector('a[href*="download"], a[href*=".pdf"], a[href*=".doc"], a[href*=".xls"]') as HTMLAnchorElement;
-            if (downloadLink && downloadLink.href) {
-              downloadUrl = downloadLink.href;
-            }
-          });
-          
-          // If we found both name and download URL, add to documents
-          if (documentName && downloadUrl) {
-            // Check if not already added
-            const exists = documents.some(doc => doc.downloadUrl === downloadUrl);
-            if (!exists) {
-              documents.push({
-                name: documentName,
-                downloadUrl: downloadUrl,
-                fileType: getFileType(documentName, downloadUrl),
-                category: categorizeDocument(documentName)
-              });
-            }
-          }
-        }
-      });
-      
-      // Remove duplicates based on download URL
-      const uniqueDocs = documents.filter((doc, index, self) => 
-        index === self.findIndex(d => d.downloadUrl === doc.downloadUrl)
-      );
-      
-      return uniqueDocs;
-    });
-  }
-  
-  /**
-   * Download a document from the page
-   */
-  private async downloadDocument(page: puppeteer.Page, downloadUrl: string): Promise<Buffer | null> {
+  private parseExtractedDocuments(agentOutput: string): RFPDocument[] {
     try {
-      // Create a new page for download to avoid navigation issues
-      const downloadPage = await page.browser().newPage();
-      
-      // Set up download handling
-      const client = await downloadPage.target().createCDPSession();
-      await client.send('Page.setDownloadBehavior', {
-        behavior: 'allow',
-        downloadPath: '/tmp'
-      });
-      
-      // Navigate to download URL
-      const response = await downloadPage.goto(downloadUrl, {
-        waitUntil: 'networkidle2',
-        timeout: 30000
-      });
-      
-      if (response && response.ok()) {
-        const buffer = await response.buffer();
-        await downloadPage.close();
-        return buffer;
+      // Try to parse as JSON first
+      const parsed = JSON.parse(agentOutput);
+      if (Array.isArray(parsed)) {
+        return parsed.map(doc => ({
+          name: doc.name || 'Unknown Document',
+          downloadUrl: doc.downloadUrl || doc.url || '',
+          fileType: this.determineFileType(doc.name || '', doc.downloadUrl || ''),
+          category: this.categorizeDocument(doc.name || '')
+        }));
       }
+    } catch (e) {
+      // If JSON parsing fails, try to extract from text
+      console.log('📋 Parsing agent output as text...');
+    }
+    
+    // Fallback: parse as text with patterns
+    const documents: RFPDocument[] = [];
+    const lines = agentOutput.split('\n');
+    
+    for (const line of lines) {
+      // Look for URL patterns
+      const urlMatch = line.match(/(https?:\/\/[^\s]+\.(?:pdf|doc|docx|xls|xlsx))/i);
+      if (urlMatch) {
+        const url = urlMatch[1];
+        const name = line.replace(url, '').trim() || this.extractFilenameFromUrl(url);
+        
+        documents.push({
+          name: name,
+          downloadUrl: url,
+          fileType: this.determineFileType(name, url),
+          category: this.categorizeDocument(name)
+        });
+      }
+    }
+    
+    return documents;
+  }
+  
+  /**
+   * Process downloaded content from agent output
+   */
+  private processDownloadedContent(agentOutput: string): Buffer | null {
+    try {
+      // Try to parse as JSON with base64 content
+      const parsed = JSON.parse(agentOutput);
+      if (parsed.content && parsed.encoding === 'base64') {
+        return Buffer.from(parsed.content, 'base64');
+      }
+      if (parsed.data) {
+        return Buffer.from(parsed.data, 'base64');
+      }
+    } catch (e) {
+      // Try direct base64 decode
+      try {
+        return Buffer.from(agentOutput, 'base64');
+      } catch (e2) {
+        console.error('Failed to process downloaded content:', e2);
+        return null;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Parse document analysis from agent output
+   */
+  private parseDocumentAnalysis(agentOutput: string, originalDoc: RFPDocument): {
+    category: string;
+    needsFillOut: boolean;
+    analysis: any;
+  } {
+    try {
+      const parsed = JSON.parse(agentOutput);
+      return {
+        category: parsed.category || originalDoc.category,
+        needsFillOut: parsed.needsFillOut ?? this.determineIfNeedsFillOut(originalDoc.name, originalDoc.category),
+        analysis: parsed
+      };
+    } catch (e) {
+      // Fallback to text analysis
+      const needsFillOut = agentOutput.toLowerCase().includes('needs to be filled') || 
+                          agentOutput.toLowerCase().includes('fillable') ||
+                          this.determineIfNeedsFillOut(originalDoc.name, originalDoc.category);
       
-      await downloadPage.close();
-      return null;
-      
-    } catch (error) {
-      console.error(`Failed to download from ${downloadUrl}:`, error);
-      return null;
+      return {
+        category: originalDoc.category,
+        needsFillOut: needsFillOut,
+        analysis: { textAnalysis: agentOutput, source: 'text_fallback' }
+      };
     }
   }
+  
+  /**
+   * Helper: Extract filename from URL
+   */
+  private extractFilenameFromUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      const filename = pathname.split('/').pop() || 'document';
+      return decodeURIComponent(filename);
+    } catch (e) {
+      return 'document';
+    }
+  }
+  
+  /**
+   * Helper: Determine file type from name and URL
+   */
+  private determineFileType(name: string, url: string): string {
+    const combined = (name + ' ' + url).toLowerCase();
+    if (combined.includes('.pdf')) return 'pdf';
+    if (combined.includes('.docx')) return 'docx';
+    if (combined.includes('.doc')) return 'doc';
+    if (combined.includes('.xlsx')) return 'xlsx';
+    if (combined.includes('.xls')) return 'xls';
+    return 'unknown';
+  }
+  
+  /**
+   * Helper: Categorize document by name
+   */
+  private categorizeDocument(name: string): string {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('price') || lowerName.includes('cost')) return 'price_form';
+    if (lowerName.includes('submittal') || lowerName.includes('submission')) return 'submittal';
+    if (lowerName.includes('insurance')) return 'insurance';
+    if (lowerName.includes('reference')) return 'references';
+    if (lowerName.includes('wage')) return 'wage_compliance';
+    if (lowerName.includes('local') || lowerName.includes('business')) return 'local_business';
+    if (lowerName.includes('rfp') || lowerName.includes('package')) return 'rfp_package';
+    if (lowerName.includes('attachment')) return 'attachment';
+    return 'other';
+  }
+  
   
   /**
    * Save document to object storage
