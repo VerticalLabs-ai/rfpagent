@@ -51,8 +51,24 @@ export class RetryBackoffDlqService {
   
   constructor() {
     this.initializeDefaultRetryPolicies();
-    // Background retry scheduler and DLQ monitor are disabled by default
-    // Call startRetryScheduler() and startDLQMonitor() manually to enable
+    
+    // Check environment variables to enable automatic background services
+    const autoRetryScheduler = process.env.AUTO_RETRY_SCHEDULER === 'true';
+    const autoDlqMonitor = process.env.AUTO_DLQ_MONITOR === 'true';
+    
+    if (autoRetryScheduler) {
+      console.log('🔄 Auto-starting retry scheduler (enabled via AUTO_RETRY_SCHEDULER=true)');
+      this.startRetryScheduler();
+    } else {
+      console.log('⏸️ Retry scheduler disabled by default (set AUTO_RETRY_SCHEDULER=true to enable)');
+    }
+    
+    if (autoDlqMonitor) {
+      console.log('🔄 Auto-starting DLQ monitor (enabled via AUTO_DLQ_MONITOR=true)');
+      this.startDLQMonitor();
+    } else {
+      console.log('⏸️ DLQ monitor disabled by default (set AUTO_DLQ_MONITOR=true to enable)');
+    }
   }
 
   /**

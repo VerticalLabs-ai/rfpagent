@@ -72,7 +72,14 @@ export class WorkflowCoordinator {
   private workItemProcessingInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    // Background processing is disabled by default
+    // Check environment variable to enable automatic background processing
+    const autoStart = process.env.AUTO_WORK_DISTRIBUTION === 'true';
+    if (autoStart) {
+      console.log('🔄 Auto-starting work distribution (enabled via AUTO_WORK_DISTRIBUTION=true)');
+      this.startWorkItemProcessing();
+    } else {
+      console.log('⏸️ Work distribution disabled by default (set AUTO_WORK_DISTRIBUTION=true to enable)');
+    }
     // Call startWorkItemProcessing() manually to enable automated work distribution
   }
 
