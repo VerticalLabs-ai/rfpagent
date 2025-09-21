@@ -10,8 +10,8 @@ export default function Compliance() {
     queryKey: ["/api/rfps", "detailed"],
   });
 
-  const rfpsWithCompliance = rfps?.filter((item: any) => 
-    item.rfp.riskFlags || item.rfp.complianceItems
+  const rfpsWithCompliance = (Array.isArray(rfps) ? rfps : []).filter((item: any) => 
+    item?.rfp && (item.rfp.riskFlags || item.rfp.complianceItems)
   ) || [];
 
   if (isLoading) {
@@ -291,14 +291,14 @@ function RequirementsCard({ item }: { item: any }) {
                 <div 
                   key={index} 
                   className="flex items-start space-x-3 p-3 border rounded-lg"
-                  data-testid={`requirement-${item.rfp.id}-${index}`}
+                  data-testid={`requirement-${item?.rfp?.id || 'unknown'}-${index}`}
                 >
                   <i className={`fas ${req.mandatory ? 'fa-exclamation-circle text-red-500' : 'fa-info-circle text-blue-500'} mt-1`}></i>
                   <div>
-                    <p className="text-sm font-medium" data-testid={`requirement-type-${item.rfp.id}-${index}`}>
+                    <p className="text-sm font-medium" data-testid={`requirement-type-${item?.rfp?.id || 'unknown'}-${index}`}>
                       {req.type}
                     </p>
-                    <p className="text-xs text-muted-foreground" data-testid={`requirement-description-${item.rfp.id}-${index}`}>
+                    <p className="text-xs text-muted-foreground" data-testid={`requirement-description-${item?.rfp?.id || 'unknown'}-${index}`}>
                       {req.description}
                     </p>
                     {req.mandatory && (
@@ -320,14 +320,14 @@ function RequirementsCard({ item }: { item: any }) {
                 <div 
                   key={index} 
                   className="flex items-start space-x-3 p-3 border rounded-lg"
-                  data-testid={`mandatory-item-${item.rfp.id}-${index}`}
+                  data-testid={`mandatory-item-${item?.rfp?.id || 'unknown'}-${index}`}
                 >
                   <i className="fas fa-clipboard-check text-green-500 mt-1"></i>
                   <div>
-                    <p className="text-sm font-medium" data-testid={`mandatory-field-${item.rfp.id}-${index}`}>
+                    <p className="text-sm font-medium" data-testid={`mandatory-field-${item?.rfp?.id || 'unknown'}-${index}`}>
                       {item.field}
                     </p>
-                    <p className="text-xs text-muted-foreground" data-testid={`mandatory-description-${item.rfp.id}-${index}`}>
+                    <p className="text-xs text-muted-foreground" data-testid={`mandatory-description-${item?.rfp?.id || 'unknown'}-${index}`}>
                       {item.description}
                     </p>
                     <p className="text-xs text-blue-600 mt-1">
