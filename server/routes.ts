@@ -3209,6 +3209,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ MASTRA WORKFLOW EXECUTION ENDPOINTS ============
+  
+  /**
+   * Execute document processing workflow
+   */
+  app.post("/api/workflows/document-processing/execute", async (req, res) => {
+    try {
+      const { rfpId, documentUrl, forceReprocess = false } = req.body;
+      
+      if (!rfpId || !documentUrl) {
+        return res.status(400).json({ 
+          error: "RFP ID and document URL are required" 
+        });
+      }
+      
+      // Import Mastra instance
+      const { mastra } = await import("../src/mastra/index");
+      
+      // Execute the document processing workflow
+      const result = await mastra.workflows.documentProcessing.execute({
+        rfpId,
+        documentUrl,
+        forceReprocess
+      });
+      
+      res.json({
+        success: true,
+        workflowId: result.id,
+        status: result.status,
+        data: result.data
+      });
+      
+    } catch (error) {
+      console.error("Error executing document processing workflow:", error);
+      res.status(500).json({ 
+        error: "Failed to execute document processing workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Execute RFP discovery workflow
+   */
+  app.post("/api/workflows/rfp-discovery/execute", async (req, res) => {
+    try {
+      const { portalIds, deepScan = true } = req.body;
+      
+      if (!portalIds || !Array.isArray(portalIds)) {
+        return res.status(400).json({ 
+          error: "Portal IDs array is required" 
+        });
+      }
+      
+      // Import Mastra instance
+      const { mastra } = await import("../src/mastra/index");
+      
+      // Execute the RFP discovery workflow
+      const result = await mastra.workflows.rfpDiscovery.execute({
+        portalIds,
+        deepScan
+      });
+      
+      res.json({
+        success: true,
+        workflowId: result.id,
+        status: result.status,
+        data: result.data
+      });
+      
+    } catch (error) {
+      console.error("Error executing RFP discovery workflow:", error);
+      res.status(500).json({ 
+        error: "Failed to execute RFP discovery workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Execute proposal generation workflow
+   */
+  app.post("/api/workflows/proposal-generation/execute", async (req, res) => {
+    try {
+      const { rfpId, companyProfileId, proposalType = 'standard' } = req.body;
+      
+      if (!rfpId || !companyProfileId) {
+        return res.status(400).json({ 
+          error: "RFP ID and company profile ID are required" 
+        });
+      }
+      
+      // Import Mastra instance
+      const { mastra } = await import("../src/mastra/index");
+      
+      // Execute the proposal generation workflow
+      const result = await mastra.workflows.proposalGeneration.execute({
+        rfpId,
+        companyProfileId,
+        proposalType
+      });
+      
+      res.json({
+        success: true,
+        workflowId: result.id,
+        status: result.status,
+        data: result.data
+      });
+      
+    } catch (error) {
+      console.error("Error executing proposal generation workflow:", error);
+      res.status(500).json({ 
+        error: "Failed to execute proposal generation workflow",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+  
+  /**
+   * Get workflow status
+   */
+  app.get("/api/workflows/:workflowId", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      
+      // Import Mastra instance
+      const { mastra } = await import("../src/mastra/index");
+      
+      // Get workflow status (this would require Mastra's workflow tracking API)
+      // For now, return from our coordinator
+      const { workflowCoordinator } = await import("./services/workflowCoordinator");
+      const status = workflowCoordinator.getWorkflowStatus(workflowId);
+      
+      if (!status) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+      
+      res.json(status);
+      
+    } catch (error) {
+      console.error("Error fetching workflow status:", error);
+      res.status(500).json({ 
+        error: "Failed to fetch workflow status",
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Suspend a workflow
   app.post("/api/workflows/:workflowId/suspend", async (req, res) => {
     try {
