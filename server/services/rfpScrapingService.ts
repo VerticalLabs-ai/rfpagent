@@ -4,7 +4,7 @@ import { db } from '../db';
 import { rfps, documents } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { downloadFile } from './fileDownloadService';
+import { storage } from '../storage';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -180,19 +180,21 @@ export class RFPScrapingService {
             );
             
             if (documentPath) {
-              // Save document record to database
-              const newDoc = await db.insert(documents)
-                .values({
-                  rfpId,
-                  name: doc.name,
-                  type: 'rfp_document',
-                  url: documentPath,
-                  size: 0, // We'll update this after download
-                  uploadedBy: userId
-                })
-                .returning();
+              // Save document record to database using storage interface
+              const newDoc = await storage.createDocument({
+                rfpId,
+                filename: doc.name,
+                fileType: doc.type || 'pdf',
+                objectPath: documentPath,
+                extractedText: null,
+                parsedData: {
+                  downloadUrl: doc.url,
+                  downloadedAt: new Date().toISOString(),
+                  source: 'manual_scraping'
+                }
+              });
               
-              savedDocuments.push(newDoc[0]);
+              savedDocuments.push(newDoc);
               console.log(`✅ Saved document: ${doc.name}`);
             }
           } catch (docError) {
@@ -296,7 +298,7 @@ export class RFPScrapingService {
       const filepath = path.join(docsDir, filename);
 
       // Download the file
-      await downloadFile(docUrl, filepath);
+      await this.simpleDownloadFile(docUrl, filepath);
       
       // Return relative path for storage
       return path.relative(process.cwd(), filepath);
@@ -304,6 +306,35 @@ export class RFPScrapingService {
     } catch (error) {
       console.error(`Failed to download document ${docName}:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Simple file download implementation
+   */
+  private async simpleDownloadFile(url: string, filepath: string): Promise<void> {
+    try {
+      console.log(`⬇️ Downloading from: ${url}`);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to download: ${response.status} ${response.statusText}`);
+      }
+
+      // Ensure directory exists
+      const dir = path.dirname(filepath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+
+      // Write file
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(filepath, buffer);
+      
+      console.log(`✅ Downloaded successfully: ${path.basename(filepath)}`);
+    } catch (error) {
+      console.error(`❌ Download failed for ${url}:`, error);
+      throw error;
     }
   }
 
