@@ -2071,13 +2071,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/notifications/clear-all", async (req, res) => {
     try {
-      const notifications = await storage.getAllNotifications(999999); // Get ALL notifications, not just 50
+      const unreadNotifications = await storage.getUnreadNotifications(); // Only get unread notifications
       await Promise.all(
-        notifications.map(notification => 
+        unreadNotifications.map(notification => 
           storage.markNotificationRead(notification.id)
         )
       );
-      res.json({ success: true, cleared: notifications.length });
+      res.json({ success: true, cleared: unreadNotifications.length });
     } catch (error) {
       console.error("Error clearing all notifications:", error);
       res.status(500).json({ error: "Failed to clear notifications" });
