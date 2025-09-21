@@ -1,12 +1,10 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
+import { sharedMemory } from '../tools/shared-memory-provider';
 import { pageNavigateTool } from '../tools/page-navigate-tool';
 import { pageObserveTool } from '../tools/page-observe-tool';
 import { pageActTool } from '../tools/page-act-tool';
 import { pageExtractTool } from '../tools/page-extract-tool';
-
-const memory = new Memory();
 
 export const rfpAnalysisAgent = new Agent({
   name: 'RFP Analysis Agent',
@@ -47,5 +45,5 @@ Use pageActTool to interact with document viewers and forms.
     pageActTool, 
     pageExtractTool
   },
-  memory: memory,
+  memory: sharedMemory,
 });

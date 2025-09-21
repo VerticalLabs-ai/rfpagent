@@ -10,7 +10,7 @@ import { storage } from "../storage";
 import { AIService } from "./aiService";
 import type { Portal } from "@shared/schema";
 // Removed Puppeteer - now using unified Browserbase through Mastra
-import { stagehandActTool, stagehandExtractTool, stagehandAuthTool, sessionManager } from "../../src/mastra/tools";
+import { stagehandActTool, stagehandExtractTool, stagehandAuthTool, sessionManager, sharedMemory } from "../../src/mastra/tools";
 import { performBrowserAuthentication } from './stagehandTools';  // Add missing import
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 
@@ -36,15 +36,15 @@ const AgentResponseSchema = z.object({
 
 export class MastraScrapingService {
   private aiService = new AIService();
-  private memory: Memory = new Memory(); // Enabled with in-memory storage
+  private memory: Memory = sharedMemory; // Using centralized shared memory with credential security
   private agents: Map<string, Agent> = new Map();
   private requestLimiter = pLimit(3); // Limit concurrent requests
   private aiLimiter = pLimit(2); // Limit concurrent AI calls
   private activeCoordinationIds: Map<string, string> = new Map(); // portalId -> coordinationId
 
   constructor() {
-    // Memory now enabled with in-memory storage (no vector store required)
-    console.log('📚 Memory management enabled for Mastra scraping service');
+    // Memory now enabled with shared, secure memory provider
+    console.log('🧠 Shared memory with credential security enabled for Mastra scraping service');
     this.initializeAgents();
   }
 

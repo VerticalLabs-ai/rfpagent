@@ -1,13 +1,11 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
+import { sharedMemory } from '../tools/shared-memory-provider';
 import { pageNavigateTool } from '../tools/page-navigate-tool';
 import { pageObserveTool } from '../tools/page-observe-tool';
 import { pageActTool } from '../tools/page-act-tool';
 import { pageExtractTool } from '../tools/page-extract-tool';
 import { pageAuthTool } from '../tools/page-auth-tool';
-
-const memory = new Memory();
 
 export const portalManager = new Agent({
   name: 'Portal Manager',
@@ -46,5 +44,5 @@ You coordinate with specialists:
     pageExtractTool, 
     pageAuthTool 
   },
-  memory: memory,
+  memory: sharedMemory,
 });

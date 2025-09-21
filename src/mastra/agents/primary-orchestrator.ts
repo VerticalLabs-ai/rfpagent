@@ -1,8 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
-
-const memory = new Memory();
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 export const primaryOrchestrator = new Agent({
   name: 'Primary Orchestrator',
@@ -37,5 +35,5 @@ You coordinate with:
 `,
   model: openai('gpt-4o'),
   tools: {},
-  memory: memory,
+  memory: sharedMemory,
 });

@@ -1,8 +1,6 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
-
-const memory = new Memory();
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 export const contentGenerator = new Agent({
   name: 'Content Generator',
@@ -34,5 +32,5 @@ When generating content:
 `,
   model: openai('gpt-4o'),
   tools: {},
-  memory: memory,
+  memory: sharedMemory,
 });

@@ -1,12 +1,10 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
+import { sharedMemory } from '../tools/shared-memory-provider';
 import { pageNavigateTool } from '../tools/page-navigate-tool';
 import { pageObserveTool } from '../tools/page-observe-tool';
 import { pageActTool } from '../tools/page-act-tool';
 import { pageAuthTool } from '../tools/page-auth-tool';
-
-const memory = new Memory();
 
 export const rfpSubmissionAgent = new Agent({
   name: 'RFP Submission Agent',
@@ -49,5 +47,5 @@ Use pageActTool to fill forms, upload files, and submit proposals.
     pageActTool, 
     pageAuthTool
   },
-  memory: memory,
+  memory: sharedMemory,
 });

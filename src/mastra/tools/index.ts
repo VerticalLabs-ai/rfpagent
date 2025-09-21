@@ -5,8 +5,9 @@ export { pageActTool } from './page-act-tool';
 export { pageExtractTool } from './page-extract-tool';
 export { pageAuthTool } from './page-auth-tool';
 
-// Export session manager
+// Export session manager and shared memory
 export { sessionManager } from './session-manager';
+export { sharedMemory, memoryProvider } from './shared-memory-provider';
 
 // Re-export with legacy names for backward compatibility
 export { pageActTool as stagehandActTool } from './page-act-tool';
