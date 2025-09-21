@@ -22,7 +22,12 @@ import { rfpDiscoveryAgent } from './agents/rfp-discovery-agent';
 import { rfpAnalysisAgent } from './agents/rfp-analysis-agent';
 import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
 
-// Mastra configuration with complete 3-tier agent system
+// Workflows
+import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
+import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
+import { proposalGenerationWorkflow } from './workflows/proposal-generation-workflow';
+
+// Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
   // 3-Tier Agent System Configuration
   agents: {
@@ -47,5 +52,11 @@ export const mastra = new Mastra({
     rfpDiscoveryAgent,
     rfpAnalysisAgent,
     rfpSubmissionAgent,
+  },
+  // Workflow Configuration
+  workflows: {
+    documentProcessing: documentProcessingWorkflow,
+    rfpDiscovery: rfpDiscoveryWorkflow,
+    proposalGeneration: proposalGenerationWorkflow,
   },
 });
