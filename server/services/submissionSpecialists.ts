@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { agentMemoryService } from './agentMemoryService';
-import { stagehandTools, sessionManager } from './stagehandTools';
+import { stagehandTools } from './stagehandTools';
+import { sessionManager } from '../../src/mastra/tools/session-manager';
 import type { WorkItem, Submission, Proposal, Portal, RFP, Document } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
@@ -57,7 +58,7 @@ export class PortalAuthenticationSpecialist {
       });
 
       // Initialize browser session
-      const stagehand = await sessionManager.createStagehand(sessionId);
+      const stagehand = await sessionManager.ensureStagehand(sessionId);
       
       try {
         // Navigate to portal login page
@@ -560,13 +561,8 @@ export class FormSubmissionSpecialist {
         throw new Error('RFP not found');
       }
 
-      // Get browser session
-      const session = sessionManager.getSession(browserSessionId);
-      if (!session) {
-        throw new Error('Browser session not found or expired');
-      }
-
-      const stagehand = session.stagehand;
+      // Get browser session (create if needed)
+      const stagehand = await sessionManager.ensureStagehand(browserSessionId);
 
       // Create form population event
       await storage.createSubmissionEvent({
@@ -994,13 +990,8 @@ export class DocumentUploadSpecialist {
         throw new Error('Submission or proposal not found');
       }
 
-      // Get browser session
-      const session = sessionManager.getSession(browserSessionId);
-      if (!session) {
-        throw new Error('Browser session not found or expired');
-      }
-
-      const stagehand = session.stagehand;
+      // Get browser session (create if needed)
+      const stagehand = await sessionManager.ensureStagehand(browserSessionId);
 
       // Create upload event
       await storage.createSubmissionEvent({

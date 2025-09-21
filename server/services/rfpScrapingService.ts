@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { performWebExtraction, performWebObservation, performWebAction, sessionManager } from './stagehandTools';
+import { performWebExtraction, performWebObservation, performWebAction } from './stagehandTools';
+import { sessionManager } from '../../src/mastra/tools/session-manager';
 import { db } from '../db';
 import { rfps, documents } from '@shared/schema';
 import { eq } from 'drizzle-orm';

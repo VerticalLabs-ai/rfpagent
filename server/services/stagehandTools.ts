@@ -1,81 +1,9 @@
 import { Stagehand } from "@browserbasehq/stagehand";
 import { z } from "zod";
+import { sessionManager } from "../../src/mastra/tools/session-manager";
 
-export interface StagehandSession {
-  stagehand: Stagehand;
-  sessionId: string;
-  createdAt: Date;
-}
-
-class StagehandSessionManager {
-  private sessions: Map<string, StagehandSession> = new Map();
-  private defaultSessionId = 'default';
-
-  async createStagehand(sessionId: string = this.defaultSessionId): Promise<Stagehand> {
-    // Check if we have an existing session
-    const existingSession = this.sessions.get(sessionId);
-    if (existingSession && existingSession.stagehand.page) {
-      try {
-        // Test if the browser is still alive
-        await existingSession.stagehand.page.url();
-        return existingSession.stagehand;
-      } catch (error) {
-        // Browser is dead, clean up
-        await this.closeSession(sessionId);
-      }
-    }
-
-    // Create new Stagehand instance with minimal configuration
-    const stagehand = new Stagehand({
-      env: "BROWSERBASE",
-      apiKey: process.env.BROWSERBASE_API_KEY,
-      projectId: process.env.BROWSERBASE_PROJECT_ID,
-      verbose: 1,
-      browserbaseSessionCreateParams: {
-        projectId: process.env.BROWSERBASE_PROJECT_ID!,
-        keepAlive: true
-      }
-    });
-
-    await stagehand.init();
-    
-    // Store the session
-    this.sessions.set(sessionId, {
-      stagehand,
-      sessionId,
-      createdAt: new Date(),
-    });
-
-    return stagehand;
-  }
-
-  async ensureStagehand(sessionId: string = this.defaultSessionId): Promise<Stagehand> {
-    return this.createStagehand(sessionId);
-  }
-
-  async closeSession(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      try {
-        await session.stagehand.close();
-      } catch (error) {
-        console.warn(`Error closing Stagehand session ${sessionId}:`, error);
-      }
-      this.sessions.delete(sessionId);
-    }
-  }
-
-  async closeAllSessions(): Promise<void> {
-    const sessionIds = Array.from(this.sessions.keys());
-    await Promise.all(sessionIds.map(id => this.closeSession(id)));
-  }
-
-  getSession(sessionId: string = this.defaultSessionId): StagehandSession | undefined {
-    return this.sessions.get(sessionId);
-  }
-}
-
-export const sessionManager = new StagehandSessionManager();
+// SessionManager has been moved to src/mastra/tools/session-manager.ts
+// Now using the new Mastra-compliant implementation
 
 export interface WebActionResult {
   success: boolean;
