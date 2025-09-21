@@ -4,6 +4,7 @@ import { db } from '../db';
 import { rfps, documents } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -33,7 +34,9 @@ export class RFPScrapingService {
   private sessionId: string;
   
   constructor() {
-    this.sessionId = `rfp-scrape-${nanoid(10)}`;
+    // Use a consistent session name for this service instead of UUID
+    // The session manager will handle browser sessions internally
+    this.sessionId = 'rfp-scraping-session';
   }
 
   /**
@@ -241,7 +244,7 @@ export class RFPScrapingService {
     return performWebExtraction(
       url,
       `Extract all RFP details including: title, agency, description, deadline, estimated value, contact information, solicitation number, pre-bid meeting date, and all downloadable document links with their names`,
-      rfpExtractionSchema as any,
+      rfpExtractionSchema,
       this.sessionId
     );
   }
@@ -252,12 +255,10 @@ export class RFPScrapingService {
   private async extractAustinRFPData(url: string) {
     console.log(`🏛️ Using Austin Texas RFP extraction logic`);
     
-    // Navigate to the page first
-    await performWebAction(url, '', this.sessionId);
-    
     // Extract the data with specific instructions for Austin portal
+    // The performWebExtraction will navigate to the URL automatically
     return performWebExtraction(
-      null,
+      url,
       `Extract RFP details from this Austin Texas solicitation page. Look for:
       - Solicitation title (usually at the top of the page)
       - Solicitation number
@@ -268,7 +269,7 @@ export class RFPScrapingService {
       - Contact person details (name, email, phone)
       - Pre-bid meeting information if available
       - All downloadable documents (look for PDF links, attachments section, or document table)`,
-      rfpExtractionSchema as any,
+      rfpExtractionSchema,
       this.sessionId
     );
   }

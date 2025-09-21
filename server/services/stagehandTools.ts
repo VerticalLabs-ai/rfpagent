@@ -25,7 +25,7 @@ class StagehandSessionManager {
       }
     }
 
-    // Create new Stagehand instance with Advanced Stealth and Browser Context
+    // Create new Stagehand instance with minimal configuration
     const stagehand = new Stagehand({
       env: "BROWSERBASE",
       apiKey: process.env.BROWSERBASE_API_KEY,
@@ -33,24 +33,7 @@ class StagehandSessionManager {
       verbose: 1,
       browserbaseSessionCreateParams: {
         projectId: process.env.BROWSERBASE_PROJECT_ID!,
-        keepAlive: true,
-        timeout: 3600, // 1 hour session timeout
-        browserSettings: {
-          advancedStealth: false,  // Disabled for non-Enterprise plan  
-          solveCaptchas: false,    // Disable enterprise features
-          blockAds: true,
-          recordSession: true,
-          logSession: true,
-          context: {
-            // Enable browser context persistence for maintaining login sessions
-            id: `rfp-agent-context-${sessionId}`,
-          },
-          viewport: {
-            width: 1920,
-            height: 1080
-          }
-        },
-        region: "us-west-2"
+        keepAlive: true
       }
     });
 
@@ -186,7 +169,7 @@ export async function performWebObservation(
 export async function performWebExtraction(
   url: string | null,
   instruction: string,
-  schema: Record<string, any> = { content: z.string() },
+  schema: any,
   sessionId: string = 'default'
 ): Promise<WebExtractionResult> {
   const stagehand = await sessionManager.ensureStagehand(sessionId);
@@ -199,8 +182,13 @@ export async function performWebExtraction(
       await page.goto(url);
     }
 
-    // Convert schema to Zod schema
-    const zodSchema = z.object(schema);
+    // Debug: log schema to understand what's being passed
+    console.log('Schema type:', typeof schema);
+    console.log('Schema has _def:', !!schema?._def);
+    console.log('Schema structure:', JSON.stringify(schema, null, 2).substring(0, 500));
+    
+    // Use schema directly if it's already a Zod schema, otherwise wrap it
+    const zodSchema = schema?._def ? schema : z.object(schema);
 
     // Extract data
     console.log(`📤 Stagehand extracting: ${instruction}`);

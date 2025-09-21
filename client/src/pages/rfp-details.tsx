@@ -302,6 +302,52 @@ export default function RFPDetails() {
                   </div>
                 </div>
               </div>
+
+              {/* Additional RFP Details */}
+              {rfp.requirements && typeof rfp.requirements === 'object' && !Array.isArray(rfp.requirements) && (
+                <div className="border-t pt-4 space-y-4">
+                  {rfp.requirements.solicitation_number && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Solicitation Number</p>
+                      <p className="text-sm text-muted-foreground" data-testid="text-solicitation-number">
+                        {rfp.requirements.solicitation_number}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {rfp.requirements.contact && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Contact Information</p>
+                      <div className="space-y-1" data-testid="text-contact-info">
+                        {rfp.requirements.contact.name && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Name:</span> {rfp.requirements.contact.name}
+                          </p>
+                        )}
+                        {rfp.requirements.contact.email && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Email:</span> {rfp.requirements.contact.email}
+                          </p>
+                        )}
+                        {rfp.requirements.contact.phone && (
+                          <p className="text-sm text-muted-foreground">
+                            <span className="font-medium">Phone:</span> {rfp.requirements.contact.phone}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {rfp.requirements.pre_bid_meeting && (
+                    <div>
+                      <p className="text-sm font-medium mb-1">Pre-bid Meeting</p>
+                      <p className="text-sm text-muted-foreground" data-testid="text-pre-bid-meeting">
+                        {rfp.requirements.pre_bid_meeting}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
