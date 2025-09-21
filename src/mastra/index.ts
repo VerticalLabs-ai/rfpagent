@@ -26,6 +26,8 @@ import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
 import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
 import { proposalGenerationWorkflow } from './workflows/proposal-generation-workflow';
+import { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
+import { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
 
 // Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
@@ -58,5 +60,7 @@ export const mastra = new Mastra({
     documentProcessing: documentProcessingWorkflow,
     rfpDiscovery: rfpDiscoveryWorkflow,
     proposalGeneration: proposalGenerationWorkflow,
+    bonfireAuth: bonfireAuthWorkflow,
+    masterOrchestration: masterOrchestrationWorkflow,
   },
 });
