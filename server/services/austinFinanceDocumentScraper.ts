@@ -4,6 +4,7 @@ import type { Document } from '@shared/schema';
 import { performWebExtraction } from './stagehandTools';
 import { downloadFile } from './fileDownloadService';
 import { ObjectStorageService } from '../objectStorage';
+import { sessionManager } from '../../src/mastra/tools/session-manager';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
@@ -16,11 +17,11 @@ const ALLOWED_DOMAINS = [
   'cityofaustin.gov'
 ];
 
-// Schema for document extraction
+// Schema for document extraction (allows relative URLs)
 const documentExtractionSchema = z.object({
   documents: z.array(z.object({
     name: z.string().describe('Document name or title'),
-    downloadUrl: z.string().url().describe('Direct download URL'),
+    downloadUrl: z.string().min(1).describe('Download URL (absolute or relative)'),
     category: z.string().optional().describe('Document category (submittal, price_form, etc.)'),
     fileType: z.string().optional().describe('File type (pdf, doc, xls, etc.)')
   })).describe('Array of available documents for download')
@@ -49,6 +50,18 @@ export class AustinFinanceDocumentScraper {
       );
     } catch {
       return false;
+    }
+  }
+  
+  /**
+   * Resolve relative URLs against base URL and validate
+   */
+  private resolveAndValidateUrl(url: string, baseUrl: string): string | null {
+    try {
+      const resolvedUrl = new URL(url, baseUrl);
+      return this.validateUrl(resolvedUrl.href) ? resolvedUrl.href : null;
+    } catch {
+      return null;
     }
   }
   
@@ -92,8 +105,9 @@ export class AustinFinanceDocumentScraper {
       
       for (const docInfo of documents) {
         try {
-          // Validate download URL security
-          if (!this.validateUrl(docInfo.downloadUrl)) {
+          // Resolve and validate download URL (handles relative URLs)
+          const resolvedUrl = this.resolveAndValidateUrl(docInfo.downloadUrl, solicitationUrl);
+          if (!resolvedUrl) {
             console.warn(`⚠️ Skipping document with invalid URL: ${docInfo.downloadUrl}`);
             continue;
           }
@@ -106,7 +120,7 @@ export class AustinFinanceDocumentScraper {
           const tempFilePath = path.join(tempDir, `${rfpId}_${Date.now()}_${this.sanitizeFilename(docInfo.name)}`);
           
           // Download file using fileDownloadService
-          await downloadFile(docInfo.downloadUrl, tempFilePath);
+          await downloadFile(resolvedUrl, tempFilePath);
           
           // Read file buffer
           const documentBuffer = await fs.readFile(tempFilePath);
@@ -114,8 +128,8 @@ export class AustinFinanceDocumentScraper {
           // Upload to object storage
           const objectPath = await this.saveToObjectStorage(rfpId, docInfo.name, documentBuffer);
           
-          // Determine document properties
-          const fileType = this.determineFileType(docInfo.name, docInfo.downloadUrl);
+          // Determine document properties using resolved URL
+          const fileType = this.determineFileType(docInfo.name, resolvedUrl);
           const category = this.categorizeDocument(docInfo.name);
           const needsFillOut = this.determineIfNeedsFillOut(docInfo.name, category);
           
@@ -128,7 +142,7 @@ export class AustinFinanceDocumentScraper {
             extractedText: null,
             parsedData: {
               category: category,
-              downloadUrl: docInfo.downloadUrl,
+              downloadUrl: resolvedUrl,
               downloadedAt: new Date().toISOString(),
               size: documentBuffer.length,
               needsFillOut: needsFillOut,
@@ -153,6 +167,14 @@ export class AustinFinanceDocumentScraper {
     } catch (error) {
       console.error('❌ Error during document scraping:', error);
       throw error;
+    } finally {
+      // Clean up browser session to prevent resource leaks
+      try {
+        await sessionManager.cleanup(this.sessionId);
+        console.log(`🧹 Cleaned up session: ${this.sessionId}`);
+      } catch (cleanupError) {
+        console.warn('⚠️ Session cleanup warning:', cleanupError);
+      }
     }
   }
   
@@ -290,72 +312,6 @@ export class AustinFinanceDocumentScraper {
     return isFillable && !isReadOnly;
   }
 
-  
-  
-  /**
-   * Save document to object storage
-   */
-  private async saveToObjectStorage(rfpId: string, filename: string, buffer: Buffer): Promise<string> {
-    // Clean filename for storage
-    const cleanFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const timestamp = Date.now();
-    const uniqueFilename = `${timestamp}_${cleanFilename}`;
-    
-    // Create path in private directory for RFP documents
-    const objectPath = `${this.privateDir}/rfp_documents/${rfpId}/${uniqueFilename}`;
-    
-    // Save to local file system (Replit object storage)
-    const localPath = path.join(process.cwd(), 'attached_assets', 'rfp_documents', rfpId, uniqueFilename);
-    
-    // Ensure directory exists
-    await fs.mkdir(path.dirname(localPath), { recursive: true });
-    
-    // Write file
-    await fs.writeFile(localPath, buffer);
-    
-    console.log(`💾 Saved document to: ${localPath}`);
-    
-    return objectPath;
-  }
-  
-  /**
-   * Determine if a document needs to be filled out
-   */
-  private determineIfNeedsFillOut(filename: string, category: string): boolean {
-    const lowerName = filename.toLowerCase();
-    
-    // Documents that typically need to be filled out
-    const fillablePatterns = [
-      'submittal',
-      'form',
-      'price',
-      'cost',
-      'proposal',
-      'response',
-      'questionnaire',
-      'certification',
-      'affidavit',
-      'worksheet'
-    ];
-    
-    // Documents that are typically read-only
-    const readOnlyPatterns = [
-      'instructions',
-      'terms',
-      'conditions',
-      'scope',
-      'specifications',
-      'requirements',
-      'cover',
-      'package'
-    ];
-    
-    // Check if it's likely a fillable document
-    const isFillable = fillablePatterns.some(pattern => lowerName.includes(pattern));
-    const isReadOnly = readOnlyPatterns.some(pattern => lowerName.includes(pattern));
-    
-    return isFillable && !isReadOnly;
-  }
   
   /**
    * Analyze documents to identify what needs to be filled out
