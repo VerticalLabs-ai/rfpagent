@@ -72,8 +72,8 @@ export class WorkflowCoordinator {
   private workItemProcessingInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    // Start work item processing loop
-    this.startWorkItemProcessing();
+    // Background processing is disabled by default
+    // Call startWorkItemProcessing() manually to enable automated work distribution
   }
 
   // ============ 3-TIER AGENTIC SYSTEM WORK ITEM COORDINATION ============
@@ -273,9 +273,9 @@ export class WorkflowCoordinator {
   }
 
   /**
-   * Start automatic work item processing loop
+   * Start automatic work item processing loop (disabled by default)
    */
-  private startWorkItemProcessing(): void {
+  startWorkItemProcessing(): void {
     if (this.workItemProcessingInterval) {
       clearInterval(this.workItemProcessingInterval);
     }

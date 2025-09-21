@@ -51,8 +51,8 @@ export class RetryBackoffDlqService {
   
   constructor() {
     this.initializeDefaultRetryPolicies();
-    this.startRetryScheduler();
-    this.startDLQMonitor();
+    // Background retry scheduler and DLQ monitor are disabled by default
+    // Call startRetryScheduler() and startDLQMonitor() manually to enable
   }
 
   /**
@@ -552,9 +552,9 @@ export class RetryBackoffDlqService {
   }
 
   /**
-   * Start the retry scheduler that processes pending retries
+   * Start the retry scheduler that processes pending retries (disabled by default)
    */
-  private startRetryScheduler(): void {
+  startRetryScheduler(): void {
     console.log('⏰ Starting retry scheduler...');
     
     setInterval(async () => {
@@ -608,9 +608,9 @@ export class RetryBackoffDlqService {
   }
 
   /**
-   * Start the DLQ monitor for proactive management
+   * Start the DLQ monitor for proactive management (disabled by default)
    */
-  private startDLQMonitor(): void {
+  startDLQMonitor(): void {
     console.log('👁️ Starting DLQ monitor...');
     
     setInterval(async () => {
