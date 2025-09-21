@@ -264,7 +264,7 @@ export default function WorkflowManagement() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100" data-testid="heading-workflow-management">
+          <h1 className="text-3xl font-bold dark:text-gray-100 text-[#ebebeb]" data-testid="heading-workflow-management">
             Workflow Management
           </h1>
           <p className="text-gray-600 dark:text-gray-400" data-testid="text-description">
@@ -280,7 +280,6 @@ export default function WorkflowManagement() {
           Refresh
         </Button>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Suspended Workflows List */}
         <Card data-testid="card-suspended-workflows">
