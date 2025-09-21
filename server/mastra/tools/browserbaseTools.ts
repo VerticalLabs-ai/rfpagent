@@ -23,8 +23,8 @@ class BrowserbaseSessionManager {
           keepAlive: true,
           timeout: 3600, // 1 hour session timeout
           browserSettings: {
-            advancedStealth: true,
-            solveCaptchas: true,
+            advancedStealth: false,  // Disable advanced stealth to avoid Enterprise plan errors
+            solveCaptchas: false,    // Disable enterprise features  
             blockAds: true,
             recordSession: true,
             logSession: true,

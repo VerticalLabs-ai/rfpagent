@@ -36,8 +36,8 @@ class StagehandSessionManager {
         keepAlive: true,
         timeout: 3600, // 1 hour session timeout
         browserSettings: {
-          advancedStealth: false,  // Disabled for non-Enterprise plan to avoid 403 errors
-          solveCaptchas: true,
+          advancedStealth: false,  // Disabled for non-Enterprise plan  
+          solveCaptchas: false,    // Disable enterprise features
           blockAds: true,
           recordSession: true,
           logSession: true,
