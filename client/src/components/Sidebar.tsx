@@ -15,6 +15,7 @@ export default function Sidebar() {
     { path: "/ai-chat", label: "AI Agent", icon: "fas fa-robot" },
     { path: "/workflow-management", label: "Workflow Management", icon: "fas fa-cogs" },
     { path: "/agent-monitoring", label: "Agent Monitoring", icon: "fas fa-chart-line" },
+    { path: "/system-settings", label: "System Settings", icon: "fas fa-server" },
     { path: "/proposals", label: "Proposals", icon: "fas fa-file-alt" },
     { path: "/compliance", label: "Compliance", icon: "fas fa-tasks" },
     { path: "/submissions", label: "Submissions", icon: "fas fa-paper-plane" },
