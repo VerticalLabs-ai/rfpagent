@@ -9,12 +9,9 @@ import pLimit from "p-limit";
 import { storage } from "../storage";
 import { AIService } from "./aiService";
 import type { Portal } from "@shared/schema";
-import puppeteer from "puppeteer";
-import { 
-  performBrowserAuthentication, 
-  scrapeWithAuthenticatedSession,
-  sessionManager
-} from "./stagehandTools";
+// Removed Puppeteer - now using unified Browserbase through Mastra
+import { stagehandActTool, stagehandObserveTool, stagehandExtractTool, stagehandAuthTool, sessionManager } from "../mastra/tools/browserbaseTools";
+import { performBrowserAuthentication } from './stagehandTools';  // Add missing import
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 
 // Zod schema for agent response validation
@@ -58,102 +55,184 @@ export class MastraScrapingService {
   }
 
   /**
-   * Scrape dynamic content using Puppeteer for JavaScript-heavy sites like Austin Finance
+   * Unified content scraping using Browserbase through Mastra
+   * Replaces both Puppeteer and direct Stagehand approaches
    */
-  private async scrapeDynamicContent(url: string, sessionData?: any): Promise<string> {
-    let browser;
+  /**
+   * Unified Browserbase web scraping method using official Mastra integration
+   * Replaces the old hybrid approach with consistent Browserbase automation
+   */
+  private async unifiedBrowserbaseWebScrape(context: any): Promise<any> {
+    const { url, loginRequired, credentials, portalType, searchFilter, sessionId = 'default' } = context;
+    
     try {
-      console.log(`🤖 Launching Puppeteer browser for ${url}`);
+      console.log(`🌐 Starting unified Browserbase scrape of ${url}`);
       
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
-          '--disable-gpu'
-        ]
-      });
-
-      const page = await browser.newPage();
-      
-      // Set user agent to match our requests
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-      
-      // Set cookies if we have session data
-      if (sessionData?.cookies) {
-        console.log(`🍪 Setting session cookies for authentication`);
-        // Handle cookie data properly - cookies can be object array or semicolon-delimited string
-        let cookies;
-        if (Array.isArray(sessionData.cookies)) {
-          // Already in the correct format from Stagehand
-          cookies = sessionData.cookies.map((cookie: any) => ({
-            name: cookie.name,
-            value: cookie.value,
-            domain: cookie.domain || new URL(url).hostname,
-            path: cookie.path || '/',
-            httpOnly: cookie.httpOnly,
-            secure: cookie.secure
-          }));
-        } else if (typeof sessionData.cookies === 'string') {
-          // Parse semicolon-delimited string, but only extract name=value pairs
-          cookies = sessionData.cookies.split(';')
-            .map((cookieStr: string) => {
-              const trimmed = cookieStr.trim();
-              const equalPos = trimmed.indexOf('=');
-              if (equalPos === -1) return null; // Skip malformed cookies
-              const name = trimmed.substring(0, equalPos);
-              const value = trimmed.substring(equalPos + 1);
-              // Skip cookie attributes (Path, Domain, Expires, etc.)
-              if (['Path', 'Domain', 'Expires', 'Max-Age', 'Secure', 'HttpOnly', 'SameSite'].includes(name)) {
-                return null;
-              }
-              return { name, value, domain: new URL(url).hostname };
-            })
-            .filter((cookie): cookie is { name: string; value: string; domain: string } => cookie !== null);
-        } else {
-          cookies = [];
+      // Handle authentication if required
+      if (loginRequired && credentials?.username && credentials?.password) {
+        console.log(`🔐 Authentication required for portal: ${portalType}`);
+        
+        const authResult = await stagehandAuthTool.execute({
+          context: {
+            loginUrl: url,
+            username: credentials.username,
+            password: credentials.password,
+            targetUrl: url,
+            sessionId,
+            portalType
+          }
+        });
+        
+        if (!authResult.success) {
+          throw new Error(`Authentication failed: ${authResult.message || 'Unknown error'}`);
         }
-        await page.setCookie(...cookies);
+        
+        console.log(`✅ Authentication successful for ${portalType}`);
       }
-
-      console.log(`🌐 Navigating to ${url} with Puppeteer`);
       
-      // Navigate and wait for network to be idle (JavaScript content loaded)
-      await page.goto(url, { 
-        waitUntil: 'networkidle2', // Wait until no more than 2 network connections for 500ms
-        timeout: 30000 
+      // Extract RFP opportunities using Browserbase
+      const extractionResult = await stagehandExtractTool.execute({
+        context: {
+          instruction: searchFilter 
+            ? `find and extract RFP opportunities related to "${searchFilter}" including titles, deadlines, agencies, descriptions, and links`
+            : 'extract all RFP opportunities, procurement notices, and solicitations with their complete details',
+          sessionId,
+          schema: {
+            opportunities: z.array(z.object({
+              title: z.string().describe('RFP title or opportunity name'),
+              description: z.string().optional().describe('Description or summary'),
+              agency: z.string().optional().describe('Issuing agency'),
+              deadline: z.string().optional().describe('Submission deadline'),
+              estimatedValue: z.string().optional().describe('Contract value'),
+              url: z.string().optional().describe('Link to details'),
+              category: z.string().optional().describe('Category or type'),
+              confidence: z.number().min(0).max(1).default(0.8).describe('Extraction confidence')
+            })).describe('Array of extracted RFP opportunities')
+          }
+        }
       });
-
-      // Additional wait for any remaining JavaScript to finish
-      console.log(`⏳ Waiting for JavaScript content to load completely...`);
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Give extra time for dynamic content
-
-      // Check if we can find table elements or solicitation content
-      await page.waitForFunction(() => {
-        const tables = document.querySelectorAll('table, .solicitation, [id*="solicitation"], [class*="rfp"]');
-        return tables.length > 0;
-      }, { timeout: 10000 }).catch(() => {
-        console.log(`⚠️ No specific solicitation elements found, proceeding with full page content`);
-      });
-
-      // Get the fully rendered HTML
-      const html = await page.content();
-      console.log(`✅ Successfully scraped ${html.length} characters of dynamic content`);
       
-      return html;
+      const opportunities = extractionResult.data?.opportunities || [];
+      console.log(`🎯 Extracted ${opportunities.length} opportunities from ${url}`);
+      
+      return {
+        opportunities,
+        status: 'success',
+        message: `Successfully extracted ${opportunities.length} opportunities using Browserbase`,
+        portalType,
+        scrapedAt: new Date().toISOString()
+      };
       
     } catch (error) {
-      console.error(`❌ Dynamic scraping failed for ${url}:`, error instanceof Error ? error.message : String(error));
-      throw new Error(`Dynamic content scraping failed: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      if (browser) {
-        await browser.close();
-        console.log(`🔒 Puppeteer browser closed`);
+      console.error(`❌ Unified Browserbase scrape failed for ${url}:`, error);
+      return {
+        opportunities: [],
+        status: 'error',
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+  
+  /**
+   * Handle portal authentication using unified Browserbase automation
+   */
+  private async handleBrowserbaseAuthentication(context: any): Promise<any> {
+    const { portalUrl, username, password, authContext, sessionId, portalType } = context;
+    
+    try {
+      console.log(`🔐 Starting Browserbase authentication for ${portalType || 'generic'} portal`);
+      
+      const authResult = await stagehandAuthTool.execute({
+        context: {
+          loginUrl: portalUrl,
+          username,
+          password,
+          targetUrl: portalUrl,
+          sessionId,
+          portalType
+        }
+      });
+      
+      if (authResult.success) {
+        console.log(`✅ Browserbase authentication successful`);
+        return {
+          success: true,
+          sessionId,
+          message: 'Portal authentication completed successfully',
+          authenticatedAt: new Date().toISOString()
+        };
+      } else {
+        throw new Error(authResult.message || 'Authentication failed');
       }
+      
+    } catch (error) {
+      console.error(`❌ Browserbase authentication failed:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
+  }
+
+  private async scrapeBrowserbaseContent(url: string, sessionId: string, instruction?: string): Promise<string> {
+    try {
+      console.log(`🌐 Scraping content from ${url} using Browserbase`);
+      
+      // Navigate to the page using official Browserbase tools
+      await stagehandActTool.execute({
+        context: { 
+          url, 
+          action: 'navigate to the page and wait for all content including JavaScript to load completely', 
+          sessionId 
+        }
+      });
+
+      // Wait for dynamic content to load
+      await stagehandActTool.execute({
+        context: {
+          action: 'wait for any dynamic content, tables, or RFP listings to finish loading',
+          sessionId
+        }
+      });
+
+      // Extract the page content using Browserbase with intelligent RFP detection
+      const extractionResult = await stagehandExtractTool.execute({
+        context: {
+          instruction: instruction || 'extract all page content including RFP listings, procurement opportunities, and solicitation notices with their titles, deadlines, agencies, and descriptions',
+          sessionId,
+          schema: {
+            fullContent: z.string().describe('Complete page HTML content'),
+            pageTitle: z.string().describe('Page title'),
+            opportunities: z.array(z.object({
+              title: z.string().describe('Opportunity title or RFP name'),
+              deadline: z.string().optional().describe('Submission deadline'),
+              agency: z.string().optional().describe('Issuing agency or organization'),
+              description: z.string().optional().describe('RFP description or summary'),
+              estimatedValue: z.string().optional().describe('Contract value or budget amount'),
+              url: z.string().optional().describe('Link to full RFP details'),
+              category: z.string().optional().describe('RFP category or type')
+            })).optional().describe('Extracted RFP opportunities if found on page')
+          }
+        }
+      });
+
+      const { data } = extractionResult;
+      console.log(`✅ Successfully extracted content using Browserbase - Found ${data.opportunities?.length || 0} opportunities`);
+      
+      // Return the full content for further processing, but also log the structured data
+      if (data.opportunities && data.opportunities.length > 0) {
+        console.log(`🎯 Structured opportunities extracted:`, data.opportunities.map(opp => ({
+          title: opp.title,
+          deadline: opp.deadline,
+          agency: opp.agency
+        })));
+      }
+      
+      return data.fullContent || JSON.stringify(data);
+      
+    } catch (error) {
+      console.error(`❌ Browserbase scraping failed for ${url}:`, error instanceof Error ? error.message : String(error));
+      throw new Error(`Browserbase content scraping failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -176,7 +255,7 @@ export class MastraScrapingService {
   private createWebScrapingTool() {
     return createTool({
       id: "web-scrape",
-      description: "Scrape a website for RFP opportunities using intelligent content analysis",
+      description: "Scrape a website for RFP opportunities using unified Browserbase automation",
       inputSchema: z.object({
         url: z.string().describe("URL to scrape"),
         loginRequired: z.boolean().describe("Whether login is required"),
@@ -185,11 +264,12 @@ export class MastraScrapingService {
           password: z.string().optional()
         }).optional().describe("Login credentials if required"),
         portalType: z.string().describe("Type of portal (bonfire, sam.gov, etc.)"),
-        searchFilter: z.string().optional().describe("Search filter to apply during scraping - only return opportunities related to this term")
+        searchFilter: z.string().optional().describe("Search filter to apply during scraping - only return opportunities related to this term"),
+        sessionId: z.string().optional().describe("Session ID for maintaining browser context")
       }),
       execute: async ({ context }) => {
-        // Use AI-powered web scraping instead of browser automation
-        return await this.intelligentWebScrape(context);
+        // Use unified Browserbase automation through official Mastra integration
+        return await this.unifiedBrowserbaseWebScrape(context);
       }
     });
   }
@@ -212,15 +292,17 @@ export class MastraScrapingService {
   private createAuthenticationTool() {
     return createTool({
       id: "authenticate-portal",
-      description: "Handle portal authentication intelligently",
+      description: "Handle portal authentication using unified Browserbase automation",
       inputSchema: z.object({
         portalUrl: z.string(),
         username: z.string(),
         password: z.string(),
-        authContext: z.string().describe("Portal-specific authentication context")
+        authContext: z.string().describe("Portal-specific authentication context"),
+        sessionId: z.string().describe("Session ID for maintaining authenticated state"),
+        portalType: z.string().optional().describe("Portal type for specialized authentication")
       }),
       execute: async ({ context }) => {
-        return await this.handleAuthentication(context);
+        return await this.handleBrowserbaseAuthentication(context);
       }
     });
   }
@@ -491,26 +573,28 @@ export class MastraScrapingService {
             }
           }
           
-          opportunities = []; // Force fallback to intelligentWebScrape
+          opportunities = []; // Force fallback to unified Browserbase scrape
         }
       }
       
       // If agent didn't call tools or returned no opportunities, call intelligentWebScrape directly
       if (opportunities.length === 0) {
-        console.log(`🔄 Agent returned no opportunities, calling intelligentWebScrape directly for ${portal.name}`);
+        console.log(`🔄 Agent returned no opportunities, calling unified Browserbase scrape directly for ${portal.name}`);
         try {
-          console.log(`🔄 Calling intelligentWebScrape for ${portal.name}...`);
-          const directScrapeResult = await this.intelligentWebScrape({
+          console.log(`🔄 Calling unifiedBrowserbaseWebScrape for ${portal.name}...`);
+          const directScrapeResult = await this.unifiedBrowserbaseWebScrape({
             url: portal.url,
             loginRequired: portal.loginRequired,
             credentials: portal.loginRequired ? {
               username: portal.username,
               password: portal.password
             } : null,
+            portalType: portal.name.toLowerCase(),
+            sessionId: `portal-${portal.id}-${Date.now()}`,
             searchFilter: searchFilter
           });
           
-          console.log(`🔄 intelligentWebScrape completed. Result type:`, typeof directScrapeResult);
+          console.log(`🔄 unifiedBrowserbaseWebScrape completed. Result type:`, typeof directScrapeResult);
           console.log(`🔄 directScrapeResult has opportunities?`, directScrapeResult && 'opportunities' in directScrapeResult);
           console.log(`🔄 directScrapeResult.opportunities length:`, directScrapeResult?.opportunities?.length || 'undefined');
           
