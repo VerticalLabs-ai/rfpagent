@@ -10,7 +10,7 @@ import { storage } from "../storage";
 import { AIService } from "./aiService";
 import type { Portal } from "@shared/schema";
 // Removed Puppeteer - now using unified Browserbase through Mastra
-import { stagehandActTool, stagehandObserveTool, stagehandExtractTool, stagehandAuthTool, sessionManager } from "../mastra/tools/browserbaseTools";
+import { stagehandActTool, stagehandObserveTool, stagehandExtractTool, stagehandAuthTool, sessionManager } from "../../src/mastra/tools";
 import { performBrowserAuthentication } from './stagehandTools';  // Add missing import
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 
