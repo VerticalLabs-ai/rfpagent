@@ -719,7 +719,8 @@ function ContactList({ companyProfileId }: { companyProfileId: string }) {
     queryKey: ["/api/company-profiles", companyProfileId, "contacts"],
     queryFn: async () => {
       const response = await apiRequest("GET", `/api/company-profiles/${companyProfileId}/contacts`);
-      return Array.isArray(response) ? response : [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
     }
   });
 
