@@ -36,21 +36,15 @@ const AgentResponseSchema = z.object({
 
 export class MastraScrapingService {
   private aiService = new AIService();
-  // private memory: Memory; // Disabled pending vector store configuration
+  private memory: Memory = new Memory(); // Enabled with in-memory storage
   private agents: Map<string, Agent> = new Map();
   private requestLimiter = pLimit(3); // Limit concurrent requests
   private aiLimiter = pLimit(2); // Limit concurrent AI calls
   private activeCoordinationIds: Map<string, string> = new Map(); // portalId -> coordinationId
 
   constructor() {
-    // Temporarily disable memory features to avoid vector store requirement
-    // Will re-enable once vector store is properly configured
-    // this.memory = new Memory({
-    //   options: {
-    //     lastMessages: 50
-    //   }
-    // });
-
+    // Memory now enabled with in-memory storage (no vector store required)
+    console.log('📚 Memory management enabled for Mastra scraping service');
     this.initializeAgents();
   }
 
@@ -328,7 +322,7 @@ export class MastraScrapingService {
       Always return structured data with confidence scores for each field.`,
       
       model: openai("gpt-4o"),
-      // memory: this.memory, // Disabled pending vector store configuration
+      memory: this.memory, // Enabled with in-memory storage
       tools: {
         webScrape: this.createWebScrapingTool(),
         extractRFP: this.createRFPExtractionTool(),
@@ -388,7 +382,7 @@ export class MastraScrapingService {
       - Pre-bid conference information and contact details`,
 
       model: openai("gpt-4o"),
-      // memory: this.memory, // Disabled pending vector store configuration
+      memory: this.memory, // Enabled with in-memory storage
       tools: {
         webScrape: this.createWebScrapingTool(),
         extractRFP: this.createRFPExtractionTool(),
@@ -416,7 +410,7 @@ export class MastraScrapingService {
       - Amendment tracking systems`,
 
       model: openai("gpt-4o"),
-      // memory: this.memory, // Disabled pending vector store configuration
+      memory: this.memory, // Enabled with in-memory storage
       tools: {
         webScrape: this.createWebScrapingTool(),
         extractRFP: this.createRFPExtractionTool(),
@@ -443,7 +437,7 @@ export class MastraScrapingService {
       - Handling redirect patterns to original RFPs`,
 
       model: openai("gpt-4o"),
-      // memory: this.memory, // Disabled pending vector store configuration
+      memory: this.memory, // Enabled with in-memory storage
       tools: {
         webScrape: this.createWebScrapingTool(),
         extractRFP: this.createRFPExtractionTool(),
