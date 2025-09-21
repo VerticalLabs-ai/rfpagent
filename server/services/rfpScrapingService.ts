@@ -1,0 +1,327 @@
+import { z } from 'zod';
+import { performWebExtraction, performWebObservation, performWebAction, sessionManager } from './stagehandTools';
+import { db } from '../db';
+import { rfps, documents } from '@shared/schema';
+import { eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+import { downloadFile } from './fileDownloadService';
+import * as path from 'path';
+import * as fs from 'fs';
+
+// Schema for extracted RFP data
+const rfpExtractionSchema = z.object({
+  title: z.string().describe('RFP title or project name'),
+  agency: z.string().describe('Issuing agency or organization'),
+  description: z.string().optional().describe('RFP description or scope of work'),
+  deadline: z.string().optional().describe('Submission deadline date and time'),
+  estimatedValue: z.string().optional().describe('Contract value, budget, or estimated amount'),
+  contactName: z.string().optional().describe('Contact person name'),
+  contactEmail: z.string().optional().describe('Contact email address'),
+  contactPhone: z.string().optional().describe('Contact phone number'),
+  solicitation_number: z.string().optional().describe('RFP/Solicitation number or ID'),
+  pre_bid_meeting: z.string().optional().describe('Pre-bid meeting date/time if applicable'),
+  documents: z.array(z.object({
+    name: z.string().describe('Document name or title'),
+    url: z.string().describe('Document download URL'),
+    type: z.string().optional().describe('Document type (PDF, DOCX, etc.)')
+  })).optional().describe('List of downloadable documents')
+});
+
+type RFPExtractionData = z.infer<typeof rfpExtractionSchema>;
+
+export class RFPScrapingService {
+  private sessionId: string;
+  
+  constructor() {
+    this.sessionId = `rfp-scrape-${nanoid(10)}`;
+  }
+
+  /**
+   * Scrape an RFP from a given URL
+   */
+  async scrapeRFP(url: string, userId: string = 'manual'): Promise<{
+    rfp: any;
+    documents: any[];
+    errors?: string[];
+  }> {
+    console.log(`🔍 Starting RFP scrape for URL: ${url}`);
+    const errors: string[] = [];
+    
+    try {
+      // Extract main RFP data
+      const extractionResult = await this.extractRFPData(url);
+      
+      if (!extractionResult.data) {
+        throw new Error('Failed to extract RFP data');
+      }
+
+      const extractedData = extractionResult.data as RFPExtractionData;
+      
+      // Parse deadline if present
+      let deadlineDate = null;
+      if (extractedData.deadline) {
+        try {
+          // Try various date formats
+          deadlineDate = new Date(extractedData.deadline);
+          if (isNaN(deadlineDate.getTime())) {
+            // Try parsing with specific formats
+            const dateFormats = [
+              /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+              /(\d{4})-(\d{2})-(\d{2})/,
+              /(\w+)\s+(\d{1,2}),?\s+(\d{4})/
+            ];
+            
+            for (const format of dateFormats) {
+              const match = extractedData.deadline.match(format);
+              if (match) {
+                deadlineDate = new Date(extractedData.deadline);
+                if (!isNaN(deadlineDate.getTime())) break;
+              }
+            }
+            
+            if (isNaN(deadlineDate.getTime())) {
+              deadlineDate = null;
+              errors.push(`Could not parse deadline date: ${extractedData.deadline}`);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing deadline:', e);
+          errors.push(`Error parsing deadline: ${extractedData.deadline}`);
+        }
+      }
+
+      // Parse estimated value if present
+      let estimatedValueNum = null;
+      if (extractedData.estimatedValue) {
+        const valueStr = extractedData.estimatedValue.replace(/[$,]/g, '');
+        const parsed = parseFloat(valueStr);
+        if (!isNaN(parsed)) {
+          estimatedValueNum = parsed;
+        } else {
+          errors.push(`Could not parse estimated value: ${extractedData.estimatedValue}`);
+        }
+      }
+
+      // Check if RFP already exists
+      const existingRFP = await db.query.rfps.findFirst({
+        where: (rfpsTable, { eq }) => eq(rfpsTable.sourceUrl, url),
+      });
+
+      let rfpId: string;
+      
+      if (existingRFP) {
+        console.log(`📋 Updating existing RFP: ${existingRFP.id}`);
+        // Update existing RFP
+        await db.update(rfps)
+          .set({
+            title: extractedData.title,
+            description: extractedData.description || null,
+            agency: extractedData.agency,
+            deadline: deadlineDate,
+            estimatedValue: estimatedValueNum?.toString() || null,
+            status: 'parsing',
+            progress: 25,
+            updatedAt: new Date(),
+            requirements: {
+              solicitation_number: extractedData.solicitation_number,
+              pre_bid_meeting: extractedData.pre_bid_meeting,
+              contact: {
+                name: extractedData.contactName,
+                email: extractedData.contactEmail,
+                phone: extractedData.contactPhone
+              }
+            }
+          })
+          .where(eq(rfps.id, existingRFP.id));
+        
+        rfpId = existingRFP.id;
+      } else {
+        console.log(`✨ Creating new RFP entry`);
+        // Create new RFP
+        const newRfp = await db.insert(rfps)
+          .values({
+            title: extractedData.title,
+            description: extractedData.description || null,
+            agency: extractedData.agency,
+            sourceUrl: url,
+            deadline: deadlineDate,
+            estimatedValue: estimatedValueNum?.toString() || null,
+            status: 'parsing',
+            progress: 25,
+            addedBy: userId,
+            manuallyAddedAt: userId === 'manual' ? new Date() : null,
+            requirements: {
+              solicitation_number: extractedData.solicitation_number,
+              pre_bid_meeting: extractedData.pre_bid_meeting,
+              contact: {
+                name: extractedData.contactName,
+                email: extractedData.contactEmail,
+                phone: extractedData.contactPhone
+              }
+            }
+          })
+          .returning();
+        
+        rfpId = newRfp[0].id;
+      }
+
+      // Download and save documents
+      const savedDocuments = [];
+      if (extractedData.documents && extractedData.documents.length > 0) {
+        console.log(`📄 Found ${extractedData.documents.length} documents to download`);
+        
+        for (const doc of extractedData.documents) {
+          try {
+            const documentPath = await this.downloadRFPDocument(
+              rfpId,
+              doc.url,
+              doc.name,
+              doc.type || 'pdf'
+            );
+            
+            if (documentPath) {
+              // Save document record to database
+              const newDoc = await db.insert(documents)
+                .values({
+                  rfpId,
+                  name: doc.name,
+                  type: 'rfp_document',
+                  url: documentPath,
+                  size: 0, // We'll update this after download
+                  uploadedBy: userId
+                })
+                .returning();
+              
+              savedDocuments.push(newDoc[0]);
+              console.log(`✅ Saved document: ${doc.name}`);
+            }
+          } catch (docError) {
+            console.error(`Error downloading document ${doc.name}:`, docError);
+            errors.push(`Failed to download document: ${doc.name}`);
+          }
+        }
+      }
+
+      // Get the final RFP data
+      const finalRfp = await db.query.rfps.findFirst({
+        where: (rfpsTable, { eq }) => eq(rfpsTable.id, rfpId),
+      });
+
+      console.log(`✅ RFP scraping completed for: ${extractedData.title}`);
+      
+      return {
+        rfp: finalRfp,
+        documents: savedDocuments,
+        errors: errors.length > 0 ? errors : undefined
+      };
+      
+    } catch (error) {
+      console.error('❌ RFP scraping failed:', error);
+      throw error;
+    } finally {
+      // Clean up session
+      await this.cleanup();
+    }
+  }
+
+  /**
+   * Extract RFP data from the page
+   */
+  private async extractRFPData(url: string) {
+    console.log(`📊 Extracting RFP data from: ${url}`);
+    
+    // Special handling for Austin Texas RFPs
+    if (url.includes('austintexas.gov')) {
+      return this.extractAustinRFPData(url);
+    }
+    
+    // Generic extraction for other portals
+    return performWebExtraction(
+      url,
+      `Extract all RFP details including: title, agency, description, deadline, estimated value, contact information, solicitation number, pre-bid meeting date, and all downloadable document links with their names`,
+      rfpExtractionSchema as any,
+      this.sessionId
+    );
+  }
+
+  /**
+   * Special extraction for Austin Texas RFPs
+   */
+  private async extractAustinRFPData(url: string) {
+    console.log(`🏛️ Using Austin Texas RFP extraction logic`);
+    
+    // Navigate to the page first
+    await performWebAction(url, '', this.sessionId);
+    
+    // Extract the data with specific instructions for Austin portal
+    return performWebExtraction(
+      null,
+      `Extract RFP details from this Austin Texas solicitation page. Look for:
+      - Solicitation title (usually at the top of the page)
+      - Solicitation number
+      - Department/Agency name
+      - Description or scope of work
+      - Due date/deadline (look for "Due Date" or "Closing Date")
+      - Estimated value or budget (may be in description or separate field)
+      - Contact person details (name, email, phone)
+      - Pre-bid meeting information if available
+      - All downloadable documents (look for PDF links, attachments section, or document table)`,
+      rfpExtractionSchema as any,
+      this.sessionId
+    );
+  }
+
+  /**
+   * Download an RFP document
+   */
+  private async downloadRFPDocument(
+    rfpId: string,
+    docUrl: string,
+    docName: string,
+    docType: string
+  ): Promise<string | null> {
+    try {
+      console.log(`⬇️ Downloading document: ${docName}`);
+      
+      // Create documents directory if it doesn't exist
+      const docsDir = path.join(process.cwd(), 'rfp_documents', rfpId);
+      if (!fs.existsSync(docsDir)) {
+        fs.mkdirSync(docsDir, { recursive: true });
+      }
+
+      // Sanitize filename
+      const sanitizedName = docName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const extension = docType.toLowerCase().startsWith('.') ? docType : `.${docType}`;
+      const filename = sanitizedName.endsWith(extension) ? sanitizedName : `${sanitizedName}${extension}`;
+      const filepath = path.join(docsDir, filename);
+
+      // Download the file
+      await downloadFile(docUrl, filepath);
+      
+      // Return relative path for storage
+      return path.relative(process.cwd(), filepath);
+      
+    } catch (error) {
+      console.error(`Failed to download document ${docName}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Clean up the browser session
+   */
+  private async cleanup() {
+    try {
+      // Session will be cleaned up automatically after inactivity
+      console.log('Session cleanup scheduled');
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+  }
+}
+
+// Export a function for easier use in routes
+export async function scrapeRFPFromUrl(url: string, userId: string = 'manual') {
+  const scraper = new RFPScrapingService();
+  return scraper.scrapeRFP(url, userId);
+}

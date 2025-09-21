@@ -1,6 +1,7 @@
 import { MastraScrapingService } from './mastraScrapingService.js';
 import { AustinFinanceDocumentScraper } from './austinFinanceDocumentScraper.js';
 import { DocumentIntelligenceService } from './documentIntelligenceService.js';
+import { scrapeRFPFromUrl } from './rfpScrapingService.js';
 import { storage } from '../storage.js';
 import { nanoid } from 'nanoid';
 import OpenAI from 'openai';
@@ -36,47 +37,92 @@ export class ManualRfpService {
     try {
       console.log(`[ManualRfpService] Processing manual RFP from URL: ${input.url}`);
 
-      // Step 1: Analyze the URL to determine portal type and extraction strategy
-      const portalAnalysis = await this.analyzePortalUrl(input.url);
-      console.log(`[ManualRfpService] Portal analysis:`, portalAnalysis);
+      // Use the new enhanced RFP scraping service with Mastra/Browserbase
+      console.log(`[ManualRfpService] Using enhanced Mastra/Browserbase scraping service`);
+      const scrapingResult = await scrapeRFPFromUrl(input.url, 'manual');
+      
+      if (!scrapingResult || !scrapingResult.rfp) {
+        // Fallback to existing method if new scraper fails
+        console.log(`[ManualRfpService] Falling back to legacy extraction method`);
+        
+        // Step 1: Analyze the URL to determine portal type and extraction strategy
+        const portalAnalysis = await this.analyzePortalUrl(input.url);
+        console.log(`[ManualRfpService] Portal analysis:`, portalAnalysis);
 
-      // Step 2: Extract RFP data using appropriate method
-      let rfpData;
-      if (portalAnalysis.isAustinFinance) {
-        rfpData = await this.extractAustinFinanceRfp(input.url);
-      } else {
-        rfpData = await this.extractGenericRfp(input.url, portalAnalysis);
-      }
+        // Step 2: Extract RFP data using appropriate method
+        let rfpData;
+        if (portalAnalysis.isAustinFinance) {
+          rfpData = await this.extractAustinFinanceRfp(input.url);
+        } else {
+          rfpData = await this.extractGenericRfp(input.url, portalAnalysis);
+        }
 
-      if (!rfpData) {
+        if (!rfpData) {
+          return {
+            success: false,
+            error: "Could not extract RFP data from the provided URL",
+            message: "Unable to extract RFP information. Please verify the URL is correct and accessible."
+          };
+        }
+
+        // Step 3: Create RFP entry with manual tracking
+        const rfpId = await this.createManualRfpEntry(rfpData, input);
+        console.log(`[ManualRfpService] Created manual RFP with ID: ${rfpId}`);
+
+        // Step 4: Trigger comprehensive processing for all manual RFPs
+        await this.triggerDocumentProcessing(rfpId);
+
+        // Step 5: Create notification
+        await storage.createNotification({
+          type: 'info',
+          title: 'Manual RFP Added',
+          message: `RFP "${rfpData.title}" has been added manually and is being processed.`,
+          relatedEntityType: 'rfp',
+          relatedEntityId: rfpId,
+          isRead: false
+        });
+
         return {
-          success: false,
-          error: "Could not extract RFP data from the provided URL",
-          message: "Unable to extract RFP information. Please verify the URL is correct and accessible."
+          success: true,
+          rfpId: rfpId,
+          message: `RFP "${rfpData.title}" has been successfully added and processing has begun.`
         };
       }
-
-      // Step 3: Create RFP entry with manual tracking
-      const rfpId = await this.createManualRfpEntry(rfpData, input);
-      console.log(`[ManualRfpService] Created manual RFP with ID: ${rfpId}`);
-
-      // Step 4: Trigger comprehensive processing for all manual RFPs
+      
+      // Enhanced scraper succeeded - use the scraped data
+      const rfpId = scrapingResult.rfp.id;
+      const rfpTitle = scrapingResult.rfp.title;
+      
+      // Add user notes if provided
+      if (input.userNotes) {
+        await storage.updateRFP(rfpId, {
+          description: scrapingResult.rfp.description + `\n\nUser Notes: ${input.userNotes}`,
+          updatedAt: new Date()
+        });
+      }
+      
+      // Log any errors that occurred during scraping
+      if (scrapingResult.errors && scrapingResult.errors.length > 0) {
+        console.warn(`[ManualRfpService] Scraping completed with warnings:`, scrapingResult.errors);
+      }
+      
+      // Trigger enhanced proposal generation
       await this.triggerDocumentProcessing(rfpId);
-
-      // Step 5: Create notification
+      
+      // Create notification
       await storage.createNotification({
         type: 'info',
         title: 'Manual RFP Added',
-        message: `RFP "${rfpData.title}" has been added manually and is being processed.`,
+        message: `RFP "${rfpTitle}" has been successfully added with ${scrapingResult.documents?.length || 0} documents.`,
         relatedEntityType: 'rfp',
         relatedEntityId: rfpId,
         isRead: false
       });
-
+      
       return {
         success: true,
         rfpId: rfpId,
-        message: `RFP "${rfpData.title}" has been successfully added and processing has begun.`
+        message: `RFP "${rfpTitle}" has been successfully added and processing has begun. ${scrapingResult.documents?.length || 0} documents were downloaded.`
       };
 
     } catch (error) {
