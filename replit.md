@@ -65,7 +65,10 @@ Preferred communication style: Simple, everyday language.
 - **Custom AI Workflows**: Document parsing, compliance analysis, and content generation pipelines
 
 ### AI-Powered Automation
-- **Mastra Framework**: TypeScript AI agent framework for intelligent RFP portal scraping with specialized agents
+- **Mastra Framework**: TypeScript AI agent framework with integrated workflow orchestration
+  - **Workflows**: Document processing, RFP discovery, proposal generation, BonfireHub authentication, and master orchestration
+  - **Agents**: 3-tier system with 1 Orchestrator, 3 Managers, and 7 Specialist agents
+  - **Features**: Parallel execution, suspension/resume for 2FA, human-in-the-loop capabilities
 - **Node-cron**: Scheduled job execution for automated portal scanning
 
 ### Development and Build Tools
