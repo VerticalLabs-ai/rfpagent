@@ -60,6 +60,13 @@ export default function AgentMonitoring() {
   const safeWorkflowStates = workflowStates || { workflows: [], summary: { phaseDistribution: {} } };
   const safePhaseStats = phaseStats || { phaseStats: {}, transitionMetrics: {} };
 
+  // Derive workflow metrics from available data
+  const workflowMetrics = {
+    completedWorkflows: (safeSystemHealth as any)?.completedWorkflows || 0,
+    suspendedWorkflows: (safeSystemHealth as any)?.suspendedWorkflows || 0,
+    failedWorkflows: (safeSystemHealth as any)?.failedWorkflows || 0,
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
