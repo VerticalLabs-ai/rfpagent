@@ -258,9 +258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const portalMonitoringService = new PortalMonitoringService(storage);
   const portalSchedulerService = new PortalSchedulerService(storage, portalMonitoringService);
 
-  // Initialize new portal monitoring scheduler
-  console.log("Initializing Portal Monitoring Scheduler...");
-  portalSchedulerService.initialize().catch(console.error);
+  // Portal monitoring scheduler disabled by default for manual operation
+  // Call portalSchedulerService.initialize() manually to enable automatic portal scanning
+  console.log("Portal monitoring scheduler available (disabled by default)");
 
   // Mount Analysis Routes (Phase 7: Analysis Pipeline Integration)
   console.log("Mounting Analysis Routes...");
