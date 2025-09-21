@@ -536,6 +536,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/rfps/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      await storage.deleteRFP(id);
+      res.json({ success: true, message: "RFP deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting RFP:", error);
+      if (error.message === "RFP not found") {
+        res.status(404).json({ error: "RFP not found" });
+      } else {
+        res.status(500).json({ error: "Failed to delete RFP" });
+      }
+    }
+  });
+
   // RFP document upload
   app.post("/api/rfps/:id/documents/upload", async (req, res) => {
     try {

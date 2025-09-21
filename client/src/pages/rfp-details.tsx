@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion, RefreshCw } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion, RefreshCw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,36 @@ export default function RFPDetails() {
       });
     },
   });
+
+  const deleteRFPMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('DELETE', `/api/rfps/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "RFP Deleted",
+        description: "RFP and all related data have been successfully deleted.",
+      });
+      // Navigate back to proposals list after successful deletion
+      window.location.href = '/proposals';
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error?.message || "Failed to delete the RFP. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteRFP = () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this RFP?\n\n"${rfp.title}"\n\nThis action cannot be undone and will also delete:\n• All downloaded documents\n• Generated proposals\n• Submission history\n• All related data`
+    );
+    if (confirmed) {
+      deleteRFPMutation.mutate();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -547,6 +577,21 @@ export default function RFPDetails() {
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Open in Portal
+              </Button>
+              
+              <Button
+                variant="destructive"
+                onClick={handleDeleteRFP}
+                disabled={deleteRFPMutation.isPending}
+                className="w-full"
+                data-testid="button-delete-rfp"
+              >
+                {deleteRFPMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Delete RFP
               </Button>
             </CardContent>
           </Card>

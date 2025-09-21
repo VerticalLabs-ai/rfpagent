@@ -48,6 +48,7 @@ export interface IStorage {
   getRFPsWithDetails(): Promise<any[]>;
   createRFP(rfp: InsertRFP): Promise<RFP>;
   updateRFP(id: string, updates: Partial<RFP>): Promise<RFP>;
+  deleteRFP(id: string): Promise<void>;
   getRFPsByStatus(status: string): Promise<RFP[]>;
   getRFPsByPortal(portalId: string): Promise<RFP[]>;
 
@@ -574,6 +575,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(rfps.id, id))
       .returning();
     return updatedRfp;
+  }
+
+  async deleteRFP(id: string): Promise<void> {
+    // Get RFP details for audit log before deletion
+    const rfp = await this.getRFP(id);
+    if (!rfp) {
+      throw new Error("RFP not found");
+    }
+
+    // Delete related data in correct order (child tables first)
+    // Delete submission events for any submissions related to this RFP
+    await db.delete(submissionEvents).where(
+      sql`submission_id IN (SELECT id FROM ${submissions} WHERE rfp_id = ${id})`
+    );
+
+    // Delete submission status history for any submissions related to this RFP
+    await db.delete(submissionStatusHistory).where(
+      sql`submission_id IN (SELECT id FROM ${submissions} WHERE rfp_id = ${id})`
+    );
+
+    // Delete submission pipelines for any submissions related to this RFP
+    await db.delete(submissionPipelines).where(
+      sql`submission_id IN (SELECT id FROM ${submissions} WHERE rfp_id = ${id})`
+    );
+
+    // Delete submissions
+    await db.delete(submissions).where(eq(submissions.rfpId, id));
+
+    // Delete documents
+    await db.delete(documents).where(eq(documents.rfpId, id));
+
+    // Delete proposals
+    await db.delete(proposals).where(eq(proposals.rfpId, id));
+
+    // Finally, delete the RFP itself
+    await db.delete(rfps).where(eq(rfps.id, id));
+
+    // Create audit log
+    await this.createAuditLog({
+      entityType: "rfp",
+      entityId: id,
+      action: "deleted",
+      details: {
+        title: rfp.title,
+        agency: rfp.agency,
+        sourceUrl: rfp.sourceUrl,
+        status: rfp.status
+      }
+    });
   }
 
   async getRFPsByStatus(status: string): Promise<RFP[]> {
