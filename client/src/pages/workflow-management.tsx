@@ -267,7 +267,7 @@ export default function WorkflowManagement() {
           <h1 className="text-3xl font-bold dark:text-gray-100 text-[#ebebeb]" data-testid="heading-workflow-management">
             Workflow Management
           </h1>
-          <p className="text-gray-600 dark:text-gray-400" data-testid="text-description">
+          <p className="dark:text-gray-400 text-[#b5b5b5]" data-testid="text-description">
             Manage suspended workflows and provide human input for AI agents
           </p>
         </div>
