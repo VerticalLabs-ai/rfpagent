@@ -474,6 +474,235 @@ export class MastraScrapingService {
     }
   }
 
+  /**
+   * Enhanced scraping method for individual RFP re-scraping
+   * Uses Mastra/Browserbase integration with proper RFP ID preservation
+   */
+  async enhancedScrapeFromUrl(url: string, existingRfpId?: string): Promise<any> {
+    console.log(`🔄 Enhanced re-scraping of ${url}${existingRfpId ? ` for RFP ID: ${existingRfpId}` : ''}`);
+    
+    try {
+      // Detect portal type from URL for specialized handling
+      let portalType = 'generic';
+      if (url.includes('financeonline.austintexas.gov') || (url.includes('austin') && url.includes('finance'))) {
+        portalType = 'austin finance';
+      } else if (url.includes('bonfire')) {
+        portalType = 'bonfire';
+      } else if (url.includes('sam.gov')) {
+        portalType = 'sam.gov';
+      }
+      
+      console.log(`🎯 Detected portal type: ${portalType}`);
+      
+      // Use intelligent web scraping for proper Mastra integration
+      let scrapingResult;
+      let documentsCount = 0;
+      
+      // Special handling for Austin Finance URLs
+      if (portalType === 'austin finance') {
+        console.log(`🎯 Austin Finance detected: Using specialized Austin Finance scraper`);
+        try {
+          // Use Austin Finance document scraper (already imported)
+          const austinResult = await austinFinanceDocumentScraper.scrapeRFPDocuments(existingRfpId, url);
+          
+          if (austinResult && austinResult.documents) {
+            documentsCount = austinResult.documents.length;
+            console.log(`✅ Austin Finance scraper captured ${documentsCount} documents`);
+            
+            return {
+              success: true,
+              message: `Austin Finance RFP re-scraped successfully using specialized scraper`,
+              documentsCount,
+              opportunities: 1
+            };
+          }
+        } catch (austinError) {
+          console.error(`❌ Austin Finance scraper failed:`, austinError);
+          // Fall back to general scraping
+        }
+      }
+      
+      scrapingResult = await this.intelligentWebScrape({
+        url,
+        portalType,
+        loginRequired: false, // Assume public access for re-scraping
+        searchFilter: null
+      });
+      
+      if (scrapingResult.error) {
+        return {
+          success: false,
+          message: `Scraping failed: ${scrapingResult.error}`,
+          documentsCount: 0
+        };
+      }
+      
+      // Extract opportunities from the scraping result
+      let opportunities = [];
+      if (scrapingResult.opportunities && Array.isArray(scrapingResult.opportunities)) {
+        opportunities = scrapingResult.opportunities;
+      } else if (scrapingResult.extractedData?.opportunities) {
+        opportunities = scrapingResult.extractedData.opportunities;
+      }
+      
+      if (opportunities.length === 0) {
+        console.log(`⚠️ No opportunities found from ${url}, attempting Browserbase fallback`);
+        
+        // Fallback: use Browserbase content scraping directly
+        try {
+          const sessionId = `rescrape-${Date.now()}`;
+          const content = await this.scrapeBrowserbaseContent(url, sessionId, 
+            'extract RFP details, documents, and procurement information from this page');
+          
+          // Create a basic opportunity from the extracted content
+          opportunities = [{
+            title: 'Re-scraped RFP',
+            description: content.substring(0, 1000), // Limit description length
+            sourceUrl: url,
+            agency: 'Unknown',
+            deadline: null,
+            estimatedValue: null,
+            documents: [] // Will be populated by document extraction
+          }];
+          
+          console.log(`✅ Browserbase fallback successful`);
+        } catch (fallbackError) {
+          console.error(`❌ Browserbase fallback failed:`, fallbackError);
+          return {
+            success: false,
+            message: `Both primary and fallback scraping failed`,
+            documentsCount: 0
+          };
+        }
+      }
+      
+      // Process the first opportunity (should be the RFP we're re-scraping)
+      if (opportunities.length > 0 && existingRfpId) {
+        const opportunity = opportunities[0];
+        
+        console.log(`🔄 Updating existing RFP ${existingRfpId} with fresh data`);
+        
+        // Update the existing RFP with fresh data
+        await storage.updateRFP(existingRfpId, {
+          title: opportunity.title || 'Re-scraped RFP',
+          description: opportunity.description,
+          agency: opportunity.agency,
+          deadline: opportunity.deadline ? new Date(opportunity.deadline) : null,
+          estimatedValue: opportunity.estimatedValue,
+          requirements: opportunity.requirements || [],
+          status: 'parsing',
+          progress: 25,
+          updatedAt: new Date()
+        });
+        
+        // Enhanced document detection and deduplication
+        const existingDocs = await storage.getDocumentsByRFP(existingRfpId);
+        console.log(`📄 Found ${existingDocs.length} existing documents for RFP ${existingRfpId}`);
+        
+        // Process documents if available in the opportunity  
+        if (opportunity.documents && Array.isArray(opportunity.documents)) {
+          for (const docInfo of opportunity.documents) {
+            try {
+              // Normalize URL for comparison (remove query params, fragments)
+              const normalizedUrl = docInfo.url ? new URL(docInfo.url).origin + new URL(docInfo.url).pathname : '';
+              
+              // Enhanced duplicate detection with normalized URLs and filename sanitization
+              const sanitizedFilename = (docInfo.filename || 'unknown_document').replace(/[^a-zA-Z0-9._-]/g, '_');
+              
+              const isDuplicate = existingDocs.some(doc => {
+                // Use object path as a fallback for URL comparison since sourceUrl might not exist in schema
+                return (
+                  doc.filename === sanitizedFilename ||
+                  doc.filename === docInfo.filename ||
+                  (doc.objectPath && doc.objectPath.includes(sanitizedFilename))
+                );
+              });
+              
+              if (!isDuplicate && docInfo.url && normalizedUrl) {
+                console.log(`📥 Downloading new document: ${sanitizedFilename}`);
+                
+                // Download and validate document with enhanced error handling
+                const response = await fetch(docInfo.url, {
+                  headers: {
+                    'User-Agent': 'Mozilla/5.0 (compatible; RFP-Agent/1.0)'
+                  }
+                });
+                
+                if (response.ok && response.status === 200) {
+                  const contentLength = response.headers.get('content-length');
+                  if (contentLength && parseInt(contentLength) > 0) {
+                    const buffer = await response.arrayBuffer();
+                    
+                    // Additional validation: check if content is actually a document
+                    if (buffer.byteLength > 100) { // Minimum size check
+                      const document = await storage.createDocument({
+                        rfpId: existingRfpId,
+                        filename: sanitizedFilename,
+                        fileType: docInfo.fileType || this.detectFileType(sanitizedFilename),
+                        objectPath: `rfps/${existingRfpId}/${sanitizedFilename}`,
+                        extractedText: null,
+                        parsedData: { sourceUrl: docInfo.url, originalFilename: docInfo.filename }
+                      });
+                      
+                      if (document) {
+                        documentsCount++;
+                        console.log(`✅ Document saved: ${sanitizedFilename} (${buffer.byteLength} bytes)`);
+                      }
+                    } else {
+                      console.log(`⚠️ Skipping document with insufficient content: ${sanitizedFilename}`);
+                    }
+                  } else {
+                    console.log(`⚠️ Skipping document with no content: ${sanitizedFilename}`);
+                  }
+                } else {
+                  console.log(`⚠️ Failed to download document ${sanitizedFilename}: HTTP ${response.status}`);
+                }
+              } else {
+                console.log(`⏭️ Skipping duplicate document: ${sanitizedFilename}`);
+              }
+            } catch (docError) {
+              console.error(`❌ Failed to process document ${docInfo.filename}:`, docError);
+            }
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        message: `Re-scraping completed successfully using Mastra/Browserbase`,
+        documentsCount,
+        opportunities: opportunities.length
+      };
+      
+    } catch (error) {
+      console.error(`❌ Enhanced scraping failed for ${url}:`, error);
+      return {
+        success: false,
+        message: `Enhanced scraping failed: ${error instanceof Error ? error.message : String(error)}`,
+        documentsCount: 0
+      };
+    }
+  }
+
+  /**
+   * Helper method to detect file type from filename extension
+   */
+  private detectFileType(filename: string): string {
+    const extension = filename.toLowerCase().split('.').pop();
+    switch (extension) {
+      case 'pdf': return 'pdf';
+      case 'doc':
+      case 'docx': return 'doc';
+      case 'xls':
+      case 'xlsx': return 'excel';
+      case 'ppt':
+      case 'pptx': return 'powerpoint';
+      case 'txt': return 'txt';
+      case 'rtf': return 'rtf';
+      default: return 'unknown';
+    }
+  }
+
   async scrapePortal(portal: Portal, searchFilter?: string): Promise<void> {
     const filterMessage = searchFilter ? ` with filter: "${searchFilter}"` : '';
     console.log(`Starting intelligent scrape of ${portal.name} using Mastra agents${filterMessage}`);
@@ -894,8 +1123,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         let structuredData: any = null;
         
         if (portalType.toLowerCase().includes('austin') && portalType.toLowerCase().includes('finance')) {
-          console.log(`🌐 Austin Finance detected: Using dynamic content scraping with Puppeteer`);
-          html = await this.scrapeDynamicContent(url, sessionData);
+          console.log(`🌐 Austin Finance detected: Using enhanced Browserbase scraping`);
+          const sessionId = `austin-finance-${Date.now()}`;
+          html = await this.scrapeBrowserbaseContent(url, sessionId, 'extract Austin Finance RFP content and document links');
         } else if (sessionData?.sessionId && sessionData?.method === 'browser_authentication') {
           // Use authenticated browser session for content extraction instead of falling back to HTTP
           console.log(`🌐 Using authenticated browser session for content extraction: ${sessionData.sessionId}`);

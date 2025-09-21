@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion, RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +59,27 @@ export default function RFPDetails() {
       toast({
         title: "Error",
         description: "Failed to generate submission materials. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rescrapeMutation = useMutation({
+    mutationFn: async (data: { url?: string; userNotes?: string }) => {
+      return apiRequest('POST', `/api/rfps/${id}/rescrape`, data);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Re-scraping Complete",
+        description: `RFP re-scraped successfully! ${data.documentsFound || 0} documents were captured.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id, 'documents'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Re-scraping Failed",
+        description: error?.message || "Failed to re-scrape the RFP. Please try again.",
         variant: "destructive",
       });
     },
@@ -452,6 +473,24 @@ export default function RFPDetails() {
                   <Download className="w-4 h-4 mr-2" />
                 )}
                 Generate Submission Materials
+              </Button>
+              
+              <Button
+                variant="secondary"
+                onClick={() => rescrapeMutation.mutate({ 
+                  url: rfp.sourceUrl, // Use the existing RFP's source URL
+                  userNotes: "Re-scraping with enhanced Mastra/Browserbase system to capture documents"
+                })}
+                disabled={rescrapeMutation.isPending}
+                className="w-full"
+                data-testid="button-rescrape"
+              >
+                {rescrapeMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Re-scrape RFP
               </Button>
               
               <Button

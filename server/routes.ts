@@ -654,6 +654,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RFP Re-scraping endpoint  
+  app.post("/api/rfps/:id/rescrape", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { url, userNotes } = req.body;
+      
+      console.log(`🔄 Re-scraping RFP ${id} from URL: ${url}`);
+      
+      // Get existing RFP
+      const existingRfp = await storage.getRFP(id);
+      if (!existingRfp) {
+        return res.status(404).json({ error: "RFP not found" });
+      }
+
+      const targetUrl = url || existingRfp.sourceUrl;
+      
+      // Enhanced URL validation for security (prevent SSRF attacks)
+      try {
+        const parsedUrl = new URL(targetUrl);
+        
+        // Require HTTPS for security
+        if (parsedUrl.protocol !== 'https:') {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid URL protocol",
+            message: "Only HTTPS URLs are allowed for security"
+          });
+        }
+        
+        // Block private/localhost IPs 
+        const hostname = parsedUrl.hostname.toLowerCase();
+        const privateIpRegex = /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|localhost$|0\.0\.0\.0$)/;
+        if (privateIpRegex.test(hostname)) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid URL target",
+            message: "Private IP addresses and localhost are not allowed"
+          });
+        }
+        
+        // Safe domain allowlist with exact matching
+        const allowedDomains = [
+          'financeonline.austintexas.gov',
+          'austintexas.gov',
+          'bonfirehub.com',
+          'vendor.bonfirehub.com',
+          'sam.gov',
+          'governmentjobs.com',
+          'find-rfp.com',
+          'findrfp.com'
+        ];
+        
+        const isAllowed = allowedDomains.some(domain => 
+          hostname === domain || hostname.endsWith(`.${domain}`)
+        );
+        
+        if (!isAllowed) {
+          return res.status(400).json({
+            success: false,
+            error: "Invalid URL domain",
+            message: "URL must be from an approved government portal"
+          });
+        }
+      } catch {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid URL format", 
+          message: "Please provide a valid URL"
+        });
+      }
+
+      // Use Mastra scraping service directly for proper integration
+      const mastraService = new MastraScrapingService();
+      
+      console.log(`🤖 Using Mastra service for re-scraping RFP ${id}`);
+      
+      // Use enhanced scraping with proper RFP ID preservation
+      const scrapingResult = await mastraService.enhancedScrapeFromUrl(targetUrl, id);
+      
+      if (!scrapingResult || !scrapingResult.success) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Failed to re-scrape RFP",
+          message: scrapingResult?.message || "Could not extract updated data from the URL. Please check the URL and try again."
+        });
+      }
+
+      // Update RFP status to indicate re-processing
+      await storage.updateRFP(id, {
+        status: 'parsing',
+        progress: 25,
+        updatedAt: new Date()
+      });
+
+      // Add user notes if provided
+      if (userNotes) {
+        const currentRfp = await storage.getRFP(id);
+        await storage.updateRFP(id, {
+          description: `${currentRfp?.description || ''}\n\nRe-scrape Notes (${new Date().toISOString()}): ${userNotes}`,
+          updatedAt: new Date()
+        });
+      }
+
+      // Create audit log for re-scraping
+      await storage.createAuditLog({
+        entityType: "rfp",
+        entityId: id,
+        action: "re_scraped",
+        details: { 
+          url: targetUrl,
+          documentsFound: scrapingResult.documentsCount || 0,
+          userNotes: userNotes,
+          mastraService: true
+        }
+      });
+
+      // Create notification
+      await storage.createNotification({
+        type: 'info',
+        title: 'RFP Re-scraped',
+        message: `RFP has been re-scraped using Mastra service. ${scrapingResult.documentsCount || 0} documents were captured.`,
+        relatedEntityType: 'rfp',
+        relatedEntityId: id,
+        isRead: false
+      });
+
+      res.json({
+        success: true,
+        rfpId: id,
+        documentsFound: scrapingResult.documentsCount || 0,
+        message: scrapingResult.message || `RFP re-scraped successfully with ${scrapingResult.documentsCount || 0} documents captured using Mastra service.`
+      });
+
+    } catch (error) {
+      console.error("Error re-scraping RFP:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Internal server error",
+        message: "Failed to re-scrape the RFP. Please try again.",
+        documentsFound: 0
+      });
+    }
+  });
+
   // Proposal management
   app.get("/api/proposals/rfp/:rfpId", async (req, res) => {
     try {
