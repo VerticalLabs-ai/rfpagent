@@ -9,6 +9,7 @@ import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import * as path from 'path';
 import * as fs from 'fs';
+import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
 
 // Schema for extracted RFP data
 const rfpExtractionSchema = z.object({
@@ -33,11 +34,13 @@ type RFPExtractionData = z.infer<typeof rfpExtractionSchema>;
 
 export class RFPScrapingService {
   private sessionId: string;
+  private philadelphiaDownloader: PhiladelphiaDocumentDownloader;
   
   constructor() {
     // Use a consistent session name for this service instead of UUID
     // The session manager will handle browser sessions internally
     this.sessionId = 'rfp-scraping-session';
+    this.philadelphiaDownloader = new PhiladelphiaDocumentDownloader();
   }
 
   /**
@@ -174,36 +177,79 @@ export class RFPScrapingService {
       if (extractedData.documents && extractedData.documents.length > 0) {
         console.log(`📄 Found ${extractedData.documents.length} documents to download`);
         
-        for (const doc of extractedData.documents) {
+        // Check if this is a Philadelphia RFP
+        if (url.includes('phlcontracts.phila.gov')) {
+          console.log(`🏛️ Using Philadelphia-specific document downloader`);
+          const documentNames = extractedData.documents.map(doc => doc.name);
+          
           try {
-            const documentPath = await this.downloadRFPDocument(
+            const downloadResults = await this.philadelphiaDownloader.downloadRFPDocuments(
+              url,
               rfpId,
-              doc.url,
-              doc.name,
-              doc.type || 'pdf'
+              documentNames
             );
             
-            if (documentPath) {
-              // Save document record to database using storage interface
-              const newDoc = await storage.createDocument({
-                rfpId,
-                filename: doc.name,
-                fileType: doc.type || 'pdf',
-                objectPath: documentPath,
-                extractedText: null,
-                parsedData: {
-                  downloadUrl: doc.url,
-                  downloadedAt: new Date().toISOString(),
-                  source: 'manual_scraping'
-                }
-              });
-              
-              savedDocuments.push(newDoc);
-              console.log(`✅ Saved document: ${doc.name}`);
+            // Process each downloaded document
+            for (const result of downloadResults) {
+              if (result.downloadStatus === 'completed' && result.storagePath) {
+                // Save document record to database using storage interface
+                const newDoc = await storage.createDocument({
+                  rfpId,
+                  filename: result.name,
+                  fileType: result.storagePath.split('.').pop() || 'pdf',
+                  objectPath: result.storagePath,
+                  extractedText: null,
+                  parsedData: {
+                    downloadUrl: url,
+                    downloadedAt: new Date().toISOString(),
+                    source: 'philadelphia_downloader'
+                  }
+                });
+                
+                savedDocuments.push(newDoc);
+                console.log(`✅ Saved document: ${result.name}`);
+              } else if (result.error) {
+                console.error(`Failed to download ${result.name}: ${result.error}`);
+                errors.push(`Failed to download document: ${result.name} - ${result.error}`);
+              }
             }
-          } catch (docError) {
-            console.error(`Error downloading document ${doc.name}:`, docError);
-            errors.push(`Failed to download document: ${doc.name}`);
+          } catch (error) {
+            console.error(`Error downloading Philadelphia documents:`, error);
+            errors.push(`Failed to download Philadelphia documents: ${error}`);
+          }
+        } else {
+          // Use standard download for other portals
+          for (const doc of extractedData.documents) {
+            try {
+              const documentPath = await this.downloadRFPDocument(
+                rfpId,
+                doc.url,
+                doc.name,
+                doc.type || 'pdf'
+              );
+              
+              if (documentPath) {
+                // Save document record to database using storage interface
+                const newDoc = await storage.createDocument({
+                  rfpId,
+                  filename: doc.name,
+                  fileType: doc.type || 'pdf',
+                  objectPath: documentPath,
+                  extractedText: null,
+                  parsedData: {
+                    downloadUrl: doc.url,
+                    downloadedAt: new Date().toISOString(),
+                    source: 'manual_scraping'
+                  }
+                });
+                
+                savedDocuments.push(newDoc);
+                console.log(`✅ Saved document: ${doc.name}`);
+              }
+            } catch (docError) {
+              console.error(`Error downloading document ${doc.name}:`, docError);
+              errors.push(`Failed to download document: ${doc.name}`);
+            }
           }
         }
       }
@@ -236,6 +282,11 @@ export class RFPScrapingService {
   private async extractRFPData(url: string) {
     console.log(`📊 Extracting RFP data from: ${url}`);
     
+    // Special handling for Philadelphia RFPs
+    if (url.includes('phlcontracts.phila.gov')) {
+      return this.extractPhiladelphiaRFPData(url);
+    }
+    
     // Special handling for Austin Texas RFPs
     if (url.includes('austintexas.gov')) {
       return this.extractAustinRFPData(url);
@@ -248,6 +299,57 @@ export class RFPScrapingService {
       rfpExtractionSchema,
       this.sessionId
     );
+  }
+
+  /**
+   * Special extraction for Philadelphia RFPs
+   */
+  private async extractPhiladelphiaRFPData(url: string) {
+    console.log(`🏛️ Using Philadelphia RFP extraction logic`);
+    
+    try {
+      // Use the PhiladelphiaDocumentDownloader's extraction method
+      const philadelphiaData = await this.philadelphiaDownloader.extractRFPDetails(url);
+      
+      // Convert attachments array from Philadelphia data to document list
+      const documentList = (philadelphiaData.attachments || []).map(name => ({
+        name,
+        url: '', // Philadelphia documents don't have direct URLs
+        type: 'pdf'
+      }));
+      
+      // Convert Philadelphia format to our standard format
+      // Return in WebExtractionResult format with 'data' property
+      return {
+        data: {
+          title: philadelphiaData.description || philadelphiaData.bulletinDescription || 'Philadelphia RFP',
+          agency: philadelphiaData.organization || philadelphiaData.department || 'City of Philadelphia',
+          description: philadelphiaData.bulletinDescription || philadelphiaData.description || '',
+          deadline: philadelphiaData.bidOpeningDate || philadelphiaData.requiredDate || null,
+          estimatedValue: philadelphiaData.fiscalYear ? `FY ${philadelphiaData.fiscalYear}` : null,
+          contactName: philadelphiaData.infoContact || philadelphiaData.purchaser || null,
+          contactEmail: philadelphiaData.shipToAddress?.email || null,
+          contactPhone: philadelphiaData.shipToAddress?.phone || null,
+          solicitation_number: philadelphiaData.bidNumber || null,
+          pre_bid_meeting: null, // Philadelphia format doesn't include this
+          documents: documentList
+        },
+        success: true,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error: any) {
+      console.error('Error extracting Philadelphia RFP data:', error);
+      console.error('Error details:', error.message || error);
+      console.error('Error stack:', error.stack);
+      
+      // Fall back to generic extraction
+      return performWebExtraction(
+        url,
+        `Extract RFP details from this Philadelphia contracting portal page. Look for bid information, attachments, and all relevant details.`,
+        rfpExtractionSchema,
+        this.sessionId
+      );
+    }
   }
 
   /**
