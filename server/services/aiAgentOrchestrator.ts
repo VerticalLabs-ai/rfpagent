@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { storage } from "../storage";
 import { AIService } from "./aiService";
 import { EnhancedProposalService } from "./enhancedProposalService";
-import { MastraScrapingService } from "./mastraScrapingService";
+import { getMastraScrapingService } from "./mastraScrapingService";
 import { mastraWorkflowEngine, type ActionSuggestion } from "./mastraWorkflowEngine";
 import { DocumentIntelligenceService, documentIntelligenceService } from "./documentIntelligenceService";
 import { agentMemoryService } from './agentMemoryService';
@@ -52,7 +52,7 @@ export interface AgentResponse {
 export class AIAgentOrchestrator {
   private aiService = new AIService();
   private enhancedProposalService = new EnhancedProposalService();
-  private mastraScrapingService = new MastraScrapingService();
+  private mastraScrapingService = getMastraScrapingService();
   private documentIntelligenceService = documentIntelligenceService;
 
   private checkApiKeyAvailable(): boolean {

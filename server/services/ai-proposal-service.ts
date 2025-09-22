@@ -30,9 +30,9 @@ const RFPAnalysisResultSchema = z.object({
   })),
   keyDates: z.object({
     deadline: z.string().transform(str => new Date(str)),
-    prebidMeeting: z.string().transform(str => new Date(str)).optional(),
-    questionsDeadline: z.string().transform(str => new Date(str)).optional(),
-    sampleSubmission: z.string().transform(str => new Date(str)).optional(),
+    prebidMeeting: z.string().nullable().transform(str => str ? new Date(str) : null).optional(),
+    questionsDeadline: z.string().nullable().transform(str => str ? new Date(str) : null).optional(),
+    sampleSubmission: z.string().nullable().transform(str => str ? new Date(str) : null).optional(),
   }),
 });
 
@@ -79,9 +79,9 @@ export interface RFPAnalysisResult {
   }[];
   keyDates: {
     deadline: Date;
-    prebidMeeting?: Date;
-    questionsDeadline?: Date;
-    sampleSubmission?: Date;
+    prebidMeeting?: Date | null;
+    questionsDeadline?: Date | null;
+    sampleSubmission?: Date | null;
   };
 }
 

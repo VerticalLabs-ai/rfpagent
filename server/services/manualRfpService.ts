@@ -1,10 +1,12 @@
-import { MastraScrapingService } from './mastraScrapingService.js';
+import { getMastraScrapingService } from './mastraScrapingService.js';
 import { AustinFinanceDocumentScraper } from './austinFinanceDocumentScraper.js';
 import { DocumentIntelligenceService } from './documentIntelligenceService.js';
 import { scrapeRFPFromUrl } from './rfpScrapingService.js';
 import { storage } from '../storage.js';
 import { nanoid } from 'nanoid';
 import OpenAI from 'openai';
+import { progressTracker } from './progressTracker.js';
+import { randomUUID } from 'crypto';
 
 export interface ManualRfpInput {
   url: string;
@@ -13,19 +15,20 @@ export interface ManualRfpInput {
 
 export interface ManualRfpResult {
   success: boolean;
+  sessionId: string;
   rfpId?: string;
   error?: string;
   message: string;
 }
 
 export class ManualRfpService {
-  private mastraService: MastraScrapingService;
+  private mastraService: ReturnType<typeof getMastraScrapingService>;
   private documentScraper: AustinFinanceDocumentScraper;
   private documentIntelligence: DocumentIntelligenceService;
   private openai: OpenAI;
 
   constructor() {
-    this.mastraService = new MastraScrapingService();
+    this.mastraService = getMastraScrapingService();
     this.documentScraper = new AustinFinanceDocumentScraper();
     this.documentIntelligence = new DocumentIntelligenceService();
     this.openai = new OpenAI({
@@ -34,14 +37,24 @@ export class ManualRfpService {
   }
 
   async processManualRfp(input: ManualRfpInput): Promise<ManualRfpResult> {
+    const sessionId = randomUUID();
+
     try {
       console.log(`[ManualRfpService] Processing manual RFP from URL: ${input.url}`);
 
+      // Start progress tracking
+      progressTracker.startTracking(sessionId, input.url);
+      progressTracker.updateStep(sessionId, 'portal_detection', 'in_progress', 'Analyzing portal type...');
+
       // Use the new enhanced RFP scraping service with Mastra/Browserbase
       console.log(`[ManualRfpService] Using enhanced Mastra/Browserbase scraping service`);
+      progressTracker.updateStep(sessionId, 'portal_detection', 'completed', 'Portal type detected');
+      progressTracker.updateStep(sessionId, 'page_navigation', 'in_progress', 'Navigating to RFP page...');
+
       const scrapingResult = await scrapeRFPFromUrl(input.url, 'manual');
       
       if (!scrapingResult || !scrapingResult.rfp) {
+        progressTracker.updateStep(sessionId, 'page_navigation', 'failed', 'Primary extraction failed, trying fallback method');
         // Fallback to existing method if new scraper fails
         console.log(`[ManualRfpService] Falling back to legacy extraction method`);
         
@@ -58,8 +71,10 @@ export class ManualRfpService {
         }
 
         if (!rfpData) {
+          progressTracker.failTracking(sessionId, "Could not extract RFP data from the provided URL");
           return {
             success: false,
+            sessionId,
             error: "Could not extract RFP data from the provided URL",
             message: "Unable to extract RFP information. Please verify the URL is correct and accessible."
           };
@@ -82,16 +97,27 @@ export class ManualRfpService {
           isRead: false
         });
 
+        progressTracker.setRfpId(sessionId, rfpId);
+        progressTracker.completeTracking(sessionId, rfpId);
+
         return {
           success: true,
+          sessionId,
           rfpId: rfpId,
           message: `RFP "${rfpData.title}" has been successfully added and processing has begun.`
         };
       }
       
       // Enhanced scraper succeeded - use the scraped data
+      progressTracker.updateStep(sessionId, 'page_navigation', 'completed', 'Successfully navigated to RFP page');
+      progressTracker.updateStep(sessionId, 'data_extraction', 'completed', 'RFP information extracted');
+      progressTracker.updateStep(sessionId, 'document_discovery', 'completed', `Found ${scrapingResult.documents?.length || 0} documents`);
+      progressTracker.updateStep(sessionId, 'document_download', 'completed', 'Documents downloaded');
+      progressTracker.updateStep(sessionId, 'database_save', 'completed', 'RFP saved to database');
+
       const rfpId = scrapingResult.rfp.id;
       const rfpTitle = scrapingResult.rfp.title;
+      progressTracker.setRfpId(sessionId, rfpId);
       
       // Add user notes if provided
       if (input.userNotes) {
@@ -106,9 +132,6 @@ export class ManualRfpService {
         console.warn(`[ManualRfpService] Scraping completed with warnings:`, scrapingResult.errors);
       }
       
-      // Trigger enhanced proposal generation
-      await this.triggerDocumentProcessing(rfpId);
-      
       // Create notification
       await storage.createNotification({
         type: 'info',
@@ -118,17 +141,25 @@ export class ManualRfpService {
         relatedEntityId: rfpId,
         isRead: false
       });
-      
+
+      // Trigger enhanced proposal generation (this will complete the tracking when done)
+      progressTracker.updateStep(sessionId, 'ai_analysis', 'in_progress', 'Starting AI analysis and proposal generation');
+      this.triggerDocumentProcessingWithProgress(rfpId, sessionId);
+
       return {
         success: true,
+        sessionId,
         rfpId: rfpId,
         message: `RFP "${rfpTitle}" has been successfully added and processing has begun. ${scrapingResult.documents?.length || 0} documents were downloaded.`
       };
 
     } catch (error) {
       console.error('[ManualRfpService] Error processing manual RFP:', error);
+      progressTracker.failTracking(sessionId, error instanceof Error ? error.message : 'Unknown error');
+
       return {
         success: false,
+        sessionId,
         error: error instanceof Error ? error.message : 'Unknown error',
         message: "Failed to process the RFP URL. Please try again or contact support."
       };
@@ -389,7 +420,7 @@ If any field cannot be determined, use null or empty values.`;
   private async triggerDocumentProcessing(rfpId: string) {
     try {
       console.log(`[ManualRfpService] Triggering comprehensive processing for RFP: ${rfpId}`);
-      
+
       // Update RFP status to indicate processing has started
       await storage.updateRFP(rfpId, {
         status: 'parsing',
@@ -399,19 +430,39 @@ If any field cannot be determined, use null or empty values.`;
 
       // Trigger enhanced proposal generation workflow
       this.triggerEnhancedProposalGeneration(rfpId);
-      
+
     } catch (error) {
       console.error('[ManualRfpService] Error triggering document processing:', error);
+    }
+  }
+
+  private async triggerDocumentProcessingWithProgress(rfpId: string, sessionId: string) {
+    try {
+      console.log(`[ManualRfpService] Triggering comprehensive processing with progress for RFP: ${rfpId}`);
+
+      // Update RFP status to indicate processing has started
+      await storage.updateRFP(rfpId, {
+        status: 'parsing',
+        progress: 25,
+        updatedAt: new Date()
+      });
+
+      // Trigger enhanced proposal generation workflow with progress tracking
+      this.triggerEnhancedProposalGenerationWithProgress(rfpId, sessionId);
+
+    } catch (error) {
+      console.error('[ManualRfpService] Error triggering document processing:', error);
+      progressTracker.failTracking(sessionId, 'Failed to trigger document processing');
     }
   }
 
   private async triggerEnhancedProposalGeneration(rfpId: string) {
     try {
       console.log(`[ManualRfpService] Starting enhanced proposal generation for RFP: ${rfpId}`);
-      
+
       // Import the enhanced proposal service dynamically to avoid circular dependencies
       const { enhancedProposalService } = await import('./enhancedProposalService.js');
-      
+
       // Trigger comprehensive proposal generation in the background
       enhancedProposalService.generateProposal({
         rfpId: rfpId,
@@ -421,7 +472,7 @@ If any field cannot be determined, use null or empty values.`;
       })
         .then(result => {
           console.log(`[ManualRfpService] Enhanced proposal generation completed for RFP: ${rfpId}`, result);
-          
+
           // Create success notification
           storage.createNotification({
             type: 'success',
@@ -434,7 +485,7 @@ If any field cannot be determined, use null or empty values.`;
         })
         .catch(error => {
           console.error(`[ManualRfpService] Enhanced proposal generation failed for RFP: ${rfpId}`, error);
-          
+
           // Create error notification
           storage.createNotification({
             type: 'error',
@@ -444,7 +495,7 @@ If any field cannot be determined, use null or empty values.`;
             relatedEntityId: rfpId,
             isRead: false
           });
-          
+
           // Update RFP status to indicate error
           storage.updateRFP(rfpId, {
             status: 'discovered',
@@ -452,9 +503,69 @@ If any field cannot be determined, use null or empty values.`;
             updatedAt: new Date()
           });
         });
-        
+
     } catch (error) {
       console.error('[ManualRfpService] Error triggering enhanced proposal generation:', error);
+    }
+  }
+
+  private async triggerEnhancedProposalGenerationWithProgress(rfpId: string, sessionId: string) {
+    try {
+      console.log(`[ManualRfpService] Starting enhanced proposal generation with progress for RFP: ${rfpId}`);
+
+      // Import the enhanced proposal service dynamically to avoid circular dependencies
+      const { enhancedProposalService } = await import('./enhancedProposalService.js');
+
+      // Trigger comprehensive proposal generation in the background
+      enhancedProposalService.generateProposal({
+        rfpId: rfpId,
+        generatePricing: true,
+        autoSubmit: false, // Manual RFPs should not auto-submit
+        companyProfileId: undefined // Use default company profile
+      })
+        .then(result => {
+          console.log(`[ManualRfpService] Enhanced proposal generation completed for RFP: ${rfpId}`, result);
+
+          // Complete the progress tracking
+          progressTracker.completeTracking(sessionId, rfpId);
+
+          // Create success notification
+          storage.createNotification({
+            type: 'success',
+            title: 'Manual RFP Processing Complete',
+            message: `RFP processing has completed. ${result.humanActionItems?.length || 0} action items require your attention.`,
+            relatedEntityType: 'rfp',
+            relatedEntityId: rfpId,
+            isRead: false
+          });
+        })
+        .catch(error => {
+          console.error(`[ManualRfpService] Enhanced proposal generation failed for RFP: ${rfpId}`, error);
+
+          // Fail the progress tracking
+          progressTracker.failTracking(sessionId, `Proposal generation failed: ${error.message}`);
+
+          // Create error notification
+          storage.createNotification({
+            type: 'error',
+            title: 'Manual RFP Processing Failed',
+            message: `Processing failed for manually added RFP. Please review and try again.`,
+            relatedEntityType: 'rfp',
+            relatedEntityId: rfpId,
+            isRead: false
+          });
+
+          // Update RFP status to indicate error
+          storage.updateRFP(rfpId, {
+            status: 'discovered',
+            progress: 10,
+            updatedAt: new Date()
+          });
+        });
+
+    } catch (error) {
+      console.error('[ManualRfpService] Error triggering enhanced proposal generation:', error);
+      progressTracker.failTracking(sessionId, 'Failed to start proposal generation');
     }
   }
 

@@ -1,6 +1,6 @@
 import { Portal, RFP, InsertRFP, InsertNotification } from '@shared/schema';
 import { IStorage } from '../storage';
-import { MastraScrapingService } from './mastraScrapingService';
+import { getMastraScrapingService } from './mastraScrapingService';
 import { scanManager } from './scan-manager';
 
 export interface DiscoveredRFP {
@@ -41,10 +41,10 @@ export interface PortalFilters {
 }
 
 export class PortalMonitoringService {
-  private mastraService: MastraScrapingService;
+  private mastraService: ReturnType<typeof getMastraScrapingService>;
   
   constructor(private storage: IStorage) {
-    this.mastraService = new MastraScrapingService();
+    this.mastraService = getMastraScrapingService();
   }
 
   /**

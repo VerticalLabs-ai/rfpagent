@@ -25,7 +25,7 @@ const rfpExtractionSchema = z.object({
   pre_bid_meeting: z.string().optional().describe('Pre-bid meeting date/time if applicable'),
   documents: z.array(z.object({
     name: z.string().describe('Document name or title'),
-    url: z.string().describe('Document download URL'),
+    url: z.string().optional().describe('Document download URL (if available)'),
     type: z.string().optional().describe('Document type (PDF, DOCX, etc.)')
   })).optional().describe('List of downloadable documents')
 });
@@ -205,12 +205,33 @@ export class RFPScrapingService {
                     source: 'philadelphia_downloader'
                   }
                 });
-                
+
                 savedDocuments.push(newDoc);
                 console.log(`✅ Saved document: ${result.name}`);
-              } else if (result.error) {
-                console.error(`Failed to download ${result.name}: ${result.error}`);
-                errors.push(`Failed to download document: ${result.name} - ${result.error}`);
+              } else {
+                // Create a document record even for failed downloads to show in UI
+                const failedDoc = await storage.createDocument({
+                  rfpId,
+                  filename: result.name,
+                  fileType: 'pdf', // Default assumption
+                  objectPath: '',  // Empty path for failed downloads
+                  extractedText: null,
+                  parsedData: {
+                    downloadUrl: url,
+                    downloadStatus: result.downloadStatus,
+                    downloadError: result.error,
+                    attemptedAt: new Date().toISOString(),
+                    source: 'philadelphia_downloader'
+                  }
+                });
+
+                savedDocuments.push(failedDoc);
+                console.log(`📝 Saved document metadata for failed download: ${result.name}`);
+
+                if (result.error) {
+                  console.error(`Failed to download ${result.name}: ${result.error}`);
+                  errors.push(`Failed to download document: ${result.name} - ${result.error}`);
+                }
               }
             }
           } catch (error) {

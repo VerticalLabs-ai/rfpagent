@@ -10,12 +10,14 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { SubmissionMaterialsDialog } from "@/components/SubmissionMaterialsDialog";
 import type { RFP, Document } from "@shared/schema";
 
 export default function RFPDetails() {
   const { id } = useParams();
   const { toast } = useToast();
   const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
+  const [submissionMaterialsOpen, setSubmissionMaterialsOpen] = useState(false);
 
 
   const { data: rfp, isLoading, error } = useQuery<RFP>({
@@ -33,25 +35,8 @@ export default function RFPDetails() {
     enabled: !!id,
   });
 
-  const generateMaterialsMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', `/api/proposals/${id}/generate`);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Submission materials generated successfully!",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to generate submission materials. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Legacy mutation - kept for compatibility but replaced by SubmissionMaterialsDialog
+  // const generateMaterialsMutation = useMutation({ ... });
 
   const rescrapeMutation = useMutation({
     mutationFn: async (data: { url?: string; userNotes?: string }) => {
@@ -133,10 +118,10 @@ export default function RFPDetails() {
     return (
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Link href="/proposals">
+          <Link href="/rfps">
             <Button variant="ghost" size="sm" data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Proposals
+              Back to RFPs
             </Button>
           </Link>
         </div>
@@ -155,10 +140,10 @@ export default function RFPDetails() {
     return (
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-6">
-          <Link href="/proposals">
+          <Link href="/rfps">
             <Button variant="ghost" size="sm" data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Proposals
+              Back to RFPs
             </Button>
           </Link>
         </div>
@@ -174,14 +159,14 @@ export default function RFPDetails() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "discovered": return "bg-blue-500";
-      case "parsing": return "bg-yellow-500";
-      case "drafting": return "bg-orange-500";
-      case "review": return "bg-purple-500";
-      case "approved": return "bg-green-500";
-      case "submitted": return "bg-gray-500";
-      case "closed": return "bg-red-500";
-      default: return "bg-gray-500";
+      case "discovered": return "bg-blue-500 text-white dark:bg-blue-600 dark:text-blue-100";
+      case "parsing": return "bg-yellow-500 text-white dark:bg-yellow-600 dark:text-yellow-100";
+      case "drafting": return "bg-orange-500 text-white dark:bg-orange-600 dark:text-orange-100";
+      case "review": return "bg-purple-500 text-white dark:bg-purple-600 dark:text-purple-100";
+      case "approved": return "bg-green-500 text-white dark:bg-green-600 dark:text-green-100";
+      case "submitted": return "bg-gray-500 text-white dark:bg-gray-600 dark:text-gray-100";
+      case "closed": return "bg-red-500 text-white dark:bg-red-600 dark:text-red-100";
+      default: return "bg-gray-500 text-white dark:bg-gray-600 dark:text-gray-100";
     }
   };
 
@@ -236,10 +221,10 @@ export default function RFPDetails() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <Link href="/proposals">
+          <Link href="/rfps">
             <Button variant="ghost" size="sm" data-testid="button-back">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Proposals
+              Back to RFPs
             </Button>
           </Link>
           <div>
@@ -252,8 +237,8 @@ export default function RFPDetails() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge 
-            className={`${getStatusColor(rfp.status)} text-white`}
+          <Badge
+            className={getStatusColor(rfp.status)}
             data-testid="badge-status"
           >
             {getStatusLabel(rfp.status)}
@@ -622,16 +607,11 @@ export default function RFPDetails() {
             </CardHeader>
             <CardContent className="space-y-3">
               <Button
-                onClick={() => generateMaterialsMutation.mutate()}
-                disabled={generateMaterialsMutation.isPending}
-                className="w-full"
+                onClick={() => setSubmissionMaterialsOpen(true)}
+                className="w-full bg-green-600 hover:bg-green-700"
                 data-testid="button-generate-materials"
               >
-                {generateMaterialsMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
+                <Download className="w-4 h-4 mr-2" />
                 Generate Submission Materials
               </Button>
               
@@ -719,6 +699,20 @@ export default function RFPDetails() {
           </Card>
         </div>
       </div>
+
+      {/* Submission Materials Dialog */}
+      {id && (
+        <SubmissionMaterialsDialog
+          rfpId={id}
+          open={submissionMaterialsOpen}
+          onOpenChange={setSubmissionMaterialsOpen}
+          onComplete={(materials) => {
+            console.log('Submission materials completed:', materials);
+            // Refresh the RFP data
+            queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
+          }}
+        />
+      )}
     </div>
   );
 }

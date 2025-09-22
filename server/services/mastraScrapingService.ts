@@ -3104,3 +3104,13 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return Array.from(new Set(jsonBlocks)); // Remove duplicates
   }
 }
+
+// Singleton instance to prevent duplicate initialization messages
+let mastraScrapingInstance: MastraScrapingService | null = null;
+
+export function getMastraScrapingService(): MastraScrapingService {
+  if (!mastraScrapingInstance) {
+    mastraScrapingInstance = new MastraScrapingService();
+  }
+  return mastraScrapingInstance;
+}

@@ -2,7 +2,7 @@ import { mastraWorkflowEngine } from "./mastraWorkflowEngine";
 import { storage } from "../storage";
 import { aiProposalService } from "./ai-proposal-service";
 import { documentIntelligenceService } from "./documentIntelligenceService";
-import { MastraScrapingService } from "./mastraScrapingService";
+import { getMastraScrapingService } from "./mastraScrapingService";
 import { agentRegistryService } from "./agentRegistryService";
 import { AIService } from "./aiService";
 import { DocumentParsingService } from "./documentParsingService";
@@ -63,7 +63,7 @@ export interface TaskDistributionResult {
  * Orchestrates both RFP lifecycle and generic work item management
  */
 export class WorkflowCoordinator {
-  private mastraScrapingService = new MastraScrapingService();
+  private mastraScrapingService = getMastraScrapingService();
   private aiService = new AIService();
   private documentParsingService = new DocumentParsingService();
   private portalMonitoringService = new PortalMonitoringService(storage);

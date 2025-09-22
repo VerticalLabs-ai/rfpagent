@@ -7,7 +7,7 @@ import { storage } from "../storage";
 import { AIService } from "./aiService";
 import { aiProposalService } from "./ai-proposal-service";
 import { documentIntelligenceService } from "./documentIntelligenceService";
-import { MastraScrapingService } from "./mastraScrapingService";
+import { getMastraScrapingService } from "./mastraScrapingService";
 import { agentMemoryService } from './agentMemoryService';
 import { retryBackoffDlqService } from './retryBackoffDlqService';
 import type { RFP, Portal, CompanyProfile } from "@shared/schema";
@@ -116,7 +116,7 @@ export interface PhaseTransitionRecord {
  */
 export class MastraWorkflowEngine {
   private aiService = new AIService();
-  private mastraScrapingService = new MastraScrapingService();
+  private mastraScrapingService = getMastraScrapingService();
   private agents: Map<string, Agent> = new Map();
   private activeWorkflows: Map<string, WorkflowPhaseState> = new Map();
   private agentCoordinator: Map<string, any> = new Map();

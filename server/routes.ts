@@ -9,10 +9,10 @@ import {
   type AiConversation, type ConversationMessage, type ResearchFinding
 } from "@shared/schema";
 import { ZodError } from "zod";
-import { MastraScrapingService } from "./services/mastraScrapingService";
+import { getMastraScrapingService } from "./services/mastraScrapingService";
 import { DocumentParsingService } from "./services/documentParsingService";
 import { AIService } from "./services/aiService";
-import { SubmissionService } from "./services/submissionService";
+import { submissionService } from "./services/submissionService";
 import { NotificationService } from "./services/notificationService";
 import { ObjectStorageService } from "./objectStorage";
 import { PortalMonitoringService } from "./services/portal-monitoring-service";
@@ -22,12 +22,14 @@ import { enhancedProposalService } from "./services/enhancedProposalService";
 import { documentIntelligenceService } from "./services/documentIntelligenceService";
 import { scanManager } from "./services/scan-manager";
 import { ManualRfpService } from "./services/manualRfpService";
+import { progressTracker } from "./services/progressTracker";
 import { aiAgentOrchestrator } from "./services/aiAgentOrchestrator";
 import { mastraWorkflowEngine } from "./services/mastraWorkflowEngine";
 import { proposalGenerationOrchestrator } from "./services/proposalGenerationOrchestrator";
 import analysisRoutes from "./routes/analysis";
 import { workflowCoordinator } from "./services/workflowCoordinator";
 import { PhiladelphiaDocumentDownloader } from "./services/philadelphiaDocumentDownloader";
+import { submissionMaterialsService } from "./services/submissionMaterialsService";
 import { z } from "zod";
 
 // Runtime service state tracking (tracks actual running status vs environment variables)
@@ -257,10 +259,10 @@ const SubmissionRetryRequestSchema = z.object({
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const server = createServer(app);
-  const scrapingService = new MastraScrapingService(); // Keep for legacy support
+  const scrapingService = getMastraScrapingService(); // Using singleton instance
   const documentService = new DocumentParsingService();
   const aiService = new AIService();
-  const submissionService = new SubmissionService();
+  // submissionService already imported as singleton
   const notificationService = new NotificationService();
   const objectStorageService = new ObjectStorageService();
   
@@ -638,6 +640,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // SSE endpoint for real-time RFP processing progress
+  app.get("/api/rfps/manual/progress/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      console.log(`📡 SSE connection established for session: ${sessionId}`);
+
+      // Register SSE client for the session
+      progressTracker.registerSSEClient(sessionId, res);
+
+      // Handle client disconnect
+      req.on('close', () => {
+        console.log(`📡 SSE connection closed for session: ${sessionId}`);
+      });
+
+    } catch (error) {
+      console.error("Error setting up SSE connection:", error);
+      res.status(500).json({ error: "Failed to establish progress stream" });
+    }
+  });
+
   app.get("/api/rfps/manual/status/:rfpId", async (req, res) => {
     try {
       const { rfpId } = req.params;
@@ -831,7 +853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Use Mastra scraping service directly for proper integration
-      const mastraService = new MastraScrapingService();
+      const mastraService = getMastraScrapingService();
       
       console.log(`🤖 Using Mastra service for re-scraping RFP ${id}`);
       
@@ -1237,6 +1259,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         error: error instanceof Error ? error.message : 'Failed to get active workflows' 
       });
     }
+  });
+
+  // ============ SUBMISSION MATERIALS GENERATION ENDPOINTS ============
+
+  /**
+   * Generate comprehensive submission materials using Mastra agents
+   */
+  app.post("/api/proposals/:id/submission-materials", async (req, res) => {
+    try {
+      const { id: rfpId } = req.params;
+      const {
+        companyProfileId,
+        pricingData,
+        generateCompliance = true,
+        generatePricing = true,
+        autoSubmit = false,
+        customInstructions
+      } = req.body;
+
+      console.log(`🚀 Starting submission materials generation for RFP: ${rfpId}`);
+
+      // Validate RFP exists
+      const rfp = await storage.getRFP(rfpId);
+      if (!rfp) {
+        return res.status(404).json({
+          success: false,
+          error: "RFP not found"
+        });
+      }
+
+      // Generate submission materials using the new service
+      const result = await submissionMaterialsService.generateSubmissionMaterials({
+        rfpId,
+        companyProfileId,
+        pricingData,
+        generateCompliance,
+        generatePricing,
+        autoSubmit,
+        customInstructions
+      });
+
+      if (!result.success) {
+        return res.status(500).json({
+          success: false,
+          error: result.error,
+          sessionId: result.sessionId
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          sessionId: result.sessionId,
+          materials: result.materials,
+          message: "Submission materials generated successfully"
+        }
+      });
+
+    } catch (error) {
+      console.error("❌ Submission materials generation error:", error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to generate submission materials"
+      });
+    }
+  });
+
+  /**
+   * Get submission materials generation progress
+   */
+  app.get("/api/proposals/submission-materials/progress/:sessionId", (req, res) => {
+    const { sessionId } = req.params;
+
+    // Register SSE client for progress tracking
+    progressTracker.registerSSEClient(sessionId, res);
   });
 
   // ============ SUBMISSION PIPELINE ENDPOINTS ============
