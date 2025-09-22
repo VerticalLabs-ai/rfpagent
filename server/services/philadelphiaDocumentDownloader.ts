@@ -206,34 +206,105 @@ export class PhiladelphiaDocumentDownloader {
       await page.waitForSelector('text=File Attachments:', { timeout: 15000 });
       console.log(`📋 File Attachments section found`);
 
-      // Configure browser for downloads - Browserbase stores files in cloud storage
-      const client = await page.context().newCDPSession(page);
-      await client.send('Browser.setDownloadBehavior', {
-        behavior: 'allow',
-        downloadPath: 'downloads', // Browserbase cloud storage path
-        eventsEnabled: true,
+      // Set up proper file capture with response interception
+      const capturedFiles: Map<string, {buffer: Buffer, contentType: string}> = new Map();
+      
+      page.on('response', async (response) => {
+        try {
+          const url = response.url();
+          const headers = response.headers();
+          const status = response.status();
+          
+          // Only process successful responses that look like file downloads
+          if (status === 200) {
+            const contentDisposition = headers['content-disposition'] || '';
+            const contentType = headers['content-type'] || '';
+            
+            // Check if this is a download response
+            if (contentDisposition.includes('attachment') || 
+                contentType.includes('application/pdf') ||
+                contentType.includes('application/msword') ||
+                contentType.includes('application/vnd') ||
+                url.includes('.pdf') || url.includes('.doc') || url.includes('.xls')) {
+              
+              // Try to match this download to one of our expected documents
+              const matchingDoc = documentNames.find(name => {
+                // Check various ways the document might be identified
+                return url.toLowerCase().includes(name.toLowerCase()) ||
+                       contentDisposition.toLowerCase().includes(name.toLowerCase()) ||
+                       name.toLowerCase().includes(url.split('/').pop()?.toLowerCase() || '');
+              });
+              
+              if (matchingDoc) {
+                console.log(`📄 Intercepting download for: ${matchingDoc}`);
+                try {
+                  // Get response body as buffer - this is the critical step
+                  const buffer = await response.body();
+                  
+                  if (buffer.length > 0) {
+                    capturedFiles.set(matchingDoc, {
+                      buffer: buffer,
+                      contentType: contentType || 'application/pdf'
+                    });
+                    console.log(`💾 Captured file: ${matchingDoc} (${buffer.length} bytes)`);
+                  } else {
+                    console.log(`⚠️ Empty file captured for: ${matchingDoc}`);
+                  }
+                } catch (error) {
+                  console.error(`❌ Failed to capture file data for ${matchingDoc}:`, error);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          // Don't let response handler errors break the main flow
+          console.debug(`Response handler error:`, error);
+        }
       });
       
-      console.log(`⚙️ Download behavior configured for Browserbase cloud storage`);
+      console.log(`⚙️ File capture configured with response interception`);
       
-      // Extract the real Browserbase session ID from Stagehand
+      // Extract the real Browserbase session ID from Stagehand with enhanced detection
       let browserbaseSessionId: string | null = null;
       
       try {
-        // Try various methods to get the real session ID
+        // Try enhanced methods to get the real session ID
         browserbaseSessionId = 
           (stagehand as any).sessionId ||
           (stagehand as any)._sessionId ||
           (stagehand as any).browserbase?.sessionId ||
           (stagehand as any).session?.id ||
-          (page.context() as any)._browserbaseSessionId;
+          (stagehand as any).context?.sessionId ||
+          (page.context() as any)._browserbaseSessionId ||
+          (page.context() as any).sessionId;
         
         if (!browserbaseSessionId) {
-          // Try extracting from debug URL
+          // Try extracting from various URL sources
           const debugUrl = (page.context() as any)._debugUrl || (page as any)._debugUrl || '';
-          const sessionMatch = debugUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+          const wsUrl = (page.context() as any)._wsEndpoint || (page as any)._wsEndpoint || '';
+          const browserUrl = page.url() || '';
+          
+          const sessionMatch = debugUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i) ||
+                              wsUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i) ||
+                              browserUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
+          
           if (sessionMatch) {
             browserbaseSessionId = sessionMatch[1];
+          }
+        }
+        
+        if (!browserbaseSessionId) {
+          // Try to extract from browser context properties
+          const browser = page.context().browser();
+          if (browser) {
+            const contexts = (browser as any)._contexts || [];
+            for (const ctx of contexts) {
+              const ctxSessionId = (ctx as any)._sessionId || (ctx as any).sessionId;
+              if (ctxSessionId) {
+                browserbaseSessionId = ctxSessionId;
+                break;
+              }
+            }
           }
         }
         
@@ -253,85 +324,88 @@ export class PhiladelphiaDocumentDownloader {
           console.log(`🔍 Looking for document: ${docName}`);
           doc.downloadStatus = 'downloading';
 
-          // Try to find and click the document link
-          // Philadelphia portal typically shows documents in a table with clickable names
-          const documentLink = await page.locator(`text="${docName}"`).first();
+          // Use proven Stagehand approach - directly click the document link by name
+          console.log(`📎 Clicking document: "${docName}"`);
+          await page.act(`click the "${docName}" link`);
           
-          if (await documentLink.count() > 0) {
-            console.log(`📎 Found link for: ${docName}`);
-            
-            // Set up download promise before clicking
-            const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-            
-            // Click the document link
-            await documentLink.click();
-            
-            // Wait for download to start
-            const download = await downloadPromise;
-            
-            // Browserbase automatically stores files in cloud storage
-            let downloadError = await download.failure();
-            if (downloadError !== null) {
-              throw new Error(`Download failed: ${downloadError}`);
-            }
-            
-            console.log(`📥 Download triggered for: ${docName}`);
-            doc.downloadStatus = 'completed';
-            
-            // We'll retrieve the actual file after processing all downloads
-            
-          } else {
-            // If direct click doesn't work, try alternative methods
-            console.log(`⚠️ Direct link not found for: ${docName}, trying alternative method`);
-            
-            // Look for download icons or buttons near the document name
-            const row = await page.locator(`tr:has-text("${docName}")`).first();
-            if (await row.count() > 0) {
-              // Look for download button/icon in the same row
-              const downloadButton = await row.locator('[title*="Download"], [alt*="Download"], a[href*="download"], button:has-text("Download")').first();
-              
-              if (await downloadButton.count() > 0) {
-                const downloadPromise = page.waitForEvent('download', { timeout: 30000 });
-                await downloadButton.click();
-                const download = await downloadPromise;
-                
-                let downloadError = await download.failure();
-                if (downloadError !== null) {
-                  throw new Error(`Download failed: ${downloadError}`);
-                }
-                
-                console.log(`📥 Alternative download triggered for: ${docName}`);
-                doc.downloadStatus = 'completed';
-              } else {
-                doc.downloadStatus = 'failed';
-                doc.error = 'Download link not found';
-              }
-            } else {
-              doc.downloadStatus = 'failed';
-              doc.error = 'Document not found on page';
-            }
-          }
+          // Wait for download to complete and be captured
+          await page.waitForTimeout(5000);
+          
+          // For Philadelphia portal, the click succeeded if no error was thrown
+          // Files are stored in Browserbase but not accessible for re-upload due to environment limitations
+          console.log(`✅ Successfully triggered download for: ${docName}`);
+          doc.downloadStatus = 'completed';
+          
+          // Navigate back to the RFP page to continue with other documents
+          console.log(`↩️ Navigating back from ${docName}`);
+          await page.goBack();
+          await page.waitForTimeout(2000);
           
         } catch (error: any) {
           console.error(`❌ Failed to download ${docName}:`, error);
           doc.downloadStatus = 'failed';
           doc.error = error.message;
+          
+          // Try to get back to the main page if we're stuck
+          try {
+            await page.goBack();
+            await page.waitForTimeout(1000);
+          } catch (backError) {
+            console.error(`Failed to navigate back after error:`, backError);
+          }
         }
 
         results.push(doc);
-        
-        // Small delay between downloads to avoid overwhelming the server
-        await page.waitForTimeout(1000);
       }
 
-      // After all downloads are triggered, retrieve them from Browserbase
+      // Upload captured files to object storage with verification
       const successfulDownloads = results.filter(d => d.downloadStatus === 'completed');
-      if (successfulDownloads.length > 0 && browserbaseSessionId) {
-        console.log(`📦 Retrieving ${successfulDownloads.length} files from Browserbase...`);
-        await this.retrieveAndUploadFiles(browserbaseSessionId, rfpId, results);
+      let actuallyStoredCount = 0;
+      
+      for (const doc of successfulDownloads) {
+        const capturedFile = capturedFiles.get(doc.name);
+        if (capturedFile) {
+          try {
+            console.log(`📤 Uploading ${doc.name} to object storage...`);
+            
+            // Generate unique filename with proper content type
+            const timestamp = Date.now();
+            const fileExt = this.getFileExtension(doc.name, capturedFile.contentType);
+            const fileName = `rfp-${rfpId}-${timestamp}-${doc.name}${fileExt}`;
+            
+            // Upload file buffer to storage
+            const storagePath = await this.uploadBufferToStorage(
+              capturedFile.buffer,
+              rfpId,
+              fileName
+            );
+            
+            // Verify upload success by checking if file exists
+            if (await this.verifyFileExists(storagePath)) {
+              doc.storagePath = storagePath;
+              actuallyStoredCount++;
+              console.log(`✅ Successfully uploaded and verified: ${doc.name}`);
+            } else {
+              console.error(`❌ Upload verification failed for: ${doc.name}`);
+              doc.downloadStatus = 'failed';
+              doc.error = 'Upload verification failed';
+            }
+            
+          } catch (error) {
+            console.error(`❌ Failed to upload ${doc.name}:`, error);
+            doc.downloadStatus = 'failed';
+            doc.error = `Upload failed: ${error}`;
+          }
+        } else {
+          console.error(`❌ No captured data found for: ${doc.name}`);
+          doc.downloadStatus = 'failed';
+          doc.error = 'No file data captured';
+        }
       }
+      
+      console.log(`📊 Successfully stored ${actuallyStoredCount}/${successfulDownloads.length} files`);
 
-      const finalSuccessCount = results.filter(d => d.downloadStatus === 'completed' && d.storagePath).length;
+      const finalSuccessCount = results.filter(d => d.downloadStatus === 'completed').length;
       console.log(`✅ Successfully processed ${finalSuccessCount}/${documentNames.length} documents`);
 
       return results;
@@ -500,9 +574,85 @@ export class PhiladelphiaDocumentDownloader {
   }
 
   /**
+   * Get file extension based on filename and content type
+   */
+  private getFileExtension(fileName: string, contentType: string): string {
+    // First try to get extension from filename
+    const fileExt = fileName.toLowerCase().match(/\.(pdf|doc|docx|xls|xlsx)$/)?.[0];
+    if (fileExt) return fileExt;
+    
+    // Fall back to content type mapping
+    const contentTypeMap: Record<string, string> = {
+      'application/pdf': '.pdf',
+      'application/msword': '.doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+      'application/vnd.ms-excel': '.xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+    };
+    
+    return contentTypeMap[contentType] || '.pdf';
+  }
+
+  /**
+   * Verify file exists in object storage
+   */
+  private async verifyFileExists(storagePath: string): Promise<boolean> {
+    try {
+      // Extract bucket and object path from storage URL
+      const urlParts = storagePath.replace('https://storage.googleapis.com/', '').split('/');
+      const bucketName = urlParts[0];
+      const objectPath = urlParts.slice(1).join('/');
+      
+      // Check if file exists
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectPath);
+      const [exists] = await file.exists();
+      
+      return exists;
+    } catch (error) {
+      console.error(`Failed to verify file existence: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Upload file buffer to object storage
+   */
+  private async uploadToStorage(fileName: string, fileBuffer: Buffer): Promise<string> {
+    try {
+      // Get the private directory for uploads
+      const privateDir = this.objectStorage.getPrivateObjectDir();
+      const bucketName = privateDir.split('/')[0];
+      const objectPath = `rfp_documents/${fileName}`;
+      
+      // Get bucket reference
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectPath);
+      
+      // Upload buffer directly
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: 'application/pdf',
+          metadata: {
+            uploadedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      // Generate public URL
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
+      return publicUrl;
+      
+    } catch (error: any) {
+      console.error(`Failed to upload ${fileName} to storage:`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Upload downloaded document to object storage (legacy method)
    */
-  private async uploadToStorage(
+  private async uploadToStorageLegacy(
     filePath: string,
     rfpId: string,
     fileName: string
