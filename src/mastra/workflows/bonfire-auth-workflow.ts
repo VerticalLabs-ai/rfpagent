@@ -2,7 +2,7 @@ import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
 import { sharedMemory } from '../tools/shared-memory-provider';
-import { stagehandTools } from '../tools/stagehandTools';
+import { stagehandTools } from '../../../server/services/stagehandTools.js';
 
 // Input schema for BonfireHub authentication workflow
 const BonfireAuthInputSchema = z.object({
