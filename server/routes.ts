@@ -3202,6 +3202,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ SPECIFIC WORKFLOW ROUTES (must come before parameterized ones) ============
+
+  // Get comprehensive workflow state for all RFPs with phase visibility
+  app.get("/api/workflows/state", async (req, res) => {
+    try {
+      const { status, phase, limit = 50 } = req.query;
+
+      // Get active workflows from storage
+      const activeWorkflows = await storage.getActiveWorkflows();
+      const suspendedWorkflows = await storage.getSuspendedWorkflows();
+
+      // Get all RFPs with their current status as workflow state proxy
+      const allRFPs = await storage.getAllRFPs({
+        status: status as string,
+        limit: Number(limit)
+      });
+
+      // Map RFPs to workflow state format
+      const workflowStates = allRFPs.rfps.map(rfp => ({
+        workflowId: `rfp-workflow-${rfp.id}`,
+        rfpId: rfp.id,
+        currentPhase: determinePhaseFromStatus(rfp.status),
+        status: mapRFPStatusToWorkflowStatus(rfp.status),
+        progress: rfp.progress || 0,
+        title: rfp.title,
+        agency: rfp.agency,
+        deadline: rfp.deadline,
+        estimatedValue: rfp.estimatedValue,
+        portalId: rfp.portalId,
+        lastUpdated: rfp.updatedAt,
+        phaseHistory: [] // TODO: Get from phase transition records
+      }));
+
+      // Filter by phase if requested
+      const filteredWorkflows = phase ?
+        workflowStates.filter(w => w.currentPhase === phase) :
+        workflowStates;
+
+      // Get phase distribution
+      const phaseDistribution = {
+        discovery: workflowStates.filter(w => w.currentPhase === 'discovery').length,
+        analysis: workflowStates.filter(w => w.currentPhase === 'analysis').length,
+        generation: workflowStates.filter(w => w.currentPhase === 'generation').length,
+        submission: workflowStates.filter(w => w.currentPhase === 'submission').length,
+        completed: workflowStates.filter(w => w.currentPhase === 'completed').length
+      };
+
+      res.json({
+        success: true,
+        workflows: filteredWorkflows,
+        summary: {
+          total: workflowStates.length,
+          active: workflowStates.filter(w => ['pending', 'in_progress'].includes(w.status)).length,
+          completed: workflowStates.filter(w => w.status === 'completed').length,
+          failed: workflowStates.filter(w => w.status === 'failed').length,
+          suspended: workflowStates.filter(w => w.status === 'suspended').length,
+          phaseDistribution
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching workflow state:", error);
+      res.status(500).json({ error: "Failed to fetch workflow state" });
+    }
+  });
+
+  // Get phase statistics with transition metrics
+  app.get("/api/workflows/phase-stats", async (req, res) => {
+    try {
+      const { timeRange = '24h' } = req.query;
+
+      // Get all RFPs
+      const allRFPs = await storage.getAllRFPs({ limit: 1000 });
+
+      // Get phase transitions within time range
+      const recentTransitions = await storage.getRecentPhaseTransitions(100);
+
+      // Calculate phase statistics with real data
+      const phases = ['discovery', 'analysis', 'generation', 'submission', 'completed'];
+      const phaseStats: any = {};
+
+      for (const phase of phases) {
+        if (phase === 'completed') {
+          const completedRFPs = allRFPs.rfps.filter(r => r.status === 'submitted' || r.status === 'closed');
+          const phaseTransitions = recentTransitions.filter(t => t.toPhase === phase);
+
+          phaseStats[phase] = {
+            count: completedRFPs.length,
+            avgTotalDuration: calculateAverageTransitionTime(phaseTransitions) || 0,
+            successRate: completedRFPs.length > 0 ? completedRFPs.length / allRFPs.rfps.length : 0,
+            common_issues: []
+          };
+        } else {
+          const activeRFPs = allRFPs.rfps.filter(r => determinePhaseFromStatus(r.status) === phase);
+          const phaseTransitions = recentTransitions.filter(t => t.toPhase === phase);
+          const successfulTransitions = phaseTransitions.filter(t => t.toStatus !== 'failed' && t.toStatus !== 'error');
+
+          phaseStats[phase] = {
+            active: activeRFPs.length,
+            avgDuration: calculateAverageTransitionTime(phaseTransitions) || 0,
+            successRate: phaseTransitions.length > 0 ? successfulTransitions.length / phaseTransitions.length : 1.0,
+            common_issues: []
+          };
+        }
+      }
+
+      // Calculate transition metrics
+      const transitionMetrics = {
+        totalTransitions: recentTransitions.length,
+        successfulTransitions: recentTransitions.filter(t => t.toStatus !== 'failed').length,
+        failedTransitions: recentTransitions.filter(t => t.toStatus === 'failed').length,
+        averageTransitionTime: calculateAverageTransitionTime(recentTransitions)
+      };
+
+      res.json({
+        success: true,
+        phaseStats,
+        transitionMetrics,
+        metadata: {
+          timeRange,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching phase statistics:", error);
+      res.status(500).json({ error: "Failed to fetch phase statistics" });
+    }
+  });
+
+  // ============ PARAMETERIZED WORKFLOW ROUTES ============
+
   // Get workflow status
   app.get("/api/workflows/:workflowId/status", async (req, res) => {
     try {
