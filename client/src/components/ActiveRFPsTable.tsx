@@ -424,13 +424,11 @@ export default function ActiveRFPsTable() {
                       )}
                     </td>
                     <td className="py-4 px-6">
-                      <div className="w-full bg-secondary rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full progress-bar ${progressColor}`}
-                          style={{ width: `${calculatedProgress}%` }}
-                          data-testid={`rfp-progress-bar-${item.rfp.id}`}
-                        ></div>
-                      </div>
+                      <Progress 
+                        value={calculatedProgress} 
+                        className="w-full h-2" 
+                        data-testid={`rfp-progress-bar-${item.rfp.id}`}
+                      />
                       <div className="text-xs text-muted-foreground mt-1" data-testid={`rfp-progress-text-${item.rfp.id}`}>
                         {calculatedProgress}% complete
                       </div>
