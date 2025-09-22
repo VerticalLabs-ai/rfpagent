@@ -1,11 +1,10 @@
-import { Stagehand } from "@browserbasehq/stagehand";
+import { Stagehand, type ConstructorParams } from "@browserbasehq/stagehand";
 import { Browserbase } from "@browserbasehq/sdk";
 import { z } from "zod";
 import { ObjectStorageService, objectStorageClient } from '../objectStorage';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
-import { sessionManager } from "../../src/mastra/tools/session-manager";
 import AdmZip from 'adm-zip';
 
 export interface PhiladelphiaDocument {
@@ -14,6 +13,39 @@ export interface PhiladelphiaDocument {
   storagePath?: string;
   downloadStatus?: 'pending' | 'downloading' | 'completed' | 'failed';
   error?: string;
+}
+
+export interface RFPDetails {
+  bidNumber?: string;
+  description?: string;
+  bidOpeningDate?: string;
+  purchaser?: string;
+  organization?: string;
+  department?: string;
+  location?: string;
+  fiscalYear?: string;
+  typeCode?: string;
+  allowElectronicQuote?: string;
+  requiredDate?: string;
+  availableDate?: string;
+  infoContact?: string;
+  bidType?: string;
+  purchaseMethod?: string;
+  bulletinDescription?: string;
+  shipToAddress?: {
+    name?: string;
+    address?: string;
+    email?: string;
+    phone?: string;
+  };
+  items?: Array<{
+    itemNumber?: string;
+    description?: string;
+    nigpCode?: string;
+    quantity?: string;
+    unitOfMeasure?: string;
+  }>;
+  attachments?: string[];
 }
 
 export class PhiladelphiaDocumentDownloader {
@@ -28,6 +60,119 @@ export class PhiladelphiaDocumentDownloader {
   }
 
   /**
+   * Create Stagehand instance with Google Gemini configuration
+   */
+  private createStagehandConfig(): ConstructorParams {
+    return {
+      env: 'BROWSERBASE',
+      verbose: 1,
+      modelName: 'google/gemini-2.0-flash-exp',
+      disablePino: true,
+      apiKey: process.env.BROWSERBASE_API_KEY,
+      projectId: process.env.BROWSERBASE_PROJECT_ID,
+      modelClientOptions: {
+        apiKey: process.env.GOOGLE_API_KEY,
+      },
+      browserbaseSessionCreateParams: {
+        projectId: process.env.BROWSERBASE_PROJECT_ID!,
+        keepAlive: true,
+        timeout: 3600,
+        browserSettings: {
+          advancedStealth: false,
+          solveCaptchas: false,
+          blockAds: true,
+          recordSession: true,
+          logSession: true,
+          viewport: {
+            width: 1920,
+            height: 1080
+          }
+        },
+        region: "us-west-2"
+      }
+    };
+  }
+
+  /**
+   * Extract RFP details from Philadelphia contracting portal
+   */
+  async extractRFPDetails(rfpUrl: string): Promise<RFPDetails> {
+    let stagehand: Stagehand | null = null;
+    
+    try {
+      console.log('🤖 Initializing Stagehand with Google Gemini...');
+      stagehand = new Stagehand(this.createStagehandConfig());
+      await stagehand.init();
+      
+      const page = stagehand.page;
+      if (!page) {
+        throw new Error('Failed to get page instance from Stagehand');
+      }
+
+      console.log(`🌐 Navigating to: ${rfpUrl}`);
+      await page.goto(rfpUrl, { waitUntil: 'networkidle' });
+
+      console.log('📊 Extracting RFP details...');
+      const extractedData = await page.extract({
+        instruction: `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
+        schema: z.object({
+          bidNumber: z.string().optional(),
+          description: z.string().optional(),
+          bidOpeningDate: z.string().optional(),
+          purchaser: z.string().optional(),
+          organization: z.string().optional(),
+          department: z.string().optional(),
+          location: z.string().optional(),
+          fiscalYear: z.string().optional(),
+          typeCode: z.string().optional(),
+          allowElectronicQuote: z.string().optional(),
+          requiredDate: z.string().optional(),
+          availableDate: z.string().optional(),
+          infoContact: z.string().optional(),
+          bidType: z.string().optional(),
+          purchaseMethod: z.string().optional(),
+          bulletinDescription: z.string().optional(),
+          shipToAddress: z
+            .object({
+              name: z.string().optional(),
+              address: z.string().optional(),
+              email: z.string().optional(),
+              phone: z.string().optional(),
+            })
+            .optional(),
+          items: z
+            .array(
+              z.object({
+                itemNumber: z.string().optional(),
+                description: z.string().optional(),
+                nigpCode: z.string().optional(),
+                quantity: z.string().optional(),
+                unitOfMeasure: z.string().optional(),
+              }),
+            )
+            .optional(),
+          attachments: z.array(z.string()).optional(),
+        }),
+      });
+
+      console.log('✅ Extracted RFP details:', extractedData);
+      return extractedData;
+      
+    } catch (error) {
+      console.error('❌ Failed to extract RFP details:', error);
+      throw error;
+    } finally {
+      if (stagehand) {
+        try {
+          await stagehand.close();
+        } catch (err) {
+          console.error('Error closing Stagehand:', err);
+        }
+      }
+    }
+  }
+
+  /**
    * Downloads documents from Philadelphia contracting portal
    * Handles click-to-download pattern where documents don't have direct URLs
    */
@@ -36,16 +181,22 @@ export class PhiladelphiaDocumentDownloader {
     rfpId: string,
     documentNames: string[]
   ): Promise<PhiladelphiaDocument[]> {
-    const sessionId = `phila-download-${rfpId}`;
     const results: PhiladelphiaDocument[] = [];
+    let stagehand: Stagehand | null = null;
 
     console.log(`📥 Starting document download for RFP ${rfpId}`);
     console.log(`📄 Documents to download: ${documentNames.length}`);
 
     try {
-      // Get or create stagehand session
-      const stagehand = await sessionManager.ensureStagehand(sessionId);
+      // Create new Stagehand instance with Google Gemini
+      console.log('🤖 Initializing Stagehand with Google Gemini for downloads...');
+      stagehand = new Stagehand(this.createStagehandConfig());
+      await stagehand.init();
+      
       const page = stagehand.page;
+      if (!page) {
+        throw new Error('Failed to get page instance from Stagehand');
+      }
 
       // Navigate to RFP page
       console.log(`🌐 Navigating to RFP page: ${rfpUrl}`);
@@ -66,52 +217,30 @@ export class PhiladelphiaDocumentDownloader {
       console.log(`⚙️ Download behavior configured for Browserbase cloud storage`);
       
       // Extract the real Browserbase session ID from Stagehand
-      // After Stagehand initializes, it should have the real session ID
-      let browserbaseSessionId: string = sessionId; // Fallback
+      let browserbaseSessionId: string | null = null;
       
       try {
-        // Wait for Stagehand to fully initialize the session
-        await page.waitForTimeout(1000);
-        
-        // Try to get the real session ID from Stagehand internals
-        // Stagehand should expose the real Browserbase session ID
-        const realSessionId = 
+        // Try various methods to get the real session ID
+        browserbaseSessionId = 
           (stagehand as any).sessionId ||
-          (stagehand as any).id ||
+          (stagehand as any)._sessionId ||
+          (stagehand as any).browserbase?.sessionId ||
           (stagehand as any).session?.id ||
-          (stagehand as any).page?.context()?._browserbaseSessionId ||
-          (stagehand as any)._page?.context()?._browserbaseSessionId ||
           (page.context() as any)._browserbaseSessionId;
         
-        // Check if we got a UUID-format session ID
-        if (realSessionId && typeof realSessionId === 'string') {
-          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-          if (uuidPattern.test(realSessionId)) {
-            browserbaseSessionId = realSessionId;
-            console.log(`🎯 Successfully extracted real Browserbase session ID: ${browserbaseSessionId}`);
-          } else {
-            console.log(`🔍 Found session ID but format doesn't match UUID: ${realSessionId}`);
-          }
-        }
-        
-        // If we still have our custom session ID, try to get it from the browser context
-        if (browserbaseSessionId === sessionId) {
-          // Extract from debugger session URL if available  
-          const debugUrl = (page.context() as any)._debugUrl || '';
-          const sessionMatch = debugUrl.match(/\/debug\/([0-9a-f-]{36})\//i);
+        if (!browserbaseSessionId) {
+          // Try extracting from debug URL
+          const debugUrl = (page.context() as any)._debugUrl || (page as any)._debugUrl || '';
+          const sessionMatch = debugUrl.match(/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i);
           if (sessionMatch) {
             browserbaseSessionId = sessionMatch[1];
-            console.log(`🎯 Extracted session ID from debug URL: ${browserbaseSessionId}`);
-          } else {
-            console.log(`⚠️ Using fallback session ID (may cause API errors): ${browserbaseSessionId}`);
           }
         }
         
+        console.log(`🆔 Browserbase session ID: ${browserbaseSessionId || 'not found'}`);
       } catch (error) {
-        console.log(`⚠️ Error extracting real Browserbase session ID: ${error}`);
+        console.log(`⚠️ Could not extract Browserbase session ID: ${error}`);
       }
-      
-      console.log(`🆔 Final session ID for Browserbase Downloads API: ${browserbaseSessionId}`);
 
       // Process each document
       for (const docName of documentNames) {
@@ -197,13 +326,10 @@ export class PhiladelphiaDocumentDownloader {
 
       // After all downloads are triggered, retrieve them from Browserbase
       const successfulDownloads = results.filter(d => d.downloadStatus === 'completed');
-      if (successfulDownloads.length > 0) {
+      if (successfulDownloads.length > 0 && browserbaseSessionId) {
         console.log(`📦 Retrieving ${successfulDownloads.length} files from Browserbase...`);
         await this.retrieveAndUploadFiles(browserbaseSessionId, rfpId, results);
       }
-      
-      // Close session
-      await sessionManager.closeSession(sessionId);
 
       const finalSuccessCount = results.filter(d => d.downloadStatus === 'completed' && d.storagePath).length;
       console.log(`✅ Successfully processed ${finalSuccessCount}/${documentNames.length} documents`);
@@ -225,6 +351,16 @@ export class PhiladelphiaDocumentDownloader {
       }
       
       throw error;
+    } finally {
+      // Clean up Stagehand session
+      if (stagehand) {
+        try {
+          await stagehand.close();
+          console.log('🔒 Stagehand session closed');
+        } catch (err) {
+          console.error('Error closing Stagehand:', err);
+        }
+      }
     }
   }
 
@@ -408,11 +544,17 @@ export class PhiladelphiaDocumentDownloader {
    * This can at least get document metadata even if downloads fail
    */
   async extractDocumentInfo(rfpUrl: string, rfpId: string): Promise<PhiladelphiaDocument[]> {
-    const sessionId = `phila-extract-${rfpId}`;
+    let stagehand: Stagehand | null = null;
     
     try {
-      const stagehand = await sessionManager.ensureStagehand(sessionId);
+      console.log('🤖 Initializing Stagehand for document extraction...');
+      stagehand = new Stagehand(this.createStagehandConfig());
+      await stagehand.init();
+      
       const page = stagehand.page;
+      if (!page) {
+        throw new Error('Failed to get page instance from Stagehand');
+      }
 
       console.log(`📊 Extracting document information from: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
@@ -436,8 +578,6 @@ export class PhiladelphiaDocumentDownloader {
         return docs;
       });
 
-      await sessionManager.closeSession(sessionId);
-
       // Convert to our format
       return documents.map((doc: any) => ({
         name: doc.name,
@@ -448,6 +588,14 @@ export class PhiladelphiaDocumentDownloader {
     } catch (error: any) {
       console.error('Failed to extract document info:', error);
       throw error;
+    } finally {
+      if (stagehand) {
+        try {
+          await stagehand.close();
+        } catch (err) {
+          console.error('Error closing Stagehand:', err);
+        }
+      }
     }
   }
 }
