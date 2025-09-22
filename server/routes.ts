@@ -807,7 +807,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'sam.gov',
           'governmentjobs.com',
           'find-rfp.com',
-          'findrfp.com'
+          'findrfp.com',
+          'phlcontracts.phila.gov'
         ];
         
         const isAllowed = allowedDomains.some(domain => 
