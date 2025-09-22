@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Download, FileText, Clock, DollarSign, Building, AlertTriangle, CheckCircle2, Loader2, Paperclip, CheckSquare, FileQuestion, RefreshCw, Trash2, FileDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import type { RFP, Document } from "@shared/schema";
 export default function RFPDetails() {
   const { id } = useParams();
   const { toast } = useToast();
+  const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
 
 
   const { data: rfp, isLoading, error } = useQuery<RFP>({
@@ -90,6 +92,31 @@ export default function RFPDetails() {
         description: error?.message || "Failed to delete the RFP. Please try again.",
         variant: "destructive",
       });
+    },
+  });
+
+  const downloadDocumentsMutation = useMutation({
+    mutationFn: async (documentNames: string[]) => {
+      setIsDownloadingDocs(true);
+      return apiRequest('POST', `/api/rfps/${id}/download-documents`, {
+        documentNames
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Documents Downloaded",
+        description: `Successfully downloaded ${data.summary?.successful || 0} of ${data.summary?.total || 0} documents.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id, 'documents'] });
+      setIsDownloadingDocs(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Download Failed",
+        description: error?.message || "Failed to download documents. Please try again.",
+        variant: "destructive",
+      });
+      setIsDownloadingDocs(false);
     },
   });
 
@@ -445,12 +472,82 @@ export default function RFPDetails() {
                   )}
                 </div>
               ) : (
-                <Alert>
-                  <FileText className="h-4 w-4" />
-                  <AlertDescription>
-                    No documents have been downloaded for this RFP yet. Documents will be automatically captured during the next portal scan.
-                  </AlertDescription>
-                </Alert>
+                <div className="space-y-4">
+                  <Alert>
+                    <FileText className="h-4 w-4" />
+                    <AlertDescription>
+                      No documents have been downloaded for this RFP yet. 
+                      {rfp.sourceUrl?.includes('phlcontracts.phila.gov') 
+                        ? ' Click below to download documents from the Philadelphia portal.'
+                        : ' Documents will be automatically captured during the next portal scan.'}
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {/* Philadelphia Document Download */}
+                  {rfp.sourceUrl?.includes('phlcontracts.phila.gov') && rfp.requirements && (
+                    <div className="space-y-2">
+                      {(() => {
+                        // Extract document names from requirements if they exist
+                        const extractedDocNames = (() => {
+                          if (typeof rfp.requirements === 'object' && 'documents' in rfp.requirements) {
+                            const docs = rfp.requirements.documents;
+                            if (Array.isArray(docs)) {
+                              return docs.map((doc: any) => 
+                                typeof doc === 'string' ? doc : (doc.name || doc.title || '')
+                              ).filter(Boolean);
+                            }
+                          }
+                          return [];
+                        })();
+                        
+                        if (extractedDocNames.length > 0) {
+                          return (
+                            <>
+                              <p className="text-sm text-muted-foreground">
+                                {extractedDocNames.length} documents identified from the Philadelphia portal:
+                              </p>
+                              <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                                {extractedDocNames.slice(0, 5).map((name: string, idx: number) => (
+                                  <li key={idx}>• {name}</li>
+                                ))}
+                                {extractedDocNames.length > 5 && (
+                                  <li>• ...and {extractedDocNames.length - 5} more</li>
+                                )}
+                              </ul>
+                              <Button
+                                onClick={() => downloadDocumentsMutation.mutate(extractedDocNames)}
+                                disabled={isDownloadingDocs}
+                                className="w-full"
+                                data-testid="button-download-documents"
+                              >
+                                {isDownloadingDocs ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Downloading Documents...
+                                  </>
+                                ) : (
+                                  <>
+                                    <FileDown className="w-4 h-4 mr-2" />
+                                    Download All Documents
+                                  </>
+                                )}
+                              </Button>
+                            </>
+                          );
+                        } else {
+                          return (
+                            <Alert variant="destructive">
+                              <AlertTriangle className="h-4 w-4" />
+                              <AlertDescription>
+                                No document information found in the RFP data. Please re-scrape the RFP to identify documents.
+                              </AlertDescription>
+                            </Alert>
+                          );
+                        }
+                      })()}
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
