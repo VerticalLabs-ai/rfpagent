@@ -27,6 +27,7 @@ import { mastraWorkflowEngine } from "./services/mastraWorkflowEngine";
 import { proposalGenerationOrchestrator } from "./services/proposalGenerationOrchestrator";
 import analysisRoutes from "./routes/analysis";
 import { workflowCoordinator } from "./services/workflowCoordinator";
+import { PhiladelphiaDocumentDownloader } from "./services/philadelphiaDocumentDownloader";
 import { z } from "zod";
 
 // Runtime service state tracking (tracks actual running status vs environment variables)
@@ -666,6 +667,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching manual RFP status:", error);
       res.status(500).json({ error: "Failed to fetch RFP status" });
+    }
+  });
+
+  // Philadelphia Document Download endpoint
+  app.post("/api/rfps/:id/download-documents", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { documentNames } = req.body;
+      
+      // Get the RFP
+      const rfp = await storage.getRFP(id);
+      if (!rfp) {
+        return res.status(404).json({ error: "RFP not found" });
+      }
+      
+      // Validate it's a Philadelphia RFP
+      if (!rfp.sourceUrl || !rfp.sourceUrl.includes('phlcontracts.phila.gov')) {
+        return res.status(400).json({ 
+          error: "This endpoint only supports Philadelphia portal RFPs" 
+        });
+      }
+      
+      console.log(`📥 Starting document download for RFP ${id}`);
+      console.log(`📄 Documents to download: ${documentNames.length}`);
+      
+      // Use Philadelphia document downloader
+      const downloader = new PhiladelphiaDocumentDownloader();
+      const results = await downloader.downloadRFPDocuments(
+        rfp.sourceUrl,
+        id,
+        documentNames
+      );
+      
+      // Save successful downloads to database
+      const savedDocuments = [];
+      for (const doc of results) {
+        if (doc.downloadStatus === 'completed' && doc.storagePath) {
+          try {
+            const savedDoc = await storage.createDocument({
+              rfpId: id,
+              filename: doc.name,
+              fileType: 'application/pdf',
+              objectPath: doc.storagePath
+            });
+            savedDocuments.push(savedDoc);
+          } catch (error) {
+            console.error(`Failed to save document ${doc.name} to database:`, error);
+          }
+        }
+      }
+      
+      // Update RFP status
+      const successCount = results.filter(d => d.downloadStatus === 'completed').length;
+      await storage.updateRFP(id, {
+        status: successCount > 0 ? 'parsing' : 'open',
+        progress: successCount > 0 ? 40 : 20
+      });
+      
+      // Create audit log
+      await storage.createAuditLog({
+        entityType: "rfp",
+        entityId: id,
+        action: "documents_downloaded",
+        details: { 
+          totalRequested: documentNames.length,
+          successfulDownloads: successCount,
+          failedDownloads: documentNames.length - successCount
+        }
+      });
+      
+      res.json({
+        success: true,
+        rfpId: id,
+        results: results,
+        savedDocuments: savedDocuments,
+        summary: {
+          total: documentNames.length,
+          successful: successCount,
+          failed: documentNames.length - successCount
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error downloading RFP documents:", error);
+      res.status(500).json({ 
+        error: "Failed to download documents",
+        message: error.message 
+      });
     }
   });
 
