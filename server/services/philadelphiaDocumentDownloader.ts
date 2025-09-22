@@ -45,8 +45,9 @@ export class PhiladelphiaDocumentDownloader {
       console.log(`🌐 Navigating to RFP page: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
       
-      // Wait for document table to load
-      await page.waitForSelector('table', { timeout: 10000 });
+      // Wait for file attachments section to load - Philadelphia specific
+      await page.waitForSelector('text=File Attachments:', { timeout: 15000 });
+      console.log(`📋 File Attachments section found`);
 
       // Set download behavior to save files
       const client = await page.context().newCDPSession(page);
@@ -87,14 +88,34 @@ export class PhiladelphiaDocumentDownloader {
             // Wait for download to start
             const download = await downloadPromise;
             
-            // Get suggested filename
-            const suggestedFilename = download.suggestedFilename();
+            // Get suggested filename and setup path
+            const suggestedFilename = download.suggestedFilename() || docName;
             const localPath = path.join(downloadPath, suggestedFilename);
             
-            // Save the download
-            await download.saveAs(localPath);
-            
-            console.log(`💾 Downloaded to: ${localPath}`);
+            // Save the download with error handling
+            try {
+              await download.saveAs(localPath);
+              console.log(`💾 Downloaded to: ${localPath}`);
+            } catch (saveError) {
+              console.log(`⚠️ Direct save failed, trying path method: ${saveError.message}`);
+              // Alternative: wait for the file to appear in download directory
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              // Check if file was downloaded to default path
+              const files = await fs.readdir(downloadPath);
+              const downloadedFile = files.find(file => file.includes(docName.replace('.pdf', '')));
+              
+              if (downloadedFile) {
+                const downloadedPath = path.join(downloadPath, downloadedFile);
+                if (downloadedFile !== suggestedFilename) {
+                  // Rename to expected name
+                  await fs.rename(downloadedPath, localPath);
+                }
+                console.log(`💾 File found at: ${localPath}`);
+              } else {
+                throw new Error('Download completed but file not found');
+              }
+            }
             
             // Upload to object storage
             const storagePath = await this.uploadToStorage(localPath, rfpId, suggestedFilename);
