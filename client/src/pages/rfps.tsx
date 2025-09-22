@@ -16,6 +16,7 @@ interface RFP {
   portalId: string;
   description?: string;
   progress?: number;
+  status: string;
 }
 
 interface RFPWithDetails {
@@ -134,32 +135,48 @@ export default function RFPsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm" data-testid={`rfp-deadline-${rfp.id}`}>
-                      {formatDate(rfp.deadline)}
-                    </span>
+                <div className="grid grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 mb-1">STATUS</div>
+                    <Badge 
+                      variant="secondary" 
+                      className="text-xs font-medium px-3 py-1 min-w-[80px] justify-center"
+                      data-testid={`rfp-status-${rfp.id}`}
+                    >
+                      {rfp.status.charAt(0).toUpperCase() + rfp.status.slice(1)}
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-gray-500" />
-                    <span className="text-sm" data-testid={`rfp-value-${rfp.id}`}>
-                      {formatCurrency(rfp.estimatedValue)}
-                    </span>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 mb-1">DEADLINE</div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm" data-testid={`rfp-deadline-${rfp.id}`}>
+                        {formatDate(rfp.deadline)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">Progress:</span>
-                    <span className="text-sm" data-testid={`rfp-progress-${rfp.id}`}>
-                      {rfp.progress || 0}%
-                    </span>
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 mb-1">VALUE</div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm" data-testid={`rfp-value-${rfp.id}`}>
+                        {formatCurrency(rfp.estimatedValue)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div className="w-full">
-                  <Progress 
-                    value={rfp.progress || 0} 
-                    className="w-full" 
-                    data-testid={`rfp-progress-bar-${rfp.id}`}
-                  />
+                  <div>
+                    <div className="text-xs font-medium text-gray-500 mb-1">PROGRESS</div>
+                    <div className="space-y-2">
+                      <span className="text-sm" data-testid={`rfp-progress-${rfp.id}`}>
+                        {rfp.progress || 0}% complete
+                      </span>
+                      <Progress 
+                        value={rfp.progress || 0} 
+                        className="w-full h-2" 
+                        data-testid={`rfp-progress-bar-${rfp.id}`}
+                      />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
