@@ -65,47 +65,53 @@ export class PhiladelphiaDocumentDownloader {
       
       console.log(`⚙️ Download behavior configured for Browserbase cloud storage`);
       
-      // Get Browserbase session ID for later retrieval
-      // Since Stagehand logs the session URL, we can extract the real session ID
-      let browserbaseSessionId: string = sessionId; // Fallback to custom ID
+      // Extract the real Browserbase session ID from Stagehand
+      // After Stagehand initializes, it should have the real session ID
+      let browserbaseSessionId: string = sessionId; // Fallback
       
       try {
-        // Give Stagehand a moment to fully initialize and log the session URL
-        await page.waitForTimeout(2000);
+        // Wait for Stagehand to fully initialize the session
+        await page.waitForTimeout(1000);
         
-        // Try multiple approaches to get the real Browserbase session ID
-        const context = page.context();
+        // Try to get the real session ID from Stagehand internals
+        // Stagehand should expose the real Browserbase session ID
+        const realSessionId = 
+          (stagehand as any).sessionId ||
+          (stagehand as any).id ||
+          (stagehand as any).session?.id ||
+          (stagehand as any).page?.context()?._browserbaseSessionId ||
+          (stagehand as any)._page?.context()?._browserbaseSessionId ||
+          (page.context() as any)._browserbaseSessionId;
         
-        // Check Stagehand object properties
-        const stagehandProps = [
-          (stagehand as any).sessionId,
-          (stagehand as any).browserbaseSessionId,
-          (stagehand as any).session?.id,
-          (stagehand as any)._sessionId,
-          (context as any)._options?.sessionId,
-          (context as any)._browserbaseSessionId
-        ];
-        
-        for (const prop of stagehandProps) {
-          if (prop && typeof prop === 'string' && prop.match(/^[a-f0-9-]{36}$/i)) {
-            browserbaseSessionId = prop;
-            console.log(`🎯 Found Browserbase session ID: ${browserbaseSessionId}`);
-            break;
+        // Check if we got a UUID-format session ID
+        if (realSessionId && typeof realSessionId === 'string') {
+          const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          if (uuidPattern.test(realSessionId)) {
+            browserbaseSessionId = realSessionId;
+            console.log(`🎯 Successfully extracted real Browserbase session ID: ${browserbaseSessionId}`);
+          } else {
+            console.log(`🔍 Found session ID but format doesn't match UUID: ${realSessionId}`);
           }
         }
         
-        // If we still have our custom session ID, extract from context or logs
+        // If we still have our custom session ID, try to get it from the browser context
         if (browserbaseSessionId === sessionId) {
-          console.log(`🔍 Using fallback session ID: ${browserbaseSessionId}`);
-          console.log(`💡 Note: Real Browserbase session ID should be visible in logs above`);
+          // Extract from debugger session URL if available  
+          const debugUrl = (page.context() as any)._debugUrl || '';
+          const sessionMatch = debugUrl.match(/\/debug\/([0-9a-f-]{36})\//i);
+          if (sessionMatch) {
+            browserbaseSessionId = sessionMatch[1];
+            console.log(`🎯 Extracted session ID from debug URL: ${browserbaseSessionId}`);
+          } else {
+            console.log(`⚠️ Using fallback session ID (may cause API errors): ${browserbaseSessionId}`);
+          }
         }
         
       } catch (error) {
-        console.log(`⚠️ Error detecting Browserbase session ID: ${error}`);
-        browserbaseSessionId = sessionId;
+        console.log(`⚠️ Error extracting real Browserbase session ID: ${error}`);
       }
       
-      console.log(`🆔 Final session ID for downloads: ${browserbaseSessionId}`);
+      console.log(`🆔 Final session ID for Browserbase Downloads API: ${browserbaseSessionId}`);
 
       // Process each document
       for (const docName of documentNames) {
