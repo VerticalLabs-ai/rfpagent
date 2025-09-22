@@ -55,11 +55,17 @@ export class PhiladelphiaDocumentDownloader {
       
       // Create temp download directory
       await fs.mkdir(downloadPath, { recursive: true });
+      console.log(`📁 Created download directory: ${downloadPath}`);
       
+      // Configure download behavior for Browserbase
       await client.send('Page.setDownloadBehavior', {
         behavior: 'allow',
         downloadPath: downloadPath,
       });
+      
+      // Additional Browserbase compatibility settings
+      await page.context().setDefaultTimeout(30000);
+      console.log(`⚙️ Download behavior configured for: ${downloadPath}`);
 
       // Process each document
       for (const docName of documentNames) {
@@ -97,7 +103,7 @@ export class PhiladelphiaDocumentDownloader {
               await download.saveAs(localPath);
               console.log(`💾 Downloaded to: ${localPath}`);
             } catch (saveError) {
-              console.log(`⚠️ Direct save failed, trying path method: ${saveError.message}`);
+              console.log(`⚠️ Direct save failed, trying path method: ${saveError instanceof Error ? saveError.message : String(saveError)}`);
               // Alternative: wait for the file to appear in download directory
               await new Promise(resolve => setTimeout(resolve, 2000));
               

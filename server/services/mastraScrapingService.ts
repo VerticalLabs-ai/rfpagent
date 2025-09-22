@@ -548,12 +548,12 @@ export class MastraScrapingService {
           const content = await this.scrapeBrowserbaseContent(url, sessionId, 
             'extract RFP details, documents, and procurement information from this page');
           
-          // Create a basic opportunity from the extracted content
+          // Create a basic opportunity from the extracted content - avoid overwriting existing data
           opportunities = [{
-            title: 'Re-scraped RFP',
+            title: null, // Will be preserved from existing RFP
             description: content.substring(0, 1000), // Limit description length
             sourceUrl: url,
-            agency: 'Unknown',
+            agency: null, // Will be preserved from existing RFP
             deadline: null,
             estimatedValue: null,
             documents: [] // Will be populated by document extraction
@@ -576,14 +576,18 @@ export class MastraScrapingService {
         
         console.log(`🔄 Updating existing RFP ${existingRfpId} with fresh data`);
         
-        // Update the existing RFP with fresh data
+        // Update the existing RFP with fresh data - preserve original title/agency if new data is generic
+        const existingRfp = await storage.getRFP(existingRfpId);
+        const shouldPreserveTitle = !opportunity.title || opportunity.title === 'Re-scraped RFP' || opportunity.title.length < 5;
+        const shouldPreserveAgency = !opportunity.agency || opportunity.agency === 'Unknown' || opportunity.agency === 'Agency Information Being Updated';
+        
         await storage.updateRFP(existingRfpId, {
-          title: opportunity.title || 'Re-scraped RFP',
-          description: opportunity.description,
-          agency: opportunity.agency,
-          deadline: opportunity.deadline ? new Date(opportunity.deadline) : null,
-          estimatedValue: opportunity.estimatedValue,
-          requirements: opportunity.requirements || [],
+          title: shouldPreserveTitle ? existingRfp.title : opportunity.title,
+          description: opportunity.description || existingRfp.description,
+          agency: shouldPreserveAgency ? existingRfp.agency : opportunity.agency,
+          deadline: opportunity.deadline ? new Date(opportunity.deadline) : existingRfp.deadline,
+          estimatedValue: opportunity.estimatedValue || existingRfp.estimatedValue,
+          requirements: opportunity.requirements || existingRfp.requirements || [],
           status: 'parsing',
           progress: 25,
           updatedAt: new Date()
