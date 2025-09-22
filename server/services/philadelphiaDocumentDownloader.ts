@@ -1,10 +1,12 @@
 import { Stagehand } from "@browserbasehq/stagehand";
+import { Browserbase } from "@browserbasehq/sdk";
 import { z } from "zod";
 import { ObjectStorageService, objectStorageClient } from '../objectStorage';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { sessionManager } from "../../src/mastra/tools/session-manager";
+import AdmZip from 'adm-zip';
 
 export interface PhiladelphiaDocument {
   name: string;
@@ -16,9 +18,13 @@ export interface PhiladelphiaDocument {
 
 export class PhiladelphiaDocumentDownloader {
   private objectStorage: ObjectStorageService;
+  private browserbase: Browserbase;
 
   constructor() {
     this.objectStorage = new ObjectStorageService();
+    this.browserbase = new Browserbase({ 
+      apiKey: process.env.BROWSERBASE_API_KEY! 
+    });
   }
 
   /**
@@ -49,23 +55,57 @@ export class PhiladelphiaDocumentDownloader {
       await page.waitForSelector('text=File Attachments:', { timeout: 15000 });
       console.log(`📋 File Attachments section found`);
 
-      // Set download behavior to save files
+      // Configure browser for downloads - Browserbase stores files in cloud storage
       const client = await page.context().newCDPSession(page);
-      const downloadPath = path.join(process.cwd(), 'temp_downloads', rfpId);
-      
-      // Create temp download directory
-      await fs.mkdir(downloadPath, { recursive: true });
-      console.log(`📁 Created download directory: ${downloadPath}`);
-      
-      // Configure download behavior for Browserbase
-      await client.send('Page.setDownloadBehavior', {
+      await client.send('Browser.setDownloadBehavior', {
         behavior: 'allow',
-        downloadPath: downloadPath,
+        downloadPath: 'downloads', // Browserbase cloud storage path
+        eventsEnabled: true,
       });
       
-      // Additional Browserbase compatibility settings
-      await page.context().setDefaultTimeout(30000);
-      console.log(`⚙️ Download behavior configured for: ${downloadPath}`);
+      console.log(`⚙️ Download behavior configured for Browserbase cloud storage`);
+      
+      // Get Browserbase session ID for later retrieval
+      // Since Stagehand logs the session URL, we can extract the real session ID
+      let browserbaseSessionId: string = sessionId; // Fallback to custom ID
+      
+      try {
+        // Give Stagehand a moment to fully initialize and log the session URL
+        await page.waitForTimeout(2000);
+        
+        // Try multiple approaches to get the real Browserbase session ID
+        const context = page.context();
+        
+        // Check Stagehand object properties
+        const stagehandProps = [
+          (stagehand as any).sessionId,
+          (stagehand as any).browserbaseSessionId,
+          (stagehand as any).session?.id,
+          (stagehand as any)._sessionId,
+          (context as any)._options?.sessionId,
+          (context as any)._browserbaseSessionId
+        ];
+        
+        for (const prop of stagehandProps) {
+          if (prop && typeof prop === 'string' && prop.match(/^[a-f0-9-]{36}$/i)) {
+            browserbaseSessionId = prop;
+            console.log(`🎯 Found Browserbase session ID: ${browserbaseSessionId}`);
+            break;
+          }
+        }
+        
+        // If we still have our custom session ID, extract from context or logs
+        if (browserbaseSessionId === sessionId) {
+          console.log(`🔍 Using fallback session ID: ${browserbaseSessionId}`);
+          console.log(`💡 Note: Real Browserbase session ID should be visible in logs above`);
+        }
+        
+      } catch (error) {
+        console.log(`⚠️ Error detecting Browserbase session ID: ${error}`);
+        browserbaseSessionId = sessionId;
+      }
+      
+      console.log(`🆔 Final session ID for downloads: ${browserbaseSessionId}`);
 
       // Process each document
       for (const docName of documentNames) {
@@ -94,44 +134,16 @@ export class PhiladelphiaDocumentDownloader {
             // Wait for download to start
             const download = await downloadPromise;
             
-            // Get suggested filename and setup path
-            const suggestedFilename = download.suggestedFilename() || docName;
-            const localPath = path.join(downloadPath, suggestedFilename);
-            
-            // Save the download with error handling
-            try {
-              await download.saveAs(localPath);
-              console.log(`💾 Downloaded to: ${localPath}`);
-            } catch (saveError) {
-              console.log(`⚠️ Direct save failed, trying path method: ${saveError instanceof Error ? saveError.message : String(saveError)}`);
-              // Alternative: wait for the file to appear in download directory
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              // Check if file was downloaded to default path
-              const files = await fs.readdir(downloadPath);
-              const downloadedFile = files.find(file => file.includes(docName.replace('.pdf', '')));
-              
-              if (downloadedFile) {
-                const downloadedPath = path.join(downloadPath, downloadedFile);
-                if (downloadedFile !== suggestedFilename) {
-                  // Rename to expected name
-                  await fs.rename(downloadedPath, localPath);
-                }
-                console.log(`💾 File found at: ${localPath}`);
-              } else {
-                throw new Error('Download completed but file not found');
-              }
+            // Browserbase automatically stores files in cloud storage
+            let downloadError = await download.failure();
+            if (downloadError !== null) {
+              throw new Error(`Download failed: ${downloadError}`);
             }
             
-            // Upload to object storage
-            const storagePath = await this.uploadToStorage(localPath, rfpId, suggestedFilename);
-            
-            doc.storagePath = storagePath;
+            console.log(`📥 Download triggered for: ${docName}`);
             doc.downloadStatus = 'completed';
-            console.log(`☁️ Uploaded to storage: ${storagePath}`);
             
-            // Clean up local file
-            await fs.unlink(localPath).catch(() => {});
+            // We'll retrieve the actual file after processing all downloads
             
           } else {
             // If direct click doesn't work, try alternative methods
@@ -148,15 +160,13 @@ export class PhiladelphiaDocumentDownloader {
                 await downloadButton.click();
                 const download = await downloadPromise;
                 
-                const suggestedFilename = download.suggestedFilename() || docName;
-                const localPath = path.join(downloadPath, suggestedFilename);
-                await download.saveAs(localPath);
+                let downloadError = await download.failure();
+                if (downloadError !== null) {
+                  throw new Error(`Download failed: ${downloadError}`);
+                }
                 
-                const storagePath = await this.uploadToStorage(localPath, rfpId, suggestedFilename);
-                doc.storagePath = storagePath;
+                console.log(`📥 Alternative download triggered for: ${docName}`);
                 doc.downloadStatus = 'completed';
-                
-                await fs.unlink(localPath).catch(() => {});
               } else {
                 doc.downloadStatus = 'failed';
                 doc.error = 'Download link not found';
@@ -179,14 +189,18 @@ export class PhiladelphiaDocumentDownloader {
         await page.waitForTimeout(1000);
       }
 
-      // Clean up temp directory
-      await fs.rm(downloadPath, { recursive: true, force: true }).catch(() => {});
+      // After all downloads are triggered, retrieve them from Browserbase
+      const successfulDownloads = results.filter(d => d.downloadStatus === 'completed');
+      if (successfulDownloads.length > 0) {
+        console.log(`📦 Retrieving ${successfulDownloads.length} files from Browserbase...`);
+        await this.retrieveAndUploadFiles(browserbaseSessionId, rfpId, results);
+      }
       
       // Close session
       await sessionManager.closeSession(sessionId);
 
-      const successCount = results.filter(d => d.downloadStatus === 'completed').length;
-      console.log(`✅ Downloaded ${successCount}/${documentNames.length} documents successfully`);
+      const finalSuccessCount = results.filter(d => d.downloadStatus === 'completed' && d.storagePath).length;
+      console.log(`✅ Successfully processed ${finalSuccessCount}/${documentNames.length} documents`);
 
       return results;
 
@@ -209,7 +223,142 @@ export class PhiladelphiaDocumentDownloader {
   }
 
   /**
-   * Upload downloaded document to object storage
+   * Retrieve downloaded files from Browserbase and upload to storage
+   */
+  private async retrieveAndUploadFiles(
+    sessionId: string,
+    rfpId: string,
+    results: PhiladelphiaDocument[]
+  ): Promise<void> {
+    try {
+      // Use retry logic as recommended in Browserbase docs
+      const maxRetries = 10;
+      const retryDelay = 2000; // 2 seconds
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`📥 Attempting to retrieve downloads (attempt ${attempt}/${maxRetries})...`);
+          
+          // Get downloads from Browserbase as ZIP
+          const response = await this.browserbase.sessions.downloads.list(sessionId);
+          const downloadBuffer = await response.arrayBuffer();
+          
+          if (downloadBuffer.byteLength > 0) {
+            console.log(`📦 Retrieved ZIP archive: ${downloadBuffer.byteLength} bytes`);
+            
+            // Extract files from ZIP
+            const zip = new AdmZip(Buffer.from(downloadBuffer));
+            const zipEntries = zip.getEntries();
+            
+            console.log(`🗂️ Found ${zipEntries.length} files in ZIP archive`);
+            
+            // Process each file
+            for (const entry of zipEntries) {
+              if (!entry.isDirectory) {
+                const fileName = entry.entryName;
+                const fileData = entry.getData();
+                
+                console.log(`📄 Processing file: ${fileName} (${fileData.length} bytes)`);
+                
+                // Find matching result record
+                const matchingResult = results.find(r => 
+                  r.downloadStatus === 'completed' && 
+                  (
+                    fileName.includes(r.name.replace('.pdf', '')) ||
+                    r.name.includes(fileName.replace(/-(\\d+)\\.pdf$/, '.pdf')) // Handle timestamp suffix
+                  )
+                );
+                
+                if (matchingResult) {
+                  // Upload to object storage
+                  const storagePath = await this.uploadBufferToStorage(
+                    fileData,
+                    rfpId,
+                    fileName
+                  );
+                  
+                  matchingResult.storagePath = storagePath;
+                  console.log(`☁️ Uploaded ${fileName} to storage: ${storagePath}`);
+                } else {
+                  console.log(`⚠️ No matching result found for file: ${fileName}`);
+                }
+              }
+            }
+            
+            console.log(`✅ Successfully processed all files from Browserbase`);
+            return; // Success, exit retry loop
+            
+          } else {
+            console.log(`⏳ Download archive not ready yet, retrying in ${retryDelay}ms...`);
+          }
+          
+        } catch (error: any) {
+          console.log(`⚠️ Retrieval attempt ${attempt} failed: ${error.message}`);
+        }
+        
+        // Wait before retrying (except on last attempt)
+        if (attempt < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+        }
+      }
+      
+      console.log(`❌ Failed to retrieve downloads after ${maxRetries} attempts`);
+      
+      // Mark remaining downloads as failed
+      results.forEach(result => {
+        if (result.downloadStatus === 'completed' && !result.storagePath) {
+          result.downloadStatus = 'failed';
+          result.error = 'Failed to retrieve from Browserbase cloud storage';
+        }
+      });
+      
+    } catch (error: any) {
+      console.error(`❌ Error retrieving files from Browserbase:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload file buffer to object storage
+   */
+  private async uploadBufferToStorage(
+    fileBuffer: Buffer,
+    rfpId: string,
+    fileName: string
+  ): Promise<string> {
+    try {
+      // Get the private directory for uploads
+      const privateDir = this.objectStorage.getPrivateObjectDir();
+      const bucketName = privateDir.split('/')[0];
+      const objectPath = `rfp_documents/${rfpId}/${fileName}`;
+      
+      // Get bucket reference
+      const bucket = objectStorageClient.bucket(bucketName);
+      const file = bucket.file(objectPath);
+      
+      // Upload buffer directly
+      await file.save(fileBuffer, {
+        metadata: {
+          contentType: 'application/pdf',
+          metadata: {
+            rfpId: rfpId,
+            uploadedAt: new Date().toISOString()
+          }
+        }
+      });
+      
+      // Generate public URL
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
+      return publicUrl;
+      
+    } catch (error: any) {
+      console.error(`Failed to upload ${fileName} to storage:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload downloaded document to object storage (legacy method)
    */
   private async uploadToStorage(
     filePath: string,
