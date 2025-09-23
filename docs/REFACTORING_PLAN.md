@@ -2,9 +2,10 @@
 
 ## 🔍 Analysis Summary
 
-### Large Files Requiring Refactoring:
+### Large Files Requiring Refactoring
 
-#### Backend Files:
+#### Backend Files
+
 1. **server/services/mastraScrapingService.ts** (3,115 lines) ✅ **COMPLETED**
 2. **server/storage.ts** (2,647 lines) ✅ **COMPLETED**
 3. **server/services/workflowCoordinator.ts** (2,368 lines)
@@ -13,7 +14,8 @@
 6. **server/services/submissionSpecialists.ts** (1,380 lines)
 7. **server/services/submissionOrchestrator.ts** (1,238 lines)
 
-#### Frontend Components:
+#### Frontend Components
+
 1. **client/src/pages/company-profiles.tsx** (1,551 lines)
 2. **client/src/pages/portal-settings.tsx** (1,136 lines)
 3. **client/src/components/ActiveRFPsTable.tsx** (791 lines)
@@ -25,7 +27,9 @@
 ### **Phase 1: Critical Backend Services (High Impact)**
 
 #### 1.1 Extract Workflow Coordinator Services
+
 **Target**: `server/services/workflowCoordinator.ts` (2,368 lines)
+
 - **Split into**:
   - `WorkflowOrchestrator.ts` - Main coordination logic
   - `WorkflowStateManager.ts` - State management
@@ -34,7 +38,9 @@
 - **Benefits**: Better separation of concerns, easier testing, improved maintainability
 
 #### 1.2 Modularize Mastra Workflow Engine
+
 **Target**: `server/services/mastraWorkflowEngine.ts` (1,963 lines)
+
 - **Split into**:
   - `AgentWorkflowManager.ts` - Agent-specific workflows
   - `WorkflowDefinitionManager.ts` - Workflow definitions
@@ -43,8 +49,10 @@
 - **Benefits**: Single responsibility, better error handling, scalability
 
 #### 1.3 Break Down Submission Services
+
 **Target**: `server/services/submissionSpecialists.ts` (1,380 lines)
 **Target**: `server/services/submissionOrchestrator.ts` (1,238 lines)
+
 - **Create submission module**:
   - `submission/SubmissionProcessor.ts`
   - `submission/SubmissionValidator.ts`
@@ -55,7 +63,9 @@
 ### **Phase 2: Frontend Component Extraction (User Experience)**
 
 #### 2.1 Modularize Company Profiles Page
+
 **Target**: `client/src/pages/company-profiles.tsx` (1,551 lines)
+
 - **Extract components**:
   - `components/company/CompanyProfileForm.tsx`
   - `components/company/CompanyContactManager.tsx`
@@ -66,7 +76,9 @@
 - **Benefits**: Reusable components, better performance, easier testing
 
 #### 2.2 Split Portal Settings Page
+
 **Target**: `client/src/pages/portal-settings.tsx` (1,136 lines)
+
 - **Extract components**:
   - `components/portal/PortalForm.tsx`
   - `components/portal/PortalList.tsx`
@@ -76,7 +88,9 @@
 - **Benefits**: Better code organization, component reusability
 
 #### 2.3 Refactor ActiveRFPsTable
+
 **Target**: `client/src/components/ActiveRFPsTable.tsx` (791 lines)
+
 - **Extract components**:
   - `components/rfp/RFPTableRow.tsx`
   - `components/rfp/RFPFilters.tsx`
@@ -87,6 +101,7 @@
 ### **Phase 3: Supporting Infrastructure**
 
 #### 3.1 Create Shared UI Components
+
 - **Extract from large components**:
   - `components/shared/DataTable.tsx` - Reusable table component
   - `components/shared/FormWrapper.tsx` - Common form patterns
@@ -94,12 +109,14 @@
   - `components/shared/ActionButtons.tsx` - Common actions
 
 #### 3.2 Implement React Error Boundaries
+
 - **Create**:
   - `components/error/ErrorBoundary.tsx`
   - `components/error/ErrorFallback.tsx`
   - `components/error/NotificationErrorBoundary.tsx`
 
 #### 3.3 Add Performance Optimizations
+
 - **Implement**:
   - `React.memo()` for heavy components
   - `useMemo()` and `useCallback()` optimizations
@@ -109,6 +126,7 @@
 ### **Phase 4: API and Type Safety**
 
 #### 4.1 Create Centralized API Client
+
 - **Implement**:
   - `lib/api/ApiClient.ts` - Axios wrapper with interceptors
   - `lib/api/endpoints.ts` - Typed endpoint definitions
@@ -116,6 +134,7 @@
   - `lib/api/errorHandling.ts` - Centralized error handling
 
 #### 4.2 Add Response Type Definitions
+
 - **Create typed APIs**:
   - `types/api/UserTypes.ts`
   - `types/api/PortalTypes.ts`
@@ -125,24 +144,28 @@
 ## 🛠️ Implementation Priority
 
 ### **Immediate (Next Sprint)**
+
 1. ✅ Repository pattern implementation (COMPLETED)
 2. 🎯 Extract Company Profiles components
 3. 🎯 Split Portal Settings page
 4. 🎯 Create Error Boundaries
 
 ### **Short Term (Next 2 Weeks)**
+
 1. Refactor Workflow Coordinator
 2. Break down Submission services
 3. Create shared UI components
 4. Implement performance optimizations
 
 ### **Medium Term (Next Month)**
+
 1. Modularize Mastra Workflow Engine
 2. Extract remaining large components
 3. Implement centralized API client
 4. Add comprehensive type definitions
 
 ### **Long Term (Next Quarter)**
+
 1. Create comprehensive test suite
 2. Add performance monitoring
 3. Implement advanced error handling
@@ -151,16 +174,19 @@
 ## 📊 Expected Benefits
 
 ### **Code Quality**
+
 - **Maintainability**: ⬆️ 70% improvement through smaller, focused modules
 - **Testability**: ⬆️ 80% improvement with isolated components
 - **Reusability**: ⬆️ 60% improvement with extracted components
 
 ### **Performance**
+
 - **Bundle Size**: ⬇️ 30% reduction through code splitting
 - **Load Time**: ⬇️ 40% improvement with lazy loading
 - **Memory Usage**: ⬇️ 25% improvement with optimized components
 
 ### **Developer Experience**
+
 - **Development Speed**: ⬆️ 50% improvement with better organization
 - **Debugging**: ⬆️ 65% improvement with smaller, focused modules
 - **Onboarding**: ⬆️ 75% improvement with clear component structure
@@ -168,6 +194,7 @@
 ## 🔍 Success Metrics
 
 ### **Quantitative Metrics**
+
 - Lines of code per file: < 500 lines
 - Component complexity: < 15 cyclomatic complexity
 - Bundle size: < 1MB total
@@ -175,6 +202,7 @@
 - Test coverage: > 80%
 
 ### **Qualitative Metrics**
+
 - Component reusability across pages
 - Ease of adding new features
 - Debugging and troubleshooting speed
