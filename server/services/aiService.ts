@@ -21,31 +21,42 @@ export class AIService {
       console.warn("OpenAI API key not available - returning basic compliance analysis");
       return {
         requirements: [{ type: "general", description: "Review document for compliance requirements", mandatory: true }],
-        deadlines: [],
+        complianceItems: [{ field: "Company Information", description: "Provide company registration details", format: "text" }],
         riskFlags: [],
-        evaluationCriteria: [],
-        mandatoryFields: []
+        mandatoryFields: [{ field: "Company Information", description: "Provide company registration details", format: "text" }]
       };
     }
-    
+
     try {
       const prompt = `
-Analyze this RFP document and extract compliance requirements, deadlines, and risk factors. 
-Respond with JSON in this format:
+Analyze this RFP document and extract compliance requirements, deadlines, and risk factors.
+Respond with JSON in this exact format:
 {
   "requirements": [{"type": "string", "description": "string", "mandatory": boolean}],
-  "deadlines": [{"type": "string", "date": "string", "description": "string"}],
+  "complianceItems": [{"field": "string", "description": "string", "format": "string"}],
   "riskFlags": [{"type": "high|medium|low", "category": "string", "description": "string"}],
-  "evaluationCriteria": [{"criterion": "string", "weight": "string", "description": "string"}],
-  "mandatoryFields": [{"field": "string", "format": "string", "description": "string"}]
+  "mandatoryFields": [{"field": "string", "description": "string", "format": "string"}]
 }
+
+The UI expects these specific fields:
+- requirements: array of requirement objects with type, description, and mandatory boolean
+- complianceItems: array of compliance items with field, description, and format
+- riskFlags: array of risk flags with type (high/medium/low), category, and description
+- mandatoryFields: array of mandatory fields with field, description, and format
 
 Pay special attention to:
 - Notarization requirements
-- Cashier's check or bond requirements  
+- Cashier's check or bond requirements
 - Insurance certificate requirements
 - Specific form formats
 - Submission deadlines and methods
+- License and certification requirements
+- Insurance requirements
+- Bonding requirements
+
+RFP Context:
+Title: ${rfpContext?.title || 'Unknown'}
+Agency: ${rfpContext?.agency || 'Unknown'}
 
 Document text:
 ${documentText}
@@ -59,7 +70,17 @@ ${documentText}
       });
 
       const content = response.choices[0].message.content;
-      return content ? JSON.parse(content) : null;
+      const result = content ? JSON.parse(content) : null;
+
+      // Ensure the result has the expected structure
+      if (result) {
+        result.requirements = result.requirements || [];
+        result.complianceItems = result.complianceItems || result.mandatoryFields || [];
+        result.riskFlags = result.riskFlags || [];
+        result.mandatoryFields = result.mandatoryFields || result.complianceItems || [];
+      }
+
+      return result;
     } catch (error) {
       console.error("Error analyzing document compliance:", error);
       throw new Error("Failed to analyze document compliance");
@@ -296,4 +317,30 @@ Content: ${scrapedContent}
       return null;
     }
   }
+
+  /**
+   * Generate content using OpenAI
+   */
+  async generateContent(prompt: string): Promise<string> {
+    if (!this.checkApiKeyAvailable()) {
+      console.warn("OpenAI API key not available - returning empty response");
+      return "";
+    }
+
+    try {
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7
+      });
+
+      return response.choices[0].message.content || "";
+    } catch (error) {
+      console.error("Error generating content:", error);
+      throw new Error("Failed to generate content");
+    }
+  }
 }
+
+// Export singleton instance
+export const aiService = new AIService();

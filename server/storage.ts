@@ -565,6 +565,20 @@ export class DatabaseStorage implements IStorage {
       .insert(rfps)
       .values(rfp)
       .returning();
+
+    // Trigger automatic compliance analysis for discovered RFPs
+    if (newRfp.status === 'discovered') {
+      // Import and trigger compliance analysis asynchronously
+      setImmediate(async () => {
+        try {
+          const { complianceIntegrationService } = await import('./services/complianceIntegrationService');
+          await complianceIntegrationService.onRFPDiscovered(newRfp.id);
+        } catch (error) {
+          console.error(`❌ Failed to trigger compliance analysis for RFP ${newRfp.id}:`, error);
+        }
+      });
+    }
+
     return newRfp;
   }
 

@@ -1,112 +1,102 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
+import { Skeleton } from '@/components/ui/skeleton';
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue 
+  SelectValue
 } from '@/components/ui/select';
-import { 
-  Clock, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
+import {
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   Search,
   Calendar,
-  Activity
+  Activity,
+  RefreshCw
 } from 'lucide-react';
+import { apiRequest } from '@/lib/queryClient';
 
-// Mock data for scan history - in a real app this would come from an API
-const mockScanHistory = [
-  {
-    id: '1',
-    portalName: 'Bonfire Hub',
-    scanType: 'Automated',
-    status: 'completed',
-    startTime: '2024-01-15T10:30:00Z',
-    endTime: '2024-01-15T10:32:15Z',
-    rfpsFound: 12,
-    errors: [],
-    duration: '2m 15s'
-  },
-  {
-    id: '2', 
-    portalName: 'Austin Finance Online',
-    scanType: 'Manual',
-    status: 'completed',
-    startTime: '2024-01-15T09:15:00Z',
-    endTime: '2024-01-15T09:17:30Z',
-    rfpsFound: 8,
-    errors: [],
-    duration: '2m 30s'
-  },
-  {
-    id: '3',
-    portalName: 'Bonfire Hub',
-    scanType: 'Automated',
-    status: 'failed',
-    startTime: '2024-01-14T14:20:00Z',
-    endTime: '2024-01-14T14:22:45Z',
-    rfpsFound: 0,
-    errors: [
-      {
-        code: 'BONFIRE_AUTH_TIMEOUT',
-        message: 'Authentication timeout: The portal may be slow or experiencing issues. This is recoverable - retry recommended.',
-        recoverable: true
-      }
-    ],
-    duration: '2m 45s'
-  },
-  {
-    id: '4',
-    portalName: 'FindRFP',
-    scanType: 'Automated',
-    status: 'completed_with_warnings',
-    startTime: '2024-01-14T08:45:00Z',
-    endTime: '2024-01-14T08:47:20Z',
-    rfpsFound: 15,
-    errors: [
-      {
-        code: 'MINOR_PARSING_ERROR',
-        message: 'Some RFP details could not be fully extracted but core information was captured',
-        recoverable: true
-      }
-    ],
-    duration: '2m 20s'
-  },
-  {
-    id: '5',
-    portalName: 'Bonfire Hub',
-    scanType: 'Manual',
-    status: 'failed',
-    startTime: '2024-01-13T16:10:00Z',
-    endTime: '2024-01-13T16:12:30Z',
-    rfpsFound: 0,
-    errors: [
-      {
-        code: 'BONFIRE_AUTH_2FA_REQUIRED',
-        message: 'Two-factor authentication detected: This portal requires manual 2FA verification. Account needs manual intervention.',
-        recoverable: false
-      }
-    ],
-    duration: '2m 30s'
-  }
-];
+interface ScanHistoryItem {
+  id: string;
+  portalName: string;
+  scanType: 'Automated' | 'Manual';
+  status: 'completed' | 'failed' | 'completed_with_warnings' | 'running';
+  startTime: string;
+  endTime?: string;
+  rfpsFound: number;
+  errors: Array<{
+    code: string;
+    message: string;
+    recoverable: boolean;
+  }>;
+  duration: string;
+}
 
-type ScanStatus = 'all' | 'completed' | 'failed' | 'completed_with_warnings';
+interface ScanHistoryResponse {
+  scans: ScanHistoryItem[];
+  total: number;
+  hasMore: boolean;
+}
+
+type ScanStatus = 'all' | 'completed' | 'failed' | 'completed_with_warnings' | 'running';
 
 export default function ScanHistoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ScanStatus>('all');
-  
-  const filteredScans = mockScanHistory.filter(scan => {
-    const matchesSearch = scan.portalName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || scan.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const [currentPage, setCurrentPage] = useState(0);
+  const pageSize = 20;
+
+  // Fetch scan history from API
+  const {
+    data: scanHistoryResponse,
+    isLoading,
+    error,
+    refetch
+  } = useQuery<ScanHistoryResponse>({
+    queryKey: ['/api/scans/history', {
+      portalName: searchTerm || undefined,
+      status: statusFilter === 'all' ? undefined : statusFilter,
+      limit: pageSize,
+      offset: currentPage * pageSize
+    }],
+    queryFn: ({ queryKey }) => {
+      const [url, params] = queryKey as [string, Record<string, any>];
+      const searchParams = new URLSearchParams();
+
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString());
+        }
+      });
+
+      return apiRequest('GET', `${url}?${searchParams.toString()}`);
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Also fetch scan statistics
+  const { data: scanStats } = useQuery({
+    queryKey: ['/api/scans/statistics'],
+    queryFn: ({ queryKey }) => apiRequest('GET', queryKey[0] as string),
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  const scans = scanHistoryResponse?.scans || [];
+  const totalScans = scanHistoryResponse?.total || 0;
+  const hasMore = scanHistoryResponse?.hasMore || false;
+
+  // Filter scans based on search term (client-side filtering for UX)
+  const filteredScans = scans.filter(scan => {
+    if (!searchTerm) return true;
+    return scan.portalName.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
   const getStatusIcon = (status: string) => {
@@ -140,13 +130,103 @@ export default function ScanHistoryPage() {
     return new Date(dateString).toLocaleString();
   };
 
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto p-6" data-testid="scan-history-page">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Scan History</h1>
+          <Skeleton className="h-6 w-20" />
+        </div>
+
+        {/* Loading skeleton for filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <Skeleton className="flex-1 h-10" />
+              <Skeleton className="w-48 h-10" />
+              <Skeleton className="w-32 h-10" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Loading skeleton for scan cards */}
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-4" />
+                    <div>
+                      <Skeleton className="h-5 w-32 mb-2" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-6 w-20" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="container mx-auto p-6" data-testid="scan-history-page">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Scan History</h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <XCircle className="mx-auto h-12 w-12 text-red-500 mb-4" />
+            <p className="text-red-600 mb-4">Failed to load scan history</p>
+            <Button onClick={() => refetch()} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6" data-testid="scan-history-page">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Scan History</h1>
-        <Badge variant="outline" data-testid="scan-count">
-          {filteredScans.length} Scans
-        </Badge>
+        <div>
+          <h1 className="text-3xl font-bold">Scan History</h1>
+          {scanStats && (
+            <p className="text-muted-foreground mt-2">
+              Success rate: {scanStats.successRate.toFixed(1)}% •
+              Avg. {scanStats.avgRfpsPerScan.toFixed(1)} RFPs per scan •
+              {scanStats.totalRfpsDiscovered} RFPs discovered in last 30 days
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <Badge variant="outline" data-testid="scan-count">
+            {totalScans} Total Scans
+          </Badge>
+          <Button onClick={() => refetch()} variant="outline" size="sm">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -273,6 +353,40 @@ export default function ScanHistoryPage() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalScans > pageSize && (
+        <Card className="mt-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalScans)} of {totalScans} scans
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm px-3">
+                  Page {currentPage + 1} of {Math.ceil(totalScans / pageSize)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={!hasMore}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
