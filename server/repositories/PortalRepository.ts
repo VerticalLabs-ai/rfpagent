@@ -28,8 +28,7 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
       status: portals.status,
       loginRequired: portals.loginRequired,
       lastScanned: portals.lastScanned,
-      createdAt: portals.createdAt,
-      updatedAt: portals.updatedAt
+      createdAt: portals.createdAt
       // Exclude credentials from public list
     }).from(portals);
 

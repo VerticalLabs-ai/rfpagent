@@ -292,7 +292,6 @@ export function SubmissionMaterialsDialog({
                               placeholder="e.g., Water Bottles"
                               value={item.name}
                               onChange={(e) => updatePricingItem(index, 'name', e.target.value)}
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-2">
@@ -301,7 +300,6 @@ export function SubmissionMaterialsDialog({
                               placeholder="e.g., Beverages"
                               value={item.category}
                               onChange={(e) => updatePricingItem(index, 'category', e.target.value)}
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-2">
@@ -313,7 +311,6 @@ export function SubmissionMaterialsDialog({
                               onChange={(e) => updatePricingItem(index, 'unitPrice', Number(e.target.value))}
                               min="0"
                               step="0.01"
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-1">
@@ -322,7 +319,6 @@ export function SubmissionMaterialsDialog({
                               placeholder="case"
                               value={item.unit}
                               onChange={(e) => updatePricingItem(index, 'unit', e.target.value)}
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-1">
@@ -333,7 +329,6 @@ export function SubmissionMaterialsDialog({
                               onChange={(e) => updatePricingItem(index, 'margin', Number(e.target.value))}
                               min="0"
                               max="100"
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-2">
@@ -342,14 +337,12 @@ export function SubmissionMaterialsDialog({
                               placeholder="Optional notes"
                               value={item.notes || ''}
                               onChange={(e) => updatePricingItem(index, 'notes', e.target.value)}
-                              size="sm"
                             />
                           </div>
                           <div className="col-span-1">
                             <Button
                               type="button"
                               variant="ghost"
-                              size="sm"
                               onClick={() => removePricingItem(index)}
                               className="text-red-500 hover:text-red-700"
                             >

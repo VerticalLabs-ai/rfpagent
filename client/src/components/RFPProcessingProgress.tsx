@@ -244,7 +244,6 @@ export function RFPProcessingProgressModal({
                         <div className="flex items-center gap-2">
                           <h5 className="font-medium text-sm text-foreground">{step.step}</h5>
                           <Badge
-                            size="sm"
                             variant={step.status === 'completed' ? 'default' : 'secondary'}
                             className={`text-xs ${getStatusColor(step.status)}`}
                           >

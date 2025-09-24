@@ -93,11 +93,11 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
               Ownership: {contact.ownershipPercent}
             </div>
           )}
-          {contact.decisionAreas && contact.decisionAreas.length > 0 && (
+          {Array.isArray(contact.decisionAreas) && contact.decisionAreas.length > 0 && (
             <div className="mt-2">
               <div className="text-xs text-muted-foreground mb-1">Decision Areas:</div>
               <div className="flex flex-wrap gap-1">
-                {(contact.decisionAreas as string[]).map((area) => (
+                {contact.decisionAreas.map((area: string) => (
                   <Badge key={area} variant="outline" className="text-xs">
                     {DECISION_AREAS.find(d => d.value === area)?.label || area}
                   </Badge>

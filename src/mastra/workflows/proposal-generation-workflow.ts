@@ -84,13 +84,15 @@ const analyzeRfpStep = createStep({
         extractedText: z.string().optional(),
       })
     ),
+    hasDocuments: z.boolean(),
   }),
   outputSchema: z.object({
+    rfp: z.any(),
     rfpAnalysis: rfpAnalysisSchema,
     documentContext: z.string(),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, documents } = inputData
+    const { rfp, documents, hasDocuments } = inputData
 
     console.log(`🤖 Analyzing RFP requirements...`)
 
@@ -157,6 +159,7 @@ const analyzeRfpStep = createStep({
     console.log(`✅ RFP analysis complete`)
 
     return {
+      rfp,
       rfpAnalysis,
       documentContext,
     }
@@ -173,6 +176,8 @@ const generateProposalContentStep = createStep({
     documentContext: z.string(),
   }),
   outputSchema: z.object({
+    rfp: z.any(),
+    rfpAnalysis: rfpAnalysisSchema,
     proposalContent: z.object({
       executiveSummary: z.string(),
       technicalApproach: z.string(),
@@ -256,6 +261,8 @@ const generateProposalContentStep = createStep({
     console.log(`✅ Proposal content generated`)
 
     return {
+      rfp,
+      rfpAnalysis,
       proposalContent,
     }
   },
@@ -277,6 +284,14 @@ const generatePricingTablesStep = createStep({
     }),
   }),
   outputSchema: z.object({
+    rfp: z.any(),
+    proposalContent: z.object({
+      executiveSummary: z.string(),
+      technicalApproach: z.string(),
+      qualifications: z.string(),
+      timeline: z.string(),
+      pricing: z.string().optional(),
+    }),
     pricingTables: z.object({
       items: z.array(
         z.object({
@@ -294,7 +309,7 @@ const generatePricingTablesStep = createStep({
     }),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, rfpAnalysis } = inputData
+    const { rfp, rfpAnalysis, proposalContent } = inputData
 
     console.log(`💰 Generating pricing tables...`)
 
@@ -330,6 +345,8 @@ const generatePricingTablesStep = createStep({
     console.log(`✅ Pricing tables generated`)
 
     return {
+      rfp,
+      proposalContent,
       pricingTables,
     }
   },

@@ -29,6 +29,9 @@ const extractDocumentLinksStep = createStep({
     portalType: z.string().optional(),
   }),
   outputSchema: z.object({
+    rfpId: z.string(),
+    rfpUrl: z.string(),
+    portalType: z.string().optional(),
     documents: z.array(documentSchema),
     extractedCount: z.number(),
   }),
@@ -56,12 +59,18 @@ const extractDocumentLinksStep = createStep({
       console.log(`✅ Found ${documents.length} documents to download`)
 
       return {
+        rfpId: inputData.rfpId,
+        rfpUrl: inputData.rfpUrl,
+        portalType: inputData.portalType,
         documents,
         extractedCount: documents.length,
       }
     } catch (error) {
       console.error("❌ Document extraction failed:", error)
       return {
+        rfpId: inputData.rfpId,
+        rfpUrl: inputData.rfpUrl,
+        portalType: inputData.portalType,
         documents: [],
         extractedCount: 0,
       }
@@ -78,6 +87,7 @@ const downloadDocumentsStep = createStep({
     documents: z.array(documentSchema),
   }),
   outputSchema: z.object({
+    rfpId: z.string(),
     downloadedFiles: z.array(
       z.object({
         originalUrl: z.string(),
@@ -145,6 +155,7 @@ const downloadDocumentsStep = createStep({
     )
 
     return {
+      rfpId,
       downloadedFiles,
       failedDownloads,
     }
@@ -167,6 +178,7 @@ const uploadToStorageStep = createStep({
     ),
   }),
   outputSchema: z.object({
+    rfpId: z.string(),
     uploadedDocuments: z.array(
       z.object({
         fileName: z.string(),
@@ -226,6 +238,7 @@ const uploadToStorageStep = createStep({
     console.log(`☁️ Uploaded ${uploadedDocuments.length} documents to storage`)
 
     return {
+      rfpId,
       uploadedDocuments,
       failedUploads,
     }
@@ -248,6 +261,7 @@ const processDocumentsStep = createStep({
     ),
   }),
   outputSchema: z.object({
+    rfpId: z.string(),
     processedDocuments: z.array(
       z.object({
         id: z.string(),
@@ -325,6 +339,7 @@ const processDocumentsStep = createStep({
     console.log(`🤖 Processed ${processedDocuments.length} documents with AI`)
 
     return {
+      rfpId,
       processedDocuments,
     }
   },
@@ -351,6 +366,16 @@ const updateRfpStatusStep = createStep({
     success: z.boolean(),
     message: z.string(),
     documentCount: z.number(),
+    processedDocuments: z.array(
+      z.object({
+        id: z.string(),
+        fileName: z.string(),
+        extractedText: z.string(),
+        category: z.string(),
+        keyRequirements: z.array(z.string()),
+        deadlines: z.array(z.string()),
+      })
+    ),
   }),
   execute: async ({ inputData }) => {
     const { rfpId, processedDocuments } = inputData
@@ -375,6 +400,7 @@ const updateRfpStatusStep = createStep({
         success: true,
         message: `Processed ${processedDocuments.length} documents`,
         documentCount: processedDocuments.length,
+        processedDocuments,
       }
     } catch (error) {
       console.error("Failed to update RFP status:", error)
@@ -382,6 +408,7 @@ const updateRfpStatusStep = createStep({
         success: false,
         message: "Failed to update RFP status",
         documentCount: 0,
+        processedDocuments: [],
       }
     }
   },
@@ -393,6 +420,8 @@ const combineWithRfpIdStep = createStep({
   description: "Combine RFP ID with documents",
   inputSchema: z.object({
     rfpId: z.string(),
+    rfpUrl: z.string(),
+    portalType: z.string().optional(),
     documents: z.array(documentSchema),
     extractedCount: z.number(),
   }),

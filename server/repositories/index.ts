@@ -10,4 +10,4 @@ export { RFPRepository, type RFPFilter } from './RFPRepository';
 export { RepositoryManager, repositoryManager, repositories } from './RepositoryManager';
 
 // Re-export for convenience
-export default repositoryManager;
+export default repositories;

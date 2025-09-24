@@ -2,10 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface Metrics {
+  activeRfps?: number;
+  portalsTracked?: number;
+  totalValue?: number;
+}
+
 export default function MetricsCards() {
-  const { data: metrics, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["/api/dashboard/metrics"],
   });
+
+  const metrics = data as Metrics | undefined;
 
   if (isLoading) {
     return (

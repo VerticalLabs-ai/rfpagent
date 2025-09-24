@@ -16,15 +16,15 @@ export default function ActivityFeed() {
   const isLoading = notificationsLoading || rfpsLoading;
 
   // Filter notifications for recent activity
-  const recentNotifications = notifications?.slice(0, 5) || [];
-  
+  const recentNotifications = Array.isArray(notifications) ? notifications.slice(0, 5) : [];
+
   // Filter for compliance alerts
-  const complianceAlerts = notifications?.filter((n: any) => n.type === "compliance")?.slice(0, 4) || [];
-  
+  const complianceAlerts = Array.isArray(notifications) ? notifications.filter((n: any) => n.type === "compliance").slice(0, 4) : [];
+
   // Get RFPs with high risk flags for compliance alerts
-  const highRiskRfps = rfps?.filter((item: any) => 
-    item.rfp.riskFlags?.some((flag: any) => flag.type === "high")
-  )?.slice(0, 4) || [];
+  const highRiskRfps = Array.isArray(rfps) ? rfps.filter((item: any) =>
+    item.rfp?.riskFlags?.some((flag: any) => flag.type === "high")
+  ).slice(0, 4) : [];
 
   if (isLoading) {
     return (

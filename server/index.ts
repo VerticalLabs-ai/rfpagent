@@ -68,7 +68,7 @@ app.use((req, res, next) => {
     await agentRegistryService.bootstrapDefaultAgents();
     log("🤖 3-tier agentic system initialized with default agents");
   } catch (error) {
-    log("⚠️ Failed to bootstrap default agents:", error);
+    log("⚠️ Failed to bootstrap default agents:", error instanceof Error ? error.message : String(error));
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
