@@ -122,7 +122,7 @@ const analyzeRfpStep = createStep({
       
       Extract all requirements, deadlines, and evaluation criteria.`
 
-    const response = await analysisAgent.generate([
+    const response = await analysisAgent.generateVNext([
       {
         role: "user",
         content: analysisPrompt,
@@ -235,7 +235,7 @@ const generateProposalContentStep = createStep({
         rfpAnalysis.estimatedBudget || "not specified"
       })`
 
-    const response = await proposalAgent.generate([
+    const response = await proposalAgent.generateVNext([
       {
         role: "user",
         content: proposalPrompt,

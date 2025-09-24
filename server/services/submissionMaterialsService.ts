@@ -1,39 +1,39 @@
 import OpenAI from "openai"
-import { z } from "zod"
+// import { z } from "zod"
 import { complianceChecker } from "../../src/mastra/agents/compliance-checker"
 import { contentGenerator } from "../../src/mastra/agents/content-generator"
 import { proposalManager } from "../../src/mastra/agents/proposal-manager"
-import { documentProcessingWorkflow } from "../../src/mastra/workflows/document-processing-workflow"
+// import { documentProcessingWorkflow } from "../../src/mastra/workflows/document-processing-workflow"
 import { storage } from "../storage"
-import { getMastraScrapingService } from "./mastraScrapingService"
+// import { getMastraScrapingService } from "./mastraScrapingService"
 import { progressTracker } from "./progressTracker"
 
 // Schema for pricing data input
-const PricingDataSchema = z.object({
-  items: z.array(
-    z.object({
-      name: z.string(),
-      category: z.string(),
-      unitPrice: z.number(),
-      unit: z.string(),
-      notes: z.string().optional(),
-      margin: z.number().default(40), // Default 40% margin
-    })
-  ),
-  defaultMargin: z.number().default(40),
-  laborRate: z.number().optional(),
-  overheadRate: z.number().optional(),
-})
+// const PricingDataSchema = z.object({
+//   items: z.array(
+//     z.object({
+//       name: z.string(),
+//       category: z.string(),
+//       unitPrice: z.number(),
+//       unit: z.string(),
+//       notes: z.string().optional(),
+//       margin: z.number().default(40), // Default 40% margin
+//     })
+//   ),
+//   defaultMargin: z.number().default(40),
+//   laborRate: z.number().optional(),
+//   overheadRate: z.number().optional(),
+// })
 
-const SubmissionMaterialsRequestSchema = z.object({
-  rfpId: z.string(),
-  companyProfileId: z.string().optional(),
-  pricingData: PricingDataSchema.optional(),
-  generateCompliance: z.boolean().default(true),
-  generatePricing: z.boolean().default(true),
-  autoSubmit: z.boolean().default(false),
-  customInstructions: z.string().optional(),
-})
+// const SubmissionMaterialsRequestSchema = z.object({
+//   rfpId: z.string(),
+//   companyProfileId: z.string().optional(),
+//   pricingData: PricingDataSchema.optional(),
+//   generateCompliance: z.boolean().default(true),
+//   generatePricing: z.boolean().default(true),
+//   autoSubmit: z.boolean().default(false),
+//   customInstructions: z.string().optional(),
+// })
 
 export interface SubmissionMaterialsRequest {
   rfpId: string
@@ -100,7 +100,7 @@ export interface SubmissionMaterialsResult {
 
 export class SubmissionMaterialsService {
   private openai: OpenAI
-  private mastraService = getMastraScrapingService()
+  // private mastraService = getMastraScrapingService()
 
   constructor() {
     this.openai = new OpenAI({
@@ -177,7 +177,7 @@ export class SubmissionMaterialsService {
         sessionId,
         "page_navigation",
         "completed",
-        `Fetched RFP and ${documents.length} documents using company profile: ${companyProfile.name}`
+        `Fetched RFP and ${documents.length} documents using company profile: ${companyProfile?.companyName || 'Unknown'}`
       )
 
       // Step 2: Document processing and analysis using Mastra workflow
@@ -188,31 +188,11 @@ export class SubmissionMaterialsService {
         "Processing and analyzing RFP documents..."
       )
 
-      let documentContext = ""
-      if (documents.length > 0) {
-        // Process documents using Mastra document processing workflow
-        try {
-          const docProcessingResult = await documentProcessingWorkflow.execute({
-            rfpId: request.rfpId,
-            documents: documents.map((doc) => ({
-              id: doc.id,
-              name: doc.name,
-              url: doc.url || "",
-              extractedText: doc.extractedText || "",
-            })),
-          })
-
-          documentContext = docProcessingResult.processedText || ""
-        } catch (error) {
-          console.warn(
-            "Document processing workflow failed, using existing extracted text:",
-            error
-          )
-          documentContext = documents
-            .map((doc) => doc.extractedText || "")
-            .join("\n\n")
-        }
-      }
+      // Use existing extracted text from documents
+      let documentContext = documents
+        .map((doc) => doc.extractedText || "")
+        .filter((text) => text.length > 0)
+        .join("\n\n")
 
       progressTracker.updateStep(
         sessionId,
@@ -366,7 +346,7 @@ export class SubmissionMaterialsService {
     request: SubmissionMaterialsRequest
   ) {
     // Use Mastra proposal manager to coordinate content generation
-    const proposalTask = await proposalManager.generate([
+    const proposalTask = await proposalManager.generateVNext([
       {
         role: "user",
         content: `Generate a comprehensive proposal for RFP: ${rfp.title}
@@ -404,7 +384,7 @@ export class SubmissionMaterialsService {
     ])
 
     // Use content generator for detailed sections
-    const detailedContent = await contentGenerator.generate([
+    const detailedContent = await contentGenerator.generateVNext([
       {
         role: "user",
         content: `Create detailed technical content sections for proposal:
@@ -539,7 +519,7 @@ export class SubmissionMaterialsService {
     )
     const tax = subtotal * 0.0825 // 8.25% tax rate
     const total = subtotal + tax
-    const margin = defaultPricing.defaultMargin
+    const margin = defaultPricing.defaultMargin || 40
 
     return {
       summary: { subtotal, tax, total, margin },
@@ -553,7 +533,7 @@ export class SubmissionMaterialsService {
     companyProfile: any
   ) {
     // Use compliance checker agent
-    const complianceAnalysis = await complianceChecker.generate([
+    await complianceChecker.generateVNext([
       {
         role: "user",
         content: `Perform comprehensive compliance analysis for:
@@ -639,8 +619,8 @@ export class SubmissionMaterialsService {
       // Update existing proposal
       await storage.updateProposal(existingProposal.id, {
         content: JSON.stringify(proposalContent),
+        narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
-        complianceData: JSON.stringify(complianceData),
         status: "review",
         estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
       })
@@ -650,8 +630,8 @@ export class SubmissionMaterialsService {
       const newProposal = await storage.createProposal({
         rfpId: rfp.id,
         content: JSON.stringify(proposalContent),
+        narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
-        complianceData: JSON.stringify(complianceData),
         status: "review",
         estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
       })
@@ -668,7 +648,7 @@ export class SubmissionMaterialsService {
   }
 
   private async generateDocuments(
-    proposalId: string,
+    _proposalId: string,
     proposalContent: any,
     pricingData: any,
     complianceData: any

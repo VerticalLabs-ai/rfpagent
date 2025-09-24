@@ -288,7 +288,7 @@ const processDocumentsStep = createStep({
         // In production, you'd use PDF parsing libraries
         const extractedText = `Extracted content from ${doc.fileName}`
 
-        const analysis = await documentProcessor.generate([
+        const analysis = await documentProcessor.generateVNext([
           {
             role: "user",
             content: `Analyze this RFP document and extract key information:\n\n${extractedText}`,

@@ -265,23 +265,35 @@ router.post('/:id/submission-materials',
 
     const sessionId = `materials_${proposal.id}_${Date.now()}`;
 
-    // Start submission materials generation
-    submissionMaterialsService.generateSubmissionMaterials({
-      rfpId: proposal.rfpId,
-      ...options
-    }).catch(error => {
-      console.error('Submission materials generation failed:', error);
-    });
+    try {
+      // Start submission materials generation
+      const result = await submissionMaterialsService.generateSubmissionMaterials({
+        rfpId: proposal.rfpId,
+        ...options
+      });
 
-    res.json({
-      success: true,
-      data: {
-        sessionId,
-        proposalId: proposal.id,
-        materialTypes
-      },
-      message: 'Submission materials generation started'
-    });
+      if (!result.success) {
+        return res.status(500).json({
+          error: result.error || 'Submission materials generation failed'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          sessionId: result.sessionId,
+          proposalId: proposal.id,
+          materialTypes,
+          materials: result.materials
+        },
+        message: 'Submission materials generated successfully'
+      });
+    } catch (error) {
+      console.error('Submission materials generation failed:', error);
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
   })
 );
 
