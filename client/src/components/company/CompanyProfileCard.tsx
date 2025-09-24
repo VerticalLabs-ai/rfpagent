@@ -20,9 +20,9 @@ export function CompanyProfileCard({ profile }: CompanyProfileCardProps) {
   const { toast } = useToast();
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", `/api/company-profiles/${profile.id}`),
+    mutationFn: () => apiRequest("DELETE", `/api/company/profiles/${profile.id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
       toast({ title: "Company profile deleted successfully" });
       setDeleteDialogOpen(false);
     },

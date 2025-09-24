@@ -59,9 +59,9 @@ export function SubmissionMaterialsDialog({
 
   // Fetch company profiles for selection
   const { data: companyProfiles } = useQuery({
-    queryKey: ['/api/company-profiles'],
+    queryKey: ['/api/company/profiles'],
     queryFn: async () => {
-      const response = await fetch('/api/company-profiles');
+      const response = await fetch('/api/company/profiles');
       if (!response.ok) throw new Error('Failed to fetch company profiles');
       return response.json();
     },

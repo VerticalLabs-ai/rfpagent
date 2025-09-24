@@ -34,7 +34,7 @@ export function RFPHeader({ rfp }: RFPHeaderProps) {
   return (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-4">
-        <Link href="/rfps">
+        <Link href="/discovery">
           <Button variant="ghost" size="sm" data-testid="button-back">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to RFPs

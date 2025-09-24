@@ -114,10 +114,10 @@ export class EnhancedProposalService {
       documentAnalysis.competitiveBidAnalysis
     );
 
-    // Update RFP to completed status
+    // Update RFP status with appropriate progress
     await storage.updateRFP(request.rfpId, {
       status: readyForSubmission ? 'review' : 'drafting',
-      progress: 100
+      progress: readyForSubmission ? 75 : 60  // Proposal generated but not submitted
     });
 
     console.log(`✅ Proposal generation completed for RFP: ${rfp.title}`);

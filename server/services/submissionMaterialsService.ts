@@ -122,17 +122,28 @@ export class SubmissionMaterialsService {
       progressTracker.updateStep(sessionId, 'portal_detection', 'completed', 'Initialization complete');
       progressTracker.updateStep(sessionId, 'page_navigation', 'in_progress', 'Fetching RFP details and documents...');
 
-      const rfp = await storage.getRFPById(request.rfpId);
+      const rfp = await storage.getRFP(request.rfpId);
       if (!rfp) {
         throw new Error(`RFP ${request.rfpId} not found`);
       }
 
       const documents = await storage.getDocumentsByRFP(request.rfpId);
-      const companyProfile = request.companyProfileId
-        ? await storage.getCompanyProfile(request.companyProfileId)
-        : await storage.getDefaultCompanyProfile();
+      let companyProfile;
+      if (request.companyProfileId) {
+        companyProfile = await storage.getCompanyProfile(request.companyProfileId);
+        if (!companyProfile) {
+          throw new Error(`Company profile ${request.companyProfileId} not found`);
+        }
+      } else {
+        // Get the first available company profile as default
+        const profiles = await storage.getAllCompanyProfiles();
+        companyProfile = profiles.length > 0 ? profiles[0] : null;
+        if (!companyProfile) {
+          throw new Error('No company profiles available. Please create a company profile first.');
+        }
+      }
 
-      progressTracker.updateStep(sessionId, 'page_navigation', 'completed', `Fetched RFP and ${documents.length} documents`);
+      progressTracker.updateStep(sessionId, 'page_navigation', 'completed', `Fetched RFP and ${documents.length} documents using company profile: ${companyProfile.name}`);
 
       // Step 2: Document processing and analysis using Mastra workflow
       progressTracker.updateStep(sessionId, 'data_extraction', 'in_progress', 'Processing and analyzing RFP documents...');

@@ -22,7 +22,7 @@ export default function CompanyProfiles() {
   const [expiringDialogType, setExpiringDialogType] = useState<"certifications" | "insurance" | "all">("all");
 
   const { data: profiles, isLoading } = useQuery({
-    queryKey: ["/api/company-profiles"],
+    queryKey: ["/api/company/profiles"],
   });
 
   const { data: expiringCertifications } = useQuery({

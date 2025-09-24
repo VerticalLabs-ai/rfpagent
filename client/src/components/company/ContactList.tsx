@@ -21,9 +21,9 @@ export function ContactList({ companyProfileId }: ContactListProps) {
   const { toast } = useToast();
 
   const { data: contacts = [], isLoading } = useQuery({
-    queryKey: ["/api/company-profiles", companyProfileId, "contacts"],
+    queryKey: ["/api/company/profiles", companyProfileId, "contacts"],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/company-profiles/${companyProfileId}/contacts`);
+      const response = await apiRequest("GET", `/api/company/profiles/${companyProfileId}/contacts`);
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     }
@@ -33,8 +33,8 @@ export function ContactList({ companyProfileId }: ContactListProps) {
     mutationFn: (contactId: string) =>
       apiRequest("DELETE", `/api/company-contacts/${contactId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
       toast({ title: "Contact deleted successfully" });
     },
     onError: () => {

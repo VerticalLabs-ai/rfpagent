@@ -35,27 +35,39 @@ export function CompanyProfileForm({ profile, onSuccess }: CompanyProfileFormPro
 
   const createMutation = useMutation({
     mutationFn: (data: CompanyProfileFormData) =>
-      apiRequest("POST", "/api/company-profiles", data),
+      apiRequest("POST", "/api/company/profiles", data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
       toast({ title: "Company profile created successfully" });
       onSuccess();
     },
-    onError: () => {
-      toast({ title: "Failed to create company profile", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Company profile creation error:", error);
+      const errorMessage = error?.response?.data?.error || error?.message || "Unknown error";
+      toast({
+        title: "Failed to create company profile",
+        description: errorMessage,
+        variant: "destructive"
+      });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: CompanyProfileFormData) =>
-      apiRequest("PUT", `/api/company-profiles/${profile!.id}`, data),
+      apiRequest("PUT", `/api/company/profiles/${profile!.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
       toast({ title: "Company profile updated successfully" });
       onSuccess();
     },
-    onError: () => {
-      toast({ title: "Failed to update company profile", variant: "destructive" });
+    onError: (error: any) => {
+      console.error("Company profile update error:", error);
+      const errorMessage = error?.response?.data?.error || error?.message || "Unknown error";
+      toast({
+        title: "Failed to update company profile",
+        description: errorMessage,
+        variant: "destructive"
+      });
     },
   });
 

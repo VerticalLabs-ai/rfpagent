@@ -478,7 +478,7 @@ export class ProposalGenerationOrchestrator {
     // Update RFP status
     await storage.updateRFP(pipeline.rfpId, {
       status: pipeline.qualityScore && pipeline.qualityScore >= pipeline.metadata.qualityThreshold ? 'review' : 'drafting',
-      progress: 100
+      progress: pipeline.qualityScore && pipeline.qualityScore >= pipeline.metadata.qualityThreshold ? 75 : 60  // Proposal complete but not submitted
     });
 
     // Create completion notification

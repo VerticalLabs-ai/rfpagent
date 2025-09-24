@@ -47,11 +47,11 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
 
   const createMutation = useMutation({
     mutationFn: (data: CompanyContactFormData) =>
-      apiRequest("POST", `/api/company-profiles/${companyProfileId}/contacts`, data),
+      apiRequest("POST", `/api/company/profiles/${companyProfileId}/contacts`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
       toast({ title: "Contact created successfully" });
       onSuccess();
     },
@@ -64,9 +64,9 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
     mutationFn: (data: CompanyContactFormData) =>
       apiRequest("PUT", `/api/company-contacts/${contact!.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company-profiles/all-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
       toast({ title: "Contact updated successfully" });
       onSuccess();
     },

@@ -678,7 +678,7 @@ export class AnalysisOrchestrator {
       // Update RFP status to completed analysis
       await storage.updateRFP(rfpId, {
         status: 'review',
-        progress: 100
+        progress: 25  // Analysis complete, but still needs proposal generation and submission
       });
 
       // Get final analysis results

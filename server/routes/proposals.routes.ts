@@ -245,34 +245,41 @@ router.get('/pipeline/workflows', handleAsyncError(async (req, res) => {
 /**
  * Generate submission materials
  * POST /api/proposals/:id/submission-materials
+ * Note: :id can be either proposalId or rfpId - we try both
  */
 router.post('/:id/submission-materials',
   heavyOperationLimiter,
   handleAsyncError(async (req, res) => {
-    const proposalId = req.params.id;
+    const id = req.params.id;
     const { materialTypes = ['cover_letter', 'technical_proposal', 'cost_proposal'], options = {} } = req.body;
 
-    const proposal = await storage.getProposal(proposalId);
+    // Try to get proposal by ID first, then by RFP ID
+    let proposal = await storage.getProposal(id);
+    if (!proposal) {
+      proposal = await storage.getProposalByRFP(id);
+    }
+
     if (!proposal) {
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
-    const sessionId = `materials_${proposalId}_${Date.now()}`;
+    const sessionId = `materials_${proposal.id}_${Date.now()}`;
 
     // Start submission materials generation
     submissionMaterialsService.generateSubmissionMaterials({
-      proposalId,
-      materialTypes,
-      sessionId,
-      options
+      rfpId: proposal.rfpId,
+      ...options
     }).catch(error => {
       console.error('Submission materials generation failed:', error);
     });
 
     res.json({
       success: true,
-      sessionId,
-      materialTypes,
+      data: {
+        sessionId,
+        proposalId: proposal.id,
+        materialTypes
+      },
       message: 'Submission materials generation started'
     });
   })

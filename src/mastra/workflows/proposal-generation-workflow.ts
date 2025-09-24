@@ -50,7 +50,7 @@ const fetchRfpDataStep = createStep({
     
     console.log(`📋 Fetching RFP ${rfpId} and documents...`);
     
-    const rfp = await storage.getRFPById(rfpId);
+    const rfp = await storage.getRFP(rfpId);
     if (!rfp) {
       throw new Error(`RFP ${rfpId} not found`);
     }
