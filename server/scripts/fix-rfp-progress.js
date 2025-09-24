@@ -5,7 +5,7 @@
  * This script updates RFPs based on their status to have appropriate progress values
  */
 
-import { storage } from '../storage.js';
+import { storage } from '../storage';
 
 async function fixRFPProgress() {
   console.log('🔧 Starting RFP progress fix script...');
@@ -22,20 +22,23 @@ async function fixRFPProgress() {
 
       // Determine correct progress based on status
       switch (rfp.status) {
+        case 'open':
+          newProgress = 10;  // RFP discovered but not yet processed
+          break;
         case 'discovered':
           newProgress = 15;  // Just discovered and scraped
           break;
         case 'parsing':
-          newProgress = 20;  // Documents being processed
+          newProgress = 25;  // Documents being processed
           break;
         case 'review':
-          newProgress = 25;  // Analysis complete, ready for review
+          newProgress = 40;  // Analysis complete, pending review
           break;
         case 'drafting':
-          newProgress = 50;  // Proposal being generated
+          newProgress = 60;  // Proposal being generated
           break;
         case 'approved':
-          newProgress = 85;  // Proposal approved, ready for submission
+          newProgress = 80;  // Proposal approved, ready for submission
           break;
         case 'submitted':
           newProgress = 100; // Actually submitted - this should be 100%
