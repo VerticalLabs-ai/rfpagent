@@ -23,30 +23,48 @@ export interface RFPProcessingProgress {
 class ProgressTracker extends EventEmitter {
   private progressMap: Map<string, RFPProcessingProgress> = new Map();
   private sseClients: Map<string, Response[]> = new Map();
+  private workflowTypes: Map<string, 'rfp_processing' | 'submission_materials'> = new Map();
 
-  // Processing steps definition
-  private readonly PROCESSING_STEPS = [
-    { id: 'portal_detection', name: 'Detecting Portal Type' },
-    { id: 'page_navigation', name: 'Navigating to RFP Page' },
-    { id: 'data_extraction', name: 'Extracting RFP Information' },
-    { id: 'document_discovery', name: 'Discovering Documents' },
-    { id: 'document_download', name: 'Downloading Documents' },
-    { id: 'database_save', name: 'Saving to Database' },
-    { id: 'ai_analysis', name: 'AI Analysis & Proposal Generation' },
-    { id: 'completion', name: 'Processing Complete' }
-  ];
+  // Processing steps definitions for different workflows
+  private readonly WORKFLOW_STEPS = {
+    rfp_processing: [
+      { id: 'portal_detection', name: 'Detecting Portal Type' },
+      { id: 'page_navigation', name: 'Navigating to RFP Page' },
+      { id: 'data_extraction', name: 'Extracting RFP Information' },
+      { id: 'document_discovery', name: 'Discovering Documents' },
+      { id: 'document_download', name: 'Downloading Documents' },
+      { id: 'database_save', name: 'Saving to Database' },
+      { id: 'ai_analysis', name: 'AI Analysis & Proposal Generation' },
+      { id: 'completion', name: 'Processing Complete' }
+    ],
+    submission_materials: [
+      { id: 'initialization', name: 'Initializing Generation Process' },
+      { id: 'rfp_analysis', name: 'Analyzing RFP Requirements' },
+      { id: 'company_profile', name: 'Loading Company Profile' },
+      { id: 'content_generation', name: 'Generating Proposal Content' },
+      { id: 'compliance_check', name: 'Validating Compliance' },
+      { id: 'document_assembly', name: 'Assembling Documents' },
+      { id: 'quality_review', name: 'Quality Review & Validation' },
+      { id: 'completion', name: 'Materials Ready for Review' }
+    ]
+  };
+
+  // Default to RFP processing steps for backward compatibility
+  private readonly PROCESSING_STEPS = this.WORKFLOW_STEPS.rfp_processing;
 
   /**
-   * Start tracking a new RFP processing job
+   * Start tracking a new processing job
    */
-  startTracking(sessionId: string, url: string): void {
+  startTracking(sessionId: string, url: string, workflowType: 'rfp_processing' | 'submission_materials' = 'rfp_processing'): void {
+    const steps = this.WORKFLOW_STEPS[workflowType] || this.PROCESSING_STEPS;
+
     const progress: RFPProcessingProgress = {
       url,
-      totalSteps: this.PROCESSING_STEPS.length,
+      totalSteps: steps.length,
       completedSteps: 0,
-      currentStep: this.PROCESSING_STEPS[0].name,
+      currentStep: steps[0].name,
       status: 'initializing',
-      steps: this.PROCESSING_STEPS.map(step => ({
+      steps: steps.map(step => ({
         step: step.name,
         status: 'pending',
         message: `${step.name} - Waiting`,
@@ -55,6 +73,7 @@ class ProgressTracker extends EventEmitter {
     };
 
     this.progressMap.set(sessionId, progress);
+    this.workflowTypes.set(sessionId, workflowType);
     this.broadcastProgress(sessionId);
   }
 
@@ -71,12 +90,16 @@ class ProgressTracker extends EventEmitter {
     const progress = this.progressMap.get(sessionId);
     if (!progress) return;
 
-    const stepIndex = this.PROCESSING_STEPS.findIndex(s => s.id === stepId);
+    // Get the correct workflow steps for this session
+    const workflowType = this.workflowTypes.get(sessionId) || 'rfp_processing';
+    const steps = this.WORKFLOW_STEPS[workflowType] || this.PROCESSING_STEPS;
+
+    const stepIndex = steps.findIndex(s => s.id === stepId);
     if (stepIndex === -1) return;
 
     // Update the specific step
     progress.steps[stepIndex] = {
-      step: this.PROCESSING_STEPS[stepIndex].name,
+      step: steps[stepIndex].name,
       status,
       message,
       details,
@@ -85,14 +108,14 @@ class ProgressTracker extends EventEmitter {
 
     // Update overall progress
     if (status === 'in_progress') {
-      progress.currentStep = this.PROCESSING_STEPS[stepIndex].name;
+      progress.currentStep = steps[stepIndex].name;
       progress.status = 'processing';
     } else if (status === 'completed') {
       progress.completedSteps++;
 
       // Move to next step if available
-      if (stepIndex + 1 < this.PROCESSING_STEPS.length) {
-        progress.currentStep = this.PROCESSING_STEPS[stepIndex + 1].name;
+      if (stepIndex + 1 < steps.length) {
+        progress.currentStep = steps[stepIndex + 1].name;
       }
 
       // Check if all steps are completed

@@ -298,7 +298,7 @@ router.post('/:id/submission-materials',
 );
 
 /**
- * Get submission materials progress
+ * Get submission materials progress (JSON response)
  * GET /api/proposals/submission-materials/progress/:sessionId
  */
 router.get('/submission-materials/progress/:sessionId', (req, res) => {
@@ -311,6 +311,28 @@ router.get('/submission-materials/progress/:sessionId', (req, res) => {
   }
 
   res.json(progress);
+});
+
+/**
+ * Stream submission materials progress (SSE)
+ * GET /api/proposals/submission-materials/stream/:sessionId
+ */
+router.get('/submission-materials/stream/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    console.log(`📡 SSE connection established for submission materials session: ${sessionId}`);
+
+    // Register SSE client for the session
+    progressTracker.registerSSEClient(sessionId, res);
+
+    // Handle client disconnect
+    req.on('close', () => {
+      console.log(`📡 SSE connection closed for submission materials session: ${sessionId}`);
+    });
+  } catch (error) {
+    console.error('Error setting up SSE connection for submission materials:', error);
+    res.status(500).json({ error: 'Failed to establish progress stream' });
+  }
 });
 
 export default router;

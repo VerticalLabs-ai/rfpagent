@@ -120,14 +120,15 @@ export class SubmissionMaterialsService {
         `🚀 Starting submission materials generation for RFP: ${request.rfpId}`
       )
 
-      // Start progress tracking
+      // Start progress tracking for submission materials workflow
       progressTracker.startTracking(
         sessionId,
-        `Submission Materials for RFP ${request.rfpId}`
+        `Submission Materials for RFP ${request.rfpId}`,
+        'submission_materials'
       )
       progressTracker.updateStep(
         sessionId,
-        "portal_detection",
+        "initialization",
         "in_progress",
         "Initializing submission materials generation..."
       )
@@ -135,13 +136,13 @@ export class SubmissionMaterialsService {
       // Step 1: Fetch RFP and related data
       progressTracker.updateStep(
         sessionId,
-        "portal_detection",
+        "initialization",
         "completed",
         "Initialization complete"
       )
       progressTracker.updateStep(
         sessionId,
-        "page_navigation",
+        "rfp_analysis",
         "in_progress",
         "Fetching RFP details and documents..."
       )
@@ -175,7 +176,7 @@ export class SubmissionMaterialsService {
 
       progressTracker.updateStep(
         sessionId,
-        "page_navigation",
+        "rfp_analysis",
         "completed",
         `Fetched RFP and ${documents.length} documents using company profile: ${companyProfile?.companyName || 'Unknown'}`
       )
@@ -183,7 +184,7 @@ export class SubmissionMaterialsService {
       // Step 2: Document processing and analysis using Mastra workflow
       progressTracker.updateStep(
         sessionId,
-        "data_extraction",
+        "company_profile",
         "in_progress",
         "Processing and analyzing RFP documents..."
       )
@@ -196,7 +197,7 @@ export class SubmissionMaterialsService {
 
       progressTracker.updateStep(
         sessionId,
-        "data_extraction",
+        "company_profile",
         "completed",
         "Document analysis complete"
       )
@@ -204,7 +205,7 @@ export class SubmissionMaterialsService {
       // Step 3: Generate comprehensive proposal using Mastra agents
       progressTracker.updateStep(
         sessionId,
-        "document_discovery",
+        "content_generation",
         "in_progress",
         "Generating proposal content with AI agents..."
       )
@@ -218,7 +219,7 @@ export class SubmissionMaterialsService {
 
       progressTracker.updateStep(
         sessionId,
-        "document_discovery",
+        "content_generation",
         "completed",
         "Proposal content generated"
       )
@@ -228,7 +229,7 @@ export class SubmissionMaterialsService {
       if (request.generatePricing) {
         progressTracker.updateStep(
           sessionId,
-          "document_download",
+          "compliance_check",
           "in_progress",
           "Generating pricing tables..."
         )
@@ -241,7 +242,7 @@ export class SubmissionMaterialsService {
 
         progressTracker.updateStep(
           sessionId,
-          "document_download",
+          "compliance_check",
           "completed",
           "Pricing tables generated"
         )
@@ -252,7 +253,7 @@ export class SubmissionMaterialsService {
       if (request.generateCompliance) {
         progressTracker.updateStep(
           sessionId,
-          "database_save",
+          "document_assembly",
           "in_progress",
           "Performing compliance analysis..."
         )
@@ -265,7 +266,7 @@ export class SubmissionMaterialsService {
 
         progressTracker.updateStep(
           sessionId,
-          "database_save",
+          "document_assembly",
           "completed",
           "Compliance analysis complete"
         )
@@ -274,7 +275,7 @@ export class SubmissionMaterialsService {
       // Step 6: Save all materials and create final package
       progressTracker.updateStep(
         sessionId,
-        "ai_analysis",
+        "quality_review",
         "in_progress",
         "Creating submission package..."
       )
@@ -296,11 +297,16 @@ export class SubmissionMaterialsService {
 
       progressTracker.updateStep(
         sessionId,
-        "ai_analysis",
+        "quality_review",
         "completed",
         "Submission package created successfully"
       )
-      progressTracker.completeTracking(sessionId, proposalId)
+      progressTracker.updateStep(
+        sessionId,
+        "completion",
+        "completed",
+        "Submission materials generation completed successfully"
+      )
 
       const result: SubmissionMaterialsResult = {
         success: true,
@@ -325,8 +331,10 @@ export class SubmissionMaterialsService {
       return result
     } catch (error) {
       console.error(`❌ Submission materials generation failed:`, error)
-      progressTracker.failTracking(
+      progressTracker.updateStep(
         sessionId,
+        "completion",
+        "failed",
         error instanceof Error ? error.message : "Unknown error"
       )
 

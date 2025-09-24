@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { RFPProcessingProgressModal } from './RFPProcessingProgress';
-import { Plus, Trash2, DollarSign, FileText, CheckSquare } from 'lucide-react';
+import { Plus, Trash2, DollarSign, FileText, CheckSquare, Settings } from 'lucide-react';
 
 interface PricingItem {
   name: string;
@@ -374,52 +374,108 @@ export function SubmissionMaterialsDialog({
 
             <TabsContent value="review" className="space-y-6">
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4" />
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckSquare className="w-5 h-5" />
                     Generation Summary
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Settings</h4>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p>Company Profile: {companyProfileId ? 'Custom Profile' : 'Default Profile'}</p>
-                        <p>Generate Compliance: {generateCompliance ? 'Yes' : 'No'}</p>
-                        <p>Generate Pricing: {generatePricing ? 'Yes' : 'No'}</p>
-                        <p>Auto-Submit: {autoSubmit ? 'Yes' : 'No'}</p>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Company Profile:</span>
+                          <span className="font-medium">{companyProfileId ? 'Custom Profile' : 'Default Profile'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Generate Compliance:</span>
+                          <span className="font-medium">{generateCompliance ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Generate Pricing:</span>
+                          <span className="font-medium">{generatePricing ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Auto-Submit:</span>
+                          <span className="font-medium">{autoSubmit ? 'Yes' : 'No'}</span>
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Pricing Items</h4>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p>{pricingItems.length} pricing items configured</p>
-                        <p>Default Margin: {defaultMargin}%</p>
-                        <p>Labor Rate: ${laborRate}/hour</p>
-                        <p>Overhead Rate: {overheadRate}%</p>
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" />
+                        Pricing Items
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Items configured:</span>
+                          <span className="font-medium">{pricingItems.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Default Margin:</span>
+                          <span className="font-medium">{defaultMargin}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Labor Rate:</span>
+                          <span className="font-medium">${laborRate}/hour</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Overhead Rate:</span>
+                          <span className="font-medium">{overheadRate}%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {customInstructions && (
-                    <div>
-                      <h4 className="font-medium text-sm mb-2">Custom Instructions</h4>
-                      <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-                        {customInstructions}
-                      </p>
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Custom Instructions
+                      </h4>
+                      <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {customInstructions}
+                        </p>
+                      </div>
                     </div>
                   )}
 
-                  <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <h4 className="font-medium text-blue-900 dark:text-blue-100 mb-2">What will be generated:</h4>
-                    <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>• Complete technical proposal with AI-generated content</li>
-                      <li>• Detailed pricing schedules and tables</li>
-                      <li>• Compliance checklist with risk assessment</li>
-                      <li>• Executive summary and company qualifications</li>
-                      <li>• Ready-to-submit documents in PDF format</li>
-                      <li>• Real-time progress tracking with Mastra agents</li>
+                  <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                    <h4 className="font-medium text-foreground mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      What will be generated:
+                    </h4>
+                    <ul className="text-sm text-muted-foreground space-y-2">
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Complete technical proposal with AI-generated content
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Detailed pricing schedules and tables
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Compliance checklist with risk assessment
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Executive summary and company qualifications
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Ready-to-submit documents in PDF format
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-primary mt-0.5">•</span>
+                        Real-time progress tracking with Mastra agents
+                      </li>
                     </ul>
                   </div>
                 </CardContent>
@@ -458,6 +514,7 @@ export function SubmissionMaterialsDialog({
           sessionId={progressSessionId}
           open={progressDialogOpen}
           onOpenChange={setProgressDialogOpen}
+          endpoint={`/api/proposals/submission-materials/stream/${progressSessionId}`}
           onComplete={(data: any) => {
             setProgressDialogOpen(false);
             setProgressSessionId(null);

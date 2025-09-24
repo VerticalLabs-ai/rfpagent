@@ -29,6 +29,7 @@ interface RFPProcessingProgressProps {
   onOpenChange: (open: boolean) => void;
   onComplete?: (rfpId: string) => void;
   onError?: (error: string) => void;
+  endpoint?: string; // Custom SSE endpoint, defaults to RFP manual processing
 }
 
 export function RFPProcessingProgressModal({
@@ -36,7 +37,8 @@ export function RFPProcessingProgressModal({
   open,
   onOpenChange,
   onComplete,
-  onError
+  onError,
+  endpoint
 }: RFPProcessingProgressProps) {
   const [progress, setProgress] = useState<RFPProcessingProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -47,11 +49,12 @@ export function RFPProcessingProgressModal({
     console.log(`📡 Connecting to progress stream for session: ${sessionId}`);
 
     let eventSource: EventSource | null = null;
+    const sseEndpoint = endpoint || `/api/rfps/manual/progress/${sessionId}`;
 
     // Add a small delay to ensure backend processing has started
     const connectionDelay = setTimeout(() => {
       // Create EventSource for SSE connection
-      eventSource = new EventSource(`/api/rfps/manual/progress/${sessionId}`);
+      eventSource = new EventSource(sseEndpoint);
 
       eventSource.onopen = () => {
         console.log('📡 SSE connection opened');
@@ -112,7 +115,7 @@ export function RFPProcessingProgressModal({
               // The browser will automatically reconnect for SSE, but we can force it
               try {
                 eventSource.close();
-                const newEventSource = new EventSource(`/api/rfps/manual/progress/${sessionId}`);
+                const newEventSource = new EventSource(sseEndpoint);
                 eventSource = newEventSource;
                 // Re-attach handlers...
               } catch (reconnectError) {
