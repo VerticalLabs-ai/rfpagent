@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const contentGenerator = new Agent({
-  name: 'Content Generator',
+  name: "Content Generator",
   instructions: `
 You are a Content Generator specialist, creating high-quality proposal content and narratives.
 
@@ -30,7 +30,7 @@ When generating content:
 - Incorporate win themes and discriminators
 - Format content according to RFP specifications
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

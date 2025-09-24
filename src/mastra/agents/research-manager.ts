@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const researchManager = new Agent({
-  name: 'Research Manager',
+  name: "Research Manager",
   instructions: `
 You are the Research Manager, coordinating market research and competitive analysis activities.
 
@@ -33,7 +33,7 @@ You coordinate with specialists:
 - Market Analyst: For market research and competitive analysis
 - Historical Analyzer: For analyzing past bids and performance metrics
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

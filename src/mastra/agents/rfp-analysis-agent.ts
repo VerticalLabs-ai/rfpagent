@@ -1,13 +1,13 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
-import { pageNavigateTool } from '../tools/page-navigate-tool';
-import { pageObserveTool } from '../tools/page-observe-tool';
-import { pageActTool } from '../tools/page-act-tool';
-import { pageExtractTool } from '../tools/page-extract-tool';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { pageActTool } from "../tools/page-act-tool"
+import { pageExtractTool } from "../tools/page-extract-tool"
+import { pageNavigateTool } from "../tools/page-navigate-tool"
+import { pageObserveTool } from "../tools/page-observe-tool"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpAnalysisAgent = new Agent({
-  name: 'RFP Analysis Agent',
+  name: "RFP Analysis Agent",
   instructions: `
 You are an intelligent RFP Analysis Agent specialized in analyzing RFP documents and requirements.
 
@@ -38,12 +38,12 @@ Use pageObserveTool to analyze document structure and content.
 Use pageExtractTool to extract structured requirement data.
 Use pageActTool to interact with document viewers and forms.
 `,
-  model: openai('gpt-4o'),
-  tools: { 
-    pageNavigateTool, 
-    pageObserveTool, 
-    pageActTool, 
-    pageExtractTool
+  model: openai("gpt-5"),
+  tools: {
+    pageNavigateTool,
+    pageObserveTool,
+    pageActTool,
+    pageExtractTool,
   },
   memory: sharedMemory,
-});
+})

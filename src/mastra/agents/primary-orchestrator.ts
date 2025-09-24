@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const primaryOrchestrator = new Agent({
-  name: 'Primary Orchestrator',
+  name: "Primary Orchestrator",
   instructions: `
 You are the Primary Orchestrator for the RFP Agent system, responsible for overall coordination and user interaction management.
 
@@ -33,7 +33,7 @@ You coordinate with:
 - Proposal Manager: For proposal generation and compliance
 - Research Manager: For market research and analysis
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

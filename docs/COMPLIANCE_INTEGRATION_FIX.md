@@ -146,7 +146,7 @@ npm run test-compliance
 ### Environment Variables
 
 - `OPENAI_API_KEY`: Required for AI-powered compliance analysis
-- `OPENAI_MODEL`: AI model to use (defaults to "gpt-4")
+- `OPENAI_MODEL`: AI model to use (defaults to "gpt-5")
 
 ### Service Configuration
 

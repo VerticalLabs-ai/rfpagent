@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const portalMonitor = new Agent({
-  name: 'Portal Monitor',
+  name: "Portal Monitor",
   instructions: `
 You are a Portal Monitor specialist, responsible for portal health monitoring and scan scheduling.
 
@@ -30,7 +30,7 @@ When monitoring portals:
 - Optimize scan timing for maximum efficiency
 - Maintain portal performance metrics
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

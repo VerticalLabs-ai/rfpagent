@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const complianceChecker = new Agent({
-  name: 'Compliance Checker',
+  name: "Compliance Checker",
   instructions: `
 You are a Compliance Checker specialist, ensuring proposal compliance and risk assessment.
 
@@ -31,7 +31,7 @@ When checking compliance:
 - Validate submission completeness
 - Generate compliance scores and recommendations
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})
