@@ -15,6 +15,7 @@
     "test-proposal-real": "tsx scripts/test-proposal-generation.ts --real-data",
     "test-proposal-fallback": "tsx scripts/test-proposal-generation.ts --test-fallback",
     "test-agents": "tsx scripts/test-agents-simple.ts",
+    "test-proposals-api": "tsx scripts/test-proposals-api.ts",
     "test": "jest tests/",
     "test:watch": "jest tests/ --watch"
   },

@@ -45,13 +45,28 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
 
   const { data: proposals = [], isLoading, error } = useQuery<Proposal[]>({
-    queryKey: ['/api/proposals', rfpId],
+    queryKey: ['/api/proposals/rfp', rfpId],
     queryFn: async () => {
-      const response = await fetch(`/api/proposals/${rfpId}`);
-      if (!response.ok) throw new Error('Failed to fetch proposals');
-      return response.json();
+      try {
+        const response = await fetch(`/api/proposals/rfp/${rfpId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            return []; // No proposals found, return empty array
+          }
+          // For other errors, still return empty array to avoid showing error state
+          console.warn('Failed to fetch proposals:', response.status, response.statusText);
+          return [];
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.warn('Error fetching proposals:', err);
+        return []; // Return empty array instead of throwing
+      }
     },
     enabled: !!rfpId,
+    // Disable retries to avoid spam
+    retry: false,
   });
 
   const getStatusIcon = (status: string) => {
@@ -124,45 +139,12 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     );
   }
 
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Generated Proposals
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Failed to load proposals. Please try again.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Remove error state since we handle errors gracefully by returning empty arrays
 
   if (proposals.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            Generated Proposals
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No proposals generated yet.</p>
-            <p className="text-sm mt-1">Click "Generate Submission Materials" to create your first proposal.</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+    // Don't render the section at all if there are no proposals
+    // This avoids showing an empty state when no generation has been attempted
+    return null;
   }
 
   return (

@@ -205,6 +205,8 @@ export default function RFPDetails() {
           onComplete={(materials) => {
             console.log('Submission materials completed:', materials);
             queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
+            // Also invalidate proposals query to show the newly generated proposal
+            queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', id] });
           }}
         />
       )}

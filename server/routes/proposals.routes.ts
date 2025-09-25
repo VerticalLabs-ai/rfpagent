@@ -21,7 +21,9 @@ const router = express.Router();
  * GET /api/proposals/rfp/:rfpId
  */
 router.get('/rfp/:rfpId', handleAsyncError(async (req, res) => {
-  const proposals = await storage.getProposalsByRFP(req.params.rfpId);
+  const proposal = await storage.getProposalByRFP(req.params.rfpId);
+  // Return as array to match the expected format
+  const proposals = proposal ? [proposal] : [];
   res.json(proposals);
 }));
 
