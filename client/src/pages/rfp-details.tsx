@@ -105,6 +105,32 @@ export default function RFPDetails() {
     },
   });
 
+  const generateProposalMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', `/api/proposals/enhanced/generate`, {
+        rfpId: id,
+        companyProfileId: 'default', // You may want to make this configurable
+        options: {}
+      });
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Proposal Generation Started",
+        description: `Proposal generation has been initiated. Session ID: ${data.sessionId}`,
+      });
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', id] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Proposal Generation Failed",
+        description: error?.message || "Failed to start proposal generation. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteRFP = () => {
     const confirmed = window.confirm(
       `Are you sure you want to delete this RFP?\n\n"${rfp?.title}"\n\nThis action cannot be undone and will also delete:\n• All downloaded documents\n• Generated proposals\n• Submission history\n• All related data`
@@ -134,6 +160,10 @@ export default function RFPDetails() {
       url: rfp?.sourceUrl,
       userNotes: "Re-scraping with enhanced Mastra/Browserbase system to capture documents"
     });
+  };
+
+  const handleGenerateProposal = () => {
+    generateProposalMutation.mutate();
   };
 
   if (isLoading) {
@@ -192,7 +222,9 @@ export default function RFPDetails() {
           rfp={rfp}
           onDeleteRFP={handleDeleteRFP}
           onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
+          onGenerateProposal={handleGenerateProposal}
           isDeletePending={deleteRFPMutation.isPending}
+          isGeneratingProposal={generateProposalMutation.isPending}
         />
       </div>
 

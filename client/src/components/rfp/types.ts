@@ -30,7 +30,9 @@ export interface RFPSidebarProps {
   rfp: RFP;
   onDeleteRFP?: () => void;
   onGenerateMaterials?: () => void;
+  onGenerateProposal?: () => void;
   isDeletePending?: boolean;
+  isGeneratingProposal?: boolean;
 }
 
 export interface RFPHeaderProps {

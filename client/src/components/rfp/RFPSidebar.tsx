@@ -1,4 +1,4 @@
-import { Download, RefreshCw, ExternalLink, Trash2, Loader2 } from "lucide-react";
+import { Download, RefreshCw, ExternalLink, Trash2, Loader2, FileText } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +19,9 @@ export function RFPSidebar({
   rfp,
   onDeleteRFP,
   onGenerateMaterials,
+  onGenerateProposal,
   isDeletePending = false,
+  isGeneratingProposal = false,
 }: RFPSidebarProps) {
   return (
     <div className="space-y-6">
@@ -29,6 +31,20 @@ export function RFPSidebar({
           <CardTitle>Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Button
+            onClick={onGenerateProposal}
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={isGeneratingProposal}
+            data-testid="button-generate-proposal"
+          >
+            {isGeneratingProposal ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 mr-2" />
+            )}
+            Generate Proposal
+          </Button>
+
           <Button
             onClick={onGenerateMaterials}
             className="w-full bg-green-600 hover:bg-green-700"
