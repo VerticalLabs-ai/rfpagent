@@ -15,6 +15,7 @@ import {
   ComplianceChecklist,
   RiskFlags,
   RFPSidebar,
+  ProposalsSection,
 } from "@/components/rfp";
 import type { RFP, Document } from "@shared/schema";
 
@@ -182,6 +183,8 @@ export default function RFPDetails() {
           <ComplianceChecklist complianceItems={complianceItems} />
 
           <RiskFlags riskFlags={riskFlags} />
+
+          {id && <ProposalsSection rfpId={id} />}
         </div>
 
         {/* Sidebar */}

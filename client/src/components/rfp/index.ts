@@ -5,4 +5,5 @@ export { RequirementsList } from './RequirementsList';
 export { ComplianceChecklist } from './ComplianceChecklist';
 export { RiskFlags } from './RiskFlags';
 export { RFPSidebar } from './RFPSidebar';
+export { ProposalsSection } from './ProposalsSection';
 export * from './types';
