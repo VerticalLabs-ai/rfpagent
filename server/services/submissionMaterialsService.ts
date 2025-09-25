@@ -37,6 +37,7 @@ import { progressTracker } from "./progressTracker"
 
 export interface SubmissionMaterialsRequest {
   rfpId: string
+  sessionId?: string
   companyProfileId?: string
   pricingData?: {
     items: Array<{
@@ -111,7 +112,7 @@ export class SubmissionMaterialsService {
   async generateSubmissionMaterials(
     request: SubmissionMaterialsRequest
   ): Promise<SubmissionMaterialsResult> {
-    const sessionId = `submission-${Date.now()}-${Math.random()
+    const sessionId = request.sessionId || `submission-${Date.now()}-${Math.random()
       .toString(36)
       .substr(2, 9)}`
 
