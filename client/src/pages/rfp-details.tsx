@@ -107,9 +107,20 @@ export default function RFPDetails() {
 
   const generateProposalMutation = useMutation({
     mutationFn: async () => {
+      // Get the first available company profile
+      const profilesResponse = await fetch('/api/company/profiles');
+      const profiles = await profilesResponse.json();
+
+      if (!profiles || profiles.length === 0) {
+        throw new Error('No company profiles found. Please create a company profile first.');
+      }
+
+      const companyProfileId = profiles[0].id;
+      console.log(`Using company profile: ${companyProfileId}`);
+
       return apiRequest('POST', `/api/proposals/enhanced/generate`, {
         rfpId: id,
-        companyProfileId: 'default', // You may want to make this configurable
+        companyProfileId,
         options: {}
       });
     },

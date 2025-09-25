@@ -55,9 +55,9 @@ router.post('/enhanced/generate',
   handleAsyncError(async (req, res) => {
     const { rfpId, companyProfileId, options = {} } = req.body;
 
-    if (!rfpId || !companyProfileId) {
+    if (!rfpId) {
       return res.status(400).json({
-        error: 'RFP ID and company profile ID are required'
+        error: 'RFP ID is required'
       });
     }
 

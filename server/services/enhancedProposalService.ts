@@ -263,12 +263,24 @@ export class EnhancedProposalService {
 
       console.log(`🤖 Delegating to Mastra submission materials service with latest agents...`);
 
+      // Get the first available company profile if none specified
+      let companyProfileId = params.companyProfileId;
+      if (!companyProfileId) {
+        console.log('⚠️ No company profile specified, getting first available profile...');
+        const profiles = await storage.getAllCompanyProfiles();
+        if (profiles.length === 0) {
+          throw new Error('No company profiles found. Please create a company profile first.');
+        }
+        companyProfileId = profiles[0].id;
+        console.log(`✅ Using company profile: ${companyProfileId} (${profiles[0].companyName})`);
+      }
+
       // Use the submission materials service which has proper Mastra integration
       // This service uses the 3-tier agentic system with 14+ agents
       const result = await submissionMaterialsService.generateSubmissionMaterials({
         rfpId: params.rfpId,
         sessionId: params.sessionId,
-        companyProfileId: params.companyProfileId || 'default',
+        companyProfileId,
         materialTypes: ['technical_proposal', 'cost_proposal'],
         generateCompliance: true,
         autoSubmit: false,
