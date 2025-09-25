@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   FileText,
   Download,
@@ -9,7 +9,8 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient } from "@/lib/queryClient";
 
 interface Proposal {
   id: string;
@@ -43,6 +46,7 @@ interface ProposalsSectionProps {
 
 export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const { toast } = useToast();
 
   const { data: proposals = [], isLoading, error } = useQuery<Proposal[]>({
     queryKey: ['/api/proposals/rfp', rfpId],
@@ -68,6 +72,42 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     // Disable retries to avoid spam
     retry: false,
   });
+
+  const deleteProposalMutation = useMutation({
+    mutationFn: async (proposalId: string) => {
+      const response = await fetch(`/api/proposals/${proposalId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete proposal');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Proposal Deleted",
+        description: "The proposal has been deleted successfully.",
+      });
+      // Invalidate and refetch proposals
+      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error?.message || "Failed to delete proposal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDeleteProposal = (proposalId: string, proposalIndex: number) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete Proposal #${proposalIndex + 1}?\n\nThis action cannot be undone and will permanently remove:\n• All proposal content and narratives\n• Pricing tables and analysis\n• Compliance documentation\n• All related data`
+    );
+    if (confirmed) {
+      deleteProposalMutation.mutate(proposalId);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -347,6 +387,15 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                     <Button variant="outline" size="sm">
                       <ExternalLink className="w-4 h-4 mr-2" />
                       Export
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDeleteProposal(proposal.id, index)}
+                      disabled={deleteProposalMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
                     </Button>
                   </div>
                 </div>

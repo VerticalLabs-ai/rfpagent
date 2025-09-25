@@ -28,6 +28,25 @@ router.get('/rfp/:rfpId', handleAsyncError(async (req, res) => {
 }));
 
 /**
+ * Delete a specific proposal
+ * DELETE /api/proposals/:id
+ */
+router.delete('/:id', handleAsyncError(async (req, res) => {
+  const proposalId = req.params.id;
+
+  // Check if proposal exists
+  const proposal = await storage.getProposal(proposalId);
+  if (!proposal) {
+    return res.status(404).json({ error: 'Proposal not found' });
+  }
+
+  // Delete the proposal
+  await storage.deleteProposal(proposalId);
+
+  res.json({ success: true, message: 'Proposal deleted successfully' });
+}));
+
+/**
  * Generate proposal using AI
  * POST /api/proposals/:id/generate
  */

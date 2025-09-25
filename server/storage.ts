@@ -57,6 +57,7 @@ export interface IStorage {
   getProposalByRFP(rfpId: string): Promise<Proposal | undefined>;
   createProposal(proposal: InsertProposal): Promise<Proposal>;
   updateProposal(id: string, updates: Partial<Proposal>): Promise<Proposal>;
+  deleteProposal(id: string): Promise<void>;
 
   // Documents
   getDocument(id: string): Promise<Document | undefined>;
@@ -674,6 +675,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(proposals.id, id))
       .returning();
     return updatedProposal;
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    await db.delete(proposals).where(eq(proposals.id, id));
   }
 
   // Documents
