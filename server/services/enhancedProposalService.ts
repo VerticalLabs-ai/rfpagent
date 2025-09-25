@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { documentIntelligenceService, type DocumentAnalysisResult, type FormField, type HumanOversightItem } from './documentIntelligenceService';
 import { AIProposalService } from './ai-proposal-service';
+import { submissionMaterialsService } from './submissionMaterialsService';
 import type { RFP, CompanyProfile } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
@@ -227,6 +228,104 @@ export class EnhancedProposalService {
       } : undefined,
       autoSubmissionResult: submissionResult
     };
+  }
+
+  /**
+   * Generate enhanced proposal using latest Mastra agentic system
+   * This method is called by the API route and delegates to the proper Mastra agents
+   */
+  async generateEnhancedProposal(params: {
+    rfpId: string;
+    companyProfileId?: string;
+    sessionId: string;
+    options?: any;
+  }): Promise<{
+    success: boolean;
+    sessionId: string;
+    message: string;
+    proposalId?: string;
+    error?: string;
+  }> {
+    console.log(`🚀 Starting Mastra-powered enhanced proposal generation for RFP: ${params.rfpId}`);
+
+    try {
+      // Get RFP details
+      const rfp = await storage.getRFP(params.rfpId);
+      if (!rfp) {
+        throw new Error(`RFP not found: ${params.rfpId}`);
+      }
+
+      // Update RFP status to indicate generation in progress
+      await storage.updateRFP(params.rfpId, {
+        status: 'drafting',
+        progress: 10
+      });
+
+      console.log(`🤖 Delegating to Mastra submission materials service with latest agents...`);
+
+      // Use the submission materials service which has proper Mastra integration
+      // This service uses the 3-tier agentic system with 14+ agents
+      const result = await submissionMaterialsService.generateSubmissionMaterials({
+        rfpId: params.rfpId,
+        sessionId: params.sessionId,
+        companyProfileId: params.companyProfileId || 'default',
+        materialTypes: ['technical_proposal', 'cost_proposal'],
+        generateCompliance: true,
+        autoSubmit: false,
+        ...params.options
+      });
+
+      if (result.success) {
+        console.log(`✅ Mastra proposal generation completed successfully`);
+
+        // Get the generated proposal
+        const proposal = await storage.getProposalByRFP(params.rfpId);
+
+        // Update RFP progress to completed
+        await storage.updateRFP(params.rfpId, {
+          status: 'review',
+          progress: 85
+        });
+
+        return {
+          success: true,
+          sessionId: params.sessionId,
+          message: 'Enhanced proposal generated successfully using Mastra agentic system',
+          proposalId: proposal?.id
+        };
+      } else {
+        console.error(`❌ Mastra proposal generation failed:`, result.error);
+
+        // Update RFP status to indicate failure
+        await storage.updateRFP(params.rfpId, {
+          status: 'draft',
+          progress: 0
+        });
+
+        return {
+          success: false,
+          sessionId: params.sessionId,
+          message: 'Enhanced proposal generation failed',
+          error: result.error
+        };
+      }
+
+    } catch (error) {
+      console.error(`💥 Error in enhanced proposal generation:`, error);
+
+      // Update RFP status to indicate failure
+      await storage.updateRFP(params.rfpId, {
+        status: 'draft',
+        progress: 0
+      });
+
+      return {
+        success: false,
+        sessionId: params.sessionId,
+        message: 'Enhanced proposal generation failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   /**

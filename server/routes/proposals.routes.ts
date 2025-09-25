@@ -47,6 +47,84 @@ router.delete('/:id', handleAsyncError(async (req, res) => {
 }));
 
 /**
+ * Enhanced proposal generation (moved before parameterized routes)
+ * POST /api/proposals/enhanced/generate
+ */
+router.post('/enhanced/generate',
+  heavyOperationLimiter,
+  handleAsyncError(async (req, res) => {
+    const { rfpId, companyProfileId, options = {} } = req.body;
+
+    if (!rfpId || !companyProfileId) {
+      return res.status(400).json({
+        error: 'RFP ID and company profile ID are required'
+      });
+    }
+
+    const sessionId = `enhanced_${rfpId}_${Date.now()}`;
+
+    // Start enhanced proposal generation
+    enhancedProposalService.generateEnhancedProposal({
+      rfpId,
+      companyProfileId,
+      sessionId,
+      options
+    }).catch(error => {
+      console.error('Enhanced proposal generation failed:', error);
+    });
+
+    res.json({
+      success: true,
+      sessionId,
+      message: 'Enhanced proposal generation started'
+    });
+  })
+);
+
+/**
+ * Pipeline proposal generation (moved before parameterized routes)
+ * POST /api/proposals/pipeline/generate
+ */
+router.post('/pipeline/generate',
+  heavyOperationLimiter,
+  handleAsyncError(async (req, res) => {
+    const { rfpIds, companyProfileId, priority = 5, parallelExecution = true } = req.body;
+
+    if (!rfpIds || !Array.isArray(rfpIds) || rfpIds.length === 0) {
+      return res.status(400).json({
+        error: 'RFP IDs array is required'
+      });
+    }
+
+    if (!companyProfileId) {
+      return res.status(400).json({
+        error: 'Company profile ID is required'
+      });
+    }
+
+    const pipelineId = `pipeline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Start pipeline generation
+    proposalGenerationOrchestrator.startPipeline({
+      pipelineId,
+      rfpIds,
+      companyProfileId,
+      priority,
+      parallelExecution
+    }).catch(error => {
+      console.error('Pipeline generation failed:', error);
+    });
+
+    res.json({
+      success: true,
+      pipelineId,
+      rfpCount: rfpIds.length,
+      message: 'Proposal pipeline started'
+    });
+  })
+);
+
+/**
  * Generate proposal using AI
  * POST /api/proposals/:id/generate
  */
@@ -125,40 +203,6 @@ router.post('/:id/approve', handleAsyncError(async (req, res) => {
   });
 }));
 
-/**
- * Enhanced proposal generation
- * POST /api/proposals/enhanced/generate
- */
-router.post('/enhanced/generate',
-  heavyOperationLimiter,
-  handleAsyncError(async (req, res) => {
-    const { rfpId, companyProfileId, options = {} } = req.body;
-
-    if (!rfpId || !companyProfileId) {
-      return res.status(400).json({
-        error: 'RFP ID and company profile ID are required'
-      });
-    }
-
-    const sessionId = `enhanced_${rfpId}_${Date.now()}`;
-
-    // Start enhanced proposal generation
-    enhancedProposalService.generateEnhancedProposal({
-      rfpId,
-      companyProfileId,
-      sessionId,
-      options
-    }).catch(error => {
-      console.error('Enhanced proposal generation failed:', error);
-    });
-
-    res.json({
-      success: true,
-      sessionId,
-      message: 'Enhanced proposal generation started'
-    });
-  })
-);
 
 /**
  * Get enhanced proposal status
@@ -176,48 +220,6 @@ router.get('/enhanced/status/:rfpId', handleAsyncError(async (req, res) => {
   res.json(progress);
 }));
 
-/**
- * Pipeline proposal generation
- * POST /api/proposals/pipeline/generate
- */
-router.post('/pipeline/generate',
-  heavyOperationLimiter,
-  handleAsyncError(async (req, res) => {
-    const { rfpIds, companyProfileId, priority = 5, parallelExecution = true } = req.body;
-
-    if (!rfpIds || !Array.isArray(rfpIds) || rfpIds.length === 0) {
-      return res.status(400).json({
-        error: 'RFP IDs array is required'
-      });
-    }
-
-    if (!companyProfileId) {
-      return res.status(400).json({
-        error: 'Company profile ID is required'
-      });
-    }
-
-    const pipelineId = `pipeline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Start pipeline generation
-    proposalGenerationOrchestrator.startPipeline({
-      pipelineId,
-      rfpIds,
-      companyProfileId,
-      priority,
-      parallelExecution
-    }).catch(error => {
-      console.error('Pipeline generation failed:', error);
-    });
-
-    res.json({
-      success: true,
-      pipelineId,
-      rfpCount: rfpIds.length,
-      message: 'Proposal pipeline started'
-    });
-  })
-);
 
 /**
  * Get pipeline status
