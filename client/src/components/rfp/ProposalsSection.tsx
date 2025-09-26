@@ -152,7 +152,31 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    if (!dateString) return 'N/A';
+
+    // Try different date parsing strategies
+    let date: Date;
+
+    // First try direct parsing
+    date = new Date(dateString);
+
+    // If that fails, try ISO string parsing
+    if (isNaN(date.getTime())) {
+      const isoString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
+      date = new Date(isoString);
+    }
+
+    // If still invalid, try timestamp parsing
+    if (isNaN(date.getTime()) && !isNaN(Number(dateString))) {
+      date = new Date(Number(dateString));
+    }
+
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date string:', dateString, 'Type:', typeof dateString);
+      return 'Invalid Date';
+    }
+
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -268,6 +292,16 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                       </DialogHeader>
                       <ScrollArea className="max-h-[60vh] pr-4">
                         <div className="space-y-6">
+                          {/* Debug Info */}
+                          <div className="text-xs text-muted-foreground bg-gray-100 p-2 rounded">
+                            <div>Debug Info:</div>
+                            <div>• Content keys: {Object.keys(content).join(', ') || 'No content keys'}</div>
+                            <div>• Content type: {typeof proposal.content}</div>
+                            <div>• Content length: {proposal.content?.length || 0}</div>
+                            <div>• Narratives: {proposal.narratives ? 'Present' : 'None'}</div>
+                            <div>• Pricing: {proposal.pricingTables ? 'Present' : 'None'}</div>
+                          </div>
+
                           {/* Executive Summary */}
                           {content.executiveSummary && (
                             <div>
@@ -372,6 +406,47 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                               <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">
                                 {JSON.stringify(narratives, null, 2)}
                               </div>
+                            </div>
+                          )}
+
+                          {/* Fallback content - always show if no structured content */}
+                          {!content.executiveSummary && !content.technicalApproach && !content.timeline && !content.qualifications && !narratives && !pricing && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-yellow-600" />
+                                Raw Proposal Content
+                              </h3>
+                              <div className="text-sm">
+                                <p className="mb-2 text-yellow-700">
+                                  The proposal content is available but not in structured format.
+                                  This may happen during the initial generation process.
+                                </p>
+                                <div className="bg-white p-3 rounded border text-xs font-mono max-h-40 overflow-y-auto">
+                                  {proposal.content ? (
+                                    <pre className="whitespace-pre-wrap">
+                                      {typeof proposal.content === 'string'
+                                        ? proposal.content
+                                        : JSON.stringify(proposal.content, null, 2)
+                                      }
+                                    </pre>
+                                  ) : (
+                                    <p className="text-gray-500 italic">No content available</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Emergency fallback - if all content checks fail */}
+                          {Object.keys(content).length === 0 && !proposal.content && (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                                <AlertCircle className="w-4 h-4 text-red-600" />
+                                No Content Available
+                              </h3>
+                              <p className="text-sm text-red-700">
+                                This proposal appears to be empty. This might indicate an issue with the generation process.
+                              </p>
                             </div>
                           )}
                         </div>

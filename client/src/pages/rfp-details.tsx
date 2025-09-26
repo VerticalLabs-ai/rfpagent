@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SubmissionMaterialsDialog } from "@/components/SubmissionMaterialsDialog";
+import { ProposalGenerationProgress } from "@/components/ProposalGenerationProgress";
 import { LoadingCards } from "@/components/shared";
 import {
   RFPHeader,
@@ -24,6 +25,8 @@ export default function RFPDetails() {
   const { toast } = useToast();
   const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
   const [submissionMaterialsOpen, setSubmissionMaterialsOpen] = useState(false);
+  const [proposalGenerationActive, setProposalGenerationActive] = useState(false);
+  const [proposalSessionId, setProposalSessionId] = useState<string>('');
 
   const { data: rfp, isLoading, error } = useQuery<RFP>({
     queryKey: ['/api/rfps', id],
@@ -124,16 +127,35 @@ export default function RFPDetails() {
         options: {}
       });
     },
+    onMutate: () => {
+      // Start progress tracking immediately when mutation starts
+      const immediateSessionId = `session_${Date.now()}`;
+      console.log('Starting proposal generation with session:', immediateSessionId);
+      setProposalSessionId(immediateSessionId);
+      setProposalGenerationActive(true);
+    },
     onSuccess: (data: any) => {
+      console.log('Proposal generation response:', data);
+      const sessionId = data?.sessionId || proposalSessionId;
+
+      console.log('Updating progress state with real session:', { sessionId, active: true });
+
+      // Update with actual session ID if provided
+      if (data?.sessionId && data.sessionId !== proposalSessionId) {
+        setProposalSessionId(data.sessionId);
+      }
+
       toast({
         title: "Proposal Generation Started",
-        description: `Proposal generation has been initiated. Session ID: ${data.sessionId}`,
+        description: `AI agents are now processing your RFP. Session ID: ${sessionId}`,
       });
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', id] });
     },
     onError: (error: any) => {
+      console.log('Proposal generation error:', error);
+      // Reset progress state on error
+      setProposalGenerationActive(false);
+      setProposalSessionId('');
+
       toast({
         title: "Proposal Generation Failed",
         description: error?.message || "Failed to start proposal generation. Please try again.",
@@ -177,6 +199,26 @@ export default function RFPDetails() {
     generateProposalMutation.mutate();
   };
 
+  const handleProgressComplete = () => {
+    setProposalGenerationActive(false);
+    toast({
+      title: "Proposal Generated Successfully!",
+      description: "Your proposal is now ready for review.",
+    });
+    // Refresh data to show the new proposal
+    queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
+    queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', id] });
+  };
+
+  const handleProgressError = (error: string) => {
+    setProposalGenerationActive(false);
+    toast({
+      title: "Proposal Generation Failed",
+      description: error,
+      variant: "destructive",
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-6 py-8">
@@ -210,6 +252,14 @@ export default function RFPDetails() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           <RFPOverview rfp={rfp} />
+
+          {/* Proposal Generation Progress */}
+          <ProposalGenerationProgress
+            sessionId={proposalSessionId}
+            isVisible={proposalGenerationActive}
+            onComplete={handleProgressComplete}
+            onError={handleProgressError}
+          />
 
           <RFPDocuments
             rfp={rfp}
