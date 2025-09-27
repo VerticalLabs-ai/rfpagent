@@ -6,6 +6,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { agentRegistryService } from "./services/agentRegistryService";
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy only (Replit infrastructure)
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
