@@ -1,0 +1,92 @@
+name: Auto-Generate Documentation
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "src/**"
+            - "lib/**"
+    workflow_dispatch:
+        inputs:
+            scope:
+                description: "Documentation scope"
+                required: false
+                default: "full"
+                type: choice
+                options:
+                    - full
+                    - api
+                    - guides
+                    - examples
+
+jobs:
+    generate-docs:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Tools
+              run: |
+                  npm install -g claude-flow@alpha
+                  npm install -g jsdoc typedoc
+
+            - name: Generate Documentation
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+              run: |
+                  SCOPE="${{ github.event.inputs.scope || 'full' }}"
+
+                  # Run documentation generation
+                  npx claude-flow@alpha swarm "generate comprehensive $SCOPE documentation, API references, usage examples, and tutorials" \
+                    --agents 6 \
+                    --strategy parallel \
+                    --output-format json \
+                    --output-file docs-output.json
+
+            - name: Process Documentation
+              run: |
+                  # Extract documentation from results
+                  node -e "
+                    const output = require('./docs-output.json');
+                    const fs = require('fs');
+
+                    // Create docs directory
+                    if (!fs.existsSync('docs/generated')) {
+                      fs.mkdirSync('docs/generated', { recursive: true });
+                    }
+
+                    // Process artifacts
+                    Object.entries(output.results.artifacts || {}).forEach(([key, artifact]) => {
+                      if (artifact.content) {
+                        fs.writeFileSync('docs/generated/' + key + '.md', artifact.content);
+                      }
+                    });
+
+                    // Create index
+                    const insights = output.results.insights || [];
+                    let index = '# Generated Documentation\\n\\n';
+                    index += 'Generated on: ' + new Date().toISOString() + '\\n\\n';
+                    index += '## Contents\\n\\n';
+
+                    fs.readdirSync('docs/generated').forEach(file => {
+                      if (file.endsWith('.md') && file !== 'index.md') {
+                        index += '- [' + file.replace('.md', '') + '](./' + file + ')\\n';
+                      }
+                    });
+
+                    fs.writeFileSync('docs/generated/index.md', index);
+                  "
+
+            - name: Deploy to GitHub Pages
+              uses: peaceiris/actions-gh-pages@v3
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  publish_dir: ./docs/generated
+                  destination_dir: api-docs

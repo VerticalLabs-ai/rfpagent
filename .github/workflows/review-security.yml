@@ -1,0 +1,83 @@
+name: Security Analysis
+
+on:
+    schedule:
+        - cron: "0 8 * * *" # Daily at 8 AM UTC
+    workflow_dispatch: # Manual trigger
+
+jobs:
+    security-scan:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Environment
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Dependencies
+              run: |
+                  npm install -g claude-flow@alpha
+                  npm ci # Install project dependencies for analysis
+
+            - name: Run Security Analysis
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+              run: |
+                  npx claude-flow@alpha swarm "analyze codebase for security vulnerabilities, check dependencies, review authentication" \
+                    --agents 8 \
+                    --mode distributed \
+                    --output-format json \
+                    --output-file security-report.json
+
+            - name: Generate Report
+              run: |
+                  # Convert JSON to markdown report
+                  node -e "
+                    const report = require('./security-report.json');
+                    const date = new Date().toISOString().split('T')[0];
+
+                    let markdown = '# Security Report - ' + date + '\\n\\n';
+                    markdown += '## Summary\\n';
+                    markdown += '- Total Issues: ' + (report.results.errors?.length || 0) + '\\n';
+                    markdown += '- Agents Used: ' + report.summary.totalAgents + '\\n';
+                    markdown += '- Success Rate: ' + (report.summary.successRate * 100).toFixed(1) + '%\\n\\n';
+
+                    if (report.results.errors?.length > 0) {
+                      markdown += '## Issues Found\\n';
+                      report.results.errors.forEach((error, i) => {
+                        markdown += (i + 1) + '. ' + error + '\\n';
+                      });
+                    }
+
+                    if (report.results.insights?.length > 0) {
+                      markdown += '\\n## Recommendations\\n';
+                      report.results.insights.forEach((insight, i) => {
+                        markdown += (i + 1) + '. ' + insight + '\\n';
+                      });
+                    }
+
+                    require('fs').writeFileSync('SECURITY_REPORT.md', markdown);
+                  "
+
+            - name: Create Issue if Problems Found
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const fs = require('fs');
+                      const report = JSON.parse(fs.readFileSync('security-report.json', 'utf8'));
+
+                      if (report.results.errors && report.results.errors.length > 0) {
+                        const markdown = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
+
+                        await github.rest.issues.create({
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          title: `Security Alert: ${report.results.errors.length} issues found`,
+                          body: markdown,
+                          labels: ['security', 'automated']
+                        });
+                      }

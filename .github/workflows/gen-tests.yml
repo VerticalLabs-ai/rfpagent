@@ -1,0 +1,73 @@
+name: Auto-Generate Tests
+
+on:
+    push:
+        paths:
+            - "src/**/*.js"
+            - "src/**/*.ts"
+        branches:
+            - "feature/*"
+
+jobs:
+    generate-tests:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Setup
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Claude Flow
+              run: npm install -g claude-flow@alpha
+
+            - name: Identify New Code
+              id: new-code
+              uses: tj-actions/changed-files@v40
+              with:
+                  files: |
+                      src/**/*.js
+                      src/**/*.ts
+                  files_ignore: |
+                      **/*.test.js
+                      **/*.test.ts
+                      **/*.spec.js
+                      **/*.spec.ts
+
+            - name: Generate Tests
+              if: steps.new-code.outputs.any_changed == 'true'
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+              run: |
+                  # Generate tests for changed files
+                  for file in ${{ steps.new-code.outputs.all_changed_files }}; do
+                    echo "Generating tests for: $file"
+
+                    npx claude-flow@alpha sparc tdd "create comprehensive unit tests for $file" \
+                      --no-interactive \
+                      --output-format json \
+                      --output-file "test-${file//\//-}.json"
+                  done
+
+            - name: Create PR with Tests
+              uses: peter-evans/create-pull-request@v5
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  commit-message: "test: add AI-generated tests"
+                  title: "🧪 Add tests for new features"
+                  body: |
+                      ## AI-Generated Tests
+
+                      This PR adds comprehensive test coverage for recent changes.
+
+                      ### Files tested:
+                      ${{ steps.new-code.outputs.all_changed_files }}
+
+                      Please review the generated tests before merging.
+                  branch: auto-tests/${{ github.ref_name }}
+                  base: ${{ github.ref_name }}

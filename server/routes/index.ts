@@ -25,6 +25,7 @@ import auditLogRoutes from './audit-logs.routes';
 import agentRoutes from './agents.routes';
 import metricsRoutes from './metrics.routes';
 import e2eRoutes from './e2e.routes';
+import saflaRoutes from './safla-monitoring';
 
 /**
  * Configure and mount all API routes
@@ -57,6 +58,9 @@ export function configureRoutes(app: Express): void {
 
   // Mount E2E routes
   apiRouter.use('/e2e', e2eRoutes);
+
+  // Mount SAFLA monitoring routes
+  apiRouter.use('/safla', saflaRoutes);
 
   // Mount the API router
   app.use('/api', apiRouter);
@@ -166,6 +170,11 @@ export const routeModules = {
   e2e: {
     prefix: '/api/e2e',
     description: 'End-to-end testing and validation',
+    version: '1.0.0'
+  },
+  safla: {
+    prefix: '/api/safla',
+    description: 'SAFLA self-improving system monitoring and management',
     version: '1.0.0'
   }
 } as const;

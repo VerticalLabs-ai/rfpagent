@@ -79,29 +79,32 @@ export default function Header() {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-80">
+          <DropdownMenuContent
+            align="end"
+            className="w-80 bg-card border-border shadow-lg"
+          >
             {Array.isArray(unreadNotifications) && unreadNotifications.slice(0, 5).map((notification: any) => (
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 key={notification.id}
-                className="flex flex-col items-start p-3"
+                className="flex flex-col items-start p-3 hover:bg-accent hover:text-accent-foreground transition-colors"
                 data-testid={`notification-${notification.id}`}
               >
-                <div className="font-medium text-sm">{notification.title}</div>
+                <div className="font-medium text-sm text-foreground">{notification.title}</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {notification.message}
                 </div>
               </DropdownMenuItem>
             )) || (
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem disabled className="p-3">
                 <span className="text-muted-foreground">No new notifications</span>
               </DropdownMenuItem>
             )}
             {unreadCount > 0 && (
               <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
+                <DropdownMenuSeparator className="bg-border" />
+                <DropdownMenuItem
                   onClick={handleClearAll}
-                  className="justify-center text-sm font-medium"
+                  className="justify-center text-sm font-medium p-3 hover:bg-accent hover:text-accent-foreground transition-colors"
                   data-testid="clear-all-notifications"
                 >
                   Clear All ({unreadCount})

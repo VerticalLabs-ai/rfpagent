@@ -1,0 +1,85 @@
+name: AI Code Review
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+
+jobs:
+    review:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+
+        steps:
+            - name: Checkout PR
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Get full history for better analysis
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Claude Flow
+              run: npm install -g claude-flow@alpha
+
+            - name: Get Changed Files
+              id: changed-files
+              uses: tj-actions/changed-files@v40
+
+            - name: Run Code Review
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+              run: |
+                  # Create file list for review
+                  echo "${{ steps.changed-files.outputs.all_changed_files }}" > changed_files.txt
+
+                  # Run AI review
+                  npx claude-flow@alpha swarm "review code changes in changed_files.txt for bugs, security issues, and improvements" \
+                    --agents 5 \
+                    --output-format json \
+                    --output-file review.json
+
+            - name: Parse Review Results
+              id: parse-review
+              run: |
+                  # Extract insights and format as markdown
+                  REVIEW_COMMENT=$(node -e "
+                    const review = require('./review.json');
+                    const insights = review.results.insights || [];
+                    const issues = review.results.errors || [];
+
+                    console.log('## 🤖 AI Code Review\\n');
+
+                    if (issues.length > 0) {
+                      console.log('### ⚠️ Issues Found\\n');
+                      issues.forEach(issue => console.log('- ' + issue));
+                      console.log('\\n');
+                    }
+
+                    if (insights.length > 0) {
+                      console.log('### 💡 Suggestions\\n');
+                      insights.forEach(insight => console.log('- ' + insight));
+                    }
+
+                    console.log('\\n---\\n*Powered by Claude Flow ' + review.metadata.version + '*');
+                  ")
+
+                  # Save to file for comment
+                  echo "$REVIEW_COMMENT" > review_comment.md
+
+            - name: Post Review Comment
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const fs = require('fs');
+                      const comment = fs.readFileSync('review_comment.md', 'utf8');
+
+                      await github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: comment
+                      });

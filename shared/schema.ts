@@ -1205,6 +1205,7 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Portal = typeof portals.$inferSelect;
+export type PublicPortal = Omit<Portal, 'username' | 'password'>;
 export type InsertPortal = z.infer<typeof insertPortalSchema>;
 
 export type RFP = typeof rfps.$inferSelect;

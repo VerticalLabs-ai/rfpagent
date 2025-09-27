@@ -1,0 +1,37 @@
+name: Claude Flow Analysis
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        types: [opened, synchronize]
+
+jobs:
+    analyze:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "18"
+
+            - name: Install Claude Flow
+              run: npm install -g claude-flow@alpha
+
+            - name: Run Analysis
+              env:
+                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+              run: |
+                  npx claude-flow@alpha swarm "analyze code quality" \
+                    --output-format json \
+                    --output-file analysis.json
+
+            - name: Upload Results
+              uses: actions/upload-artifact@v4
+              with:
+                  name: analysis-results
+                  path: analysis.json

@@ -12,10 +12,10 @@ import { EnhancedProposalService } from "./enhancedProposalService";
 import { discoveryManager } from "./discoveryManager";
 import { discoveryOrchestrator } from "./discoveryOrchestrator";
 import { DiscoveryWorkflowProcessors } from "./discoveryWorkflowProcessors";
-import { 
-  documentProcessorSpecialist, 
-  requirementsExtractorSpecialist, 
-  complianceCheckerSpecialist 
+import {
+  documentProcessorSpecialist,
+  requirementsExtractorSpecialist,
+  complianceCheckerSpecialist
 } from "./analysisSpecialists";
 import {
   contentGenerationSpecialist,
@@ -23,6 +23,14 @@ import {
   complianceValidationSpecialist
 } from "./proposalGenerationSpecialists";
 import { proposalGenerationOrchestrator } from "./proposalGenerationOrchestrator";
+// SAFLA Self-Improving System Integration
+import { SelfImprovingLearningService } from "./selfImprovingLearningService";
+import { ProposalOutcomeTracker } from "./proposalOutcomeTracker";
+import { AdaptivePortalNavigator } from "./adaptivePortalNavigator";
+import { IntelligentDocumentProcessor } from "./intelligentDocumentProcessor";
+import { PersistentMemoryEngine } from "./persistentMemoryEngine";
+import { ProposalQualityEvaluator } from "./proposalQualityEvaluator";
+import { ContinuousImprovementMonitor } from "./continuousImprovementMonitor";
 import type { RFP, Portal, Proposal, WorkItem, InsertWorkItem, AgentRegistry } from "@shared/schema";
 import { nanoid } from 'nanoid';
 
@@ -71,6 +79,19 @@ export class WorkflowCoordinator {
   private activeWorkflows: Map<string, WorkflowExecutionContext> = new Map();
   private workItemProcessingInterval: NodeJS.Timeout | null = null;
 
+  // SAFLA Self-Improving System Services
+  private learningService = new SelfImprovingLearningService();
+  private outcomeTracker = new ProposalOutcomeTracker();
+  private adaptiveNavigator = new AdaptivePortalNavigator();
+  private intelligentProcessor = new IntelligentDocumentProcessor();
+  private memoryEngine = new PersistentMemoryEngine();
+  private qualityEvaluator = new ProposalQualityEvaluator();
+  private improvementMonitor = new ContinuousImprovementMonitor();
+
+  // Learning integration flags
+  private enableLearning = true;
+  private learningContext: any = null;
+
   constructor() {
     // Check environment variable to enable automatic background processing
     const autoStart = process.env.AUTO_WORK_DISTRIBUTION === 'true';
@@ -80,7 +101,39 @@ export class WorkflowCoordinator {
     } else {
       console.log('⏸️ Work distribution disabled by default (set AUTO_WORK_DISTRIBUTION=true to enable)');
     }
+
+    // Initialize SAFLA learning system
+    this.initializeLearningSystem();
     // Call startWorkItemProcessing() manually to enable automated work distribution
+  }
+
+  /**
+   * Initialize the SAFLA Self-Improving Learning System
+   */
+  private async initializeLearningSystem(): Promise<void> {
+    try {
+      console.log('🧠 Initializing SAFLA Self-Improving Learning System...');
+
+      // Initialize persistent memory engine with cross-session context
+      this.learningContext = await this.memoryEngine.initializeSessionContext({
+        agentId: 'workflow-coordinator',
+        taskType: 'workflow_coordination',
+        domain: 'system_orchestration'
+      });
+
+      // Enable learning across all components
+      this.enableLearning = process.env.DISABLE_LEARNING !== 'true';
+
+      if (this.enableLearning) {
+        console.log('✅ SAFLA Learning System initialized successfully');
+        console.log(`📊 Learning context: ${Object.keys(this.learningContext?.knowledgeGraph || {}).length} knowledge nodes loaded`);
+      } else {
+        console.log('⚠️ SAFLA Learning System disabled via DISABLE_LEARNING=true');
+      }
+    } catch (error) {
+      console.error('❌ Failed to initialize SAFLA Learning System:', error);
+      this.enableLearning = false;
+    }
   }
 
   // ============ 3-TIER AGENTIC SYSTEM WORK ITEM COORDINATION ============
@@ -181,6 +234,7 @@ export class WorkflowCoordinator {
    * Execute a work item (simulate agent processing)
    */
   async executeWorkItem(workItemId: string): Promise<WorkItemAssignmentResult> {
+    const startTime = Date.now();
     try {
       const workItem = await storage.getWorkItem(workItemId);
       if (!workItem) {
@@ -213,13 +267,18 @@ export class WorkflowCoordinator {
 
       console.log(`✅ Completed work item ${workItem.id} with result:`, result.success ? 'SUCCESS' : 'FAILED');
 
+      // SAFLA Learning Integration: Record execution outcome for learning
+      if (this.enableLearning) {
+        await this.recordWorkItemLearning(workItem, result, Date.now() - startTime);
+      }
+
       return {
         success: true,
         workItem: completedWorkItem
       };
     } catch (error) {
       console.error(`❌ Failed to execute work item ${workItemId}:`, error);
-      
+
       // Mark as failed and increment retry count
       const existingWorkItem = await storage.getWorkItem(workItemId);
       const failedWorkItem = await storage.updateWorkItem(workItemId, {
@@ -228,6 +287,14 @@ export class WorkflowCoordinator {
         retries: ((existingWorkItem?.retries ?? 0) + 1),
         updatedAt: new Date()
       });
+
+      // SAFLA Learning Integration: Learn from failures
+      if (this.enableLearning && existingWorkItem) {
+        await this.recordWorkItemLearning(existingWorkItem, {
+          success: false,
+          error: error instanceof Error ? error.message : 'Execution failed'
+        }, Date.now() - startTime);
+      }
 
       return {
         success: false,
@@ -1699,6 +1766,107 @@ export class WorkflowCoordinator {
   }
 
   /**
+   * Get global workflow state
+   * Returns aggregated state of all active workflows
+   */
+  async getGlobalWorkflowState(): Promise<{
+    activeWorkflows: number;
+    byPhase: Record<string, number>;
+    byStatus: Record<string, number>;
+    recentlyCompleted: Array<{
+      workflowId: string;
+      phase: string;
+      completedAt: Date;
+    }>;
+  }> {
+    const byPhase: Record<string, number> = {};
+    const byStatus: Record<string, number> = {};
+    const recentlyCompleted: Array<any> = [];
+
+    // Count active workflows by phase and status
+    for (const [workflowId, context] of this.activeWorkflows.entries()) {
+      // Count by phase
+      byPhase[context.currentPhase] = (byPhase[context.currentPhase] || 0) + 1;
+
+      // Count by status
+      byStatus[context.status] = (byStatus[context.status] || 0) + 1;
+
+      // Track recently completed
+      if (context.status === 'completed') {
+        recentlyCompleted.push({
+          workflowId,
+          phase: context.currentPhase,
+          completedAt: new Date()
+        });
+      }
+    }
+
+    // Keep only last 10 completed workflows
+    recentlyCompleted.sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime());
+    recentlyCompleted.splice(10);
+
+    return {
+      activeWorkflows: this.activeWorkflows.size,
+      byPhase,
+      byStatus,
+      recentlyCompleted
+    };
+  }
+
+  /**
+   * Get phase statistics
+   * Returns detailed statistics for each workflow phase
+   */
+  async getPhaseStatistics(): Promise<{
+    discovery: { active: number; completed: number; failed: number; avgDuration: number };
+    analysis: { active: number; completed: number; failed: number; avgDuration: number };
+    generation: { active: number; completed: number; failed: number; avgDuration: number };
+    submission: { active: number; completed: number; failed: number; avgDuration: number };
+    monitoring: { active: number; completed: number; failed: number; avgDuration: number };
+  }> {
+    const phases = ['discovery', 'analysis', 'generation', 'submission', 'monitoring'] as const;
+    const stats: any = {};
+
+    for (const phase of phases) {
+      stats[phase] = {
+        active: 0,
+        completed: 0,
+        failed: 0,
+        avgDuration: 0
+      };
+    }
+
+    // Count workflows by phase and status
+    for (const [_, context] of this.activeWorkflows.entries()) {
+      const phase = context.currentPhase;
+      if (stats[phase]) {
+        if (context.status === 'running' || context.status === 'suspended') {
+          stats[phase].active++;
+        } else if (context.status === 'completed') {
+          stats[phase].completed++;
+        } else if (context.status === 'failed') {
+          stats[phase].failed++;
+        }
+      }
+    }
+
+    // Get work items statistics for more detailed info
+    const workItemStats = await this.getWorkItemStatistics();
+
+    // Add work item counts to stats
+    for (const phase of phases) {
+      // Estimate average duration (in minutes) based on phase
+      stats[phase].avgDuration = phase === 'discovery' ? 15 :
+                                 phase === 'analysis' ? 30 :
+                                 phase === 'generation' ? 45 :
+                                 phase === 'submission' ? 20 :
+                                 10; // monitoring
+    }
+
+    return stats;
+  }
+
+  /**
    * Cancel a workflow
    */
   async cancelWorkflow(workflowId: string): Promise<boolean> {
@@ -1706,7 +1874,7 @@ export class WorkflowCoordinator {
     if (workflow) {
       workflow.status = 'failed';
       this.activeWorkflows.delete(workflowId);
-      
+
       // Update database if workflow state exists
       try {
         const workflowState = await storage.getWorkflowStateByWorkflowId(workflowId);
@@ -1719,10 +1887,324 @@ export class WorkflowCoordinator {
       } catch (error) {
         console.error(`❌ Failed to update cancelled workflow state:`, error);
       }
-      
+
       return true;
     }
     return false;
+  }
+
+  // ============ SAFLA LEARNING INTEGRATION METHODS ============
+
+  /**
+   * Record learning from work item execution
+   */
+  private async recordWorkItemLearning(workItem: WorkItem, result: WorkflowResult, executionTime: number): Promise<void> {
+    try {
+      const learningOutcome = {
+        id: `learning_${workItem.id}_${Date.now()}`,
+        type: this.mapTaskTypeToLearningType(workItem.taskType),
+        context: {
+          workItemId: workItem.id,
+          taskType: workItem.taskType,
+          inputs: workItem.inputs,
+          executionTime,
+          retryAttempt: workItem.retries
+        },
+        outcome: {
+          success: result.success,
+          data: result.data,
+          error: result.error,
+          performance: {
+            duration: executionTime,
+            efficiency: this.calculateEfficiencyScore(workItem.taskType, executionTime, result.success)
+          }
+        },
+        agent: {
+          agentId: workItem.assignedAgentId || 'unknown',
+          tier: this.getPreferredTierForTask(workItem.taskType) || 'specialist'
+        },
+        learningOpportunities: this.identifyLearningOpportunities(workItem, result),
+        timestamp: new Date(),
+        sessionId: workItem.sessionId
+      };
+
+      await this.learningService.recordLearningOutcome(learningOutcome);
+    } catch (error) {
+      console.error('❌ Failed to record work item learning:', error);
+    }
+  }
+
+  /**
+   * Record learning from portal interactions
+   */
+  async recordPortalLearning(portalId: string, navigationAttempt: any, success: boolean): Promise<void> {
+    if (!this.enableLearning) return;
+
+    try {
+      await this.adaptiveNavigator.recordNavigationAttempt({
+        portalId,
+        ...navigationAttempt,
+        success,
+        timestamp: new Date(),
+        context: this.learningContext
+      });
+
+      // Also record in main learning service
+      const learningOutcome = {
+        id: `portal_learning_${portalId}_${Date.now()}`,
+        type: 'portal_interaction' as const,
+        context: {
+          portalId,
+          navigationStrategy: navigationAttempt.strategy,
+          selectors: navigationAttempt.selectors,
+          timing: navigationAttempt.timing
+        },
+        outcome: {
+          success,
+          data: navigationAttempt.result,
+          performance: {
+            duration: navigationAttempt.duration,
+            efficiency: success ? 1.0 : 0.0
+          }
+        },
+        agent: { agentId: 'portal_navigator', tier: 'specialist' },
+        learningOpportunities: success ? ['strategy_reinforcement'] : ['strategy_adaptation', 'selector_optimization'],
+        timestamp: new Date(),
+        sessionId: this.learningContext?.sessionId || 'unknown'
+      };
+
+      await this.learningService.recordLearningOutcome(learningOutcome);
+    } catch (error) {
+      console.error('❌ Failed to record portal learning:', error);
+    }
+  }
+
+  /**
+   * Record learning from document processing
+   */
+  async recordDocumentLearning(documentId: string, processingResult: any, accuracy: number): Promise<void> {
+    if (!this.enableLearning) return;
+
+    try {
+      await this.intelligentProcessor.learnFromFeedback(documentId, {
+        accuracy,
+        extractedFields: processingResult.extractedFields,
+        processingTime: processingResult.processingTime,
+        errorTypes: processingResult.errors || [],
+        improvementSuggestions: processingResult.suggestions || []
+      });
+
+      const learningOutcome = {
+        id: `doc_learning_${documentId}_${Date.now()}`,
+        type: 'document_processing' as const,
+        context: {
+          documentId,
+          documentType: processingResult.documentType,
+          processingMethod: processingResult.method,
+          complexity: processingResult.complexity || 'medium'
+        },
+        outcome: {
+          success: accuracy > 0.8,
+          data: processingResult,
+          performance: {
+            accuracy,
+            duration: processingResult.processingTime,
+            efficiency: accuracy / (processingResult.processingTime / 1000)
+          }
+        },
+        agent: { agentId: 'document_processor', tier: 'specialist' },
+        learningOpportunities: accuracy > 0.9 ? ['pattern_reinforcement'] : ['algorithm_optimization', 'training_data_expansion'],
+        timestamp: new Date(),
+        sessionId: this.learningContext?.sessionId || 'unknown'
+      };
+
+      await this.learningService.recordLearningOutcome(learningOutcome);
+    } catch (error) {
+      console.error('❌ Failed to record document learning:', error);
+    }
+  }
+
+  /**
+   * Record learning from proposal outcomes
+   */
+  async recordProposalLearning(proposalId: string, outcome: any): Promise<void> {
+    if (!this.enableLearning) return;
+
+    try {
+      await this.outcomeTracker.recordProposalOutcome({
+        proposalId,
+        outcome: outcome.result || 'pending',
+        feedback: outcome.feedback,
+        competitorInfo: outcome.competitors || [],
+        winningBid: outcome.winningBid,
+        ourBid: outcome.ourBid,
+        timestamp: new Date(),
+        followUpActions: outcome.followUpActions || []
+      });
+
+      // Evaluate proposal quality and learn from it
+      const qualityEvaluation = await this.qualityEvaluator.evaluateProposalQuality(proposalId);
+      await this.qualityEvaluator.learnFromOutcome(proposalId, outcome);
+
+      const learningOutcome = {
+        id: `proposal_learning_${proposalId}_${Date.now()}`,
+        type: 'proposal_generation' as const,
+        context: {
+          proposalId,
+          qualityScore: qualityEvaluation.qualityScore,
+          complianceScore: qualityEvaluation.complianceScore,
+          competitiveScore: qualityEvaluation.competitiveScore
+        },
+        outcome: {
+          success: outcome.result === 'won',
+          data: outcome,
+          performance: {
+            qualityScore: qualityEvaluation.qualityScore,
+            winProbability: qualityEvaluation.winProbability,
+            efficiency: qualityEvaluation.efficiency
+          }
+        },
+        agent: { agentId: 'proposal_generator', tier: 'specialist' },
+        learningOpportunities: outcome.result === 'won' ?
+          ['winning_strategy_reinforcement', 'competitive_advantage_analysis'] :
+          ['strategy_refinement', 'competitive_gap_analysis', 'quality_improvement'],
+        timestamp: new Date(),
+        sessionId: this.learningContext?.sessionId || 'unknown'
+      };
+
+      await this.learningService.recordLearningOutcome(learningOutcome);
+    } catch (error) {
+      console.error('❌ Failed to record proposal learning:', error);
+    }
+  }
+
+  /**
+   * Get learning-enhanced navigation strategy for portal
+   */
+  async getAdaptiveNavigationStrategy(portalId: string): Promise<any> {
+    if (!this.enableLearning) return null;
+
+    try {
+      return await this.adaptiveNavigator.getNavigationStrategy(portalId);
+    } catch (error) {
+      console.error('❌ Failed to get adaptive navigation strategy:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get intelligent document processing strategy
+   */
+  async getIntelligentProcessingStrategy(documentId: string, documentType: string): Promise<any> {
+    if (!this.enableLearning) return null;
+
+    try {
+      // Get learned patterns for this document type
+      const strategies = await this.intelligentProcessor.getProcessingStrategies(documentType);
+      return strategies[0] || null; // Return best strategy
+    } catch (error) {
+      console.error('❌ Failed to get intelligent processing strategy:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate performance dashboard
+   */
+  async generatePerformanceDashboard(timeframe: string = '7d'): Promise<any> {
+    try {
+      return await this.improvementMonitor.generatePerformanceDashboard(timeframe);
+    } catch (error) {
+      console.error('❌ Failed to generate performance dashboard:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create improvement plan based on current performance
+   */
+  async createSystemImprovementPlan(focusAreas: string[] = []): Promise<any> {
+    try {
+      return await this.improvementMonitor.createImprovementPlan(focusAreas);
+    } catch (error) {
+      console.error('❌ Failed to create improvement plan:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Trigger memory consolidation
+   */
+  async consolidateSystemMemory(type: 'nightly' | 'weekly' | 'triggered' = 'triggered'): Promise<void> {
+    if (!this.enableLearning) return;
+
+    try {
+      const consolidation = await this.memoryEngine.performMemoryConsolidation(type);
+      console.log(`🧠 Memory consolidation completed: ${consolidation.consolidatedMemories} memories processed`);
+    } catch (error) {
+      console.error('❌ Failed to consolidate system memory:', error);
+    }
+  }
+
+  // Helper methods for learning integration
+
+  private mapTaskTypeToLearningType(taskType: string): 'portal_interaction' | 'document_processing' | 'proposal_generation' | 'general' {
+    if (taskType.includes('portal') || taskType.includes('scan') || taskType.includes('monitor')) {
+      return 'portal_interaction';
+    }
+    if (taskType.includes('document') || taskType.includes('text') || taskType.includes('parsing')) {
+      return 'document_processing';
+    }
+    if (taskType.includes('proposal') || taskType.includes('generation') || taskType.includes('content')) {
+      return 'proposal_generation';
+    }
+    return 'general';
+  }
+
+  private calculateEfficiencyScore(taskType: string, executionTime: number, success: boolean): number {
+    // Base efficiency on task type expectations and success
+    const expectedTimes: Record<string, number> = {
+      'portal_scan': 30000, // 30 seconds
+      'document_analysis': 20000, // 20 seconds
+      'proposal_generate': 120000, // 2 minutes
+      'compliance_check': 15000, // 15 seconds
+    };
+
+    const expectedTime = expectedTimes[taskType] || 30000;
+    const timeRatio = expectedTime / Math.max(executionTime, 1000);
+    const successBonus = success ? 1.0 : 0.5;
+
+    return Math.min(1.0, timeRatio * successBonus);
+  }
+
+  private identifyLearningOpportunities(workItem: WorkItem, result: WorkflowResult): string[] {
+    const opportunities = [];
+
+    if (!result.success) {
+      opportunities.push('error_pattern_analysis', 'failure_recovery_strategy');
+    }
+
+    if (workItem.retries > 0) {
+      opportunities.push('retry_optimization', 'resilience_improvement');
+    }
+
+    if (result.success && workItem.retries === 0) {
+      opportunities.push('pattern_reinforcement', 'efficiency_optimization');
+    }
+
+    // Add task-specific opportunities
+    const taskType = workItem.taskType;
+    if (taskType.includes('portal')) {
+      opportunities.push('navigation_optimization', 'selector_adaptation');
+    }
+    if (taskType.includes('document')) {
+      opportunities.push('extraction_improvement', 'accuracy_enhancement');
+    }
+    if (taskType.includes('proposal')) {
+      opportunities.push('content_quality_improvement', 'competitive_analysis');
+    }
+
+    return opportunities;
   }
 
   /**
