@@ -139,8 +139,10 @@ export interface IStorage {
 
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>
+  getAllSubmissions(): Promise<Submission[]>
   getSubmissionsByRFP(rfpId: string): Promise<Submission[]>
   getSubmissionByProposal(proposalId: string): Promise<Submission | undefined>
+  getSubmissionsByProposal(proposalId: string): Promise<Submission[]>
   createSubmission(submission: InsertSubmission): Promise<Submission>
   updateSubmission(
     id: string,
@@ -969,6 +971,12 @@ export class DatabaseStorage implements IStorage {
     return submission || undefined
   }
 
+  async getAllSubmissions(): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+  }
+
   async getSubmissionsByRFP(rfpId: string): Promise<Submission[]> {
     return await db
       .select()
@@ -982,6 +990,13 @@ export class DatabaseStorage implements IStorage {
       .from(submissions)
       .where(eq(submissions.proposalId, proposalId))
     return submission || undefined
+  }
+
+  async getSubmissionsByProposal(proposalId: string): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.proposalId, proposalId))
   }
 
   async createSubmission(submission: InsertSubmission): Promise<Submission> {

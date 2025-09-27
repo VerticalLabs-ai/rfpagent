@@ -404,6 +404,50 @@ router.get('/pipeline/workflows', async (req, res) => {
 });
 
 /**
+ * Get all submissions
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { status, proposalId, limit = 50, offset = 0 } = req.query;
+
+    // Get all submissions from storage
+    const allSubmissions = await storage.getAllSubmissions();
+
+    // Filter by status if provided
+    let filteredSubmissions = allSubmissions;
+    if (status) {
+      filteredSubmissions = allSubmissions.filter(s => s.status === status);
+    }
+
+    // Filter by proposal ID if provided
+    if (proposalId) {
+      filteredSubmissions = filteredSubmissions.filter(s => s.proposalId === proposalId);
+    }
+
+    // Apply pagination
+    const paginatedSubmissions = filteredSubmissions
+      .slice(Number(offset), Number(offset) + Number(limit));
+
+    res.json({
+      success: true,
+      data: {
+        submissions: paginatedSubmissions,
+        total: filteredSubmissions.length,
+        limit: Number(limit),
+        offset: Number(offset)
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get all submissions error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get submissions'
+    });
+  }
+});
+
+/**
  * Get submission metrics and analytics
  */
 router.get('/metrics', async (req, res) => {

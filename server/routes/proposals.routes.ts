@@ -311,6 +311,53 @@ router.post('/:id/submission-materials',
 );
 
 /**
+ * Get generated submission materials
+ * GET /api/proposals/:id/submission-materials
+ */
+router.get('/:id/submission-materials', handleAsyncError(async (req, res) => {
+  const proposalId = req.params.id;
+
+  // Try to get proposal by ID first, then by RFP ID
+  let proposal = await storage.getProposal(proposalId);
+  if (!proposal) {
+    proposal = await storage.getProposalByRFP(proposalId);
+  }
+
+  if (!proposal) {
+    return res.status(404).json({
+      success: false,
+      error: 'Proposal not found'
+    });
+  }
+
+  // Get submission materials for this proposal
+  const submissions = await storage.getSubmissionsByProposal(proposal.id);
+
+  if (!submissions || submissions.length === 0) {
+    return res.status(404).json({
+      success: false,
+      error: 'No submission materials found for this proposal'
+    });
+  }
+
+  // Return the most recent submission materials
+  const latestSubmission = submissions.sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )[0];
+
+  res.json({
+    success: true,
+    data: {
+      submission: latestSubmission,
+      proposalId: proposal.id,
+      submissionId: latestSubmission.id,
+      status: latestSubmission.status,
+      createdAt: latestSubmission.createdAt
+    }
+  });
+}));
+
+/**
  * Get submission materials progress (JSON response)
  * GET /api/proposals/submission-materials/progress/:sessionId
  */

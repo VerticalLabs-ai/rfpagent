@@ -682,6 +682,42 @@ export class SubmissionMaterialsService {
       proposalId = newProposal.id
     }
 
+    // Create submission record - THIS WAS MISSING!
+    const submissionData = {
+      materials: {
+        proposalContent,
+        pricingData,
+        complianceData
+      },
+      generatedAt: new Date(),
+      status: 'ready'
+    }
+
+    // Get a valid portal ID - use RFP's portal, or find the first available portal
+    let validPortalId = rfp.portalId;
+    
+    if (!validPortalId) {
+      console.log('⚠️ RFP has no portal ID, finding available portal...');
+      // Get the first available portal as fallback
+      const portals = await storage.getAllPortals();
+      if (portals && portals.length > 0) {
+        validPortalId = portals[0].id;
+        console.log(`🔄 Using fallback portal: ${validPortalId} (${portals[0].name})`);
+      } else {
+        throw new Error('No portals available - cannot create submission without valid portal');
+      }
+    }
+
+    const submission = await storage.createSubmission({
+      rfpId: rfp.id,
+      proposalId: proposalId,
+      portalId: validPortalId,
+      status: 'ready',
+      submissionData: submissionData
+    })
+
+    console.log(`📦 Created submission record: ${submission.id} for proposal: ${proposalId}`)
+
     // Update RFP status
     await storage.updateRFP(rfp.id, {
       status: "review",
