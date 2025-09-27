@@ -41,8 +41,9 @@ interface Proposal {
   narratives?: string;
   pricingTables?: string;
   estimatedMargin?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  generatedAt?: string;
+  updatedAt?: string;
 }
 
 interface ProposalsSectionProps {
@@ -676,22 +677,18 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     );
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (proposal: Proposal) => {
+    const dateString = proposal.createdAt || proposal.generatedAt || proposal.updatedAt;
     if (!dateString) return 'N/A';
 
     // Try different date parsing strategies
-    let date: Date;
+    let date = new Date(dateString);
 
-    // First try direct parsing
-    date = new Date(dateString);
-
-    // If that fails, try ISO string parsing
     if (isNaN(date.getTime())) {
       const isoString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
       date = new Date(isoString);
     }
 
-    // If still invalid, try timestamp parsing
     if (isNaN(date.getTime()) && !isNaN(Number(dateString))) {
       date = new Date(Number(dateString));
     }
@@ -708,6 +705,37 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  type ComplianceAction = 'upload' | 'certification' | 'report';
+
+  const getDisplayMargin = (proposal: Proposal) => {
+    if (!proposal.estimatedMargin) return '—';
+    const numericMargin = Number(proposal.estimatedMargin);
+    if (Number.isNaN(numericMargin)) {
+      return proposal.estimatedMargin;
+    }
+    return `${numericMargin.toFixed(2)}%`;
+  };
+
+  const handleComplianceAction = (action: ComplianceAction) => {
+    const actionMap: Record<ComplianceAction, { title: string; description: string }> = {
+      upload: {
+        title: 'Upload Insurance Certificates',
+        description: 'Document upload automation is coming soon. Please attach supporting files via the Documents tab for now.'
+      },
+      certification: {
+        title: 'Add Certification',
+        description: 'Certification tracking is not automated yet. Record this requirement manually until the workflow is released.'
+      },
+      report: {
+        title: 'Generate Compliance Report',
+        description: 'Compliance report generation is scheduled for a future release. Review the checklist items manually for now.'
+      }
+    };
+
+    const { title, description } = actionMap[action];
+    toast({ title, description });
   };
 
   if (isLoading) {
@@ -768,17 +796,15 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="w-3 h-3" />
-                    {formatDate(proposal.createdAt)}
+                    {formatDate(proposal)}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {proposal.estimatedMargin && (
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <span>Margin: {proposal.estimatedMargin}%</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <span>Margin: {getDisplayMargin(proposal)}</span>
+                  </div>
 
                   {content.executiveSummary && (
                     <div className="flex items-center gap-2">
@@ -1150,6 +1176,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                         size="sm"
                                         variant="outline"
                                         className="text-yellow-400 border-yellow-400 hover:bg-yellow-400/10"
+                                        onClick={() => handleComplianceAction('upload')}
                                       >
                                         Upload Files
                                       </Button>
@@ -1163,6 +1190,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                         size="sm"
                                         variant="outline"
                                         className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                                        onClick={() => handleComplianceAction('certification')}
                                       >
                                         Add Certification
                                       </Button>
@@ -1176,6 +1204,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                         size="sm"
                                         variant="outline"
                                         className="text-green-400 border-green-400 hover:bg-green-400/10"
+                                        onClick={() => handleComplianceAction('report')}
                                       >
                                         Generate Report
                                       </Button>

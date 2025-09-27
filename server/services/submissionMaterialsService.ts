@@ -225,9 +225,20 @@ export class SubmissionMaterialsService {
         "Proposal content generated"
       )
 
+      const shouldGeneratePricing = request.generatePricing ?? true
+      const shouldGenerateCompliance = request.generateCompliance ?? true
+
+      progressTracker.updateStep(
+        sessionId,
+        "compliance_check",
+        "in_progress",
+        "Preparing pricing and compliance artifacts..."
+      )
+
       // Step 4: Generate pricing tables if requested
+      const complianceMessages: string[] = []
       let pricingData = null
-      if (request.generatePricing) {
+      if (shouldGeneratePricing) {
         progressTracker.updateStep(
           sessionId,
           "compliance_check",
@@ -241,22 +252,19 @@ export class SubmissionMaterialsService {
           request.pricingData
         )
 
-        progressTracker.updateStep(
-          sessionId,
-          "compliance_check",
-          "completed",
-          "Pricing tables generated"
-        )
+        complianceMessages.push("Pricing tables generated")
+      } else {
+        complianceMessages.push("Pricing generation skipped (disabled)")
       }
 
       // Step 5: Compliance checking
       let complianceData = null
-      if (request.generateCompliance) {
+      if (shouldGenerateCompliance) {
         progressTracker.updateStep(
           sessionId,
-          "document_assembly",
+          "compliance_check",
           "in_progress",
-          "Performing compliance analysis..."
+          "Validating compliance requirements..."
         )
 
         complianceData = await this.performComplianceCheck(
@@ -265,20 +273,24 @@ export class SubmissionMaterialsService {
           companyProfile
         )
 
-        progressTracker.updateStep(
-          sessionId,
-          "document_assembly",
-          "completed",
-          "Compliance analysis complete"
-        )
+        complianceMessages.push("Compliance analysis complete")
+      } else {
+        complianceMessages.push("Compliance validation skipped (disabled)")
       }
 
-      // Step 6: Save all materials and create final package
       progressTracker.updateStep(
         sessionId,
-        "quality_review",
+        "compliance_check",
+        "completed",
+        complianceMessages.join(" • ") || "Pricing and compliance steps skipped"
+      )
+
+      // Step 6: Assemble materials and create final package
+      progressTracker.updateStep(
+        sessionId,
+        "document_assembly",
         "in_progress",
-        "Creating submission package..."
+        "Assembling submission materials..."
       )
 
       const proposalId = await this.saveSubmissionPackage(
@@ -288,12 +300,25 @@ export class SubmissionMaterialsService {
         complianceData
       )
 
-      // Step 7: Generate downloadable documents
-      const documents_generated = await this.generateDocuments(
+      const documentsGenerated = await this.generateDocuments(
         proposalId,
         proposalContent,
         pricingData,
         complianceData
+      )
+
+      progressTracker.updateStep(
+        sessionId,
+        "document_assembly",
+        "completed",
+        "Submission materials assembled"
+      )
+
+      progressTracker.updateStep(
+        sessionId,
+        "quality_review",
+        "in_progress",
+        "Running final quality checks..."
       )
 
       progressTracker.updateStep(
@@ -314,7 +339,7 @@ export class SubmissionMaterialsService {
         sessionId,
         materials: {
           proposalId,
-          documents: documents_generated,
+          documents: documentsGenerated,
           compliance: complianceData || {
             checklist: [],
             riskAssessment: { overall: "low", factors: [] },
@@ -666,7 +691,10 @@ export class SubmissionMaterialsService {
         narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
         status: "review",
-        estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
+        estimatedMargin:
+          pricingData?.summary?.margin !== undefined
+            ? pricingData.summary.margin.toString()
+            : null,
       })
       proposalId = existingProposal.id
     } else {
@@ -677,7 +705,10 @@ export class SubmissionMaterialsService {
         narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
         status: "review",
-        estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
+        estimatedMargin:
+          pricingData?.summary?.margin !== undefined
+            ? pricingData.summary.margin.toString()
+            : null,
       })
       proposalId = newProposal.id
     }

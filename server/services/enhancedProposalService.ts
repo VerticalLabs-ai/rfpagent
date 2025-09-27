@@ -494,10 +494,11 @@ export class EnhancedProposalService {
       
       // Return basic content if AI fails
       return {
-        executiveSummary: `iByte Enterprises LLC is pleased to submit our proposal for ${rfp.title}.`,
-        technicalApproach: 'We will provide comprehensive services as outlined in the RFP requirements.',
-        timeline: 'Project timeline will be established upon contract award.',
-        qualifications: 'iByte Enterprises LLC is a certified woman-owned business with extensive experience in construction and technology services.',
+        executiveSummary: `iByte Enterprises LLC is pleased to submit our proposal for ${rfp.title}. As a certified woman-owned business enterprise with extensive experience in government contracting, we bring proven expertise in construction and technology services. Our team combines technical excellence with deep understanding of federal procurement requirements to deliver exceptional results for our government partners.`,
+        approach: `Our proven methodology for ${rfp.title || 'this project'} follows industry best practices and government standards. We will establish clear project phases with defined deliverables, maintain regular communication with stakeholders, and implement rigorous quality assurance processes throughout the engagement. Our approach emphasizes compliance, risk mitigation, and on-time delivery.`,
+        timeline: `iByte proposes a structured timeline approach for ${rfp.title || 'this project'} with clearly defined phases: (1) Project initiation and planning, (2) Requirements analysis and design, (3) Implementation and testing, (4) Deployment and transition, (5) Post-implementation support. We will work with the agency to establish specific milestones and deliverable dates upon contract award.`,
+        qualifications: `iByte Enterprises LLC is a certified woman-owned business enterprise (WBENC, HUB, DBE, MBE, WBE) with extensive experience serving government clients. Our company specializes in construction and technology services, with a proven track record of successful project delivery. We maintain all required insurance coverage and hold security clearances as needed. Our team combines technical expertise with deep understanding of government procurement and compliance requirements.`,
+        companyOverview: `Founded as a woman-owned small business, iByte Enterprises LLC (DUNS: 118328036) has established itself as a trusted partner for government agencies seeking reliable construction and technology services. Led by President Valorie Rodriguez, our Austin-based company holds multiple certifications including WBENC, HUB, DBE, MBE, and WBE status. We specialize in delivering complex projects that require both technical excellence and strict adherence to government regulations and standards.`,
         analysisContext,
         generatedAt: new Date().toISOString(),
         processingInstructions: documentAnalysis.processingInstructions

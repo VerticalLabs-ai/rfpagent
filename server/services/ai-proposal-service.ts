@@ -242,7 +242,7 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
           },
         ],
         temperature: 0.3,
-        max_tokens: 3000,
+        max_completion_tokens: 3000,
         response_format: { type: "json_object" },
       })
 
@@ -347,42 +347,53 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
   ): Promise<GeneratedProposalContent> {
     const companyInfo = this.formatCompanyInformation(companyMapping)
 
-    const prompt = `Generate a comprehensive proposal response using this company information and return it as a JSON object:
+    const prompt = `You are writing a professional proposal for iByte Enterprises LLC in response to the following RFP. Write detailed, specific content for each section based on the RFP requirements and company information provided.
 
+COMPANY INFORMATION:
 ${companyInfo}
 
-For this RFP:
+RFP DETAILS:
 ${rfpText}
 
-Requirements Analysis:
+REQUIREMENTS ANALYSIS:
 ${JSON.stringify(analysis.requirements, null, 2)}
+
+INSTRUCTIONS:
+1. Write detailed, specific content for each section - do NOT use placeholder text or generic statements
+2. Reference specific RFP requirements and explain how iByte meets them
+3. Include concrete examples of iByte's experience and capabilities
+4. Use professional, persuasive language appropriate for government contracting
+5. Ensure all content is substantial and informative
 
 Return a JSON object with the following structure:
 {
-  "executiveSummary": "2-3 paragraphs highlighting key qualifications and why iByte is the best choice",
-  "companyOverview": "Detailed company overview emphasizing relevant experience and certifications",
-  "qualifications": "Detailed capability statements and relevant experience",
-  "approach": "High-level project methodology and implementation approach",
-  "timeline": "General project phases and timeline considerations",
-  "certificationNarratives": ["Narrative for each relevant certification explaining its value"],
+  "executiveSummary": "[Write 2-3 detailed paragraphs explaining why iByte is uniquely qualified for this RFP, highlighting specific certifications, experience, and competitive advantages]",
+  "companyOverview": "[Write a comprehensive overview of iByte's business, including years of experience, key capabilities, certifications, and relevant project history]",
+  "qualifications": "[Detail iByte's specific qualifications, certifications, past performance, and technical capabilities relevant to this RFP]",
+  "approach": "[Describe iByte's specific methodology and approach for completing this project, including phases, deliverables, and quality assurance]",
+  "timeline": "[Provide a realistic project timeline with specific phases, milestones, and deliverables based on the RFP requirements]",
+  "certificationNarratives": ["[Array of detailed explanations for each relevant certification and its value to the government]"],
   "complianceMatrix": [
     {
-      "requirement": "Specific RFP requirement",
-      "response": "How iByte meets this requirement",
-      "evidence": ["Supporting documents or certifications"]
+      "requirement": "[Specific requirement from the RFP]",
+      "response": "[Detailed explanation of how iByte meets this requirement]",
+      "evidence": ["[Specific documents or certifications that support compliance]"]
     }
   ],
-  "attachmentRecommendations": ["List of documents to attach to proposal"]
+  "attachmentRecommendations": ["[List of specific documents iByte should attach to support the proposal]"]
 }
 
-Use iByte Enterprises LLC's actual information:
+COMPANY FACTS TO INCLUDE:
+- iByte Enterprises LLC is a woman-owned small business (WOSB)
 - DUNS: 118328036
-- Federal Tax ID: [Available in company records - not transmitted to AI]
-- WBENC Certification (woman-owned business)
-- HUB, DBE, MBE, WBE certifications
-- Construction and technology expertise
-- Valorie Rodriguez as owner/president
-- Address: 11324 Four Points Dr Bldg II Ste 100, Austin, TX 78726`
+- WBENC, HUB, DBE, MBE, WBE certified
+- Expertise in construction and technology services
+- Owner/President: Valorie Rodriguez
+- Address: 11324 Four Points Dr Bldg II Ste 100, Austin, TX 78726
+- Focus on government contracting and compliance
+- Strong track record in technology modernization and infrastructure projects
+
+IMPORTANT: Generate actual detailed content, not placeholder text. Each section should be substantial and specific to this RFP and iByte's capabilities.`
 
     try {
       const response = await this.openaiClient.chat.completions.create({
@@ -391,7 +402,7 @@ Use iByte Enterprises LLC's actual information:
           {
             role: "system",
             content:
-              "You are an expert proposal writer for government contracting. Generate professional, compliant proposal content that highlights company qualifications and addresses RFP requirements directly. Return only valid JSON that matches the requested schema.",
+              "You are an expert proposal writer for government contracting. Generate detailed, professional proposal content that highlights company qualifications and addresses RFP requirements directly. NEVER use placeholder text like 'content...', 'approach content...', or generic templates. Write specific, substantive content for each section. Return only valid JSON that matches the requested schema.",
           },
           {
             role: "user",
@@ -399,7 +410,7 @@ Use iByte Enterprises LLC's actual information:
           },
         ],
         temperature: 0.4,
-        max_tokens: 4000,
+        max_completion_tokens: 4000,
         response_format: { type: "json_object" },
       })
 
