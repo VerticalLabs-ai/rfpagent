@@ -430,6 +430,7 @@ export interface IStorage {
     scheduledBefore?: Date
     workflowId?: string
   }): Promise<WorkItem[]>
+  getAllWorkItems(): Promise<WorkItem[]>
   getWorkQueue(
     agentId?: string,
     taskType?: string,
@@ -2619,6 +2620,13 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(workItems)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(asc(workItems.priority), asc(workItems.deadline))
+  }
+
+  async getAllWorkItems(): Promise<WorkItem[]> {
+    return await db
+      .select()
+      .from(workItems)
       .orderBy(asc(workItems.priority), asc(workItems.deadline))
   }
 

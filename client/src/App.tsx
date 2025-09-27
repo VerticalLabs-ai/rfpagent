@@ -43,8 +43,8 @@ function Router() {
         <main className="flex-1 overflow-auto">
           <Switch>
             <Route path="/" component={Dashboard} />
-            <Route path="/discovery" component={RFPDiscovery} />
-            <Route path="/rfps" component={() => <Redirect to="/discovery" />} />
+            <Route path="/discovery" component={() => <Redirect to="/" />} />
+            <Route path="/rfps" component={() => <Redirect to="/" />} />
             <Route path="/rfps/:id" component={RFPDetails} />
             <Route path="/scan-history" component={ScanHistory} />
             <Route path="/portals" component={PortalSettings} />
