@@ -2,7 +2,7 @@ import { storage } from '../storage';
 import { agentRegistryService } from './agentRegistryService';
 import { workflowCoordinator } from './workflowCoordinator';
 import { scanManager } from './scan-manager';
-import { MastraScrapingService } from './mastraScrapingService';
+import { getMastraScrapingService } from './mastraScrapingService';
 import { PortalMonitoringService } from './portal-monitoring-service';
 import { agentMemoryService } from './agentMemoryService';
 import type { WorkItem, Portal, AgentRegistry, RFP } from '@shared/schema';
@@ -56,7 +56,7 @@ export interface PortalWorkContext {
  * 6. Aggregates results from multiple specialists
  */
 export class DiscoveryManager {
-  private mastraScrapingService = new MastraScrapingService();
+  private mastraScrapingService = getMastraScrapingService();
   private portalMonitoringService = new PortalMonitoringService(storage);
   private activeContexts = new Map<string, PortalWorkContext>();
   private specialistAssignments = new Map<string, SpecialistAssignment[]>();

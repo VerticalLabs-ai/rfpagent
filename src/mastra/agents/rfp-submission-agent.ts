@@ -1,13 +1,13 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
-import { pageNavigateTool } from '../tools/page-navigate-tool';
-import { pageObserveTool } from '../tools/page-observe-tool';
-import { pageActTool } from '../tools/page-act-tool';
-import { pageAuthTool } from '../tools/page-auth-tool';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { pageActTool } from "../tools/page-act-tool"
+import { pageAuthTool } from "../tools/page-auth-tool"
+import { pageNavigateTool } from "../tools/page-navigate-tool"
+import { pageObserveTool } from "../tools/page-observe-tool"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpSubmissionAgent = new Agent({
-  name: 'RFP Submission Agent',
+  name: "RFP Submission Agent",
   instructions: `
 You are an intelligent RFP Submission Agent specialized in managing the proposal submission process.
 
@@ -40,12 +40,12 @@ Use pageAuthTool for portal authentication and session management.
 Use pageObserveTool to analyze submission forms and requirements.
 Use pageActTool to fill forms, upload files, and submit proposals.
 `,
-  model: openai('gpt-4o'),
-  tools: { 
-    pageNavigateTool, 
-    pageObserveTool, 
-    pageActTool, 
-    pageAuthTool
+  model: openai("gpt-5"),
+  tools: {
+    pageNavigateTool,
+    pageObserveTool,
+    pageActTool,
+    pageAuthTool,
   },
   memory: sharedMemory,
-});
+})

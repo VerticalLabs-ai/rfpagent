@@ -57,6 +57,7 @@ export interface IStorage {
   getProposalByRFP(rfpId: string): Promise<Proposal | undefined>;
   createProposal(proposal: InsertProposal): Promise<Proposal>;
   updateProposal(id: string, updates: Partial<Proposal>): Promise<Proposal>;
+  deleteProposal(id: string): Promise<void>;
 
   // Documents
   getDocument(id: string): Promise<Document | undefined>;
@@ -565,6 +566,20 @@ export class DatabaseStorage implements IStorage {
       .insert(rfps)
       .values(rfp)
       .returning();
+
+    // Trigger automatic compliance analysis for discovered RFPs
+    if (newRfp.status === 'discovered') {
+      // Import and trigger compliance analysis asynchronously
+      setImmediate(async () => {
+        try {
+          const { complianceIntegrationService } = await import('./services/complianceIntegrationService');
+          await complianceIntegrationService.onRFPDiscovered(newRfp.id);
+        } catch (error) {
+          console.error(`❌ Failed to trigger compliance analysis for RFP ${newRfp.id}:`, error);
+        }
+      });
+    }
+
     return newRfp;
   }
 
@@ -660,6 +675,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(proposals.id, id))
       .returning();
     return updatedProposal;
+  }
+
+  async deleteProposal(id: string): Promise<void> {
+    await db.delete(proposals).where(eq(proposals.id, id));
   }
 
   // Documents

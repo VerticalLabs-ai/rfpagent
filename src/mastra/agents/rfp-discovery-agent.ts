@@ -1,14 +1,14 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
-import { pageNavigateTool } from '../tools/page-navigate-tool';
-import { pageObserveTool } from '../tools/page-observe-tool';
-import { pageActTool } from '../tools/page-act-tool';
-import { pageExtractTool } from '../tools/page-extract-tool';
-import { pageAuthTool } from '../tools/page-auth-tool';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { pageActTool } from "../tools/page-act-tool"
+import { pageAuthTool } from "../tools/page-auth-tool"
+import { pageExtractTool } from "../tools/page-extract-tool"
+import { pageNavigateTool } from "../tools/page-navigate-tool"
+import { pageObserveTool } from "../tools/page-observe-tool"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpDiscoveryAgent = new Agent({
-  name: 'RFP Discovery Agent',
+  name: "RFP Discovery Agent",
   instructions: `
 You are an intelligent RFP Discovery Agent specialized in finding and extracting RFP opportunities from government portals.
 
@@ -38,13 +38,13 @@ Use pageObserveTool to analyze portal structure and locate RFP listings.
 Use pageExtractTool to extract structured RFP data.
 Use pageActTool to interact with portal elements and forms.
 `,
-  model: openai('gpt-4o'),
-  tools: { 
-    pageNavigateTool, 
-    pageObserveTool, 
-    pageActTool, 
-    pageExtractTool, 
-    pageAuthTool 
+  model: openai("gpt-5"),
+  tools: {
+    pageNavigateTool,
+    pageObserveTool,
+    pageActTool,
+    pageExtractTool,
+    pageAuthTool,
   },
   memory: sharedMemory,
-});
+})

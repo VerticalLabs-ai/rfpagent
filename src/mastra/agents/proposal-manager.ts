@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const proposalManager = new Agent({
-  name: 'Proposal Manager',
+  name: "Proposal Manager",
   instructions: `
 You are the Proposal Manager, managing proposal generation, compliance checking, and quality assurance.
 
@@ -34,7 +34,7 @@ You coordinate with specialists:
 - Compliance Checker: For validating compliance and risk assessment
 - Document Processor: For parsing and analyzing RFP documents
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

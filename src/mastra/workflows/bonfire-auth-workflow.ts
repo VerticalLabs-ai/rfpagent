@@ -2,7 +2,7 @@ import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
 import { sharedMemory } from '../tools/shared-memory-provider';
-import { stagehandTools } from '../../../server/services/stagehandTools.js';
+import { sessionManager } from '../tools/session-manager';
 
 // Input schema for BonfireHub authentication workflow
 const BonfireAuthInputSchema = z.object({
@@ -27,15 +27,15 @@ export const bonfireAuthWorkflow = createWorkflow({
     // Step 1: Initialize browser session
     const browser = await step.run('initialize-browser', async () => {
       console.log('🌐 Initializing browser for BonfireHub authentication...');
-      const stagehand = await stagehandTools.createStagehandInstance('BonfireHub Auth');
-      
+      const stagehand = await sessionManager.ensureStagehand(`bonfire-auth-${portalId}`);
+
       // Store session in memory
       await sharedMemory.set(`bonfire-session-${portalId}`, {
-        sessionId: stagehand.sessionId,
+        sessionId: `bonfire-auth-${portalId}`,
         startTime: new Date().toISOString(),
         status: 'initializing'
       });
-      
+
       return stagehand;
     });
     
@@ -56,24 +56,13 @@ export const bonfireAuthWorkflow = createWorkflow({
       
       try {
         // Fill username
-        await browser.act({
-          action: 'fill',
-          selector: 'input[name="username"], input[type="email"], #username',
-          value: username
-        });
-        
+        await browser.page.act(`type "${username}" in the username field, email field, or input field`);
+
         // Fill password
-        await browser.act({
-          action: 'fill',
-          selector: 'input[name="password"], input[type="password"], #password',
-          value: password
-        });
-        
+        await browser.page.act(`type "${password}" in the password field`);
+
         // Click login button
-        await browser.act({
-          action: 'click',
-          selector: 'button[type="submit"], button:has-text("Sign In"), button:has-text("Login")'
-        });
+        await browser.page.act('click the login button, submit button, or Sign In button');
         
         // Wait for navigation or response
         await browser.page.waitForNavigation({ 
@@ -113,7 +102,7 @@ export const bonfireAuthWorkflow = createWorkflow({
         await sharedMemory.set(`bonfire-2fa-${portalId}`, {
           required: true,
           timestamp: new Date().toISOString(),
-          sessionId: browser.sessionId
+          sessionId: `bonfire-auth-${portalId}`
         });
       }
       
@@ -128,7 +117,7 @@ export const bonfireAuthWorkflow = createWorkflow({
         message: `Two-factor authentication required for BonfireHub portal "${companyName}". Please provide the 2FA code.`,
         data: {
           portalId,
-          sessionId: browser.sessionId,
+          sessionId: `bonfire-auth-${portalId}`,
           loginStatus: 'awaiting_2fa'
         },
         instructions: {
@@ -144,17 +133,10 @@ export const bonfireAuthWorkflow = createWorkflow({
           console.log('📝 Submitting 2FA code...');
           
           // Fill 2FA code
-          await browser.act({
-            action: 'fill',
-            selector: 'input[name="code"], input[name="token"], input[type="text"]:visible',
-            value: resumeData.twoFactorCode
-          });
-          
+          await browser.page.act(`type "${resumeData.twoFactorCode}" in the verification code field or token field`);
+
           // Submit 2FA
-          await browser.act({
-            action: 'click',
-            selector: 'button[type="submit"], button:has-text("Verify"), button:has-text("Submit")'
-          });
+          await browser.page.act('click the verify button, submit button, or continue button');
           
           // Wait for navigation
           await browser.page.waitForNavigation({ 
@@ -212,7 +194,7 @@ export const bonfireAuthWorkflow = createWorkflow({
         // Store in memory and database
         await sharedMemory.set(`bonfire-auth-${portalId}`, {
           authenticated: true,
-          sessionId: browser.sessionId,
+          sessionId: `bonfire-auth-${portalId}`,
           cookies,
           loginTime: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 3600000).toISOString() // 1 hour
@@ -221,11 +203,7 @@ export const bonfireAuthWorkflow = createWorkflow({
         // Update portal status
         await storage.updatePortal(portalId, {
           lastScanned: new Date(),
-          isActive: true,
-          metadata: {
-            lastAuthSuccess: new Date().toISOString(),
-            authMethod: needs2FA.requires2FA ? '2fa' : 'standard'
-          }
+          status: 'active'
         });
         
         return { stored: true };
@@ -247,7 +225,7 @@ export const bonfireAuthWorkflow = createWorkflow({
     return {
       success: verificationResult.status === 'success',
       portalId,
-      sessionId: browser.sessionId,
+      sessionId: `bonfire-auth-${portalId}`,
       authenticated: verificationResult.isLoggedIn,
       required2FA: needs2FA.requires2FA,
       retryCount,

@@ -88,7 +88,7 @@ export default function RFPsPage() {
       {rfps.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-gray-600">No RFPs found. Check your portal configurations and try scanning again.</p>
+            <p className="text-muted-foreground">No RFPs found. Check your portal configurations and try scanning again.</p>
           </CardContent>
         </Card>
       ) : (
@@ -101,11 +101,11 @@ export default function RFPsPage() {
                     <CardTitle className="text-xl mb-2" data-testid={`rfp-title-${rfp.id}`}>
                       {rfp.title}
                     </CardTitle>
-                    <p className="text-sm text-gray-600 mb-2" data-testid={`rfp-agency-${rfp.id}`}>
+                    <p className="text-sm text-muted-foreground mb-2" data-testid={`rfp-agency-${rfp.id}`}>
                       {rfp.agency}
                     </p>
                     {rfp.description && (
-                      <p className="text-sm text-gray-700 line-clamp-2" data-testid={`rfp-description-${rfp.id}`}>
+                      <p className="text-sm text-foreground line-clamp-2" data-testid={`rfp-description-${rfp.id}`}>
                         {rfp.description}
                       </p>
                     )}
@@ -137,7 +137,7 @@ export default function RFPsPage() {
               <CardContent>
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div>
-                    <div className="text-xs font-medium text-gray-500 mb-1">STATUS</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">STATUS</div>
                     <Badge 
                       variant="secondary" 
                       className="text-xs font-medium px-3 py-1 min-w-[80px] justify-center"
@@ -147,25 +147,25 @@ export default function RFPsPage() {
                     </Badge>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-gray-500 mb-1">DEADLINE</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">DEADLINE</div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500" />
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm" data-testid={`rfp-deadline-${rfp.id}`}>
                         {formatDate(rfp.deadline)}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-gray-500 mb-1">VALUE</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">VALUE</div>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-gray-500" />
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm" data-testid={`rfp-value-${rfp.id}`}>
                         {formatCurrency(rfp.estimatedValue)}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-gray-500 mb-1">PROGRESS</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">PROGRESS</div>
                     <div className="space-y-2">
                       <span className="text-sm" data-testid={`rfp-progress-${rfp.id}`}>
                         {rfp.progress || 0}% complete

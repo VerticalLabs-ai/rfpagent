@@ -2,7 +2,7 @@ import { mastraWorkflowEngine } from "./mastraWorkflowEngine";
 import { storage } from "../storage";
 import { aiProposalService } from "./ai-proposal-service";
 import { documentIntelligenceService } from "./documentIntelligenceService";
-import { MastraScrapingService } from "./mastraScrapingService";
+import { getMastraScrapingService } from "./mastraScrapingService";
 import { agentRegistryService } from "./agentRegistryService";
 import { AIService } from "./aiService";
 import { DocumentParsingService } from "./documentParsingService";
@@ -63,7 +63,7 @@ export interface TaskDistributionResult {
  * Orchestrates both RFP lifecycle and generic work item management
  */
 export class WorkflowCoordinator {
-  private mastraScrapingService = new MastraScrapingService();
+  private mastraScrapingService = getMastraScrapingService();
   private aiService = new AIService();
   private documentParsingService = new DocumentParsingService();
   private portalMonitoringService = new PortalMonitoringService(storage);
@@ -247,7 +247,10 @@ export class WorkflowCoordinator {
       const distributedItems: WorkItem[] = [];
       const failedItems: Array<{ workItem: WorkItem; error: string }> = [];
 
-      console.log(`📦 Distributing ${pendingItems.length} pending work items`);
+      // Only log if there are pending items to avoid spam
+      if (pendingItems.length > 0) {
+        console.log(`📦 Distributing ${pendingItems.length} pending work items`);
+      }
 
       for (const workItem of pendingItems) {
         const assignmentResult = await this.assignWorkItem(workItem.id);
@@ -262,7 +265,10 @@ export class WorkflowCoordinator {
         }
       }
 
-      console.log(`📊 Distribution complete: ${distributedItems.length} assigned, ${failedItems.length} failed`);
+      // Only log distribution results if there were pending items
+      if (pendingItems.length > 0) {
+        console.log(`📊 Distribution complete: ${distributedItems.length} assigned, ${failedItems.length} failed`);
+      }
 
       return {
         success: true,
@@ -2141,7 +2147,7 @@ export class WorkflowCoordinator {
       // Update RFP progress
       await storage.updateRFP(rfpId, {
         status: qualityAssessment.overallScore >= qualityThreshold ? 'review' : 'drafting',
-        progress: qualityAssessment.overallScore >= qualityThreshold ? 100 : 85
+        progress: qualityAssessment.overallScore >= qualityThreshold ? 75 : 65  // Proposal ready but not submitted
       });
 
       // Create notification

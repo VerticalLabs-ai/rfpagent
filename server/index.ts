@@ -1,5 +1,7 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
+import { createServer } from "http";
+import { configureRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { agentRegistryService } from "./services/agentRegistryService";
 
@@ -38,7 +40,11 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  // Configure modular routes
+  configureRoutes(app);
+
+  // Create HTTP server
+  const server = createServer(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -62,19 +68,15 @@ app.use((req, res, next) => {
     await agentRegistryService.bootstrapDefaultAgents();
     log("🤖 3-tier agentic system initialized with default agents");
   } catch (error) {
-    log("⚠️ Failed to bootstrap default agents:", error);
+    log("⚠️ Failed to bootstrap default agents:", error instanceof Error ? error.message : String(error));
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
+  const port = parseInt(process.env.PORT || '3000', 10);
+  server.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
 })();

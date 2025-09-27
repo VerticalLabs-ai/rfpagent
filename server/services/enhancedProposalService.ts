@@ -1,6 +1,7 @@
 import { storage } from '../storage';
 import { documentIntelligenceService, type DocumentAnalysisResult, type FormField, type HumanOversightItem } from './documentIntelligenceService';
 import { AIProposalService } from './ai-proposal-service';
+import { submissionMaterialsService } from './submissionMaterialsService';
 import type { RFP, CompanyProfile } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
@@ -114,10 +115,10 @@ export class EnhancedProposalService {
       documentAnalysis.competitiveBidAnalysis
     );
 
-    // Update RFP to completed status
+    // Update RFP status with appropriate progress
     await storage.updateRFP(request.rfpId, {
       status: readyForSubmission ? 'review' : 'drafting',
-      progress: 100
+      progress: readyForSubmission ? 75 : 60  // Proposal generated but not submitted
     });
 
     console.log(`✅ Proposal generation completed for RFP: ${rfp.title}`);
@@ -128,9 +129,8 @@ export class EnhancedProposalService {
       console.log(`🚀 Auto-submit enabled and proposal ready - triggering submission pipeline...`);
       
       try {
-        // Import SubmissionService dynamically to avoid circular dependencies
-        const { SubmissionService } = await import("./submissionService");
-        const submissionService = new SubmissionService();
+        // Import singleton submissionService to avoid duplicate instantiation
+        const { submissionService } = await import("./submissionService");
 
         // Create submission record
         const submission = await storage.createSubmission({
@@ -231,6 +231,116 @@ export class EnhancedProposalService {
   }
 
   /**
+   * Generate enhanced proposal using latest Mastra agentic system
+   * This method is called by the API route and delegates to the proper Mastra agents
+   */
+  async generateEnhancedProposal(params: {
+    rfpId: string;
+    companyProfileId?: string;
+    sessionId: string;
+    options?: any;
+  }): Promise<{
+    success: boolean;
+    sessionId: string;
+    message: string;
+    proposalId?: string;
+    error?: string;
+  }> {
+    console.log(`🚀 Starting Mastra-powered enhanced proposal generation for RFP: ${params.rfpId}`);
+
+    try {
+      // Get RFP details
+      const rfp = await storage.getRFP(params.rfpId);
+      if (!rfp) {
+        throw new Error(`RFP not found: ${params.rfpId}`);
+      }
+
+      // Update RFP status to indicate generation in progress
+      await storage.updateRFP(params.rfpId, {
+        status: 'drafting',
+        progress: 10
+      });
+
+      console.log(`🤖 Delegating to Mastra submission materials service with latest agents...`);
+
+      // Get the first available company profile if none specified
+      let companyProfileId = params.companyProfileId;
+      if (!companyProfileId) {
+        console.log('⚠️ No company profile specified, getting first available profile...');
+        const profiles = await storage.getAllCompanyProfiles();
+        if (profiles.length === 0) {
+          throw new Error('No company profiles found. Please create a company profile first.');
+        }
+        companyProfileId = profiles[0].id;
+        console.log(`✅ Using company profile: ${companyProfileId} (${profiles[0].companyName})`);
+      }
+
+      // Use the submission materials service which has proper Mastra integration
+      // This service uses the 3-tier agentic system with 14+ agents
+      const result = await submissionMaterialsService.generateSubmissionMaterials({
+        rfpId: params.rfpId,
+        sessionId: params.sessionId,
+        companyProfileId,
+        materialTypes: ['technical_proposal', 'cost_proposal'],
+        generateCompliance: true,
+        autoSubmit: false,
+        ...params.options
+      });
+
+      if (result.success) {
+        console.log(`✅ Mastra proposal generation completed successfully`);
+
+        // Get the generated proposal
+        const proposal = await storage.getProposalByRFP(params.rfpId);
+
+        // Update RFP progress to completed
+        await storage.updateRFP(params.rfpId, {
+          status: 'review',
+          progress: 85
+        });
+
+        return {
+          success: true,
+          sessionId: params.sessionId,
+          message: 'Enhanced proposal generated successfully using Mastra agentic system',
+          proposalId: proposal?.id
+        };
+      } else {
+        console.error(`❌ Mastra proposal generation failed:`, result.error);
+
+        // Update RFP status to indicate failure
+        await storage.updateRFP(params.rfpId, {
+          status: 'draft',
+          progress: 0
+        });
+
+        return {
+          success: false,
+          sessionId: params.sessionId,
+          message: 'Enhanced proposal generation failed',
+          error: result.error
+        };
+      }
+
+    } catch (error) {
+      console.error(`💥 Error in enhanced proposal generation:`, error);
+
+      // Update RFP status to indicate failure
+      await storage.updateRFP(params.rfpId, {
+        status: 'draft',
+        progress: 0
+      });
+
+      return {
+        success: false,
+        sessionId: params.sessionId,
+        message: 'Enhanced proposal generation failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
    * Generate narrative proposal content using AI
    */
   private async generateNarrativeContent(
@@ -285,12 +395,85 @@ export class EnhancedProposalService {
       } else {
         // Create a default company mapping if no profile provided
         const defaultMapping = {
-          businessType: ['construction', 'technology'],
-          certifications: ['WBENC', 'HUB', 'DBE', 'MBE', 'WBE'],
-          companyInfo: {
-            name: 'iByte Enterprises LLC',
-            type: 'Woman-owned business',
-            capabilities: ['construction', 'technology services']
+          profile: {
+            id: 'default',
+            companyName: 'iByte Enterprises LLC',
+            dba: null,
+            businessAddress: '123 Main St, City, State 12345',
+            mailingAddress: '123 Main St, City, State 12345',
+            phoneNumber: '(555) 123-4567',
+            emailAddress: 'contact@ibyte.com',
+            website: 'https://ibyte.com',
+            federalTaxId: '12-3456789',
+            dunsNumber: null,
+            cageCode: null,
+            primaryBusinessCategory: 'Technology Services',
+            yearEstablished: 2020,
+            numberOfEmployees: 10,
+            annualRevenue: 1000000,
+            businessDescription: 'Leading provider of technology and consulting services',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          },
+          relevantCertifications: [
+            {
+              id: 'cert1',
+              companyProfileId: 'default',
+              certificationType: 'Woman-Owned Business Enterprise',
+              certificationNumber: 'WBENC-12345',
+              certifyingAgency: 'WBENC',
+              issueDate: new Date('2024-01-01'),
+              expirationDate: new Date('2026-01-01'),
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          ],
+          applicableInsurance: [
+            {
+              id: 'ins1',
+              companyProfileId: 'default',
+              insuranceType: 'General Liability',
+              carrier: 'Insurance Company',
+              policyNumber: 'GL-123456',
+              coverageAmount: 2000000,
+              effectiveDate: new Date('2024-01-01'),
+              expirationDate: new Date('2025-01-01'),
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+          ],
+          assignedContacts: [
+            {
+              role: 'Primary Contact',
+              contact: {
+                id: 'contact1',
+                companyProfileId: 'default',
+                firstName: 'Jane',
+                lastName: 'Doe',
+                title: 'CEO',
+                department: 'Executive',
+                phoneNumber: '(555) 123-4567',
+                emailAddress: 'jane.doe@ibyte.com',
+                isPrimary: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              },
+              reason: 'Primary business contact'
+            }
+          ],
+          businessClassifications: {
+            naics: ['541511', '541512'],
+            nigp: ['925-20', '960-50'],
+            categories: ['Technology Services', 'Consulting']
+          },
+          socioEconomicQualifications: {
+            smallBusiness: true,
+            womanOwned: true,
+            minorityOwned: false,
+            veteranOwned: false,
+            hubZone: false
           }
         };
         proposalContent = await this.aiProposalService.generateProposalContent(

@@ -7,9 +7,10 @@ import { cn } from "@/lib/utils";
 
 interface NotificationToastProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export default function NotificationToast({ className }: NotificationToastProps) {
+export default function NotificationToast({ className, style }: NotificationToastProps) {
   const [visibleNotification, setVisibleNotification] = useState<any>(null);
   const [previousNotificationCount, setPreviousNotificationCount] = useState(0);
 
@@ -20,7 +21,7 @@ export default function NotificationToast({ className }: NotificationToastProps)
 
   // Show toast when new notification arrives
   useEffect(() => {
-    if (notifications && notifications.length > previousNotificationCount) {
+    if (Array.isArray(notifications) && notifications.length > previousNotificationCount) {
       const newNotification = notifications[0]; // Show the most recent
       setVisibleNotification(newNotification);
       
@@ -32,7 +33,7 @@ export default function NotificationToast({ className }: NotificationToastProps)
       return () => clearTimeout(timer);
     }
     
-    if (notifications) {
+    if (Array.isArray(notifications)) {
       setPreviousNotificationCount(notifications.length);
     }
   }, [notifications, previousNotificationCount]);
@@ -64,11 +65,12 @@ export default function NotificationToast({ className }: NotificationToastProps)
   const notificationIcon = getNotificationIcon(visibleNotification.type);
 
   return (
-    <div 
+    <div
       className={cn(
         "fixed top-4 right-4 z-50 animate-in slide-in-from-right-2 duration-300",
         className
       )}
+      style={style}
       data-testid="notification-toast"
     >
       <Card className="w-80 shadow-lg border border-border bg-white dark:bg-gray-800">
@@ -136,9 +138,9 @@ export function NotificationSystem() {
   });
 
   useEffect(() => {
-    if (notifications && notifications.length > 0) {
+    if (Array.isArray(notifications) && notifications.length > 0) {
       // Simulate real-time behavior by showing notifications as they come in
-      const newNotifications = notifications.filter((notification: any) => 
+      const newNotifications = notifications.filter((notification: any) =>
         !recentNotifications.some(recent => recent.id === notification.id)
       );
       

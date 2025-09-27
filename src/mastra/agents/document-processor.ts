@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const documentProcessor = new Agent({
-  name: 'Document Processor',
+  name: "Document Processor",
   instructions: `
 You are a Document Processor specialist, handling document parsing and analysis.
 
@@ -31,7 +31,7 @@ When processing documents:
 - Handle scanned documents with OCR
 - Create structured data from unstructured documents
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

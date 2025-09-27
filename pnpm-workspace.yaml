@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@tailwindcss/oxide'
+  - bufferutil
+  - esbuild
+  - protobufjs
+  - puppeteer

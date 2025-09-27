@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const historicalAnalyzer = new Agent({
-  name: 'Historical Analyzer',
+  name: "Historical Analyzer",
   instructions: `
 You are a Historical Analyzer specialist, analyzing past performance and predicting success.
 
@@ -31,7 +31,7 @@ When analyzing history:
 - Generate data-driven recommendations
 - Predict win probability based on historical data
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})

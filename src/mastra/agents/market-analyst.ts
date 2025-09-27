@@ -1,9 +1,9 @@
-import { openai } from '@ai-sdk/openai';
-import { Agent } from '@mastra/core/agent';
-import { sharedMemory } from '../tools/shared-memory-provider';
+import { openai } from "@ai-sdk/openai"
+import { Agent } from "@mastra/core/agent"
+import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const marketAnalyst = new Agent({
-  name: 'Market Analyst',
+  name: "Market Analyst",
   instructions: `
 You are a Market Analyst specialist, performing market research and competitive analysis.
 
@@ -31,7 +31,7 @@ When analyzing markets:
 - Generate win probability assessments
 - Provide strategic recommendations
 `,
-  model: openai('gpt-4o'),
+  model: openai("gpt-5"),
   tools: {},
   memory: sharedMemory,
-});
+})
