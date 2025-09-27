@@ -207,7 +207,7 @@ Focus on iByte Enterprises LLC - a woman-owned construction/technology company w
           },
         ],
         temperature: 0.2,
-        max_tokens: 4000,
+        max_completion_tokens: 4000,
         response_format: { type: "json_object" },
       })
 
@@ -306,7 +306,7 @@ Return JSON:
           },
         ],
         temperature: 0.3,
-        max_tokens: 2000,
+        max_completion_tokens: 2000,
         response_format: { type: "json_object" },
       })
 
