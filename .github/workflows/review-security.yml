@@ -39,27 +39,27 @@ jobs:
                   node -e "
                     const report = require('./security-report.json');
                     const date = new Date().toISOString().split('T')[0];
-
+                    
                     let markdown = '# Security Report - ' + date + '\\n\\n';
                     markdown += '## Summary\\n';
                     markdown += '- Total Issues: ' + (report.results.errors?.length || 0) + '\\n';
                     markdown += '- Agents Used: ' + report.summary.totalAgents + '\\n';
                     markdown += '- Success Rate: ' + (report.summary.successRate * 100).toFixed(1) + '%\\n\\n';
-
+                    
                     if (report.results.errors?.length > 0) {
                       markdown += '## Issues Found\\n';
                       report.results.errors.forEach((error, i) => {
                         markdown += (i + 1) + '. ' + error + '\\n';
                       });
                     }
-
+                    
                     if (report.results.insights?.length > 0) {
                       markdown += '\\n## Recommendations\\n';
                       report.results.insights.forEach((insight, i) => {
                         markdown += (i + 1) + '. ' + insight + '\\n';
                       });
                     }
-
+                    
                     require('fs').writeFileSync('SECURITY_REPORT.md', markdown);
                   "
 
@@ -72,7 +72,7 @@ jobs:
 
                       if (report.results.errors && report.results.errors.length > 0) {
                         const markdown = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
-
+                        
                         await github.rest.issues.create({
                           owner: context.repo.owner,
                           repo: context.repo.repo,

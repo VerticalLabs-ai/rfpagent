@@ -47,7 +47,7 @@ jobs:
                   # Generate tests for changed files
                   for file in ${{ steps.new-code.outputs.all_changed_files }}; do
                     echo "Generating tests for: $file"
-
+                    
                     npx claude-flow@alpha sparc tdd "create comprehensive unit tests for $file" \
                       --no-interactive \
                       --output-format json \

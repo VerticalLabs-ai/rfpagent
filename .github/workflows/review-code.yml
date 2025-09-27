@@ -50,20 +50,20 @@ jobs:
                     const review = require('./review.json');
                     const insights = review.results.insights || [];
                     const issues = review.results.errors || [];
-
+                    
                     console.log('## 🤖 AI Code Review\\n');
-
+                    
                     if (issues.length > 0) {
                       console.log('### ⚠️ Issues Found\\n');
                       issues.forEach(issue => console.log('- ' + issue));
                       console.log('\\n');
                     }
-
+                    
                     if (insights.length > 0) {
                       console.log('### 💡 Suggestions\\n');
                       insights.forEach(insight => console.log('- ' + insight));
                     }
-
+                    
                     console.log('\\n---\\n*Powered by Claude Flow ' + review.metadata.version + '*');
                   ")
 
