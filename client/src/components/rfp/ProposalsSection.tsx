@@ -217,6 +217,93 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     }
   };
 
+  const normalizeProposalContent = (rawContent: any) => {
+    if (!rawContent || typeof rawContent !== 'object') {
+      return rawContent;
+    }
+
+    const normalized = { ...rawContent };
+
+    const coerceToText = (value: any): string | undefined => {
+      if (value == null) return undefined;
+      if (typeof value === 'string') return value;
+      if (Array.isArray(value)) {
+        const flattened = value
+          .map((item) => {
+            if (item == null) return '';
+            if (typeof item === 'string') return item;
+            if (typeof item === 'number' || typeof item === 'boolean') {
+              return String(item);
+            }
+            return JSON.stringify(item);
+          })
+          .filter(Boolean)
+          .join('\n');
+        return flattened || undefined;
+      }
+      if (typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+      }
+      if (typeof value === 'object') {
+        try {
+          return JSON.stringify(value, null, 2);
+        } catch {
+          return String(value);
+        }
+      }
+      return undefined;
+    };
+
+    const aliasMap: Record<string, string[]> = {
+      executiveSummary: ['summary', 'executive_summary', 'overview'],
+      technicalApproach: ['approach', 'projectApproach', 'implementationApproach', 'solutionApproach', 'methodology'],
+      qualifications: ['companyOverview', 'capabilities', 'experience', 'companyQualifications', 'companyProfile'],
+      timeline: ['projectTimeline', 'schedule', 'implementationTimeline', 'timelineOverview'],
+      teamStructure: ['staffingPlan', 'projectTeam', 'team', 'personnelPlan', 'organizationalStructure'],
+      riskManagement: ['riskMitigation', 'riskPlan', 'qualityAssurance', 'riskStrategy', 'qualityControl'],
+    };
+
+    const textFields = [
+      'executiveSummary',
+      'technicalApproach',
+      'qualifications',
+      'timeline',
+      'teamStructure',
+      'riskManagement',
+      'companyOverview',
+      'approach',
+    ];
+
+    // Ensure alias targets are populated
+    for (const [target, aliases] of Object.entries(aliasMap)) {
+      const current = coerceToText(normalized[target]);
+      if (current && current.trim().length > 0) {
+        normalized[target] = current;
+        continue;
+      }
+
+      for (const alias of aliases) {
+        const aliasValue = coerceToText(normalized[alias]);
+        if (aliasValue && aliasValue.trim().length > 0) {
+          normalized[target] = aliasValue;
+          break;
+        }
+      }
+    }
+
+    // Coerce known text fields to strings for consistent rendering
+    for (const field of textFields) {
+      const value = coerceToText(normalized[field]);
+      if (value && value.trim().length > 0) {
+        normalized[field] = value;
+      } else {
+        delete normalized[field];
+      }
+    }
+
+    return normalized;
+  };
+
   const formatJsonContent = (content: any) => {
     // If content is already an object, use it directly
     if (typeof content === 'object' && content !== null) {
@@ -307,7 +394,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       // If it already has structured fields, return it
       if (content.executiveSummary || content.technicalApproach || content.timeline) {
         console.log('Found structured content directly in object');
-        return content;
+        return normalizeProposalContent(content);
       }
 
       // If there's a nested content field, check that
@@ -316,13 +403,13 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         if (typeof content.content === 'object' && content.content !== null) {
           if (content.content.executiveSummary || content.content.technicalApproach) {
             console.log('Found structured content in nested content object');
-            return content.content;
+            return normalizeProposalContent(content.content);
           }
         }
       }
 
       console.log('No structured fields found in object, returning as-is');
-      return content;
+      return normalizeProposalContent(content);
     }
 
     // If content is a string, try to parse it as JSON
@@ -335,7 +422,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         // If it already has structured fields, return it
         if (parsed.executiveSummary || parsed.technicalApproach || parsed.timeline) {
           console.log('Found structured content directly');
-          return parsed;
+          return normalizeProposalContent(parsed);
         }
 
         // Check if there's a 'content' field that contains the structured JSON
@@ -346,7 +433,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           if (typeof parsed.content === 'object' && parsed.content !== null) {
             if (parsed.content.executiveSummary || parsed.content.technicalApproach) {
               console.log('Found structured content in content object');
-              return parsed.content;
+              return normalizeProposalContent(parsed.content);
             }
           }
 
@@ -358,14 +445,14 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
               if (typeof contentParsed === 'object' && contentParsed !== null) {
                 if (contentParsed.executiveSummary || contentParsed.technicalApproach) {
                   console.log('Found structured content in parsed content string');
-                  return contentParsed;
+                  return normalizeProposalContent(contentParsed);
                 }
               }
-              return contentParsed;
+              return normalizeProposalContent(contentParsed);
             } catch {
               // If content string isn't JSON, parse it as text sections
               console.log('Content string is not JSON, parsing as text');
-              return parseTextIntoSections(parsed.content);
+              return normalizeProposalContent(parseTextIntoSections(parsed.content));
             }
           }
         }
@@ -375,20 +462,20 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           try {
             const textParsed = JSON.parse(parsed.text);
             if (typeof textParsed === 'object' && textParsed !== null) {
-              return textParsed;
+              return normalizeProposalContent(textParsed);
             }
           } catch {
             // If text field isn't JSON, return it as plain text with sections
-            return parseTextIntoSections(parsed.text);
+            return normalizeProposalContent(parseTextIntoSections(parsed.text));
           }
         }
 
-        return parsed;
+        return normalizeProposalContent(parsed);
       }
       return { content: parsed };
     } catch (error) {
       console.log('JSON parse error:', error);
-      return { content: content };
+      return normalizeProposalContent({ content });
     }
   };
 
@@ -475,8 +562,14 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           if (parsed.technicalApproach) {
             sections.push(`Technical Approach:\n${parsed.technicalApproach}\n`);
           }
+          if (parsed.approach) {
+            sections.push(`Approach:\n${parsed.approach}\n`);
+          }
           if (parsed.qualifications) {
             sections.push(`Qualifications:\n${parsed.qualifications}\n`);
+          }
+          if (parsed.companyOverview) {
+            sections.push(`Company Overview:\n${parsed.companyOverview}\n`);
           }
           if (parsed.timeline) {
             sections.push(`Timeline:\n${parsed.timeline}\n`);
@@ -736,8 +829,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                               <div>Content object keys: {Object.keys(content).join(', ')}</div>
                               <div>Has executiveSummary: {!!content.executiveSummary}</div>
                               <div>Has technicalApproach: {!!content.technicalApproach}</div>
-                              <div>Has timeline: {!!content.timeline}</div>
+                              <div>Has approach: {!!content.approach}</div>
                               <div>Has qualifications: {!!content.qualifications}</div>
+                              <div>Has companyOverview: {!!content.companyOverview}</div>
+                              <div>Has timeline: {!!content.timeline}</div>
                               <div>Raw content length: {typeof proposal.content === 'string' ? proposal.content.length : (proposal.content ? JSON.stringify(proposal.content).length : 0)}</div>
                               <div>Content type: {typeof proposal.content}</div>
                               {content.executiveSummary && (
@@ -808,6 +903,21 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                   />
                                 );
                               }
+                            }
+
+                            // Company Overview
+                            if (content.companyOverview && content.companyOverview.trim().length > 0) {
+                              sections.push(
+                                <EditableSection
+                                  key="companyOverview"
+                                  title="Company Overview"
+                                  content={content.companyOverview}
+                                  sectionKey="companyOverview"
+                                  icon={<FileText className="w-5 h-5" />}
+                                  bgClass="bg-indigo-900/20 border border-indigo-700/50"
+                                  titleClass="text-indigo-300"
+                                />
+                              );
                             }
 
                             // Technical Approach
@@ -891,6 +1001,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                           {/* Force display raw content if no sections were created */}
                           {(() => {
                             const hasValidSections = (content.executiveSummary && content.executiveSummary.trim().length > 0) ||
+                                                    (content.companyOverview && content.companyOverview.trim().length > 0) ||
                                                     (content.technicalApproach && content.technicalApproach.trim().length > 0) ||
                                                     (content.timeline && content.timeline.trim().length > 0) ||
                                                     (content.qualifications && content.qualifications.trim().length > 0) ||
@@ -1101,6 +1212,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                           {/* Fallback content - show if no structured content available */}
                           {(() => {
                             const hasAnySection = (content.executiveSummary && content.executiveSummary.trim().length > 0) ||
+                                                (content.companyOverview && content.companyOverview.trim().length > 0) ||
                                                 (content.technicalApproach && content.technicalApproach.trim().length > 0) ||
                                                 (content.timeline && content.timeline.trim().length > 0) ||
                                                 (content.qualifications && content.qualifications.trim().length > 0) ||
