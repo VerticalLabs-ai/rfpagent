@@ -11,7 +11,6 @@ export default function Sidebar() {
 
   const navigationItems = [
     { path: "/", label: "Dashboard", icon: "fas fa-tachometer-alt" },
-    { path: "/discovery", label: "RFP Discovery", icon: "fas fa-search" },
     { path: "/ai-chat", label: "AI Agent", icon: "fas fa-robot" },
     { path: "/workflow-management", label: "Workflow Management", icon: "fas fa-cogs" },
     { path: "/agent-monitoring", label: "Agent Monitoring", icon: "fas fa-chart-line" },
