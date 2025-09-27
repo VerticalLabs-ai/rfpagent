@@ -1,17 +1,3 @@
-<<<<<<< HEAD
-import { Browserbase } from "@browserbasehq/sdk";
-import { Stagehand, type ConstructorParams } from "@browserbasehq/stagehand";
-import AdmZip from "adm-zip";
-import { z } from "zod";
-import { ObjectStorageService, objectStorageClient } from "../objectStorage";
-
-export interface PhiladelphiaDocument {
-  name: string;
-  url?: string;
-  storagePath?: string;
-  downloadStatus?: "pending" | "downloading" | "completed" | "failed";
-  error?: string;
-=======
 import { Browserbase } from "@browserbasehq/sdk"
 import { Stagehand, type ConstructorParams } from "@browserbasehq/stagehand"
 import AdmZip from "adm-zip"
@@ -24,7 +10,6 @@ export interface PhiladelphiaDocument {
   storagePath?: string
   downloadStatus?: "pending" | "downloading" | "completed" | "failed"
   error?: string
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 }
 
 export interface RFPDetails {
@@ -65,17 +50,10 @@ export class PhiladelphiaDocumentDownloader {
   private browserbase: Browserbase
 
   constructor() {
-<<<<<<< HEAD
-    this.objectStorage = new ObjectStorageService();
-    this.browserbase = new Browserbase({
-      apiKey: process.env.BROWSERBASE_API_KEY!,
-    });
-=======
     this.objectStorage = new ObjectStorageService()
     this.browserbase = new Browserbase({
       apiKey: process.env.BROWSERBASE_API_KEY!,
     })
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
   }
 
   /**
@@ -109,35 +87,13 @@ export class PhiladelphiaDocumentDownloader {
         },
         region: "us-west-2",
       },
-<<<<<<< HEAD
-    };
-=======
     }
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
   }
 
   /**
    * Extract RFP details from Philadelphia contracting portal
    */
   async extractRFPDetails(rfpUrl: string): Promise<RFPDetails> {
-<<<<<<< HEAD
-    let stagehand: Stagehand | null = null;
-
-    try {
-      console.log("🤖 Initializing Stagehand with Google Gemini...");
-      stagehand = new Stagehand(this.createStagehandConfig());
-      await stagehand.init();
-
-      const page = stagehand.page;
-      if (!page) {
-        throw new Error("Failed to get page instance from Stagehand");
-      }
-
-      console.log(`🌐 Navigating to: ${rfpUrl}`);
-      await page.goto(rfpUrl, { waitUntil: "networkidle" });
-
-      console.log("📊 Extracting RFP details...");
-=======
     let stagehand: Stagehand | null = null
 
     try {
@@ -154,7 +110,6 @@ export class PhiladelphiaDocumentDownloader {
       await page.goto(rfpUrl, { waitUntil: "networkidle" })
 
       console.log("📊 Extracting RFP details...")
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
       const extractedData = await page.extract({
         instruction: `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
         schema: z.object({
@@ -197,29 +152,17 @@ export class PhiladelphiaDocumentDownloader {
         }),
       })
 
-<<<<<<< HEAD
-      console.log("✅ Extracted RFP details:", extractedData);
-      return extractedData;
-    } catch (error) {
-      console.error("❌ Failed to extract RFP details:", error);
-      throw error;
-=======
       console.log("✅ Extracted RFP details:", extractedData)
       return extractedData
     } catch (error) {
       console.error("❌ Failed to extract RFP details:", error)
       throw error
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } finally {
       if (stagehand) {
         try {
           await stagehand.close()
         } catch (err) {
-<<<<<<< HEAD
-          console.error("Error closing Stagehand:", err);
-=======
           console.error("Error closing Stagehand:", err)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
       }
     }
@@ -232,7 +175,7 @@ export class PhiladelphiaDocumentDownloader {
   async downloadRFPDocuments(
     rfpUrl: string,
     rfpId: string,
-    documentNames: string[],
+    documentNames: string[]
   ): Promise<PhiladelphiaDocument[]> {
     const results: PhiladelphiaDocument[] = []
     let stagehand: Stagehand | null = null
@@ -243,104 +186,6 @@ export class PhiladelphiaDocumentDownloader {
     try {
       // Create new Stagehand instance with Google Gemini
       console.log(
-<<<<<<< HEAD
-        "🤖 Initializing Stagehand with Google Gemini for downloads...",
-      );
-      stagehand = new Stagehand(this.createStagehandConfig());
-      await stagehand.init();
-
-      const page = stagehand.page;
-      if (!page) {
-        throw new Error("Failed to get page instance from Stagehand");
-      }
-
-      // Navigate to RFP page
-      console.log(`🌐 Navigating to RFP page: ${rfpUrl}`);
-      await page.goto(rfpUrl, { waitUntil: "networkidle" });
-
-      // Wait for file attachments section to load - Philadelphia specific
-      await page.waitForSelector("text=File Attachments:", { timeout: 15000 });
-      console.log(`📋 File Attachments section found`);
-
-      // Set up proper file capture with response interception
-      const capturedFiles: Map<
-        string,
-        { buffer: Buffer; contentType: string }
-      > = new Map();
-
-      page.on("response", async (response) => {
-        try {
-          const url = response.url();
-          const headers = response.headers();
-          const status = response.status();
-
-          // Only process successful responses that look like file downloads
-          if (status === 200) {
-            const contentDisposition = headers["content-disposition"] || "";
-            const contentType = headers["content-type"] || "";
-
-            // Check if this is a download response
-            if (
-              contentDisposition.includes("attachment") ||
-              contentType.includes("application/pdf") ||
-              contentType.includes("application/msword") ||
-              contentType.includes("application/vnd") ||
-              url.includes(".pdf") ||
-              url.includes(".doc") ||
-              url.includes(".xls")
-            ) {
-              // Try to match this download to one of our expected documents
-              const matchingDoc = documentNames.find((name) => {
-                // Check various ways the document might be identified
-                return (
-                  url.toLowerCase().includes(name.toLowerCase()) ||
-                  contentDisposition
-                    .toLowerCase()
-                    .includes(name.toLowerCase()) ||
-                  name
-                    .toLowerCase()
-                    .includes(url.split("/").pop()?.toLowerCase() || "")
-                );
-              });
-
-              if (matchingDoc) {
-                console.log(`📄 Intercepting download for: ${matchingDoc}`);
-                try {
-                  // Get response body as buffer - this is the critical step
-                  const buffer = await response.body();
-
-                  if (buffer.length > 0) {
-                    capturedFiles.set(matchingDoc, {
-                      buffer: buffer,
-                      contentType: contentType || "application/pdf",
-                    });
-                    console.log(
-                      `💾 Captured file: ${matchingDoc} (${buffer.length} bytes)`,
-                    );
-                  } else {
-                    console.log(`⚠️ Empty file captured for: ${matchingDoc}`);
-                  }
-                } catch (error) {
-                  console.error(
-                    `❌ Failed to capture file data for ${matchingDoc}:`,
-                    error,
-                  );
-                }
-              }
-            }
-          }
-        } catch (error) {
-          // Don't let response handler errors break the main flow
-          console.debug(`Response handler error:`, error);
-        }
-      });
-
-      console.log(`⚙️ File capture configured with response interception`);
-
-      // Extract the real Browserbase session ID from Stagehand with enhanced detection
-      let browserbaseSessionId: string | null = null;
-
-=======
         "🤖 Initializing Stagehand with Google Gemini for downloads..."
       )
       stagehand = new Stagehand(this.createStagehandConfig())
@@ -437,7 +282,6 @@ export class PhiladelphiaDocumentDownloader {
       // Extract the real Browserbase session ID from Stagehand with enhanced detection
       let browserbaseSessionId: string | null = null
 
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
       try {
         // Try enhanced methods to get the real session ID
         browserbaseSessionId =
@@ -447,34 +291,11 @@ export class PhiladelphiaDocumentDownloader {
           (stagehand as any).session?.id ||
           (stagehand as any).context?.sessionId ||
           (page.context() as any)._browserbaseSessionId ||
-<<<<<<< HEAD
-          (page.context() as any).sessionId;
-=======
           (page.context() as any).sessionId
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
         if (!browserbaseSessionId) {
           // Try extracting from various URL sources
           const debugUrl =
-<<<<<<< HEAD
-            (page.context() as any)._debugUrl || (page as any)._debugUrl || "";
-          const wsUrl =
-            (page.context() as any)._wsEndpoint ||
-            (page as any)._wsEndpoint ||
-            "";
-          const browserUrl = page.url() || "";
-
-          const sessionMatch =
-            debugUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-            ) ||
-            wsUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-            ) ||
-            browserUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-            );
-=======
             (page.context() as any)._debugUrl || (page as any)._debugUrl || ""
           const wsUrl =
             (page.context() as any)._wsEndpoint ||
@@ -492,7 +313,6 @@ export class PhiladelphiaDocumentDownloader {
             browserUrl.match(
               /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
             )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
           if (sessionMatch) {
             browserbaseSessionId = sessionMatch[1]
@@ -501,17 +321,6 @@ export class PhiladelphiaDocumentDownloader {
 
         if (!browserbaseSessionId) {
           // Try to extract from browser context properties
-<<<<<<< HEAD
-          const browser = page.context().browser();
-          if (browser) {
-            const contexts = (browser as any)._contexts || [];
-            for (const ctx of contexts) {
-              const ctxSessionId =
-                (ctx as any)._sessionId || (ctx as any).sessionId;
-              if (ctxSessionId) {
-                browserbaseSessionId = ctxSessionId;
-                break;
-=======
           const browser = page.context().browser()
           if (browser) {
             const contexts = (browser as any)._contexts || []
@@ -521,20 +330,14 @@ export class PhiladelphiaDocumentDownloader {
               if (ctxSessionId) {
                 browserbaseSessionId = ctxSessionId
                 break
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
               }
             }
           }
         }
 
         console.log(
-<<<<<<< HEAD
-          `🆔 Browserbase session ID: ${browserbaseSessionId || "not found"}`,
-        );
-=======
           `🆔 Browserbase session ID: ${browserbaseSessionId || "not found"}`
         )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
       } catch (error) {
         console.log(`⚠️ Could not extract Browserbase session ID: ${error}`)
       }
@@ -544,45 +347,6 @@ export class PhiladelphiaDocumentDownloader {
         const doc: PhiladelphiaDocument = {
           name: docName,
           downloadStatus: "pending",
-<<<<<<< HEAD
-        };
-
-        try {
-          console.log(`🔍 Looking for document: ${docName}`);
-          doc.downloadStatus = "downloading";
-
-          // Use proven Stagehand approach - directly click the document link by name
-          console.log(`📎 Clicking document: "${docName}"`);
-          await page.act(`click the "${docName}" link`);
-
-          // Wait for download to complete and be captured
-          await page.waitForTimeout(5000);
-
-          // For Philadelphia portal, the click succeeded if no error was thrown
-          // Files are stored in Browserbase but not accessible for re-upload due to environment limitations
-          console.log(`✅ Successfully triggered download for: ${docName}`);
-          doc.downloadStatus = "completed";
-
-          // Navigate back to the RFP page to continue with other documents
-          console.log(`↩️ Navigating back from ${docName}`);
-          await page.goBack();
-          await page.waitForTimeout(2000);
-        } catch (error: any) {
-          console.error(`❌ Failed to download ${docName}:`, error);
-          doc.downloadStatus = "failed";
-          doc.error = error.message;
-
-          // Try to get back to the main page if we're stuck
-          try {
-            await page.goBack();
-            await page.waitForTimeout(1000);
-          } catch (backError) {
-            console.error(`Failed to navigate back after error:`, backError);
-          }
-        }
-
-        results.push(doc);
-=======
         }
 
         try {
@@ -620,30 +384,10 @@ export class PhiladelphiaDocumentDownloader {
         }
 
         results.push(doc)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
       }
 
       // Upload captured files to object storage with verification
       const successfulDownloads = results.filter(
-<<<<<<< HEAD
-        (d) => d.downloadStatus === "completed",
-      );
-      let actuallyStoredCount = 0;
-
-      for (const doc of successfulDownloads) {
-        const capturedFile = capturedFiles.get(doc.name);
-        if (capturedFile) {
-          try {
-            console.log(`📤 Uploading ${doc.name} to object storage...`);
-
-            // Generate unique filename with proper content type
-            const timestamp = Date.now();
-            const fileExt = this.getFileExtension(
-              doc.name,
-              capturedFile.contentType,
-            );
-            const fileName = `rfp-${rfpId}-${timestamp}-${doc.name}${fileExt}`;
-=======
         (d) => d.downloadStatus === "completed"
       )
       let actuallyStoredCount = 0
@@ -661,36 +405,11 @@ export class PhiladelphiaDocumentDownloader {
               capturedFile.contentType
             )
             const fileName = `rfp-${rfpId}-${timestamp}-${doc.name}${fileExt}`
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
             // Upload file buffer to storage
             const storagePath = await this.uploadBufferToStorage(
               capturedFile.buffer,
               rfpId,
-<<<<<<< HEAD
-              fileName,
-            );
-
-            // Verify upload success by checking if file exists
-            if (await this.verifyFileExists(storagePath)) {
-              doc.storagePath = storagePath;
-              actuallyStoredCount++;
-              console.log(`✅ Successfully uploaded and verified: ${doc.name}`);
-            } else {
-              console.error(`❌ Upload verification failed for: ${doc.name}`);
-              doc.downloadStatus = "failed";
-              doc.error = "Upload verification failed";
-            }
-          } catch (error) {
-            console.error(`❌ Failed to upload ${doc.name}:`, error);
-            doc.downloadStatus = "failed";
-            doc.error = `Upload failed: ${error}`;
-          }
-        } else {
-          console.error(`❌ No captured data found for: ${doc.name}`);
-          doc.downloadStatus = "failed";
-          doc.error = "No file data captured";
-=======
               fileName
             )
 
@@ -713,26 +432,10 @@ export class PhiladelphiaDocumentDownloader {
           console.error(`❌ No captured data found for: ${doc.name}`)
           doc.downloadStatus = "failed"
           doc.error = "No file data captured"
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
       }
 
       console.log(
-<<<<<<< HEAD
-        `📊 Successfully stored ${actuallyStoredCount}/${successfulDownloads.length} files`,
-      );
-
-      const finalSuccessCount = results.filter(
-        (d) => d.downloadStatus === "completed",
-      ).length;
-      console.log(
-        `✅ Successfully processed ${finalSuccessCount}/${documentNames.length} documents`,
-      );
-
-      return results;
-    } catch (error: any) {
-      console.error("❌ Document download process failed:", error);
-=======
         `📊 Successfully stored ${actuallyStoredCount}/${successfulDownloads.length} files`
       )
 
@@ -746,7 +449,6 @@ export class PhiladelphiaDocumentDownloader {
       return results
     } catch (error: any) {
       console.error("❌ Document download process failed:", error)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       // Mark all pending documents as failed
       for (const docName of documentNames) {
@@ -755,34 +457,19 @@ export class PhiladelphiaDocumentDownloader {
             name: docName,
             downloadStatus: "failed",
             error: error.message,
-<<<<<<< HEAD
-          });
-        }
-      }
-
-      throw error;
-=======
           })
         }
       }
 
       throw error
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } finally {
       // Clean up Stagehand session
       if (stagehand) {
         try {
-<<<<<<< HEAD
-          await stagehand.close();
-          console.log("🔒 Stagehand session closed");
-        } catch (err) {
-          console.error("Error closing Stagehand:", err);
-=======
           await stagehand.close()
           console.log("🔒 Stagehand session closed")
         } catch (err) {
           console.error("Error closing Stagehand:", err)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
       }
     }
@@ -794,41 +481,16 @@ export class PhiladelphiaDocumentDownloader {
   private async retrieveAndUploadFiles(
     sessionId: string,
     rfpId: string,
-    results: PhiladelphiaDocument[],
+    results: PhiladelphiaDocument[]
   ): Promise<void> {
     try {
       // Use retry logic as recommended in Browserbase docs
-<<<<<<< HEAD
-      const maxRetries = 10;
-      const retryDelay = 2000; // 2 seconds
-=======
       const maxRetries = 10
       const retryDelay = 2000 // 2 seconds
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           console.log(
-<<<<<<< HEAD
-            `📥 Attempting to retrieve downloads (attempt ${attempt}/${maxRetries})...`,
-          );
-
-          // Get downloads from Browserbase as ZIP
-          const response =
-            await this.browserbase.sessions.downloads.list(sessionId);
-          const downloadBuffer = await response.arrayBuffer();
-
-          if (downloadBuffer.byteLength > 0) {
-            console.log(
-              `📦 Retrieved ZIP archive: ${downloadBuffer.byteLength} bytes`,
-            );
-
-            // Extract files from ZIP
-            const zip = new AdmZip(Buffer.from(downloadBuffer));
-            const zipEntries = zip.getEntries();
-
-            console.log(`🗂️ Found ${zipEntries.length} files in ZIP archive`);
-=======
             `📥 Attempting to retrieve downloads (attempt ${attempt}/${maxRetries})...`
           )
 
@@ -848,26 +510,16 @@ export class PhiladelphiaDocumentDownloader {
             const zipEntries = zip.getEntries()
 
             console.log(`🗂️ Found ${zipEntries.length} files in ZIP archive`)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
             // Process each file
             for (const entry of zipEntries) {
               if (!entry.isDirectory) {
-<<<<<<< HEAD
-                const fileName = entry.entryName;
-                const fileData = entry.getData();
-
-                console.log(
-                  `📄 Processing file: ${fileName} (${fileData.length} bytes)`,
-                );
-=======
                 const fileName = entry.entryName
                 const fileData = entry.getData()
 
                 console.log(
                   `📄 Processing file: ${fileName} (${fileData.length} bytes)`
                 )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
                 // Find matching result record
                 const matchingResult = results.find(
@@ -875,34 +527,15 @@ export class PhiladelphiaDocumentDownloader {
                     r.downloadStatus === "completed" &&
                     (fileName.includes(r.name.replace(".pdf", "")) ||
                       r.name.includes(
-<<<<<<< HEAD
-                        fileName.replace(/-(\\d+)\\.pdf$/, ".pdf"),
-                      )), // Handle timestamp suffix
-                );
-=======
                         fileName.replace(/-(\\d+)\\.pdf$/, ".pdf")
                       )) // Handle timestamp suffix
                 )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
                 if (matchingResult) {
                   // Upload to object storage
                   const storagePath = await this.uploadBufferToStorage(
                     fileData,
                     rfpId,
-<<<<<<< HEAD
-                    fileName,
-                  );
-
-                  matchingResult.storagePath = storagePath;
-                  console.log(
-                    `☁️ Uploaded ${fileName} to storage: ${storagePath}`,
-                  );
-                } else {
-                  console.log(
-                    `⚠️ No matching result found for file: ${fileName}`,
-                  );
-=======
                     fileName
                   )
 
@@ -914,24 +547,10 @@ export class PhiladelphiaDocumentDownloader {
                   console.log(
                     `⚠️ No matching result found for file: ${fileName}`
                   )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
                 }
               }
             }
 
-<<<<<<< HEAD
-            console.log(`✅ Successfully processed all files from Browserbase`);
-            return; // Success, exit retry loop
-          } else {
-            console.log(
-              `⏳ Download archive not ready yet, retrying in ${retryDelay}ms...`,
-            );
-          }
-        } catch (error: any) {
-          console.log(
-            `⚠️ Retrieval attempt ${attempt} failed: ${error.message}`,
-          );
-=======
             console.log(`✅ Successfully processed all files from Browserbase`)
             return // Success, exit retry loop
           } else {
@@ -943,42 +562,25 @@ export class PhiladelphiaDocumentDownloader {
           console.log(
             `⚠️ Retrieval attempt ${attempt} failed: ${error.message}`
           )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
 
         // Wait before retrying (except on last attempt)
         if (attempt < maxRetries) {
-<<<<<<< HEAD
-          await new Promise((resolve) => setTimeout(resolve, retryDelay));
-=======
           await new Promise((resolve) => setTimeout(resolve, retryDelay))
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
       }
 
       console.log(
-<<<<<<< HEAD
-        `❌ Failed to retrieve downloads after ${maxRetries} attempts`,
-      );
-=======
         `❌ Failed to retrieve downloads after ${maxRetries} attempts`
       )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       // Mark remaining downloads as failed
       results.forEach((result) => {
         if (result.downloadStatus === "completed" && !result.storagePath) {
-<<<<<<< HEAD
-          result.downloadStatus = "failed";
-          result.error = "Failed to retrieve from Browserbase cloud storage";
-        }
-      });
-=======
           result.downloadStatus = "failed"
           result.error = "Failed to retrieve from Browserbase cloud storage"
         }
       })
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } catch (error: any) {
       console.error(`❌ Error retrieving files from Browserbase:`, error)
       throw error
@@ -991,19 +593,10 @@ export class PhiladelphiaDocumentDownloader {
   private async uploadBufferToStorage(
     fileBuffer: Buffer,
     rfpId: string,
-    fileName: string,
+    fileName: string
   ): Promise<string> {
     try {
       // Get the private directory for uploads
-<<<<<<< HEAD
-      const privateDir = this.objectStorage.getPrivateObjectDir();
-      const bucketName = privateDir.split("/")[0];
-      const objectPath = `rfp_documents/${rfpId}/${fileName}`;
-
-      // Get bucket reference
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-=======
       const privateDir = this.objectStorage.getPrivateObjectDir()
       const bucketName = privateDir.split("/")[0]
       const objectPath = `rfp_documents/${rfpId}/${fileName}`
@@ -1011,7 +604,6 @@ export class PhiladelphiaDocumentDownloader {
       // Get bucket reference
       const bucket = objectStorageClient.bucket(bucketName)
       const file = bucket.file(objectPath)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       // Upload buffer directly
       await file.save(fileBuffer, {
@@ -1022,103 +614,11 @@ export class PhiladelphiaDocumentDownloader {
             uploadedAt: new Date().toISOString(),
           },
         },
-<<<<<<< HEAD
-      });
-
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
-      return publicUrl;
-    } catch (error: any) {
-      console.error(`Failed to upload ${fileName} to storage:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get file extension based on filename and content type
-   */
-  private getFileExtension(fileName: string, contentType: string): string {
-    // First try to get extension from filename
-    const fileExt = fileName
-      .toLowerCase()
-      .match(/\.(pdf|doc|docx|xls|xlsx)$/)?.[0];
-    if (fileExt) return fileExt;
-
-    // Fall back to content type mapping
-    const contentTypeMap: Record<string, string> = {
-      "application/pdf": ".pdf",
-      "application/msword": ".doc",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        ".docx",
-      "application/vnd.ms-excel": ".xls",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-        ".xlsx",
-    };
-
-    return contentTypeMap[contentType] || ".pdf";
-  }
-
-  /**
-   * Verify file exists in object storage
-   */
-  private async verifyFileExists(storagePath: string): Promise<boolean> {
-    try {
-      // Extract bucket and object path from storage URL
-      const urlParts = storagePath
-        .replace("https://storage.googleapis.com/", "")
-        .split("/");
-      const bucketName = urlParts[0];
-      const objectPath = urlParts.slice(1).join("/");
-
-      // Check if file exists
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-      const [exists] = await file.exists();
-
-      return exists;
-    } catch (error) {
-      console.error(`Failed to verify file existence: ${error}`);
-      return false;
-    }
-  }
-
-  /**
-   * Upload file buffer to object storage
-   */
-  private async uploadToStorage(
-    fileName: string,
-    fileBuffer: Buffer,
-  ): Promise<string> {
-    try {
-      // Get the private directory for uploads
-      const privateDir = this.objectStorage.getPrivateObjectDir();
-      const bucketName = privateDir.split("/")[0];
-      const objectPath = `rfp_documents/${fileName}`;
-
-      // Get bucket reference
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-
-      // Upload buffer directly
-      await file.save(fileBuffer, {
-        metadata: {
-          contentType: "application/pdf",
-          metadata: {
-            uploadedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
-      return publicUrl;
-=======
       })
 
       // Generate public URL
       const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`
       return publicUrl
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } catch (error: any) {
       console.error(`Failed to upload ${fileName} to storage:`, error)
       throw error
@@ -1215,19 +715,10 @@ export class PhiladelphiaDocumentDownloader {
   private async uploadToStorageLegacy(
     filePath: string,
     rfpId: string,
-    fileName: string,
+    fileName: string
   ): Promise<string> {
     try {
       // Get the private directory for uploads
-<<<<<<< HEAD
-      const privateDir = this.objectStorage.getPrivateObjectDir();
-      const bucketName = privateDir.split("/")[0];
-      const objectPath = `rfp_documents/${rfpId}/${fileName}`;
-
-      // Get bucket reference
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-=======
       const privateDir = this.objectStorage.getPrivateObjectDir()
       const bucketName = privateDir.split("/")[0]
       const objectPath = `rfp_documents/${rfpId}/${fileName}`
@@ -1235,7 +726,6 @@ export class PhiladelphiaDocumentDownloader {
       // Get bucket reference
       const bucket = objectStorageClient.bucket(bucketName)
       const file = bucket.file(objectPath)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       // Upload file from local path
       await bucket.upload(filePath, {
@@ -1247,19 +737,11 @@ export class PhiladelphiaDocumentDownloader {
             uploadedAt: new Date().toISOString(),
           },
         },
-<<<<<<< HEAD
-      });
-
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
-      return publicUrl;
-=======
       })
 
       // Generate public URL
       const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`
       return publicUrl
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } catch (error: any) {
       console.error(`Failed to upload ${fileName} to storage:`, error)
       throw error
@@ -1272,36 +754,6 @@ export class PhiladelphiaDocumentDownloader {
    */
   async extractDocumentInfo(
     rfpUrl: string,
-<<<<<<< HEAD
-    rfpId: string,
-  ): Promise<PhiladelphiaDocument[]> {
-    let stagehand: Stagehand | null = null;
-
-    try {
-      console.log("🤖 Initializing Stagehand for document extraction...");
-      stagehand = new Stagehand(this.createStagehandConfig());
-      await stagehand.init();
-
-      const page = stagehand.page;
-      if (!page) {
-        throw new Error("Failed to get page instance from Stagehand");
-      }
-
-      console.log(`📊 Extracting document information from: ${rfpUrl}`);
-      await page.goto(rfpUrl, { waitUntil: "networkidle" });
-
-      // Extract document information using Stagehand act method
-      const extractionResult = await page.act(
-        `Extract all document information from this RFP page, including names, types, sizes, and any download links`,
-      );
-
-      // Parse the result
-      const documents = await page.evaluate(() => {
-        const docs: any[] = [];
-        const links = document.querySelectorAll(
-          'a[href*=".pdf"], a[href*=".doc"], a[href*=".xls"]',
-        );
-=======
     rfpId: string
   ): Promise<PhiladelphiaDocument[]> {
     let stagehand: Stagehand | null = null
@@ -1330,50 +782,31 @@ export class PhiladelphiaDocumentDownloader {
         const links = document.querySelectorAll(
           'a[href*=".pdf"], a[href*=".doc"], a[href*=".xls"]'
         )
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         links.forEach((link: any) => {
           docs.push({
             name: link.textContent?.trim() || "",
             type: "PDF",
             downloadHint: link.href,
-<<<<<<< HEAD
-          });
-        });
-        return docs;
-      });
-=======
           })
         })
         return docs
       })
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
 
       // Convert to our format
       return documents.map((doc: any) => ({
         name: doc.name,
         downloadStatus: "pending" as const,
         error: doc.downloadHint ? undefined : "No download method found",
-<<<<<<< HEAD
-      }));
-    } catch (error: any) {
-      console.error("Failed to extract document info:", error);
-      throw error;
-=======
       }))
     } catch (error: any) {
       console.error("Failed to extract document info:", error)
       throw error
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
     } finally {
       if (stagehand) {
         try {
           await stagehand.close()
         } catch (err) {
-<<<<<<< HEAD
-          console.error("Error closing Stagehand:", err);
-=======
           console.error("Error closing Stagehand:", err)
->>>>>>> ad2fe442ef205bfe186a9334e9dadf678773d559
         }
       }
     }
