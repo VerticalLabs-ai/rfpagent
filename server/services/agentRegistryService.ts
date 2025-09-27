@@ -410,6 +410,18 @@ export class AgentRegistryService {
     console.log('   - 3 Manager Agents');
     console.log('   - 7 Specialist Agents');
   }
+
+  /**
+   * Get all agents in the registry
+   */
+  async getAllAgents(): Promise<AgentRegistry[]> {
+    try {
+      return await storage.getAllAgents();
+    } catch (error) {
+      console.error('❌ Failed to get all agents:', error);
+      return [];
+    }
+  }
 }
 
 export const agentRegistryService = new AgentRegistryService();

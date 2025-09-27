@@ -2852,6 +2852,224 @@ export class WorkflowCoordinator {
     
     return recommendations;
   }
+
+  // ============ AGENT MONITORING API METHODS ============
+
+  /**
+   * Get work items with optional filtering
+   */
+  async getWorkItems(options: {
+    status?: string;
+    agentType?: string;
+    limit?: number;
+  } = {}): Promise<WorkItem[]> {
+    try {
+      const { status, agentType, limit = 50 } = options;
+      
+      // Get work items from storage with filtering
+      let workItems: WorkItem[] = [];
+      
+      if (status) {
+        workItems = await storage.getWorkItemsByStatus(status as any);
+      } else {
+        // Get all work items
+        workItems = await storage.getAllWorkItems();
+      }
+      
+      // Filter by agent type if specified
+      if (agentType && workItems.length > 0) {
+        const agents = await agentRegistryService.getAgentsByType(agentType);
+        const agentIds = agents.map(agent => agent.agentId);
+        workItems = workItems.filter(item => 
+          item.assignedAgentId && agentIds.includes(item.assignedAgentId)
+        );
+      }
+      
+      // Apply limit
+      return workItems.slice(0, limit);
+    } catch (error) {
+      console.error('❌ Failed to get work items:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get global workflow state
+   */
+  async getGlobalWorkflowState(): Promise<any> {
+    try {
+      const pendingItems = await storage.getWorkItemsByStatus('pending');
+      const assignedItems = await storage.getWorkItemsByStatus('assigned');
+      const inProgressItems = await storage.getWorkItemsByStatus('in_progress');
+      const completedItems = await storage.getWorkItemsByStatus('completed');
+      const failedItems = await storage.getWorkItemsByStatus('failed');
+      
+      const activeWorkflowsArray = Array.from(this.activeWorkflows.values());
+      
+      return {
+        summary: {
+          totalWorkItems: pendingItems.length + assignedItems.length + inProgressItems.length + completedItems.length + failedItems.length,
+          pendingItems: pendingItems.length,
+          assignedItems: assignedItems.length,
+          inProgressItems: inProgressItems.length,
+          completedItems: completedItems.length,
+          failedItems: failedItems.length,
+          activeWorkflows: activeWorkflowsArray.length
+        },
+        activeWorkflows: activeWorkflowsArray.map(workflow => ({
+          workflowId: workflow.workflowId,
+          currentPhase: workflow.currentPhase,
+          status: workflow.status,
+          progress: workflow.progress,
+          userId: workflow.userId,
+          conversationId: workflow.conversationId
+        })),
+        workItemDistribution: {
+          byStatus: {
+            pending: pendingItems.length,
+            assigned: assignedItems.length,
+            in_progress: inProgressItems.length,
+            completed: completedItems.length,
+            failed: failedItems.length
+          },
+          byPhase: {
+            discovery: activeWorkflowsArray.filter(w => w.currentPhase === 'discovery').length,
+            analysis: activeWorkflowsArray.filter(w => w.currentPhase === 'analysis').length,
+            generation: activeWorkflowsArray.filter(w => w.currentPhase === 'generation').length,
+            submission: activeWorkflowsArray.filter(w => w.currentPhase === 'submission').length,
+            monitoring: activeWorkflowsArray.filter(w => w.currentPhase === 'monitoring').length
+          }
+        },
+        systemHealth: {
+          isProcessingEnabled: this.workItemProcessingInterval !== null,
+          learningEnabled: this.enableLearning,
+          lastUpdateTime: new Date()
+        }
+      };
+    } catch (error) {
+      console.error('❌ Failed to get global workflow state:', error);
+      return {
+        summary: {
+          totalWorkItems: 0,
+          pendingItems: 0,
+          assignedItems: 0,
+          inProgressItems: 0,
+          completedItems: 0,
+          failedItems: 0,
+          activeWorkflows: 0
+        },
+        activeWorkflows: [],
+        workItemDistribution: {
+          byStatus: {},
+          byPhase: {}
+        },
+        systemHealth: {
+          isProcessingEnabled: false,
+          learningEnabled: false,
+          lastUpdateTime: new Date()
+        },
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Get phase statistics
+   */
+  async getPhaseStatistics(): Promise<any> {
+    try {
+      const activeWorkflowsArray = Array.from(this.activeWorkflows.values());
+      
+      // Get RFPs by status from storage
+      const allRfps = await storage.getAllRFPs();
+      
+      const phaseStats = {
+        discovery: {
+          active: activeWorkflowsArray.filter(w => w.currentPhase === 'discovery').length,
+          completed: allRfps.filter(rfp => rfp.discoveryStatus === 'completed').length,
+          failed: allRfps.filter(rfp => rfp.discoveryStatus === 'failed').length,
+          averageProgress: this.calculateAverageProgress(activeWorkflowsArray.filter(w => w.currentPhase === 'discovery'))
+        },
+        analysis: {
+          active: activeWorkflowsArray.filter(w => w.currentPhase === 'analysis').length,
+          completed: allRfps.filter(rfp => rfp.analysisStatus === 'completed').length,
+          failed: allRfps.filter(rfp => rfp.analysisStatus === 'failed').length,
+          averageProgress: this.calculateAverageProgress(activeWorkflowsArray.filter(w => w.currentPhase === 'analysis'))
+        },
+        generation: {
+          active: activeWorkflowsArray.filter(w => w.currentPhase === 'generation').length,
+          completed: allRfps.filter(rfp => rfp.proposalStatus === 'completed').length,
+          failed: allRfps.filter(rfp => rfp.proposalStatus === 'failed').length,
+          averageProgress: this.calculateAverageProgress(activeWorkflowsArray.filter(w => w.currentPhase === 'generation'))
+        },
+        submission: {
+          active: activeWorkflowsArray.filter(w => w.currentPhase === 'submission').length,
+          completed: allRfps.filter(rfp => rfp.submissionStatus === 'completed').length,
+          failed: allRfps.filter(rfp => rfp.submissionStatus === 'failed').length,
+          averageProgress: this.calculateAverageProgress(activeWorkflowsArray.filter(w => w.currentPhase === 'submission'))
+        },
+        monitoring: {
+          active: activeWorkflowsArray.filter(w => w.currentPhase === 'monitoring').length,
+          completed: allRfps.filter(rfp => rfp.submissionStatus === 'monitoring').length,
+          failed: 0, // Monitoring doesn't typically fail
+          averageProgress: this.calculateAverageProgress(activeWorkflowsArray.filter(w => w.currentPhase === 'monitoring'))
+        }
+      };
+      
+      return {
+        phases: phaseStats,
+        totalActiveWorkflows: activeWorkflowsArray.length,
+        totalRfps: allRfps.length,
+        overallHealth: this.calculateOverallHealth(phaseStats),
+        lastUpdated: new Date()
+      };
+    } catch (error) {
+      console.error('❌ Failed to get phase statistics:', error);
+      return {
+        phases: {},
+        totalActiveWorkflows: 0,
+        totalRfps: 0,
+        overallHealth: 'unknown',
+        lastUpdated: new Date(),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Calculate average progress for workflows
+   */
+  private calculateAverageProgress(workflows: WorkflowExecutionContext[]): number {
+    if (workflows.length === 0) return 0;
+    const totalProgress = workflows.reduce((sum, workflow) => sum + workflow.progress, 0);
+    return Math.round((totalProgress / workflows.length) * 100) / 100;
+  }
+
+  /**
+   * Calculate overall system health
+   */
+  private calculateOverallHealth(phaseStats: any): 'excellent' | 'good' | 'warning' | 'critical' {
+    let totalActive = 0;
+    let totalFailed = 0;
+    let totalCompleted = 0;
+    
+    for (const phase of Object.values(phaseStats) as any[]) {
+      totalActive += phase.active || 0;
+      totalFailed += phase.failed || 0;
+      totalCompleted += phase.completed || 0;
+    }
+    
+    const total = totalActive + totalFailed + totalCompleted;
+    if (total === 0) return 'good';
+    
+    const failureRate = totalFailed / total;
+    const activeRate = totalActive / total;
+    
+    if (failureRate > 0.2) return 'critical';
+    if (failureRate > 0.1 || activeRate > 0.8) return 'warning';
+    if (failureRate < 0.05 && activeRate < 0.5) return 'excellent';
+    return 'good';
+  }
 }
 
 export const workflowCoordinator = new WorkflowCoordinator();
