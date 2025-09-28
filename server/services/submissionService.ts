@@ -6,7 +6,7 @@ import { agentRegistryService } from './agentRegistryService';
 import type {
   Submission,
   Proposal,
-  Portal,
+  PublicPortal,
   RFP,
   SubmissionPipelineRequest,
   SubmissionPipelineResult,
@@ -30,7 +30,7 @@ export interface SubmissionOptions {
     headless?: boolean;
     timeout?: number;
   };
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SubmissionStatus {
@@ -225,8 +225,7 @@ export class SubmissionService {
         message: `Automated submission pipeline initiated for ${portal.name}`,
         relatedEntityType: 'submission',
         relatedEntityId: submissionId,
-        priority: 'high',
-        read: false,
+        isRead: false,
       });
 
       // Prepare submission pipeline request
@@ -429,8 +428,7 @@ export class SubmissionService {
         message: `Submission has been cancelled by user request`,
         relatedEntityType: 'submission',
         relatedEntityId: submissionId,
-        priority: 'medium',
-        read: false,
+        isRead: false,
       });
 
       // Create audit log
@@ -627,7 +625,7 @@ export class SubmissionService {
   private async validateSubmissionReadiness(
     submission: Submission,
     proposal: Proposal,
-    portal: Portal
+    portal: PublicPortal
   ): Promise<{ ready: boolean; reason?: string; rfp?: any }> {
     try {
       // Check if proposal is completed
@@ -688,8 +686,7 @@ export class SubmissionService {
         message: `Automated submission failed: ${error || 'Unknown error'}`,
         relatedEntityType: 'submission',
         relatedEntityId: submissionId,
-        priority: 'high',
-        read: false,
+        isRead: false,
       });
 
       // Create audit log

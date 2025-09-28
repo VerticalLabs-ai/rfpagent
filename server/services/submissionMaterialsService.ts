@@ -156,7 +156,7 @@ export class SubmissionMaterialsService {
       const documents = await storage.getDocumentsByRFP(request.rfpId);
       let companyProfile;
       if (request.companyProfileId) {
-        companyProfile = await storage.getCompanyProfile(
+        companyProfile = await storage.getCompanyProfileWithDetails(
           request.companyProfileId
         );
         if (!companyProfile) {
@@ -167,12 +167,15 @@ export class SubmissionMaterialsService {
       } else {
         // Get the first available company profile as default
         const profiles = await storage.getAllCompanyProfiles();
-        companyProfile = profiles.length > 0 ? profiles[0] : null;
-        if (!companyProfile) {
+        const defaultProfile = profiles.length > 0 ? profiles[0] : null;
+        if (!defaultProfile) {
           throw new Error(
             'No company profiles available. Please create a company profile first.'
           );
         }
+        companyProfile = await storage.getCompanyProfileWithDetails(
+          defaultProfile.id
+        );
       }
 
       progressTracker.updateStep(
@@ -297,7 +300,8 @@ export class SubmissionMaterialsService {
         rfp,
         proposalContent,
         pricingData,
-        complianceData
+        complianceData,
+        companyProfile
       );
 
       const documentsGenerated = await this.generateDocuments(
@@ -692,12 +696,22 @@ export class SubmissionMaterialsService {
     rfp: any,
     proposalContent: any,
     pricingData: any,
-    complianceData: any
+    complianceData: any,
+    companyProfile: any
   ): Promise<string> {
     // Check for existing proposal
     const existingProposal = await storage.getProposalByRFP(rfp.id);
 
     let proposalId: string;
+
+    const proposalMetadata = this.buildProposalMetadata(
+      rfp,
+      proposalContent,
+      pricingData,
+      companyProfile
+    );
+
+    const estimatedCostValue = pricingData?.summary?.total ?? pricingData?.summary?.subtotal ?? null;
 
     if (existingProposal) {
       // Update existing proposal
@@ -710,6 +724,10 @@ export class SubmissionMaterialsService {
           pricingData?.summary?.margin !== undefined
             ? pricingData.summary.margin.toString()
             : null,
+        estimatedCost: estimatedCostValue
+          ? estimatedCostValue.toString()
+          : null,
+        proposalData: JSON.stringify(proposalMetadata),
       });
       proposalId = existingProposal.id;
     } else {
@@ -724,6 +742,10 @@ export class SubmissionMaterialsService {
           pricingData?.summary?.margin !== undefined
             ? pricingData.summary.margin.toString()
             : null,
+        estimatedCost: estimatedCostValue
+          ? estimatedCostValue.toString()
+          : null,
+        proposalData: JSON.stringify(proposalMetadata),
       });
       proposalId = newProposal.id;
     }
@@ -735,6 +757,89 @@ export class SubmissionMaterialsService {
     });
 
     return proposalId;
+  }
+
+  private buildProposalMetadata(
+    rfp: any,
+    proposalContent: any,
+    pricingData: any,
+    companyProfile: any
+  ) {
+    const addresses = companyProfile?.addresses || [];
+    const contacts = companyProfile?.contacts || [];
+    const primaryAddress =
+      addresses.find((addr: any) => addr.addressType === 'primary_mailing') ||
+      addresses.find((addr: any) => addr.addressType === 'physical') ||
+      addresses[0];
+
+    const primaryContact =
+      contacts.find((contact: any) => contact.contactType === 'primary') ||
+      contacts[0];
+
+    const formatAddress = (address: any) => {
+      if (!address) return '';
+      const parts = [
+        address.addressLine1,
+        address.addressLine2,
+        [address.city, address.state].filter(Boolean).join(', '),
+        address.zipCode,
+      ].filter(Boolean);
+      return parts.join(', ');
+    };
+
+    const certifications = (companyProfile?.certifications || [])
+      .filter((cert: any) => cert.status !== 'expired')
+      .map((cert: any) => ({
+        type: cert.certificationType,
+        number: cert.certificationNumber,
+        expiresAt: cert.expirationDate,
+      }));
+
+    const insurance = (companyProfile?.insurance || []).map((policy: any) => ({
+      type: policy.insuranceType,
+      carrier: policy.carrier,
+      policyNumber: policy.policyNumber,
+      expiresAt: policy.expirationDate,
+    }));
+
+    const pricingSummary = pricingData?.summary || {};
+
+    return {
+      companyName: companyProfile?.companyName || companyProfile?.dba || '',
+      companyAddress: formatAddress(primaryAddress),
+      contactName: primaryContact?.name || '',
+      contactEmail: primaryContact?.email || '',
+      contactPhone:
+        primaryContact?.mobilePhone ||
+        primaryContact?.officePhone ||
+        '',
+      totalCost: pricingSummary.total ?? pricingSummary.subtotal ?? null,
+      duration: proposalContent?.timeline || '',
+      startDate:
+        rfp.requirements?.startDate ||
+        rfp.requirements?.requiredDate ||
+        '',
+      technicalApproach:
+        proposalContent?.technicalApproach ||
+        proposalContent?.technical_approach ||
+        '',
+      methodology:
+        proposalContent?.approach ||
+        proposalContent?.methodology ||
+        '',
+      deliverables:
+        proposalContent?.deliverables ||
+        proposalContent?.teamStructure ||
+        '',
+      certifications,
+      insurance,
+      experience:
+        proposalContent?.qualifications ||
+        companyProfile?.primaryBusinessCategory ||
+        '',
+      teamQualifications: proposalContent?.teamStructure || '',
+      references: proposalContent?.references || [],
+    };
   }
 
   private async generateDocuments(

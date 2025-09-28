@@ -19,8 +19,8 @@
     "test": "npx jest tests/",
     "test:watch": "npx jest tests/ --watch",
     "test:coverage": "npx jest tests/ --coverage",
-    "lint": "eslint server/ --ext .ts",
-    "lint:fix": "eslint server/ --ext .ts --fix",
+    "lint": "eslint --ext .ts,.tsx client/src server shared",
+    "lint:fix": "eslint --ext .ts,.tsx client/src server shared --fix",
     "format": "prettier --write server/ shared/ client/src/",
     "format:check": "prettier --check server/ shared/ client/src/",
     "type-check": "tsc --noEmit",
@@ -143,6 +143,8 @@
     "eslint": "^9.36.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.1",
     "postcss": "^8.4.47",
@@ -166,6 +168,7 @@
       "prettier --write"
     ],
     "client/src/**/*.{ts,tsx,js,jsx}": [
+      "bash -c 'for file in \"$@\"; do if ! head -1 \"$file\" | grep -q \"@ts-nocheck\"; then eslint --fix \"$file\"; fi; done' --",
       "prettier --write"
     ]
   }

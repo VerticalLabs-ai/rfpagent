@@ -785,7 +785,14 @@ export class FormSubmissionSpecialist {
     rfp: RFP
   ): Promise<any> {
     // Extract relevant data from proposal and RFP for form population
-    const proposalData = (proposal.proposalData as any) || {};
+    let proposalData: any = proposal.proposalData || {};
+    if (typeof proposalData === 'string') {
+      try {
+        proposalData = JSON.parse(proposalData);
+      } catch {
+        proposalData = {};
+      }
+    }
 
     return {
       // Basic information
@@ -1251,11 +1258,12 @@ export class DocumentUploadSpecialist {
 
       // Add supporting documents
       for (const doc of proposalDocuments) {
-        if (doc.filePath) {
+        const path = doc.objectPath || (doc.parsedData as any)?.downloadUrl;
+        if (path) {
           documentsToUpload.push({
             type: 'supporting',
             name: doc.filename || 'document.pdf',
-            path: doc.filePath,
+            path,
             description: doc.description || 'Supporting document',
           });
         }
@@ -1271,17 +1279,22 @@ export class DocumentUploadSpecialist {
               doc.filename?.includes(requiredDoc.name)
           );
 
-          if (
-            matchingDoc &&
-            !documentsToUpload.find(d => d.path === matchingDoc.filePath)
-          ) {
-            documentsToUpload.push({
-              type: requiredDoc.type,
-              name: requiredDoc.name,
-              path: matchingDoc.filePath,
-              description: requiredDoc.description,
-              required: true,
-            });
+          if (matchingDoc) {
+            const path = matchingDoc.objectPath ||
+              (matchingDoc.parsedData as any)?.downloadUrl;
+
+            if (
+              path &&
+              !documentsToUpload.find(d => d.path === path)
+            ) {
+              documentsToUpload.push({
+                type: requiredDoc.type,
+                name: requiredDoc.name,
+                path,
+                description: requiredDoc.description,
+                required: true,
+              });
+            }
           }
         }
       }

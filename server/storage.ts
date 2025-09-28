@@ -140,6 +140,7 @@ export interface IStorage {
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
   getSubmissionsByRFP(rfpId: string): Promise<Submission[]>;
+  getSubmissionsByDateRange(startDate: Date, endDate: Date): Promise<Submission[]>;
   getSubmissionByProposal(proposalId: string): Promise<Submission | undefined>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(
@@ -168,7 +169,8 @@ export interface IStorage {
   getSubmissionEvent(id: string): Promise<SubmissionEvent | undefined>;
   getSubmissionEventsByPipeline(pipelineId: string): Promise<SubmissionEvent[]>;
   getSubmissionEventsBySubmission(
-    submissionId: string
+    submissionId: string,
+    limit?: number
   ): Promise<SubmissionEvent[]>;
   getSubmissionEventsByType(eventType: string): Promise<SubmissionEvent[]>;
   getRecentSubmissionEvents(limit?: number): Promise<SubmissionEvent[]>;
@@ -570,6 +572,7 @@ export class DatabaseStorage implements IStorage {
         lastError: portals.lastError,
         errorCount: portals.errorCount,
         createdAt: portals.createdAt,
+        updatedAt: portals.updatedAt,
       })
       .from(portals)
       .orderBy(asc(portals.name));
@@ -593,6 +596,7 @@ export class DatabaseStorage implements IStorage {
         lastError: portals.lastError,
         errorCount: portals.errorCount,
         createdAt: portals.createdAt,
+        updatedAt: portals.updatedAt,
       })
       .from(portals)
       .where(eq(portals.status, 'active'))
@@ -617,6 +621,7 @@ export class DatabaseStorage implements IStorage {
         lastError: portals.lastError,
         errorCount: portals.errorCount,
         createdAt: portals.createdAt,
+        updatedAt: portals.updatedAt,
       })
       .from(portals)
       .where(eq(portals.id, id));
@@ -645,6 +650,7 @@ export class DatabaseStorage implements IStorage {
       lastError: portals.lastError,
       errorCount: portals.errorCount,
       createdAt: portals.createdAt,
+      updatedAt: portals.updatedAt,
     });
     return newPortal;
   }
@@ -672,6 +678,7 @@ export class DatabaseStorage implements IStorage {
         lastError: portals.lastError,
         errorCount: portals.errorCount,
         createdAt: portals.createdAt,
+        updatedAt: portals.updatedAt,
       });
     return updatedPortal;
   }
@@ -989,6 +996,22 @@ export class DatabaseStorage implements IStorage {
       .where(eq(submissions.rfpId, rfpId));
   }
 
+  async getSubmissionsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Submission[]> {
+    return await db
+      .select()
+      .from(submissions)
+      .where(
+        and(
+          gte(submissions.createdAt, startDate),
+          lte(submissions.createdAt, endDate)
+        )
+      )
+      .orderBy(desc(submissions.createdAt));
+  }
+
   async getSubmissionByProposal(
     proposalId: string
   ): Promise<Submission | undefined> {
@@ -1116,13 +1139,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getSubmissionEventsBySubmission(
-    submissionId: string
+    submissionId: string,
+    limit?: number
   ): Promise<SubmissionEvent[]> {
-    return await db
+    const baseQuery = db
       .select()
       .from(submissionEvents)
       .where(eq(submissionEvents.submissionId, submissionId))
       .orderBy(desc(submissionEvents.timestamp));
+
+    const query = typeof limit === 'number' ? baseQuery.limit(limit) : baseQuery;
+
+    return await query;
   }
 
   async getSubmissionEventsByType(

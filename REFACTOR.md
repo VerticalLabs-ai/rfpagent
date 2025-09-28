@@ -12,15 +12,15 @@
 ## Workstream Overview
 
 1. **Foundations & Tooling**
-   - [ ] Confirm TypeScript baseline: keep `target: "ES2020"`, audit for other compiler flags we need (e.g., `downlevelIteration`).
-   - [ ] Restore `lint`, `format`, and `type-check` scripts in `package.json`; wire them into CI (GitHub Actions) for PR validation.
-   - [ ] Re-enable Husky/lint-staged for staged files if we want pre-commit enforcement.
+   - [x] Confirm TypeScript baseline: keep `target: "ES2020"`, audit for other compiler flags we need (e.g., `downlevelIteration`).
+   - [x] Restore `lint`, `format`, and `type-check` scripts in `package.json`; wire them into CI (GitHub Actions) for PR validation.
+   - [x] Re-enable Husky/lint-staged for staged files if we want pre-commit enforcement.
 
 2. **Shared Schema & Repository Alignment**
-   - [ ] Inventory DB tables/columns used by `BaseRepository`, `storage.ts`, `submissionService`, `workflowCoordinator`, `submissionSpecialists`.
+   - [x] Inventory DB tables/columns used by `BaseRepository`, `storage.ts`, `submissionService`, `workflowCoordinator`, `submissionSpecialists`. (see `docs/workstream-2-inventory.md`).
    - [ ] Compare with actual Drizzle schema (`shared/schema.ts`) and database migrations; decide for each missing field whether to add it back or update consumers.
-   - [ ] Update `shared/schema.ts` (and migrations) accordingly.
-   - [ ] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
+   - [x] Update `shared/schema.ts` (and migrations) accordingly. _Added `portals.updatedAt`, `proposals.proposalData`, `proposals.estimatedCost`._
+   - [x] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
    - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
 
 3. **Front-end Data Contracts**

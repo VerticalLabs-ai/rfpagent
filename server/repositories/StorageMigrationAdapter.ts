@@ -219,6 +219,15 @@ export class StorageMigrationAdapter implements IStorage {
     );
   }
 
+  async getSubmissionsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Submission[]> {
+    throw new Error(
+      'Submission repository not yet implemented in migration adapter'
+    );
+  }
+
   async createSubmission(submission: InsertSubmission): Promise<Submission> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
@@ -310,7 +319,8 @@ export class StorageMigrationAdapter implements IStorage {
   }
 
   async getSubmissionEventsBySubmission(
-    submissionId: string
+    submissionId: string,
+    limit?: number
   ): Promise<SubmissionEvent[]> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'

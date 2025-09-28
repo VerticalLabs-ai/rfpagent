@@ -27,6 +27,7 @@ export const portals = pgTable("portals", {
   lastError: text("last_error"),
   errorCount: integer("error_count").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const rfps = pgTable("rfps", {
@@ -57,6 +58,8 @@ export const proposals = pgTable("proposals", {
   pricingTables: jsonb("pricing_tables"), // pricing breakdown
   forms: jsonb("forms"), // filled forms
   attachments: jsonb("attachments"), // file references
+  proposalData: jsonb("proposal_data"), // structured proposal metadata
+  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }),
   estimatedMargin: decimal("estimated_margin", { precision: 5, scale: 2 }),
   status: text("status").notNull().default("draft"), // draft, review, approved, submitted
   generatedAt: timestamp("generated_at").defaultNow().notNull(),
@@ -1042,6 +1045,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export const insertPortalSchema = createInsertSchema(portals).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
   lastScanned: true,
 });
 
@@ -1229,6 +1233,40 @@ export type InsertSubmissionEvent = z.infer<typeof insertSubmissionEventSchema>;
 
 export type SubmissionStatusHistory = typeof submissionStatusHistory.$inferSelect;
 export type InsertSubmissionStatusHistory = z.infer<typeof insertSubmissionStatusHistorySchema>;
+
+export interface SubmissionPipelineRequest {
+  submissionId: string;
+  sessionId: string;
+  portalCredentials?: {
+    username?: string;
+    password?: string;
+    mfaMethod?: string;
+  };
+  priority?: number;
+  deadline?: Date;
+  retryOptions?: {
+    maxRetries?: number;
+    retryDelay?: number;
+  };
+  browserOptions?: {
+    headless?: boolean;
+    timeout?: number;
+  };
+  metadata?: Record<string, unknown>;
+}
+
+export interface SubmissionPipelineResult {
+  success: boolean;
+  pipelineId?: string;
+  submissionId?: string;
+  currentPhase?: string;
+  progress?: number;
+  status?: string;
+  error?: string;
+  estimatedCompletion?: Date;
+  receiptData?: unknown;
+  nextSteps?: string[];
+}
 
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;

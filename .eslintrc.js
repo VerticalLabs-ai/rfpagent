@@ -2,17 +2,23 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
     'eslint:recommended',
+    'plugin:react/recommended',
+    'plugin:react-hooks/recommended',
     '@typescript-eslint/recommended',
     'prettier'
   ],
-  plugins: ['@typescript-eslint', 'prettier'],
+  plugins: ['@typescript-eslint', 'prettier', 'react', 'react-hooks'],
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module',
-    project: './tsconfig.json'
+    project: './tsconfig.json',
+    ecmaFeatures: {
+      jsx: true
+    }
   },
   env: {
     node: true,
+    browser: true,
     es2022: true,
     jest: true
   },
@@ -35,5 +41,10 @@ module.exports = {
     '*.d.ts',
     'client/dist/',
     'vite.config.ts'
-  ]
+  ],
+  settings: {
+    react: {
+      version: 'detect'
+    }
+  }
 };

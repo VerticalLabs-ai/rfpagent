@@ -9,44 +9,12 @@ import type {
   Portal,
   RFP,
   SubmissionPipeline,
+  SubmissionPipelineRequest,
+  SubmissionPipelineResult,
   WorkItem,
   AgentSession,
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
-
-export interface SubmissionPipelineRequest {
-  submissionId: string;
-  sessionId: string;
-  portalCredentials?: {
-    username?: string;
-    password?: string;
-    mfaMethod?: string;
-  };
-  priority?: number;
-  deadline?: Date;
-  retryOptions?: {
-    maxRetries?: number;
-    retryDelay?: number;
-  };
-  browserOptions?: {
-    headless?: boolean;
-    timeout?: number;
-  };
-  metadata?: any;
-}
-
-export interface SubmissionPipelineResult {
-  success: boolean;
-  pipelineId?: string;
-  submissionId?: string;
-  currentPhase?: string;
-  progress?: number;
-  status?: string;
-  error?: string;
-  estimatedCompletion?: Date;
-  receiptData?: any;
-  nextSteps?: string[];
-}
 
 export interface SubmissionPipelineInstance {
   pipelineId: string;
