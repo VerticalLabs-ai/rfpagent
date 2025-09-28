@@ -9,12 +9,27 @@ import type {
   Portal,
   RFP,
   SubmissionPipeline,
+  SubmissionPipelineMetadata,
+  SubmissionPipelinePhase,
+  SubmissionPipelineStatus,
   SubmissionPipelineRequest,
   SubmissionPipelineResult,
+  SubmissionPipelineResults,
+  SubmissionPipelineErrorData,
+  SubmissionPhase,
+  SubmissionPhaseResult,
+  SubmissionVerificationResult,
   WorkItem,
   AgentSession,
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
+import {
+  SUBMISSION_PHASES,
+  SUBMISSION_PHASE_ESTIMATES_MS,
+  SUBMISSION_PHASE_PROGRESS,
+  getResultKeyForPhase,
+  isSubmissionPhase,
+} from '@shared/api/submissions';
 
 export interface SubmissionPipelineInstance {
   pipelineId: string;
@@ -23,39 +38,41 @@ export interface SubmissionPipelineInstance {
   rfpId: string;
   proposalId: string;
   portalId: string;
-  currentPhase:
-    | 'queued'
-    | 'preflight'
-    | 'authenticating'
-    | 'filling'
-    | 'uploading'
-    | 'submitting'
-    | 'verifying'
-    | 'completed'
-    | 'failed';
-  status: 'pending' | 'in_progress' | 'suspended' | 'completed' | 'failed';
+  currentPhase: SubmissionPipelinePhase;
+  status: SubmissionPipelineStatus;
   progress: number;
   workItems: string[]; // IDs of created work items
   browserSessionId?: string;
-  authenticationData?: any;
-  formData?: any;
-  uploadedDocuments?: any;
-  submissionReceipt?: any;
-  errorData?: any;
+  authenticationData?: SubmissionPhaseResult | null;
+  formData?: SubmissionPhaseResult | null;
+  uploadedDocuments?: SubmissionPhaseResult | null;
+  submissionReceipt?: SubmissionVerificationResult | null;
+  errorData?: SubmissionPipelineErrorData | null;
   retryCount: number;
   maxRetries: number;
-  results: {
-    preflight?: any;
-    authentication?: any;
-    formFilling?: any;
-    documentUploads?: any;
-    submission?: any;
-    verification?: any;
-  };
-  metadata: any;
+  results: SubmissionPipelineResults;
+  metadata: SubmissionPipelineMetadata;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const SUBMISSION_PHASE_LIST = SUBMISSION_PHASES;
+
+const toErrorMessage = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return String(error);
+  }
+};
 
 /**
  * Submission Pipeline Orchestrator
@@ -100,7 +117,10 @@ export class SubmissionOrchestrator {
 
       console.log('✅ Submission agents initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize submission agents:', error);
+      console.error(
+        `❌ Failed to initialize submission agents: ${toErrorMessage(error)}`,
+        error
+      );
     }
   }
 
@@ -135,8 +155,9 @@ export class SubmissionOrchestrator {
         },
       });
     } catch (error) {
-      if (!error.message.includes('already exists')) {
-        throw error;
+      const message = toErrorMessage(error);
+      if (!message.includes('already exists')) {
+        throw error instanceof Error ? error : new Error(message);
       }
     }
   }
@@ -167,8 +188,9 @@ export class SubmissionOrchestrator {
         },
       });
     } catch (error) {
-      if (!error.message.includes('already exists')) {
-        throw error;
+      const message = toErrorMessage(error);
+      if (!message.includes('already exists')) {
+        throw error instanceof Error ? error : new Error(message);
       }
     }
   }
@@ -229,10 +251,11 @@ export class SubmissionOrchestrator {
           },
         });
       } catch (error) {
-        if (!error.message.includes('already exists')) {
+        const message = toErrorMessage(error);
+        if (!message.includes('already exists')) {
           console.warn(
             `⚠️ Failed to register specialist ${specialist.agentId}:`,
-            error.message
+            message
           );
         }
       }
@@ -284,9 +307,14 @@ export class SubmissionOrchestrator {
         status: 'pending',
         progress: 0,
         workItems: [],
+        authenticationData: null,
+        formData: null,
+        uploadedDocuments: null,
+        submissionReceipt: null,
+        errorData: null,
         retryCount: 0,
         maxRetries: request.retryOptions?.maxRetries || 3,
-        results: {},
+        results: {} as SubmissionPipelineResults,
         metadata: {
           portalName: portal.name,
           rfpTitle: rfp.title,
@@ -385,6 +413,7 @@ export class SubmissionOrchestrator {
         nextSteps: this.getNextSteps(pipeline),
       };
     } catch (error) {
+      const message = toErrorMessage(error) || 'Pipeline initiation failed';
       console.error('❌ Failed to initiate submission pipeline:', error);
 
       // Create failure event
@@ -396,7 +425,7 @@ export class SubmissionOrchestrator {
           phase: 'queued',
           level: 'error',
           message: 'Failed to initiate submission pipeline',
-          details: { error: error.message },
+          details: { error: message },
           agentId: 'submission-orchestrator',
         });
       }
@@ -404,8 +433,7 @@ export class SubmissionOrchestrator {
       return {
         success: false,
         submissionId: request.submissionId,
-        error:
-          error instanceof Error ? error.message : 'Pipeline initiation failed',
+        error: message,
       };
     }
   }
@@ -870,7 +898,7 @@ export class SubmissionOrchestrator {
   async handlePhaseCompletion(
     pipelineId: string,
     workItemIds: string[],
-    nextPhase: string
+    nextPhase: SubmissionPipelinePhase
   ): Promise<void> {
     const pipeline = this.activePipelines.get(pipelineId);
     if (!pipeline) {
@@ -908,15 +936,23 @@ export class SubmissionOrchestrator {
       }
 
       // Collect results from completed work items
-      const phaseResults = workItems.reduce((acc, item) => {
-        if (item?.result) {
-          return { ...acc, ...item.result };
-        }
-        return acc;
-      }, {});
+      const phaseResults = workItems.reduce<SubmissionPhaseResult>(
+        (acc, item) => {
+          if (item?.result && typeof item.result === 'object') {
+            return {
+              ...acc,
+              ...(item.result as Record<string, unknown>),
+            };
+          }
+          return acc;
+        },
+        {}
+      );
 
-      // Store phase results
-      pipeline.results[pipeline.currentPhase] = phaseResults;
+      const resultKey = getResultKeyForPhase(pipeline.currentPhase);
+      if (resultKey) {
+        pipeline.results[resultKey] = phaseResults;
+      }
 
       // Create phase completion event
       await storage.createSubmissionEvent({
@@ -954,14 +990,12 @@ export class SubmissionOrchestrator {
           console.warn(`⚠️ Unknown next phase: ${nextPhase}`);
       }
     } catch (error) {
+      const message = toErrorMessage(error) || 'Phase transition failed';
       console.error(
         `❌ Failed to handle phase completion for pipeline ${pipelineId}:`,
         error
       );
-      await this.handlePipelineFailure(
-        pipeline,
-        error instanceof Error ? error.message : 'Phase transition failed'
-      );
+      await this.handlePipelineFailure(pipeline, message);
     }
   }
 
@@ -971,7 +1005,7 @@ export class SubmissionOrchestrator {
   private async handlePipelineFailure(
     pipeline: SubmissionPipelineInstance,
     error: string,
-    failedWorkItems?: any[]
+    failedWorkItems?: Array<WorkItem | null | undefined>
   ): Promise<void> {
     console.error(`❌ Pipeline ${pipeline.pipelineId} failed: ${error}`);
 
@@ -1008,10 +1042,22 @@ export class SubmissionOrchestrator {
 
     // Permanent failure
     pipeline.status = 'failed';
+    const serializedFailures =
+      failedWorkItems
+        ?.filter((item): item is WorkItem => Boolean(item))
+        .map(item => ({
+          id: item.id,
+          taskType: item.taskType,
+          status: item.status,
+          error: item.error,
+        }));
+
     pipeline.errorData = {
       error,
-      failedWorkItems,
       retryCount: pipeline.retryCount,
+      ...(serializedFailures && serializedFailures.length
+        ? { failedWorkItems: serializedFailures }
+        : {}),
     };
     pipeline.updatedAt = new Date();
 
@@ -1105,17 +1151,11 @@ export class SubmissionOrchestrator {
       `🔄 Retrying phase ${pipeline.currentPhase} for pipeline ${pipeline.pipelineId}`
     );
 
-    // Reset phase progress
-    const phaseProgressMap = {
-      preflight: 10,
-      authenticating: 25,
-      filling: 45,
-      uploading: 65,
-      submitting: 80,
-      verifying: 95,
-    };
+    const progress = isSubmissionPhase(pipeline.currentPhase)
+      ? SUBMISSION_PHASE_PROGRESS[pipeline.currentPhase]
+      : 0;
 
-    pipeline.progress = phaseProgressMap[pipeline.currentPhase] || 0;
+    pipeline.progress = progress ?? 0;
     pipeline.status = 'in_progress';
     pipeline.updatedAt = new Date();
 
@@ -1191,7 +1231,10 @@ export class SubmissionOrchestrator {
         });
       }
     } catch (error) {
-      console.warn(`⚠️ Failed to update pipeline in database:`, error);
+      console.warn(
+        `⚠️ Failed to update pipeline in database: ${toErrorMessage(error)}`,
+        error
+      );
     }
   }
 
@@ -1201,7 +1244,7 @@ export class SubmissionOrchestrator {
   private schedulePhaseCompletion(
     pipeline: SubmissionPipelineInstance,
     workItemIds: string | string[],
-    nextPhase: string
+    nextPhase: SubmissionPipelinePhase
   ): void {
     const itemIds = Array.isArray(workItemIds) ? workItemIds : [workItemIds];
 
@@ -1225,7 +1268,10 @@ export class SubmissionOrchestrator {
           );
         }
       } catch (error) {
-        console.error('Error monitoring phase completion:', error);
+        console.error(
+          `Error monitoring phase completion for pipeline ${pipeline.pipelineId}: ${toErrorMessage(error)}`,
+          error
+        );
         clearInterval(checkInterval);
       }
     }, 5000); // Check every 5 seconds
@@ -1246,28 +1292,14 @@ export class SubmissionOrchestrator {
   private calculateEstimatedCompletion(
     pipeline: SubmissionPipelineInstance
   ): Date {
-    const phaseEstimates = {
-      preflight: 5 * 60 * 1000, // 5 minutes
-      authenticating: 3 * 60 * 1000, // 3 minutes
-      filling: 10 * 60 * 1000, // 10 minutes
-      uploading: 8 * 60 * 1000, // 8 minutes
-      submitting: 5 * 60 * 1000, // 5 minutes
-      verifying: 3 * 60 * 1000, // 3 minutes
-    };
-
-    const phases = [
-      'preflight',
-      'authenticating',
-      'filling',
-      'uploading',
-      'submitting',
-      'verifying',
-    ];
-    const currentIndex = phases.indexOf(pipeline.currentPhase);
+    const phases = SUBMISSION_PHASE_LIST;
+    const currentIndex = isSubmissionPhase(pipeline.currentPhase)
+      ? phases.indexOf(pipeline.currentPhase)
+      : 0;
 
     let remainingTime = 0;
-    for (let i = currentIndex; i < phases.length; i++) {
-      remainingTime += phaseEstimates[phases[i]];
+    for (let i = Math.max(currentIndex, 0); i < phases.length; i++) {
+      remainingTime += SUBMISSION_PHASE_ESTIMATES_MS[phases[i]];
     }
 
     return new Date(Date.now() + remainingTime);
@@ -1277,7 +1309,7 @@ export class SubmissionOrchestrator {
    * Get next steps for pipeline
    */
   private getNextSteps(pipeline: SubmissionPipelineInstance): string[] {
-    const phaseSteps = {
+    const phaseSteps: Record<SubmissionPipelinePhase, string[]> = {
       queued: [
         'Validate submission requirements',
         'Check portal status',
@@ -1398,7 +1430,10 @@ export class SubmissionOrchestrator {
       console.log(`🚫 Pipeline ${pipelineId} cancelled`);
       return true;
     } catch (error) {
-      console.error(`❌ Failed to cancel pipeline ${pipelineId}:`, error);
+      console.error(
+        `❌ Failed to cancel pipeline ${pipelineId}: ${toErrorMessage(error)}`,
+        error
+      );
       return false;
     }
   }

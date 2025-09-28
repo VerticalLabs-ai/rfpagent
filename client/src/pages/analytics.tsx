@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { DashboardMetrics } from "@/types/api";
 
 export default function Analytics() {
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/dashboard/metrics"],
   });
 
@@ -81,7 +82,7 @@ export default function Analytics() {
   );
 }
 
-function OverviewAnalytics({ metrics, rfps }: any) {
+function OverviewAnalytics({ metrics, rfps }: { metrics?: DashboardMetrics; rfps: any }) {
   const totalRfps = rfps?.length || 0;
   const submittedRfps = rfps?.filter((item: any) => item.rfp.status === "submitted").length || 0;
   const pendingReview = rfps?.filter((item: any) => item.rfp.status === "review").length || 0;
@@ -193,7 +194,7 @@ function OverviewAnalytics({ metrics, rfps }: any) {
   );
 }
 
-function PerformanceAnalytics({ metrics, rfps }: any) {
+function PerformanceAnalytics({ metrics, rfps }: { metrics?: DashboardMetrics; rfps: any }) {
   const avgProcessingTime = calculateAvgProcessingTime(rfps);
   const automationEfficiency = calculateAutomationEfficiency(rfps);
   const complianceScore = calculateComplianceScore(rfps);

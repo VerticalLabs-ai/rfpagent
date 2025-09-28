@@ -84,14 +84,89 @@ import {
   type Scan,
   type ScanEvent,
   type Submission,
+  type SubmissionLifecycleData,
+  type SubmissionReceiptData,
+  type SubmissionRow,
+  type SubmissionStatusValue,
   type SubmissionEvent,
   type SubmissionPipeline,
+  type SubmissionPipelineRow,
+  type SubmissionPipelinePhase,
+  type SubmissionPipelineStatus,
+  type SubmissionPipelineMetadata,
+  type SubmissionPhaseResult,
+  type SubmissionVerificationResult,
+  type SubmissionPipelineErrorData,
   type SubmissionStatusHistory,
   type User,
   type WorkItem,
 } from '@shared/schema';
 import { and, asc, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
 import { db } from './db';
+import type { DashboardMetrics } from '@shared/api/dashboard';
+import type { RfpDetail } from '@shared/api/rfps';
+
+const toSubmission = (row: SubmissionRow): Submission => ({
+  ...row,
+  status: row.status as SubmissionStatusValue,
+  submissionData:
+    (row.submissionData as SubmissionLifecycleData | null) ?? null,
+  receiptData: (row.receiptData as SubmissionReceiptData | null) ?? null,
+});
+
+const mapSubmissionRows = (rows: SubmissionRow[]): Submission[] =>
+  rows.map(toSubmission);
+
+const toSubmissionPipeline = (
+  row: SubmissionPipelineRow
+): SubmissionPipeline => ({
+  ...row,
+  currentPhase: row.currentPhase as SubmissionPipelinePhase,
+  status: row.status as SubmissionPipelineStatus,
+  metadata: (row.metadata as SubmissionPipelineMetadata | null) ?? null,
+  preflightChecks: (row.preflightChecks as SubmissionPhaseResult | null) ?? null,
+  authenticationData:
+    (row.authenticationData as SubmissionPhaseResult | null) ?? null,
+  formData: (row.formData as SubmissionPhaseResult | null) ?? null,
+  uploadedDocuments:
+    (row.uploadedDocuments as SubmissionPhaseResult | null) ?? null,
+  submissionReceipt:
+    (row.submissionReceipt as SubmissionVerificationResult | null) ?? null,
+  errorData: (row.errorData as SubmissionPipelineErrorData | null) ?? null,
+});
+
+type WorkflowStateRow = typeof workflowState.$inferSelect;
+type WorkItemActivityRow = {
+  id: string;
+  sessionId: string;
+  workflowId: string | null;
+  assignedAgentId: string | null;
+  createdByAgentId: string;
+  taskType: string;
+  status: string;
+  priority: number;
+  updatedAt: Date;
+};
+
+const publicPortalSelection = {
+  id: portals.id,
+  name: portals.name,
+  url: portals.url,
+  type: portals.type,
+  loginRequired: portals.loginRequired,
+  isActive: portals.isActive,
+  monitoringEnabled: portals.monitoringEnabled,
+  lastScanned: portals.lastScanned,
+  status: portals.status,
+  scanFrequency: portals.scanFrequency,
+  maxRfpsPerScan: portals.maxRfpsPerScan,
+  selectors: portals.selectors,
+  filters: portals.filters,
+  lastError: portals.lastError,
+  errorCount: portals.errorCount,
+  createdAt: portals.createdAt,
+  updatedAt: portals.updatedAt,
+} as const;
 
 export interface IStorage {
   // Users
@@ -117,7 +192,7 @@ export interface IStorage {
   }): Promise<{ rfps: RFP[]; total: number }>;
   getRFP(id: string): Promise<RFP | undefined>;
   getRFPBySourceUrl(sourceUrl: string): Promise<RFP | undefined>;
-  getRFPsWithDetails(): Promise<any[]>;
+  getRFPsWithDetails(): Promise<RfpDetail[]>;
   createRFP(rfp: InsertRFP): Promise<RFP>;
   updateRFP(id: string, updates: Partial<RFP>): Promise<RFP>;
   deleteRFP(id: string): Promise<void>;
@@ -267,7 +342,7 @@ export interface IStorage {
   deleteCompanyInsurance(id: string): Promise<void>;
 
   // Analytics
-  getDashboardMetrics(): Promise<any>;
+  getDashboardMetrics(): Promise<DashboardMetrics>;
   getPortalActivity(): Promise<any>;
 
   // Scan Operations
@@ -379,6 +454,7 @@ export interface IStorage {
   updateWorkflowState(id: string, updates: any): Promise<any>;
   getActiveWorkflows(): Promise<any[]>;
   getSuspendedWorkflows(): Promise<any[]>;
+  getRecentWorkflowStates(limit?: number): Promise<WorkflowStateRow[]>;
 
   // Agent Performance Metrics Operations
   getAgentPerformanceMetrics(
@@ -395,6 +471,14 @@ export interface IStorage {
   getPortalHealthSummary(): Promise<any>;
   getAgentHealthSummary(): Promise<any>;
   getCoordinationLogs(limit?: number): Promise<any[]>;
+  getPhaseTransitionSummary(
+    days?: number
+  ): Promise<{
+    totalTransitions: number;
+    successfulTransitions: number;
+    failedTransitions: number;
+    averageTransitionTime: number;
+  }>;
 
   // Additional RFP methods needed by orchestrator
   getRFPs(filters?: {
@@ -405,6 +489,7 @@ export interface IStorage {
   }): Promise<RFP[]>;
 
   // Agent Registry Operations (3-Tier Agentic System)
+  getAllAgents(): Promise<AgentRegistry[]>;
   registerAgent(agent: InsertAgentRegistry): Promise<AgentRegistry>;
   updateAgent(
     agentId: string,
@@ -435,6 +520,8 @@ export interface IStorage {
     scheduledBefore?: Date;
     workflowId?: string;
   }): Promise<WorkItem[]>;
+  getWorkItemStatusSummary(): Promise<Record<string, number>>;
+  getRecentWorkItemActivity(limit?: number): Promise<WorkItemActivityRow[]>;
   getWorkQueue(
     agentId?: string,
     taskType?: string,
@@ -561,7 +648,10 @@ export class DatabaseStorage implements IStorage {
         id: portals.id,
         name: portals.name,
         url: portals.url,
+        type: portals.type,
         loginRequired: portals.loginRequired,
+        isActive: portals.isActive,
+        monitoringEnabled: portals.monitoringEnabled,
         // username and password fields excluded for security
         lastScanned: portals.lastScanned,
         status: portals.status,
@@ -585,7 +675,10 @@ export class DatabaseStorage implements IStorage {
         id: portals.id,
         name: portals.name,
         url: portals.url,
+        type: portals.type,
         loginRequired: portals.loginRequired,
+        isActive: portals.isActive,
+        monitoringEnabled: portals.monitoringEnabled,
         // username and password fields excluded for security
         lastScanned: portals.lastScanned,
         status: portals.status,
@@ -610,7 +703,10 @@ export class DatabaseStorage implements IStorage {
         id: portals.id,
         name: portals.name,
         url: portals.url,
+        type: portals.type,
         loginRequired: portals.loginRequired,
+        isActive: portals.isActive,
+        monitoringEnabled: portals.monitoringEnabled,
         // username and password fields excluded for security
         lastScanned: portals.lastScanned,
         status: portals.status,
@@ -639,7 +735,10 @@ export class DatabaseStorage implements IStorage {
       id: portals.id,
       name: portals.name,
       url: portals.url,
+      type: portals.type,
       loginRequired: portals.loginRequired,
+      isActive: portals.isActive,
+      monitoringEnabled: portals.monitoringEnabled,
       // username and password fields excluded for security
       lastScanned: portals.lastScanned,
       status: portals.status,
@@ -667,7 +766,10 @@ export class DatabaseStorage implements IStorage {
         id: portals.id,
         name: portals.name,
         url: portals.url,
+        type: portals.type,
         loginRequired: portals.loginRequired,
+        isActive: portals.isActive,
+        monitoringEnabled: portals.monitoringEnabled,
         // username and password fields excluded for security
         lastScanned: portals.lastScanned,
         status: portals.status,
@@ -797,17 +899,23 @@ export class DatabaseStorage implements IStorage {
     return rfp || undefined;
   }
 
-  async getRFPsWithDetails(): Promise<any[]> {
-    return await db
+  async getRFPsWithDetails(): Promise<RfpDetail[]> {
+    const rows = await db
       .select({
         rfp: rfps,
-        portal: portals,
+        portal: publicPortalSelection,
         proposal: proposals,
       })
       .from(rfps)
       .leftJoin(portals, eq(rfps.portalId, portals.id))
       .leftJoin(proposals, eq(rfps.id, proposals.rfpId))
       .orderBy(desc(rfps.discoveredAt));
+
+    return rows.map(({ rfp, portal, proposal }) => ({
+      rfp,
+      portal: portal ?? null,
+      proposal: proposal ?? null,
+    }));
   }
 
   async createRFP(rfp: InsertRFP): Promise<RFP> {
@@ -986,21 +1094,22 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(submissions)
       .where(eq(submissions.id, id));
-    return submission || undefined;
+    return submission ? toSubmission(submission) : undefined;
   }
 
   async getSubmissionsByRFP(rfpId: string): Promise<Submission[]> {
-    return await db
+    const rows = await db
       .select()
       .from(submissions)
       .where(eq(submissions.rfpId, rfpId));
+    return mapSubmissionRows(rows);
   }
 
   async getSubmissionsByDateRange(
     startDate: Date,
     endDate: Date
   ): Promise<Submission[]> {
-    return await db
+    const rows = await db
       .select()
       .from(submissions)
       .where(
@@ -1010,6 +1119,7 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(desc(submissions.createdAt));
+    return mapSubmissionRows(rows);
   }
 
   async getSubmissionByProposal(
@@ -1019,7 +1129,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(submissions)
       .where(eq(submissions.proposalId, proposalId));
-    return submission || undefined;
+    return submission ? toSubmission(submission) : undefined;
   }
 
   async createSubmission(submission: InsertSubmission): Promise<Submission> {
@@ -1027,7 +1137,7 @@ export class DatabaseStorage implements IStorage {
       .insert(submissions)
       .values(submission)
       .returning();
-    return newSubmission;
+    return toSubmission(newSubmission);
   }
 
   async updateSubmission(
@@ -1039,7 +1149,7 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(submissions.id, id))
       .returning();
-    return updatedSubmission;
+    return toSubmission(updatedSubmission);
   }
 
   // Submission Pipelines
@@ -1050,7 +1160,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(submissionPipelines)
       .where(eq(submissionPipelines.id, id));
-    return pipeline || undefined;
+    return pipeline ? toSubmissionPipeline(pipeline) : undefined;
   }
 
   async getSubmissionPipelineBySubmission(
@@ -1060,29 +1170,31 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(submissionPipelines)
       .where(eq(submissionPipelines.submissionId, submissionId));
-    return pipeline || undefined;
+    return pipeline ? toSubmissionPipeline(pipeline) : undefined;
   }
 
   async getSubmissionPipelinesByStatus(
     status: string
   ): Promise<SubmissionPipeline[]> {
-    return await db
+    const rows = await db
       .select()
       .from(submissionPipelines)
       .where(eq(submissionPipelines.status, status));
+    return rows.map(toSubmissionPipeline);
   }
 
   async getSubmissionPipelinesByPhase(
     phase: string
   ): Promise<SubmissionPipeline[]> {
-    return await db
+    const rows = await db
       .select()
       .from(submissionPipelines)
       .where(eq(submissionPipelines.currentPhase, phase));
+    return rows.map(toSubmissionPipeline);
   }
 
   async getActiveSubmissionPipelines(): Promise<SubmissionPipeline[]> {
-    return await db
+    const rows = await db
       .select()
       .from(submissionPipelines)
       .where(
@@ -1091,6 +1203,7 @@ export class DatabaseStorage implements IStorage {
           eq(submissionPipelines.status, 'in_progress')
         )
       );
+    return rows.map(toSubmissionPipeline);
   }
 
   async createSubmissionPipeline(
@@ -1100,7 +1213,7 @@ export class DatabaseStorage implements IStorage {
       .insert(submissionPipelines)
       .values(pipeline)
       .returning();
-    return newPipeline;
+    return toSubmissionPipeline(newPipeline);
   }
 
   async updateSubmissionPipeline(
@@ -1112,7 +1225,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(submissionPipelines.id, id))
       .returning();
-    return updatedPipeline;
+    return toSubmissionPipeline(updatedPipeline);
   }
 
   async deleteSubmissionPipeline(id: string): Promise<void> {
@@ -1271,39 +1384,64 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Analytics
-  async getDashboardMetrics(): Promise<any> {
-    const activeRfpsCount = await db
-      .select({ count: count() })
-      .from(rfps)
-      .where(
-        or(
-          eq(rfps.status, 'discovered'),
-          eq(rfps.status, 'parsing'),
-          eq(rfps.status, 'drafting'),
-          eq(rfps.status, 'review'),
-          eq(rfps.status, 'approved')
-        )
-      );
+  async getDashboardMetrics(): Promise<DashboardMetrics> {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-    const submittedCount = await db
-      .select({ count: count() })
-      .from(rfps)
-      .where(eq(rfps.status, 'submitted'));
+    const [activeRfpsCount, submittedCount, totalValue, portalsCount, newRfpsToday, pendingReviewCount, submissionsToday] =
+      await Promise.all([
+        db
+          .select({ count: count() })
+          .from(rfps)
+          .where(
+            or(
+              eq(rfps.status, 'discovered'),
+              eq(rfps.status, 'parsing'),
+              eq(rfps.status, 'drafting'),
+              eq(rfps.status, 'review'),
+              eq(rfps.status, 'approved')
+            )
+          ),
+        db.select({ count: count() }).from(rfps).where(eq(rfps.status, 'submitted')),
+        db
+          .select({ total: sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)` })
+          .from(rfps)
+          .where(or(eq(rfps.status, 'approved'), eq(rfps.status, 'submitted'))),
+        db.select({ count: count() }).from(portals),
+        db
+          .select({ count: count() })
+          .from(rfps)
+          .where(gte(rfps.discoveredAt, startOfToday)),
+        db.select({ count: count() }).from(rfps).where(eq(rfps.status, 'review')),
+        db
+          .select({ count: count() })
+          .from(submissions)
+          .where(
+            and(
+              eq(submissions.status, 'submitted'),
+              gte(submissions.submittedAt, startOfToday)
+            )
+          ),
+      ]);
 
-    const totalValue = await db
-      .select({
-        total: sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)`,
-      })
-      .from(rfps)
-      .where(or(eq(rfps.status, 'approved'), eq(rfps.status, 'submitted')));
-
-    const portalsCount = await db.select({ count: count() }).from(portals);
+    const activeRfps = Number(activeRfpsCount[0]?.count ?? 0);
+    const submittedRfps = Number(submittedCount[0]?.count ?? 0);
+    const portalsTracked = Number(portalsCount[0]?.count ?? 0);
+    const totalPipelineValue = Number(totalValue[0]?.total ?? 0);
+    const discoveredToday = Number(newRfpsToday[0]?.count ?? 0);
+    const pendingReview = Number(pendingReviewCount[0]?.count ?? 0);
+    const submittedToday = Number(submissionsToday[0]?.count ?? 0);
 
     return {
-      activeRfps: activeRfpsCount[0].count,
-      submittedRfps: submittedCount[0].count,
-      totalValue: totalValue[0].total || 0,
-      portalsTracked: portalsCount[0].count,
+      activeRfps,
+      submittedRfps,
+      totalValue: totalPipelineValue,
+      portalsTracked,
+      newRfpsToday: discoveredToday,
+      pendingReview,
+      submittedToday,
+      winRate: submittedRfps === 0 ? 0 : Math.min(100, Math.round((submittedRfps / Math.max(activeRfps + submittedRfps, 1)) * 100)),
+      avgResponseTime: 0,
     };
   }
 
@@ -1427,6 +1565,55 @@ export class DatabaseStorage implements IStorage {
       .from(agentCoordinationLog)
       .orderBy(desc(agentCoordinationLog.startedAt))
       .limit(limit);
+  }
+
+  async getPhaseTransitionSummary(
+    days: number = 7
+  ): Promise<{
+    totalTransitions: number;
+    successfulTransitions: number;
+    failedTransitions: number;
+    averageTransitionTime: number;
+  }> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        toStatus: phaseStateTransitions.toStatus,
+        duration: phaseStateTransitions.duration,
+      })
+      .from(phaseStateTransitions)
+      .where(gte(phaseStateTransitions.timestamp, since));
+
+    let totalTransitions = 0;
+    let successfulTransitions = 0;
+    let failedTransitions = 0;
+    let durationSum = 0;
+    let durationCount = 0;
+
+    for (const row of rows) {
+      totalTransitions += 1;
+      const status = row.toStatus ?? '';
+      if (['failed', 'error', 'cancelled', 'suspended'].includes(status)) {
+        failedTransitions += 1;
+      } else if (status) {
+        successfulTransitions += 1;
+      }
+
+      if (row.duration && row.duration > 0) {
+        durationSum += row.duration;
+        durationCount += 1;
+      }
+    }
+
+    const averageTransitionTime =
+      durationCount > 0 ? durationSum / durationCount : 0;
+
+    return {
+      totalTransitions,
+      successfulTransitions,
+      failedTransitions,
+      averageTransitionTime,
+    };
   }
 
   async getPortalActivity(): Promise<any> {
@@ -2305,6 +2492,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(workflowState.updatedAt));
   }
 
+  async getRecentWorkflowStates(
+    limit: number = 25
+  ): Promise<WorkflowStateRow[]> {
+    return await db
+      .select()
+      .from(workflowState)
+      .orderBy(desc(workflowState.updatedAt))
+      .limit(limit);
+  }
+
   // Agent Performance Metrics Operations
   async getAgentPerformanceMetrics(
     agentId: string,
@@ -2476,6 +2673,13 @@ export class DatabaseStorage implements IStorage {
 
   async deregisterAgent(agentId: string): Promise<void> {
     await db.delete(agentRegistry).where(eq(agentRegistry.agentId, agentId));
+  }
+
+  async getAllAgents(): Promise<AgentRegistry[]> {
+    return await db
+      .select()
+      .from(agentRegistry)
+      .orderBy(asc(agentRegistry.tier), asc(agentRegistry.displayName));
   }
 
   async getAgent(agentId: string): Promise<AgentRegistry | undefined> {
@@ -2661,6 +2865,46 @@ export class DatabaseStorage implements IStorage {
       .from(workItems)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(workItems.priority), asc(workItems.deadline));
+  }
+
+  async getWorkItemStatusSummary(): Promise<Record<string, number>> {
+    const rows = await db
+      .select({ status: workItems.status, count: count() })
+      .from(workItems)
+      .groupBy(workItems.status);
+
+    const summary: Record<string, number> = {};
+    for (const row of rows) {
+      const key = row.status ?? 'unknown';
+      summary[key] = Number(row.count);
+    }
+
+    return summary;
+  }
+
+  async getRecentWorkItemActivity(
+    limit: number = 25
+  ): Promise<WorkItemActivityRow[]> {
+    const rows = await db
+      .select({
+        id: workItems.id,
+        sessionId: workItems.sessionId,
+        workflowId: workItems.workflowId,
+        assignedAgentId: workItems.assignedAgentId,
+        createdByAgentId: workItems.createdByAgentId,
+        taskType: workItems.taskType,
+        status: workItems.status,
+        priority: workItems.priority,
+        updatedAt: workItems.updatedAt,
+      })
+      .from(workItems)
+      .orderBy(desc(workItems.updatedAt))
+      .limit(limit);
+
+    return rows.map(row => ({
+      ...row,
+      updatedAt: row.updatedAt ?? new Date(),
+    }));
   }
 
   async getPendingWorkItems(): Promise<WorkItem[]> {

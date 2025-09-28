@@ -1,10 +1,19 @@
-// @ts-nocheck
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type {
+  AgentActivityEvent,
+  AgentCoordinationEvent,
+  AgentPerformanceMetric,
+  AgentRegistrySummary,
+  SystemHealthSnapshot,
+  WorkItemQueueSummary,
+  WorkflowPhaseStats,
+  WorkflowStateSummary,
+} from '@/types/api';
 import {
   Activity,
   Bot,
@@ -20,90 +29,6 @@ import {
   XCircle,
   RotateCcw,
 } from 'lucide-react';
-
-interface AgentPerformanceMetric {
-  id: string;
-  agentId?: string;
-  metricType?: string;
-  metricValue?: number;
-  recordedAt?: string;
-}
-
-interface AgentActivity {
-  id: string;
-  agentId?: string;
-  type?: string;
-  activity?: string;
-  timestamp?: string;
-}
-
-interface CoordinationActivity {
-  id: string;
-  initiatorAgentId?: string;
-  targetAgentId?: string;
-  coordinationType?: string;
-  createdAt?: string;
-}
-
-interface AgentStatusSummary {
-  active?: number;
-  total?: number;
-}
-
-interface SystemHealthSnapshot {
-  systemStatus?: string;
-  agentStatus?: AgentStatusSummary;
-  activeWorkflows?: number;
-  suspendedWorkflows?: number;
-  successRate?: number;
-  avgExecutionTimeSeconds?: number;
-  completedWorkflows?: number;
-  failedWorkflows?: number;
-}
-
-interface AgentRegistryData {
-  summary?: {
-    byTier?: Record<string, number>;
-  };
-}
-
-interface WorkItemSummary {
-  summary?: Record<string, number>;
-}
-
-interface WorkflowSummary {
-  workflowId?: string;
-  currentPhase?: string;
-  title?: string;
-  agency?: string;
-  status?: string;
-  progress?: number;
-}
-
-interface WorkflowStateData {
-  workflows?: WorkflowSummary[];
-  summary?: {
-    phaseDistribution?: Record<string, number>;
-  };
-}
-
-interface TransitionMetrics {
-  totalTransitions?: number;
-  successfulTransitions?: number;
-  failedTransitions?: number;
-  averageTransitionTime?: number;
-}
-
-interface WorkflowPhaseStats {
-  phaseStats?: Record<string, number>;
-  transitionMetrics?: TransitionMetrics;
-}
-
-interface WorkflowStatusCounts {
-  completedWorkflows: number;
-  suspendedWorkflows: number;
-  failedWorkflows: number;
-}
 
 const fetchJson = async <T,>(url: string): Promise<T> => {
   const response = await fetch(url);
@@ -135,25 +60,26 @@ export default function AgentMonitoring() {
 
   const { data: workItems, isLoading: workItemsLoading } = useQuery({
     queryKey: ['/api/work-items'],
-    queryFn: () => fetchJson<WorkItemSummary>('/api/work-items'),
+    queryFn: () => fetchJson<WorkItemQueueSummary>('/api/work-items'),
     refetchInterval: 3000,
   });
 
   const { data: agentActivities, isLoading: activitiesLoading } = useQuery({
     queryKey: ['/api/agent-activity'],
-    queryFn: () => fetchJson<AgentActivity[]>('/api/agent-activity'),
+    queryFn: () => fetchJson<AgentActivityEvent[]>('/api/agent-activity'),
     refetchInterval: 3000,
   });
 
   const { data: coordination, isLoading: coordLoading } = useQuery({
     queryKey: ['/api/agent-coordination'],
-    queryFn: () => fetchJson<CoordinationActivity[]>('/api/agent-coordination'),
+    queryFn: () =>
+      fetchJson<AgentCoordinationEvent[]>('/api/agent-coordination'),
     refetchInterval: 5000,
   });
 
   const { data: workflowStates, isLoading: workflowLoading } = useQuery({
     queryKey: ['/api/workflows/state'],
-    queryFn: () => fetchJson<WorkflowStateData>('/api/workflows/state'),
+    queryFn: () => fetchJson<WorkflowStateSummary>('/api/workflows/state'),
     refetchInterval: 3000,
   });
 
@@ -184,47 +110,61 @@ export default function AgentMonitoring() {
     !phaseStats;
 
   // Provide default values for missing data
-  const safeSystemHealth: SystemHealthSnapshot = systemHealth || {};
-  const safeAgentRegistry: AgentRegistryData = agentRegistry || {
-    summary: { byTier: {} },
-  };
-  const safeWorkItems: WorkItemSummary = workItems || { summary: {} };
-  const safeAgentActivities: AgentActivity[] = agentActivities || [];
-  const safeCoordination: CoordinationActivity[] = coordination || [];
-  const safeWorkflowStates: WorkflowStateData = workflowStates || {
-    workflows: [],
-    summary: { phaseDistribution: {} },
-  };
-  const safePhaseStats: WorkflowPhaseStats = phaseStats || {
-    phaseStats: {},
-    transitionMetrics: {},
-  };
-  const transitionMetrics: TransitionMetrics =
-    safePhaseStats.transitionMetrics || {
-      totalTransitions: 0,
-      successfulTransitions: 0,
-      failedTransitions: 0,
-      averageTransitionTime: 0,
+  const safeSystemHealth: SystemHealthSnapshot =
+    systemHealth ?? {
+      systemStatus: 'unhealthy',
+      agentStatus: { active: 0, total: 0 },
+      activeWorkflows: 0,
+      suspendedWorkflows: 0,
+      completedWorkflows: 0,
+      failedWorkflows: 0,
+      totalWorkflows: 0,
+      successRate: 0,
+      avgExecutionTimeSeconds: 0,
+      lastUpdated: '',
     };
+  const safeAgentRegistry: AgentRegistrySummary =
+    agentRegistry ?? {
+      totals: { totalAgents: 0, activeAgents: 0, inactiveAgents: 0 },
+      byTier: {},
+      agents: [],
+    };
+  const safeWorkItems: WorkItemQueueSummary =
+    workItems ?? { counts: {}, recent: [] };
+  const safeAgentActivities: AgentActivityEvent[] = agentActivities ?? [];
+  const safeCoordination: AgentCoordinationEvent[] = coordination ?? [];
+  const safeWorkflowStates: WorkflowStateSummary =
+    workflowStates ?? {
+      activeWorkflows: 0,
+      byPhase: {},
+      byStatus: {},
+      recentlyCompleted: [],
+      workflows: [],
+    };
+  const safePhaseStats: WorkflowPhaseStats =
+    phaseStats ?? {
+      phases: {},
+      transitions: {
+        totalTransitions: 0,
+        successfulTransitions: 0,
+        failedTransitions: 0,
+        averageTransitionTime: 0,
+      },
+    };
+  const transitionMetrics = safePhaseStats.transitions;
 
   // Derive workflow metrics from available data
-  const agentStatus = safeSystemHealth.agentStatus ?? { active: 0, total: 0 };
+  const agentStatus = safeSystemHealth.agentStatus;
 
-  const workflowMetrics: WorkflowStatusCounts = {
-    completedWorkflows: safeSystemHealth?.completedWorkflows || 0,
-    suspendedWorkflows: safeSystemHealth?.suspendedWorkflows || 0,
-    failedWorkflows: safeSystemHealth?.failedWorkflows || 0,
+  const workflowMetrics = {
+    completedWorkflows: safeSystemHealth.completedWorkflows,
+    suspendedWorkflows: safeSystemHealth.suspendedWorkflows,
+    failedWorkflows: safeSystemHealth.failedWorkflows,
   };
-  const totalWorkflows =
-    workflowMetrics.completedWorkflows +
-    workflowMetrics.suspendedWorkflows +
-    workflowMetrics.failedWorkflows;
 
-  const extendedWorkflowMetrics: WorkflowStatusCounts & {
-    totalWorkflows: number;
-  } = {
+  const extendedWorkflowMetrics = {
     ...workflowMetrics,
-    totalWorkflows,
+    totalWorkflows: safeSystemHealth.totalWorkflows,
   };
 
   if (isLoading) {
@@ -306,11 +246,11 @@ export default function AgentMonitoring() {
               className="text-2xl font-bold text-green-600"
               data-testid="text-system-status"
             >
-              {safeSystemHealth?.systemStatus || 'Unknown'}
+              {safeSystemHealth.systemStatus}
             </div>
             <div className="flex items-center space-x-2 mt-2">
               <div className="text-sm text-muted-foreground">
-                Agents: {agentStatus.active || 0}/{agentStatus.total || 0}
+                Agents: {agentStatus.active}/{agentStatus.total}
               </div>
               <Progress
                 value={
@@ -337,10 +277,10 @@ export default function AgentMonitoring() {
               className="text-2xl font-bold"
               data-testid="text-active-workflows"
             >
-              {safeSystemHealth?.activeWorkflows || 0}
+              {safeSystemHealth.activeWorkflows}
             </div>
             <p className="text-xs text-muted-foreground">
-              {safeSystemHealth?.suspendedWorkflows || 0} suspended
+              {safeSystemHealth.suspendedWorkflows} suspended
             </p>
           </CardContent>
         </Card>
@@ -352,10 +292,10 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold" data-testid="text-success-rate">
-              {safeSystemHealth?.successRate?.toFixed(1) || 0}%
+              {safeSystemHealth.successRate.toFixed(1)}%
             </div>
             <Progress
-              value={safeSystemHealth?.successRate || 0}
+              value={safeSystemHealth.successRate}
               className="mt-2 h-2"
               data-testid="progress-success-rate"
             />
@@ -372,7 +312,7 @@ export default function AgentMonitoring() {
               className="text-2xl font-bold"
               data-testid="text-avg-execution"
             >
-              {Math.round(safeSystemHealth?.avgExecutionTimeSeconds || 0)}s
+              {Math.round(safeSystemHealth.avgExecutionTimeSeconds)}s
             </div>
             <p className="text-xs text-muted-foreground">per workflow</p>
           </CardContent>
@@ -411,59 +351,63 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeAgentActivities
-                  ?.slice(0, 10)
-                  .map((activity: AgentActivity, index: number) => {
-                    const activityType = activity.type ?? 'activity';
-                    const timestamp = activity.timestamp
-                      ? new Date(activity.timestamp).toLocaleTimeString()
-                      : 'N/A';
+                {safeAgentActivities.slice(0, 10).map((activity, index) => {
+                  const status = activity.status ?? 'pending';
+                  const timestamp = activity.updatedAt
+                    ? new Date(activity.updatedAt).toLocaleTimeString()
+                    : 'N/A';
+                  const statusStyles =
+                    status === 'completed'
+                      ? 'bg-green-100 text-green-600'
+                      : status === 'failed'
+                        ? 'bg-red-100 text-red-600'
+                        : 'bg-blue-100 text-blue-600';
+                  const statusIcon =
+                    status === 'completed' ? (
+                      <CheckCircle className="h-4 w-4" />
+                    ) : status === 'failed' ? (
+                      <XCircle className="h-4 w-4" />
+                    ) : (
+                      <PlayCircle className="h-4 w-4" />
+                    );
 
-                    return (
-                      <div
-                        key={activity.id}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                        data-testid={`activity-item-${index}`}
-                      >
-                        <div className="flex items-center space-x-3">
+                  return (
+                    <div
+                      key={activity.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                      data-testid={`activity-item-${index}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className={`p-2 rounded-full ${statusStyles}`}>
+                          {statusIcon}
+                        </div>
+                        <div>
                           <div
-                            className={`p-2 rounded-full ${
-                              activityType === 'performance_metric'
-                                ? 'bg-blue-100 text-blue-600'
-                                : 'bg-green-100 text-green-600'
-                            }`}
+                            className="font-medium"
+                            data-testid={`activity-content-${index}`}
                           >
-                            {activityType === 'performance_metric' ? (
-                              <TrendingUp className="h-4 w-4" />
-                            ) : (
-                              <Users className="h-4 w-4" />
-                            )}
+                            {activity.agentId ?? 'Unassigned'} •{' '}
+                            {activity.taskType.replace(/_/g, ' ')}
                           </div>
-                          <div>
-                            <div
-                              className="font-medium"
-                              data-testid={`activity-content-${index}`}
-                            >
-                              Agent {activity.agentId ?? 'unknown'}:{' '}
-                              {activity.activity ?? 'Activity recorded'}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {timestamp}
-                            </div>
+                          <div className="text-sm text-muted-foreground">
+                            {timestamp} • Priority {activity.priority ?? 0}
                           </div>
                         </div>
-                        <Badge
-                          variant={
-                            activityType === 'performance_metric'
+                      </div>
+                      <Badge
+                        variant={
+                          status === 'failed'
+                            ? 'outline'
+                            : status === 'completed'
                               ? 'default'
                               : 'secondary'
-                          }
-                        >
-                          {activityType.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                    );
-                  })}
+                        }
+                      >
+                        {status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -558,6 +502,42 @@ export default function AgentMonitoring() {
               </CardContent>
             </Card>
           </div>
+
+          <Card data-testid="card-agent-tiers">
+            <CardHeader>
+              <CardTitle>Agent Tier Distribution</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span>Total Agents</span>
+                <span className="font-semibold">
+                  {safeAgentRegistry.totals.totalAgents}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span>Active Agents</span>
+                <span className="font-semibold text-green-600">
+                  {safeAgentRegistry.totals.activeAgents}
+                </span>
+              </div>
+              <div className="border-t pt-3 space-y-2">
+                {Object.keys(safeAgentRegistry.byTier).length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No agents registered yet.
+                  </p>
+                )}
+                {Object.entries(safeAgentRegistry.byTier).map(([tier, count]) => (
+                  <div
+                    key={tier}
+                    className="flex items-center justify-between text-sm capitalize"
+                  >
+                    <span>{tier.replace('_', ' ')}</span>
+                    <span className="font-medium">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="coordination" className="space-y-6">
@@ -570,43 +550,51 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeCoordination
-                  ?.slice(0, 8)
-                  .map((coord: CoordinationActivity, index: number) => {
-                    const createdAt = coord.createdAt
-                      ? new Date(coord.createdAt).toLocaleTimeString()
-                      : 'N/A';
-                    const type = coord.coordinationType ?? 'coordination';
+                {safeCoordination.slice(0, 8).map((coord, index) => {
+                  const startedAt = coord.startedAt
+                    ? new Date(coord.startedAt).toLocaleTimeString()
+                    : 'N/A';
+                  const status = coord.status ?? 'pending';
 
-                    return (
-                      <div
-                        key={coord.id ?? index}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                        data-testid={`coordination-item-${index}`}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Bot className="h-5 w-5 text-blue-600" />
-                          <div>
-                            <div className="font-medium">
-                              {coord.initiatorAgentId ?? 'Unknown'} →{' '}
-                              {coord.targetAgentId ?? 'Unknown'}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {type} • {createdAt}
-                            </div>
+                  return (
+                    <div
+                      key={coord.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                      data-testid={`coordination-item-${index}`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Bot className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <div className="font-medium">
+                            {coord.initiatorAgentId ?? 'Unknown'} →{' '}
+                            {coord.targetAgentId ?? 'Unknown'}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {coord.coordinationType.replace('_', ' ')} • {startedAt}
                           </div>
                         </div>
-                        <Badge variant="outline">{type}</Badge>
                       </div>
-                    );
-                  })}
+                      <Badge
+                        variant={
+                          status === 'failed'
+                            ? 'outline'
+                            : status === 'completed'
+                              ? 'default'
+                              : 'secondary'
+                        }
+                      >
+                        {status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="workflows" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card data-testid="card-total-workflows">
               <CardHeader>
                 <CardTitle>Total Workflows</CardTitle>
@@ -631,10 +619,10 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold text-green-600"
                   data-testid="text-success-percentage"
                 >
-                  {safeSystemHealth?.successRate?.toFixed(1) || 0}%
+                  {safeSystemHealth.successRate.toFixed(1)}%
                 </div>
                 <Progress
-                  value={safeSystemHealth?.successRate || 0}
+                  value={safeSystemHealth.successRate}
                   className="mt-2"
                   data-testid="progress-success-percentage"
                 />
@@ -650,9 +638,35 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold"
                   data-testid="text-execution-time"
                 >
-                  {Math.round(safeSystemHealth?.avgExecutionTimeSeconds || 0)}s
+                  {Math.round(safeSystemHealth.avgExecutionTimeSeconds)}s
                 </div>
                 <p className="text-sm text-muted-foreground">per workflow</p>
+              </CardContent>
+            </Card>
+
+            <Card data-testid="card-work-item-queue">
+              <CardHeader>
+                <CardTitle>Queue Backlog</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Pending</span>
+                  <span className="font-semibold">
+                    {safeWorkItems.counts.pending ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>In Progress</span>
+                  <span className="font-semibold">
+                    {safeWorkItems.counts.in_progress ?? 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span>Failed</span>
+                  <span className="font-semibold text-red-600">
+                    {safeWorkItems.counts.failed ?? 0}
+                  </span>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -671,8 +685,7 @@ export default function AgentMonitoring() {
                   className="text-2xl font-bold text-blue-600"
                   data-testid="text-discovery-count"
                 >
-                  {safeWorkflowStates?.summary?.phaseDistribution?.discovery ||
-                    0}
+                  {safePhaseStats.phases.discovery?.active ?? 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Active workflows
@@ -690,8 +703,7 @@ export default function AgentMonitoring() {
                   className="text-2xl font-bold text-amber-600"
                   data-testid="text-analysis-count"
                 >
-                  {safeWorkflowStates?.summary?.phaseDistribution?.analysis ||
-                    0}
+                  {safePhaseStats.phases.analysis?.active ?? 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Being analyzed
@@ -711,8 +723,7 @@ export default function AgentMonitoring() {
                   className="text-2xl font-bold text-purple-600"
                   data-testid="text-generation-count"
                 >
-                  {safeWorkflowStates?.summary?.phaseDistribution?.generation ||
-                    0}
+                  {safePhaseStats.phases.generation?.active ?? 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Generating proposals
@@ -732,8 +743,7 @@ export default function AgentMonitoring() {
                   className="text-2xl font-bold text-orange-600"
                   data-testid="text-submission-count"
                 >
-                  {safeWorkflowStates?.summary?.phaseDistribution?.submission ||
-                    0}
+                  {safePhaseStats.phases.submission?.active ?? 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Being submitted
@@ -751,8 +761,7 @@ export default function AgentMonitoring() {
                   className="text-2xl font-bold text-green-600"
                   data-testid="text-completed-count"
                 >
-                  {safeWorkflowStates?.summary?.phaseDistribution?.completed ||
-                    0}
+                  {safeWorkflowStates.byStatus.completed ?? 0}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Successfully completed
@@ -772,28 +781,24 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold text-green-600"
                   data-testid="text-transition-success-rate"
                 >
-                  {safePhaseStats?.transitionMetrics?.totalTransitions > 0
+                  {transitionMetrics.totalTransitions > 0
                     ? Math.round(
-                        (safePhaseStats?.transitionMetrics
-                          ?.successfulTransitions /
-                          safePhaseStats?.transitionMetrics?.totalTransitions) *
-                          100
+                        (transitionMetrics.successfulTransitions /
+                          transitionMetrics.totalTransitions) * 100
                       )
                     : 0}
                   %
                 </div>
                 <div className="text-sm text-muted-foreground mt-2">
-                  {safePhaseStats?.transitionMetrics?.successfulTransitions ||
-                    0}{' '}
-                  / {safePhaseStats?.transitionMetrics?.totalTransitions || 0}{' '}
+                  {transitionMetrics.successfulTransitions} /{' '}
+                  {transitionMetrics.totalTransitions} transitions
                   transitions
                 </div>
                 <Progress
                   value={
-                    safePhaseStats?.transitionMetrics?.totalTransitions > 0
-                      ? (safePhaseStats?.transitionMetrics
-                          ?.successfulTransitions /
-                          safePhaseStats?.transitionMetrics?.totalTransitions) *
+                    transitionMetrics.totalTransitions > 0
+                      ? (transitionMetrics.successfulTransitions /
+                          transitionMetrics.totalTransitions) *
                         100
                       : 0
                   }
@@ -812,10 +817,7 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold"
                   data-testid="text-avg-transition-time"
                 >
-                  {Math.round(
-                    safePhaseStats?.transitionMetrics?.averageTransitionTime ||
-                      0
-                  )}
+                  {Math.round(transitionMetrics.averageTransitionTime)}
                   s
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -833,7 +835,7 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold text-red-600"
                   data-testid="text-failed-transitions"
                 >
-                  {safePhaseStats?.transitionMetrics?.failedTransitions || 0}
+                  {transitionMetrics.failedTransitions}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   requiring intervention
@@ -849,11 +851,15 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeWorkflowStates?.workflows
-                  ?.slice(0, 10)
-                  .map((workflow: WorkflowSummary, index: number) => (
+                {safeWorkflowStates.workflows.slice(0, 10).map((workflow, index) => {
+                  const status = workflow.status ?? 'pending';
+                  const updatedAt = workflow.updatedAt
+                    ? new Date(workflow.updatedAt).toLocaleString()
+                    : 'N/A';
+
+                  return (
                     <div
-                      key={workflow.workflowId || index}
+                      key={workflow.workflowId ?? index}
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div className="flex items-center space-x-4">
@@ -870,7 +876,10 @@ export default function AgentMonitoring() {
                           {workflow.currentPhase === 'submission' && (
                             <TrendingUp className="h-4 w-4 text-orange-500" />
                           )}
-                          {workflow.currentPhase === 'completed' && (
+                          {workflow.currentPhase === 'monitoring' && (
+                            <Workflow className="h-4 w-4 text-sky-500" />
+                          )}
+                          {status === 'completed' && (
                             <CheckCircle className="h-4 w-4 text-green-500" />
                           )}
                           <span className="font-medium capitalize">
@@ -882,53 +891,46 @@ export default function AgentMonitoring() {
                             {workflow.title || 'Untitled RFP'}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {workflow.agency || 'Unknown Agency'}
+                            {(workflow.agency || 'Unknown agency') + ` • Updated ${updatedAt}`}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <Badge
-                            variant={
-                              workflow.status === 'completed'
+                        <Badge
+                          variant={
+                            status === 'failed'
+                              ? 'outline'
+                              : status === 'completed'
                                 ? 'default'
-                                : workflow.status === 'failed'
-                                  ? 'destructive'
-                                  : workflow.status === 'in_progress'
-                                    ? 'secondary'
-                                    : 'outline'
-                            }
-                            data-testid={`badge-workflow-status-${index}`}
-                          >
-                            {workflow.status === 'in_progress' && (
-                              <RotateCcw className="h-3 w-3 mr-1" />
-                            )}
-                            {workflow.status === 'completed' && (
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {workflow.status === 'failed' && (
-                              <XCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {workflow.status === 'pending' && (
-                              <PauseCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {workflow.status.replace('_', ' ')}
-                          </Badge>
-                        </div>
+                                : 'secondary'
+                          }
+                          data-testid={`badge-workflow-status-${index}`}
+                        >
+                          {status === 'in_progress' && (
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                          )}
+                          {status === 'completed' && (
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {status === 'failed' && (
+                            <XCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {status === 'pending' && (
+                            <PauseCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {status.replace('_', ' ')}
+                        </Badge>
                         <div className="text-right">
                           <div className="text-sm font-medium">
-                            {workflow.progress}%
+                            {Math.round(workflow.progress)}%
                           </div>
-                          <Progress
-                            value={workflow.progress}
-                            className="w-20"
-                          />
+                          <Progress value={workflow.progress} className="w-20" />
                         </div>
                       </div>
                     </div>
-                  ))}
-                {(!safeWorkflowStates?.workflows ||
-                  safeWorkflowStates.workflows.length === 0) && (
+                  );
+                })}
+                {safeWorkflowStates.workflows.length === 0 && (
                   <div className="text-center py-8 text-muted-foreground">
                     <Workflow className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No active workflows found</p>

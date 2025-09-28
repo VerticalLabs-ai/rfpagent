@@ -17,24 +17,29 @@
    - [x] Re-enable Husky/lint-staged for staged files if we want pre-commit enforcement.
 
 2. **Shared Schema & Repository Alignment**
-   - [x] Inventory DB tables/columns used by `BaseRepository`, `storage.ts`, `submissionService`, `workflowCoordinator`, `submissionSpecialists`. (see `docs/workstream-2-inventory.md`).
-   - [ ] Compare with actual Drizzle schema (`shared/schema.ts`) and database migrations; decide for each missing field whether to add it back or update consumers.
-   - [x] Update `shared/schema.ts` (and migrations) accordingly. _Added `portals.updatedAt`, `proposals.proposalData`, `proposals.estimatedCost`._
-   - [x] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
-   - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
+ - [x] Inventory DB tables/columns used by `BaseRepository`, `storage.ts`, `submissionService`, `workflowCoordinator`, `submissionSpecialists`. (see `docs/workstream-2-inventory.md`).
+  - [x] Compare with actual Drizzle schema (`shared/schema.ts`) and database migrations; decide for each missing field whether to add it back or update consumers.
+    - [x] Reconciled `submissions` contracts (required `portalId`, lifecycle JSON) between schema and auto-submission services.
+    - [x] Restored portal/user/RFP columns referenced by repositories (`type`, `isActive`, `role`, `category`, `analysis`, etc.) and added migrations to backfill defaults.
+  - [x] Update `shared/schema.ts` (and migrations) accordingly. _Added `portals.updatedAt`, `proposals.proposalData`, `proposals.estimatedCost`._
+  - [x] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
+- [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
+   - [x] Hardened `BaseRepository` around Drizzle's `drizzle:Columns` symbol so primary keys and column lookups stay type-safe without `Record<string, unknown>` casts; captured regression tests for the new behavior.
+   - [x] Typed submission pipeline phases, metadata, and error payloads in the orchestrator/storage layer to retire `any` usage.
 
 3. **Front-end Data Contracts**
    - **Dashboard & Sidebar**
-     - [ ] Create `DashboardMetrics` interface (or Zod schema) in `client/src/types/api.ts`.
-     - [ ] Update `/api/dashboard/metrics` handler (if needed) to satisfy the contract.
-     - [ ] Refactor `Sidebar.tsx`, `Dashboard` page to use typed fetch helpers.
+   - [x] Create `DashboardMetrics` interface (or Zod schema) in `client/src/types/api.ts`.
+   - [x] Update `/api/dashboard/metrics` handler (if needed) to satisfy the contract.
+   - [x] Refactor `Sidebar.tsx`, `Dashboard` page to use typed fetch helpers.
    - **Agent Monitoring Suite**
-     - [ ] Capture the full JSON emitted by `/api/agent-performance`, `/api/system-health`, `/api/workflows/state`, etc. via logging or API docs.
-     - [ ] Define interfaces for each endpoint; consider colocating in `client/src/types/monitoring.ts`.
-     - [ ] Refactor `agent-monitoring.tsx` to use typed hooks (React Query generics) and eliminate optional-chaining noise.
-     - [ ] Add unit tests for the shape conversions (e.g., transforming `transitionMetrics`).
+    - [x] Capture the full JSON emitted by `/api/agent-performance`, `/api/system-health`, `/api/workflows/state`, etc. via logging or API docs.
+    - [x] Define interfaces for each endpoint; consider colocating in `client/src/types/monitoring.ts`.
+    - [x] Refactor `agent-monitoring.tsx` to use typed hooks (React Query generics) and eliminate optional-chaining noise.
+   - [x] Add unit tests for the shape conversions (e.g., transforming `transitionMetrics`).
    - **Company Profiles / Portal Settings / Proposals / Submissions / Scan History / Workflow Management**
      - [ ] For each page, repeat the pattern: capture API payload -> define interface -> update fetch + component -> add targeted tests.
+       - [x] Submissions: shared RFP detail contract, sanitized portal join, typed filters with unit coverage.
      - [ ] Break into separate PRs to keep code review manageable.
 
 4. **Backend Services & Workers**
