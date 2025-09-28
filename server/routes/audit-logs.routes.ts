@@ -12,8 +12,8 @@ router.get('/:entityType/:entityId', async (req, res) => {
     const logs = await storage.getAuditLogsByEntity(entityType, entityId);
     res.json(logs);
   } catch (error) {
-    console.error("Error fetching audit logs:", error);
-    res.status(500).json({ error: "Failed to fetch audit logs" });
+    console.error('Error fetching audit logs:', error);
+    res.status(500).json({ error: 'Failed to fetch audit logs' });
   }
 });
 

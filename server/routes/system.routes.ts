@@ -10,7 +10,7 @@ const serviceRuntimeState = {
   portalScheduler: false,
   workDistribution: false,
   retryScheduler: false,
-  dlqMonitor: false
+  dlqMonitor: false,
 };
 
 const portalSchedulerService = new PortalSchedulerService();
@@ -22,22 +22,34 @@ router.get('/config', async (req, res) => {
   try {
     const config = {
       backgroundServices: {
-        workDistribution: serviceRuntimeState.workDistribution || process.env.AUTO_WORK_DISTRIBUTION === 'true',
-        retryScheduler: serviceRuntimeState.retryScheduler || process.env.AUTO_RETRY_SCHEDULER === 'true',
-        dlqMonitor: serviceRuntimeState.dlqMonitor || process.env.AUTO_DLQ_MONITOR === 'true',
-        portalScheduler: serviceRuntimeState.portalScheduler || process.env.AUTO_PORTAL_SCHEDULER === 'true'
+        workDistribution:
+          serviceRuntimeState.workDistribution ||
+          process.env.AUTO_WORK_DISTRIBUTION === 'true',
+        retryScheduler:
+          serviceRuntimeState.retryScheduler ||
+          process.env.AUTO_RETRY_SCHEDULER === 'true',
+        dlqMonitor:
+          serviceRuntimeState.dlqMonitor ||
+          process.env.AUTO_DLQ_MONITOR === 'true',
+        portalScheduler:
+          serviceRuntimeState.portalScheduler ||
+          process.env.AUTO_PORTAL_SCHEDULER === 'true',
       },
       manualOperationMode: !(
-        serviceRuntimeState.workDistribution || process.env.AUTO_WORK_DISTRIBUTION === 'true' ||
-        serviceRuntimeState.retryScheduler || process.env.AUTO_RETRY_SCHEDULER === 'true' ||
-        serviceRuntimeState.dlqMonitor || process.env.AUTO_DLQ_MONITOR === 'true' ||
-        serviceRuntimeState.portalScheduler || process.env.AUTO_PORTAL_SCHEDULER === 'true'
-      )
+        serviceRuntimeState.workDistribution ||
+        process.env.AUTO_WORK_DISTRIBUTION === 'true' ||
+        serviceRuntimeState.retryScheduler ||
+        process.env.AUTO_RETRY_SCHEDULER === 'true' ||
+        serviceRuntimeState.dlqMonitor ||
+        process.env.AUTO_DLQ_MONITOR === 'true' ||
+        serviceRuntimeState.portalScheduler ||
+        process.env.AUTO_PORTAL_SCHEDULER === 'true'
+      ),
     };
     res.json(config);
   } catch (error) {
-    console.error("Error fetching system config:", error);
-    res.status(500).json({ error: "Failed to fetch system config" });
+    console.error('Error fetching system config:', error);
+    res.status(500).json({ error: 'Failed to fetch system config' });
   }
 });
 
@@ -48,14 +60,21 @@ router.post('/services/:service/:action', async (req, res) => {
   try {
     // Basic auth check - in production this should use proper authentication
     const authHeader = req.headers.authorization;
-    if (!authHeader || authHeader !== 'Bearer admin-token-change-in-production') {
-      return res.status(401).json({ error: 'Unauthorized - admin access required' });
+    if (
+      !authHeader ||
+      authHeader !== 'Bearer admin-token-change-in-production'
+    ) {
+      return res
+        .status(401)
+        .json({ error: 'Unauthorized - admin access required' });
     }
 
     const { service, action } = req.params;
 
     if (!['enable', 'disable'].includes(action)) {
-      return res.status(400).json({ error: "Action must be 'enable' or 'disable'" });
+      return res
+        .status(400)
+        .json({ error: "Action must be 'enable' or 'disable'" });
     }
 
     const response = { service, action, success: false, message: '' };
@@ -105,7 +124,7 @@ router.post('/services/:service/:action', async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error(`Error controlling service:`, error);
-    res.status(500).json({ error: "Failed to control service" });
+    res.status(500).json({ error: 'Failed to control service' });
   }
 });
 
@@ -126,15 +145,15 @@ router.get('/check-company-profiles', async (req, res) => {
         companyName: p.companyName,
         dba: p.dba,
         isActive: p.isActive,
-        createdAt: p.createdAt
-      }))
+        createdAt: p.createdAt,
+      })),
     });
   } catch (error) {
     console.error('❌ Error checking company profiles:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to check company profiles',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -159,19 +178,19 @@ router.post('/fix-rfp-progress', async (req, res) => {
       // Determine correct progress based on status
       switch (rfp.status) {
         case 'discovered':
-          newProgress = 15;  // Just discovered and scraped
+          newProgress = 15; // Just discovered and scraped
           break;
         case 'parsing':
-          newProgress = 20;  // Documents being processed
+          newProgress = 20; // Documents being processed
           break;
         case 'review':
-          newProgress = 25;  // Analysis complete, ready for review
+          newProgress = 25; // Analysis complete, ready for review
           break;
         case 'drafting':
-          newProgress = 50;  // Proposal being generated
+          newProgress = 50; // Proposal being generated
           break;
         case 'approved':
-          newProgress = 85;  // Proposal approved, ready for submission
+          newProgress = 85; // Proposal approved, ready for submission
           break;
         case 'submitted':
           newProgress = 100; // Actually submitted - this should be 100%
@@ -187,26 +206,29 @@ router.post('/fix-rfp-progress', async (req, res) => {
       // Only update if progress is different
       if (rfp.progress !== newProgress) {
         await storage.updateRFP(rfp.id, { progress: newProgress });
-        console.log(`✅ Updated RFP "${rfp.title}" (${rfp.status}): ${rfp.progress}% → ${newProgress}%`);
+        console.log(
+          `✅ Updated RFP "${rfp.title}" (${rfp.status}): ${rfp.progress}% → ${newProgress}%`
+        );
         updatedCount++;
       }
     }
 
-    console.log(`🎉 Progress fix complete! Updated ${updatedCount} out of ${rfps.length} RFPs`);
+    console.log(
+      `🎉 Progress fix complete! Updated ${updatedCount} out of ${rfps.length} RFPs`
+    );
 
     res.json({
       success: true,
       message: `Fixed progress for ${updatedCount} out of ${rfps.length} RFPs`,
       updatedCount,
-      totalChecked: rfps.length
+      totalChecked: rfps.length,
     });
-
   } catch (error) {
     console.error('❌ Error fixing RFP progress:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fix RFP progress',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });

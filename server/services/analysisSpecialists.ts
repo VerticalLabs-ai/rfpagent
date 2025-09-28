@@ -8,7 +8,7 @@ import type { Document, RFP, WorkItem } from '@shared/schema';
 
 /**
  * Analysis Specialists for the 3-Tier RFP Automation System
- * 
+ *
  * These specialist services integrate with existing DocumentParsingService and DocumentIntelligenceService
  * to provide specialized document processing capabilities within the agent system.
  */
@@ -68,26 +68,30 @@ export class DocumentProcessorSpecialist {
   /**
    * Process document validation task
    */
-  async processDocumentValidation(workItem: WorkItem): Promise<SpecialistTaskResult> {
+  async processDocumentValidation(
+    workItem: WorkItem
+  ): Promise<SpecialistTaskResult> {
     try {
-      console.log(`📄 Document processor validating document: ${workItem.inputs.documentId}`);
-      
+      console.log(
+        `📄 Document processor validating document: ${workItem.inputs.documentId}`
+      );
+
       const documentId = workItem.inputs.documentId;
       const document = await storage.getDocument(documentId);
-      
+
       if (!document) {
         throw new Error(`Document not found: ${documentId}`);
       }
 
       // Validate document accessibility and integrity
       const validation = await this.validateDocument(document);
-      
+
       // Store validation results
       await storage.updateDocument(documentId, {
         parsedData: {
-          ...document.parsedData as any || {},
-          validation
-        }
+          ...((document.parsedData as any) || {}),
+          validation,
+        },
       });
 
       // Store memory of validation
@@ -100,20 +104,20 @@ export class DocumentProcessorSpecialist {
           documentId,
           filename: document.filename,
           validation,
-          processedAt: new Date()
+          processedAt: new Date(),
         },
         importance: validation.isValid ? 7 : 9, // Higher importance for invalid docs
         metadata: {
           workItemId: workItem.id,
-          rfpId: workItem.inputs.rfpId
-        }
+          rfpId: workItem.inputs.rfpId,
+        },
       });
 
       if (!validation.isValid) {
         return {
           success: false,
           error: `Document validation failed: ${validation.issues.join(', ')}`,
-          metadata: { validation }
+          metadata: { validation },
         };
       }
 
@@ -123,17 +127,16 @@ export class DocumentProcessorSpecialist {
         metadata: {
           documentId,
           filename: document.filename,
-          validation
+          validation,
         },
-        nextActions: ['text_extraction']
+        nextActions: ['text_extraction'],
       };
-
     } catch (error) {
       console.error(`❌ Document validation failed:`, error);
       return {
         success: false,
         error: error.message,
-        metadata: { workItemId: workItem.id }
+        metadata: { workItemId: workItem.id },
       };
     }
   }
@@ -141,17 +144,21 @@ export class DocumentProcessorSpecialist {
   /**
    * Process text extraction task
    */
-  async processTextExtraction(workItem: WorkItem): Promise<SpecialistTaskResult> {
+  async processTextExtraction(
+    workItem: WorkItem
+  ): Promise<SpecialistTaskResult> {
     try {
-      console.log(`📝 Document processor extracting text: ${workItem.inputs.documentId}`);
-      
+      console.log(
+        `📝 Document processor extracting text: ${workItem.inputs.documentId}`
+      );
+
       const documentId = workItem.inputs.documentId;
       const extractionMethod = workItem.inputs.extractionMethod || 'auto';
       const qualityLevel = workItem.inputs.qualityLevel || 'high';
 
       // Use existing document parsing service
       await this.documentParsingService.parseDocument(documentId);
-      
+
       // Get updated document with extracted text
       const document = await storage.getDocument(documentId);
       if (!document) {
@@ -163,15 +170,18 @@ export class DocumentProcessorSpecialist {
         textLength: document.extractedText?.length || 0,
         quality: this.assessTextQuality(document.extractedText || ''),
         method: extractionMethod,
-        confidence: this.calculateExtractionConfidence(document.extractedText || '', document.fileType),
+        confidence: this.calculateExtractionConfidence(
+          document.extractedText || '',
+          document.fileType
+        ),
         metadata: {
           documentId,
           filename: document.filename,
           fileType: document.fileType,
           extractionMethod,
           qualityLevel,
-          processedAt: new Date()
-        }
+          processedAt: new Date(),
+        },
       };
 
       // Store extraction memory
@@ -184,21 +194,21 @@ export class DocumentProcessorSpecialist {
           documentId,
           filename: document.filename,
           extractionResult,
-          method: extractionMethod
+          method: extractionMethod,
         },
         importance: extractionResult.quality === 'high' ? 8 : 6,
         metadata: {
           workItemId: workItem.id,
-          rfpId: workItem.inputs.rfpId
-        }
+          rfpId: workItem.inputs.rfpId,
+        },
       });
 
       // Update document with additional extraction metadata
       await storage.updateDocument(documentId, {
         parsedData: {
-          ...document.parsedData as any || {},
-          textExtraction: extractionResult
-        }
+          ...((document.parsedData as any) || {}),
+          textExtraction: extractionResult,
+        },
       });
 
       return {
@@ -208,17 +218,16 @@ export class DocumentProcessorSpecialist {
           documentId,
           filename: document.filename,
           textLength: extractionResult.textLength,
-          quality: extractionResult.quality
+          quality: extractionResult.quality,
         },
-        nextActions: ['requirement_parsing']
+        nextActions: ['requirement_parsing'],
       };
-
     } catch (error) {
       console.error(`❌ Text extraction failed:`, error);
       return {
         success: false,
         error: error.message,
-        metadata: { workItemId: workItem.id }
+        metadata: { workItemId: workItem.id },
       };
     }
   }
@@ -226,20 +235,31 @@ export class DocumentProcessorSpecialist {
   /**
    * Validate document integrity and accessibility
    */
-  private async validateDocument(document: Document): Promise<ValidationResult> {
+  private async validateDocument(
+    document: Document
+  ): Promise<ValidationResult> {
     const issues: string[] = [];
     let isValid = true;
 
     try {
       // Check if file exists in object storage
-      const file = await this.objectStorageService.getObjectEntityFile(document.objectPath);
+      const file = await this.objectStorageService.getObjectEntityFile(
+        document.objectPath
+      );
       if (!file) {
         issues.push('File not found in object storage');
         isValid = false;
       }
 
       // Check file type support
-      const supportedTypes = ['pdf', 'docx', 'txt', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+      const supportedTypes = [
+        'pdf',
+        'docx',
+        'txt',
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+      ];
       if (!supportedTypes.includes(document.fileType.toLowerCase())) {
         issues.push(`Unsupported file type: ${document.fileType}`);
         isValid = false;
@@ -278,10 +298,9 @@ export class DocumentProcessorSpecialist {
           documentId: document.id,
           filename: document.filename,
           validatedAt: new Date(),
-          objectPath: document.objectPath
-        }
+          objectPath: document.objectPath,
+        },
       };
-
     } catch (error) {
       return {
         isValid: false,
@@ -293,8 +312,8 @@ export class DocumentProcessorSpecialist {
           documentId: document.id,
           filename: document.filename,
           validatedAt: new Date(),
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -304,7 +323,7 @@ export class DocumentProcessorSpecialist {
    */
   private assessTextQuality(text: string): 'high' | 'medium' | 'low' {
     if (!text || text.length < 100) return 'low';
-    
+
     // Check for indicators of good extraction
     const wordCount = text.split(/\s+/).length;
     const hasStructure = /\n\s*\n|\t|•|1\.|2\.|3\./.test(text);
@@ -316,14 +335,17 @@ export class DocumentProcessorSpecialist {
     } else if (wordCount > 100 && alphabeticRatio > 0.5) {
       return 'medium';
     }
-    
+
     return 'low';
   }
 
   /**
    * Calculate extraction confidence based on text and file type
    */
-  private calculateExtractionConfidence(text: string, fileType: string): number {
+  private calculateExtractionConfidence(
+    text: string,
+    fileType: string
+  ): number {
     let baseConfidence = 0.5;
 
     // File type specific confidence
@@ -359,17 +381,25 @@ export class RequirementsExtractorSpecialist {
   /**
    * Process requirement parsing task
    */
-  async processRequirementParsing(workItem: WorkItem): Promise<SpecialistTaskResult> {
+  async processRequirementParsing(
+    workItem: WorkItem
+  ): Promise<SpecialistTaskResult> {
     try {
-      console.log(`📋 Requirements extractor parsing document: ${workItem.inputs.documentId}`);
-      
+      console.log(
+        `📋 Requirements extractor parsing document: ${workItem.inputs.documentId}`
+      );
+
       const documentId = workItem.inputs.documentId;
       const rfpId = workItem.inputs.rfpId;
-      const extractionFocus = workItem.inputs.extractionFocus || ['mandatory', 'optional', 'evaluation_criteria'];
+      const extractionFocus = workItem.inputs.extractionFocus || [
+        'mandatory',
+        'optional',
+        'evaluation_criteria',
+      ];
 
       const document = await storage.getDocument(documentId);
       const rfp = await storage.getRFP(rfpId);
-      
+
       if (!document || !rfp) {
         throw new Error(`Document or RFP not found: ${documentId}, ${rfpId}`);
       }
@@ -388,9 +418,9 @@ export class RequirementsExtractorSpecialist {
       // Update document with parsed requirements
       await storage.updateDocument(documentId, {
         parsedData: {
-          ...document.parsedData as any || {},
-          requirementParsing: requirementResult
-        }
+          ...((document.parsedData as any) || {}),
+          requirementParsing: requirementResult,
+        },
       });
 
       // Store memory of requirement parsing
@@ -404,14 +434,14 @@ export class RequirementsExtractorSpecialist {
           filename: document.filename,
           rfpId,
           requirementResult,
-          extractionFocus
+          extractionFocus,
         },
         importance: 8,
         metadata: {
           workItemId: workItem.id,
           rfpId,
-          requirementCount: requirementResult.requirements.length
-        }
+          requirementCount: requirementResult.requirements.length,
+        },
       });
 
       return {
@@ -421,17 +451,16 @@ export class RequirementsExtractorSpecialist {
           documentId,
           filename: document.filename,
           requirementCount: requirementResult.requirements.length,
-          mandatoryCount: requirementResult.mandatoryFields.length
+          mandatoryCount: requirementResult.mandatoryFields.length,
         },
-        nextActions: ['compliance_analysis']
+        nextActions: ['compliance_analysis'],
       };
-
     } catch (error) {
       console.error(`❌ Requirement parsing failed:`, error);
       return {
         success: false,
         error: error.message,
-        metadata: { workItemId: workItem.id }
+        metadata: { workItemId: workItem.id },
       };
     }
   }
@@ -445,8 +474,11 @@ export class RequirementsExtractorSpecialist {
     extractionFocus: string[]
   ): Promise<RequirementParsingResult> {
     // Use AI service to extract structured requirements
-    const aiAnalysis = await this.aiService.analyzeDocumentCompliance(documentText, rfp);
-    
+    const aiAnalysis = await this.aiService.analyzeDocumentCompliance(
+      documentText,
+      rfp
+    );
+
     // Structure the results
     const requirements = aiAnalysis.requirements || [];
     const mandatoryFields = aiAnalysis.mandatoryFields || [];
@@ -455,7 +487,7 @@ export class RequirementsExtractorSpecialist {
 
     // Categorize requirements
     const categories = this.categorizeRequirements(requirements);
-    
+
     // Separate mandatory and optional fields
     const optionalFields = requirements.filter((req: any) => !req.mandatory);
 
@@ -465,7 +497,7 @@ export class RequirementsExtractorSpecialist {
       optionalFields,
       evaluationCriteria,
       deadlines,
-      categories
+      categories,
     };
   }
 
@@ -474,7 +506,7 @@ export class RequirementsExtractorSpecialist {
    */
   private categorizeRequirements(requirements: any[]): string[] {
     const categories = new Set<string>();
-    
+
     requirements.forEach(req => {
       if (req.type) {
         categories.add(req.type);
@@ -500,13 +532,20 @@ export class ComplianceCheckerSpecialist {
   /**
    * Process compliance analysis task
    */
-  async processComplianceAnalysis(workItem: WorkItem): Promise<SpecialistTaskResult> {
+  async processComplianceAnalysis(
+    workItem: WorkItem
+  ): Promise<SpecialistTaskResult> {
     try {
-      console.log(`✅ Compliance checker analyzing RFP: ${workItem.inputs.rfpId}`);
-      
+      console.log(
+        `✅ Compliance checker analyzing RFP: ${workItem.inputs.rfpId}`
+      );
+
       const rfpId = workItem.inputs.rfpId;
       const documentIds = workItem.inputs.documentIds || [];
-      const analysisScope = workItem.inputs.analysisScope || ['compliance_checklist', 'risk_flags'];
+      const analysisScope = workItem.inputs.analysisScope || [
+        'compliance_checklist',
+        'risk_flags',
+      ];
 
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -515,15 +554,19 @@ export class ComplianceCheckerSpecialist {
 
       // Get all documents for this RFP
       const documents = await storage.getDocumentsByRFP(rfpId);
-      
+
       // Perform comprehensive compliance analysis
-      const complianceResult = await this.analyzeCompliance(rfp, documents, analysisScope);
+      const complianceResult = await this.analyzeCompliance(
+        rfp,
+        documents,
+        analysisScope
+      );
 
       // Update RFP with compliance analysis
       await storage.updateRFP(rfpId, {
         requirements: complianceResult.complianceItems,
         complianceItems: complianceResult.mandatoryChecklist,
-        riskFlags: complianceResult.riskFlags
+        riskFlags: complianceResult.riskFlags,
       });
 
       // Store memory of compliance analysis
@@ -537,15 +580,15 @@ export class ComplianceCheckerSpecialist {
           rfpTitle: rfp.title,
           complianceResult,
           analysisScope,
-          documentCount: documents.length
+          documentCount: documents.length,
         },
         importance: 9, // High importance for compliance
         metadata: {
           workItemId: workItem.id,
           rfpId,
           riskLevel: this.assessOverallRiskLevel(complianceResult.riskFlags),
-          complianceScore: complianceResult.confidenceScore
-        }
+          complianceScore: complianceResult.confidenceScore,
+        },
       });
 
       // Create notifications for high-risk items
@@ -559,16 +602,15 @@ export class ComplianceCheckerSpecialist {
           rfpTitle: rfp.title,
           complianceItemCount: complianceResult.complianceItems.length,
           riskFlagCount: complianceResult.riskFlags.length,
-          confidenceScore: complianceResult.confidenceScore
-        }
+          confidenceScore: complianceResult.confidenceScore,
+        },
       };
-
     } catch (error) {
       console.error(`❌ Compliance analysis failed:`, error);
       return {
         success: false,
         error: error.message,
-        metadata: { workItemId: workItem.id }
+        metadata: { workItemId: workItem.id },
       };
     }
   }
@@ -592,8 +634,11 @@ export class ComplianceCheckerSpecialist {
     }
 
     // Use AI service for compliance analysis
-    const aiCompliance = await this.aiService.analyzeDocumentCompliance(combinedText, rfp);
-    
+    const aiCompliance = await this.aiService.analyzeDocumentCompliance(
+      combinedText,
+      rfp
+    );
+
     // Structure compliance results
     const complianceItems = aiCompliance.requirements || [];
     const riskFlags = aiCompliance.riskFlags || [];
@@ -618,7 +663,7 @@ export class ComplianceCheckerSpecialist {
       riskFlags,
       mandatoryChecklist,
       confidenceScore,
-      recommendations
+      recommendations,
     };
   }
 
@@ -638,10 +683,12 @@ export class ComplianceCheckerSpecialist {
 
     // Adjust based on risk assessment
     const highRiskCount = riskFlags.filter(flag => flag.type === 'high').length;
-    const mediumRiskCount = riskFlags.filter(flag => flag.type === 'medium').length;
+    const mediumRiskCount = riskFlags.filter(
+      flag => flag.type === 'medium'
+    ).length;
 
-    baseScore -= (highRiskCount * 0.15);
-    baseScore -= (mediumRiskCount * 0.05);
+    baseScore -= highRiskCount * 0.15;
+    baseScore -= mediumRiskCount * 0.05;
 
     // Adjust based on compliance item completeness
     const completeItems = complianceItems.filter(item => item.mandatory).length;
@@ -669,7 +716,9 @@ export class ComplianceCheckerSpecialist {
     }
 
     // Mandatory field recommendations
-    const incompleteFields = mandatoryChecklist.filter(field => !field.completed);
+    const incompleteFields = mandatoryChecklist.filter(
+      field => !field.completed
+    );
     if (incompleteFields.length > 0) {
       recommendations.push(
         `Complete ${incompleteFields.length} mandatory fields before submission`
@@ -677,8 +726,8 @@ export class ComplianceCheckerSpecialist {
     }
 
     // Deadline recommendations
-    const deadlineItems = complianceItems.filter(item => 
-      item.type === 'deadline' || item.category === 'deadline'
+    const deadlineItems = complianceItems.filter(
+      item => item.type === 'deadline' || item.category === 'deadline'
     );
     if (deadlineItems.length > 0) {
       recommendations.push(
@@ -706,23 +755,26 @@ export class ComplianceCheckerSpecialist {
     if (highRisk > 0) return 'high';
     if (mediumRisk > 2) return 'high';
     if (mediumRisk > 0) return 'medium';
-    
+
     return 'low';
   }
 
   /**
    * Create notifications for high-risk items
    */
-  private async createRiskNotifications(rfp: RFP, riskFlags: any[]): Promise<void> {
+  private async createRiskNotifications(
+    rfp: RFP,
+    riskFlags: any[]
+  ): Promise<void> {
     const highRiskFlags = riskFlags.filter(flag => flag.type === 'high');
-    
+
     for (const flag of highRiskFlags) {
       await storage.createNotification({
         type: 'compliance',
         title: 'High Risk Compliance Issue',
         message: `${flag.category}: ${flag.description}`,
         relatedEntityType: 'rfp',
-        relatedEntityId: rfp.id
+        relatedEntityId: rfp.id,
       });
     }
   }
@@ -730,5 +782,6 @@ export class ComplianceCheckerSpecialist {
 
 // Export specialist instances
 export const documentProcessorSpecialist = new DocumentProcessorSpecialist();
-export const requirementsExtractorSpecialist = new RequirementsExtractorSpecialist();
+export const requirementsExtractorSpecialist =
+  new RequirementsExtractorSpecialist();
 export const complianceCheckerSpecialist = new ComplianceCheckerSpecialist();

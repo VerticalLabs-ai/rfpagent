@@ -1,4 +1,9 @@
-import { BaseRepository, type BaseFilter, type RepositoryResult, createPaginatedResult } from './BaseRepository';
+import {
+  BaseRepository,
+  type BaseFilter,
+  type RepositoryResult,
+  createPaginatedResult,
+} from './BaseRepository';
 import { portals, type Portal, type InsertPortal } from '@shared/schema';
 import { eq, and, or, sql } from 'drizzle-orm';
 import { db } from '../db';
@@ -12,7 +17,11 @@ export interface PortalFilter extends BaseFilter {
 /**
  * Portal repository for portal-specific database operations
  */
-export class PortalRepository extends BaseRepository<typeof portals, Portal, InsertPortal> {
+export class PortalRepository extends BaseRepository<
+  typeof portals,
+  Portal,
+  InsertPortal
+> {
   constructor() {
     super(portals);
   }
@@ -20,17 +29,21 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
   /**
    * Get all portals with optional filtering
    */
-  async findAllPortals(filter?: PortalFilter): Promise<RepositoryResult<Portal>> {
-    let query = db.select({
-      id: portals.id,
-      name: portals.name,
-      url: portals.url,
-      status: portals.status,
-      loginRequired: portals.loginRequired,
-      lastScanned: portals.lastScanned,
-      createdAt: portals.createdAt
-      // Exclude credentials from public list
-    }).from(portals);
+  async findAllPortals(
+    filter?: PortalFilter
+  ): Promise<RepositoryResult<Portal>> {
+    let query = db
+      .select({
+        id: portals.id,
+        name: portals.name,
+        url: portals.url,
+        status: portals.status,
+        loginRequired: portals.loginRequired,
+        lastScanned: portals.lastScanned,
+        createdAt: portals.createdAt,
+        // Exclude credentials from public list
+      })
+      .from(portals);
 
     const conditions = [];
 
@@ -58,7 +71,9 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
     if (filter?.orderBy) {
       const column = portals[filter.orderBy as keyof typeof portals];
       if (column) {
-        query = query.orderBy(filter.direction === 'desc' ? sql`${column} DESC` : sql`${column} ASC`) as any;
+        query = query.orderBy(
+          filter.direction === 'desc' ? sql`${column} DESC` : sql`${column} ASC`
+        ) as any;
       }
     }
 
@@ -69,7 +84,9 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
       data = await query;
     }
 
-    const total = await this.count(conditions.length > 0 ? and(...conditions) : undefined);
+    const total = await this.count(
+      conditions.length > 0 ? and(...conditions) : undefined
+    );
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;
@@ -103,21 +120,29 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
   /**
    * Update portal status
    */
-  async updateStatus(id: string, status: 'active' | 'inactive'): Promise<Portal | undefined> {
+  async updateStatus(
+    id: string,
+    status: 'active' | 'inactive'
+  ): Promise<Portal | undefined> {
     return await this.update(id, { status });
   }
 
   /**
    * Update last scanned timestamp
    */
-  async updateLastScanned(id: string, lastScanned: Date = new Date()): Promise<Portal | undefined> {
+  async updateLastScanned(
+    id: string,
+    lastScanned: Date = new Date()
+  ): Promise<Portal | undefined> {
     return await this.update(id, { lastScanned });
   }
 
   /**
    * Get portals that need scanning
    */
-  async getPortalsNeedingScanning(hoursThreshold: number = 24): Promise<Portal[]> {
+  async getPortalsNeedingScanning(
+    hoursThreshold: number = 24
+  ): Promise<Portal[]> {
     const threshold = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000);
 
     return await this.executeRaw(
@@ -143,7 +168,8 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
   }> {
     const recent = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
 
-    const [stats] = await this.executeRaw(`
+    const [stats] = await this.executeRaw(
+      `
       SELECT
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
@@ -151,14 +177,16 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
         COUNT(CASE WHEN login_required = true THEN 1 END) as require_login,
         COUNT(CASE WHEN last_scanned > $1 THEN 1 END) as recently_scanned
       FROM portals
-    `, [recent]);
+    `,
+      [recent]
+    );
 
     return {
       total: Number(stats.total),
       active: Number(stats.active),
       inactive: Number(stats.inactive),
       requireLogin: Number(stats.require_login),
-      recentlyScanned: Number(stats.recently_scanned)
+      recentlyScanned: Number(stats.recently_scanned),
     };
   }
 
@@ -187,7 +215,10 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
   /**
    * Bulk update portal statuses
    */
-  async bulkUpdateStatus(ids: string[], status: 'active' | 'inactive'): Promise<number> {
+  async bulkUpdateStatus(
+    ids: string[],
+    status: 'active' | 'inactive'
+  ): Promise<number> {
     if (ids.length === 0) return 0;
 
     const result = await this.executeRaw(
@@ -205,7 +236,10 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
   /**
    * Get portal scan history summary
    */
-  async getPortalScanSummary(portalId: string, days: number = 30): Promise<{
+  async getPortalScanSummary(
+    portalId: string,
+    days: number = 30
+  ): Promise<{
     portalId: string;
     totalScans: number;
     successfulScans: number;
@@ -236,7 +270,9 @@ export class PortalRepository extends BaseRepository<typeof portals, Portal, Ins
       totalScans: Number(summary.total_scans),
       successfulScans: Number(summary.successful_scans),
       lastScan: summary.last_scan,
-      averageInterval: summary.average_interval_seconds ? Number(summary.average_interval_seconds) : null
+      averageInterval: summary.average_interval_seconds
+        ? Number(summary.average_interval_seconds)
+        : null,
     };
   }
 }

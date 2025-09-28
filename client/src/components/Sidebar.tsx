@@ -1,27 +1,58 @@
-import { Link, useLocation } from "wouter";
-import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { Link, useLocation } from 'wouter';
+import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+
+interface DashboardMetrics {
+  newRfpsToday?: number;
+  pendingReview?: number;
+  submittedToday?: number;
+}
+
+const fetchDashboardMetrics = async (): Promise<DashboardMetrics> => {
+  const response = await fetch('/api/dashboard/metrics');
+  if (!response.ok) {
+    throw new Error('Failed to fetch dashboard metrics');
+  }
+  return response.json();
+};
 
 export default function Sidebar() {
   const [location] = useLocation();
 
-  const { data: metrics } = useQuery({
-    queryKey: ["/api/dashboard/metrics"],
+  const { data: metrics } = useQuery<DashboardMetrics>({
+    queryKey: ['/api/dashboard/metrics'],
+    queryFn: fetchDashboardMetrics,
   });
 
   const navigationItems = [
-    { path: "/", label: "Dashboard", icon: "fas fa-tachometer-alt" },
-    { path: "/discovery", label: "RFP Discovery", icon: "fas fa-search" },
-    { path: "/ai-chat", label: "AI Agent", icon: "fas fa-robot" },
-    { path: "/workflow-management", label: "Workflow Management", icon: "fas fa-cogs" },
-    { path: "/agent-monitoring", label: "Agent Monitoring", icon: "fas fa-chart-line" },
-    { path: "/system-settings", label: "System Settings", icon: "fas fa-server" },
-    { path: "/proposals", label: "Proposals", icon: "fas fa-file-alt" },
-    { path: "/compliance", label: "Compliance", icon: "fas fa-tasks" },
-    { path: "/submissions", label: "Submissions", icon: "fas fa-paper-plane" },
-    { path: "/company-profiles", label: "Company Profiles", icon: "fas fa-building" },
-    { path: "/portal-settings", label: "Portal Settings", icon: "fas fa-cog" },
-    { path: "/analytics", label: "Analytics", icon: "fas fa-chart-bar" },
+    { path: '/', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
+    { path: '/discovery', label: 'RFP Discovery', icon: 'fas fa-search' },
+    { path: '/ai-chat', label: 'AI Agent', icon: 'fas fa-robot' },
+    {
+      path: '/workflow-management',
+      label: 'Workflow Management',
+      icon: 'fas fa-cogs',
+    },
+    {
+      path: '/agent-monitoring',
+      label: 'Agent Monitoring',
+      icon: 'fas fa-chart-line',
+    },
+    {
+      path: '/system-settings',
+      label: 'System Settings',
+      icon: 'fas fa-server',
+    },
+    { path: '/proposals', label: 'Proposals', icon: 'fas fa-file-alt' },
+    { path: '/compliance', label: 'Compliance', icon: 'fas fa-tasks' },
+    { path: '/submissions', label: 'Submissions', icon: 'fas fa-paper-plane' },
+    {
+      path: '/company-profiles',
+      label: 'Company Profiles',
+      icon: 'fas fa-building',
+    },
+    { path: '/portal-settings', label: 'Portal Settings', icon: 'fas fa-cog' },
+    { path: '/analytics', label: 'Analytics', icon: 'fas fa-chart-bar' },
   ];
 
   return (
@@ -33,17 +64,17 @@ export default function Sidebar() {
         </h1>
         <p className="text-sm text-muted-foreground">Automation Platform</p>
       </div>
-      
+
       <nav className="px-4 space-y-2" data-testid="sidebar-navigation">
-        {navigationItems.map((item) => (
-          <Link 
-            key={item.path} 
+        {navigationItems.map(item => (
+          <Link
+            key={item.path}
             href={item.path}
             className={cn(
-              "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+              'flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
               location === item.path
-                ? "bg-primary/10 text-primary"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
             )}
             data-testid={`nav-link-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
           >
@@ -52,26 +83,39 @@ export default function Sidebar() {
           </Link>
         ))}
       </nav>
-      
+
       {/* Quick Stats */}
       <div className="p-4 mt-8">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Today's Activity</h3>
+        <h3 className="text-sm font-semibold text-foreground mb-3">
+          Today's Activity
+        </h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">New RFPs</span>
-            <span className="text-sm font-semibold text-primary" data-testid="stat-new-rfps">
+            <span
+              className="text-sm font-semibold text-primary"
+              data-testid="stat-new-rfps"
+            >
               {metrics?.newRfpsToday || 0}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">Pending Review</span>
-            <span className="text-sm font-semibold text-orange-600" data-testid="stat-pending-review">
+            <span className="text-xs text-muted-foreground">
+              Pending Review
+            </span>
+            <span
+              className="text-sm font-semibold text-orange-600"
+              data-testid="stat-pending-review"
+            >
               {metrics?.pendingReview || 0}
             </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-xs text-muted-foreground">Submitted</span>
-            <span className="text-sm font-semibold text-green-600" data-testid="stat-submitted">
+            <span
+              className="text-sm font-semibold text-green-600"
+              data-testid="stat-submitted"
+            >
               {metrics?.submittedToday || 0}
             </span>
           </div>

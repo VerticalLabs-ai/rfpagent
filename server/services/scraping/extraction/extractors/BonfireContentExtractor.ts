@@ -14,7 +14,11 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from Bonfire Hub content
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🔥 Starting Bonfire content extraction for ${url}`);
 
@@ -34,7 +38,11 @@ export class BonfireContentExtractor extends BaseContentExtractor {
       const listOpportunities = this.extractFromLists($, url);
       const divOpportunities = this.extractFromDivs($, url);
 
-      opportunities.push(...tableOpportunities, ...listOpportunities, ...divOpportunities);
+      opportunities.push(
+        ...tableOpportunities,
+        ...listOpportunities,
+        ...divOpportunities
+      );
 
       // Calculate confidence scores and filter
       opportunities.forEach(opp => {
@@ -42,14 +50,15 @@ export class BonfireContentExtractor extends BaseContentExtractor {
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(`🔥 Bonfire extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`);
+      console.log(
+        `🔥 Bonfire extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
+      );
 
       return this.removeDuplicates(filteredOpportunities);
-
     } catch (error) {
       console.error(`❌ Bonfire content extraction failed for ${url}:`, error);
       return [];
@@ -86,13 +95,18 @@ export class BonfireContentExtractor extends BaseContentExtractor {
     const listItems = $('li').length;
     const divs = $('div').length;
 
-    console.log(`📄 Bonfire page "${pageTitle}" structure: ${tables} tables, ${rows} rows, ${lists} lists, ${listItems} list items, ${divs} divs`);
+    console.log(
+      `📄 Bonfire page "${pageTitle}" structure: ${tables} tables, ${rows} rows, ${lists} lists, ${listItems} list items, ${divs} divs`
+    );
   }
 
   /**
    * Extract opportunities from table structures
    */
-  private extractFromTables($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromTables(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('table tr').each((index, element) => {
@@ -104,8 +118,10 @@ export class BonfireContentExtractor extends BaseContentExtractor {
       if (cells.length >= 2) {
         const title = this.cleanText(cells.eq(0).text());
         const description = this.cleanText(cells.eq(1).text());
-        const deadline = cells.length > 2 ? this.cleanText(cells.eq(2).text()) : undefined;
-        const agency = cells.length > 3 ? this.cleanText(cells.eq(3).text()) : undefined;
+        const deadline =
+          cells.length > 2 ? this.cleanText(cells.eq(2).text()) : undefined;
+        const agency =
+          cells.length > 3 ? this.cleanText(cells.eq(3).text()) : undefined;
 
         // Look for links in any cell
         const link = $row.find('a').first().attr('href');
@@ -119,7 +135,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
             url: this.validateAndFixSourceUrl(link, baseUrl),
             link: this.validateAndFixSourceUrl(link, baseUrl),
             category: this.inferCategory(title),
-            confidence: 0.7
+            confidence: 0.7,
           });
           console.log(`✅ Bonfire table opportunity found: ${title}`);
         }
@@ -132,16 +148,22 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from list structures
    */
-  private extractFromLists($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromLists(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('li').each((_, element) => {
       const $item = $(element);
       const text = this.cleanText($item.text());
-      const link = $item.find('a').first().attr('href') || $item.closest('a').attr('href');
+      const link =
+        $item.find('a').first().attr('href') || $item.closest('a').attr('href');
 
       if (this.hasRFPKeywords(text) && text.length > 10) {
-        const title = $item.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 100);
+        const title =
+          $item.find('h1, h2, h3, h4, h5, h6').first().text().trim() ||
+          text.substring(0, 100);
 
         if (title && !opportunities.some(opp => opp.title === title)) {
           opportunities.push({
@@ -150,7 +172,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
             url: this.validateAndFixSourceUrl(link, baseUrl),
             link: this.validateAndFixSourceUrl(link, baseUrl),
             category: this.inferCategory(title),
-            confidence: 0.6
+            confidence: 0.6,
           });
           console.log(`✅ Bonfire list opportunity found: ${title}`);
         }
@@ -163,7 +185,10 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from div structures
    */
-  private extractFromDivs($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromDivs(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('div').each((_, element) => {
@@ -172,7 +197,9 @@ export class BonfireContentExtractor extends BaseContentExtractor {
       const link = $div.find('a').first().attr('href');
 
       if (this.isValidDivOpportunity(text)) {
-        const title = $div.find('h1, h2, h3, h4, h5, h6').first().text().trim() || text.substring(0, 100);
+        const title =
+          $div.find('h1, h2, h3, h4, h5, h6').first().text().trim() ||
+          text.substring(0, 100);
 
         if (title && !opportunities.some(opp => opp.title === title)) {
           opportunities.push({
@@ -181,7 +208,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
             url: this.validateAndFixSourceUrl(link, baseUrl),
             link: this.validateAndFixSourceUrl(link, baseUrl),
             category: this.inferCategory(title),
-            confidence: 0.5
+            confidence: 0.5,
           });
           console.log(`✅ Bonfire div opportunity found: ${title}`);
         }
@@ -246,25 +273,34 @@ export class BonfireContentExtractor extends BaseContentExtractor {
 
     // Boost score for Bonfire-specific patterns
     if (opportunity.title) {
-      if (opportunity.title.includes('IFB') || opportunity.title.includes('RFP') || opportunity.title.includes('RFQ')) {
+      if (
+        opportunity.title.includes('IFB') ||
+        opportunity.title.includes('RFP') ||
+        opportunity.title.includes('RFQ')
+      ) {
         score += 0.15;
       }
-      if (opportunity.title.match(/\b\d{3,5}\b/)) { // Contains ID numbers
+      if (opportunity.title.match(/\b\d{3,5}\b/)) {
+        // Contains ID numbers
         score += 0.1;
       }
     }
 
     // Boost score for URLs with solicitation details
-    if (opportunity.url && opportunity.url.includes('solicitation_details.cfm')) {
+    if (
+      opportunity.url &&
+      opportunity.url.includes('solicitation_details.cfm')
+    ) {
       score += 0.2;
     }
 
     // Boost score for opportunities with proper agency
-    if (opportunity.agency && (
-      opportunity.agency.includes('City') ||
-      opportunity.agency.includes('County') ||
-      opportunity.agency.includes('State')
-    )) {
+    if (
+      opportunity.agency &&
+      (opportunity.agency.includes('City') ||
+        opportunity.agency.includes('County') ||
+        opportunity.agency.includes('State'))
+    ) {
       score += 0.1;
     }
 

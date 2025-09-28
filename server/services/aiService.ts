@@ -1,21 +1,21 @@
-import type { RFP } from "@shared/schema"
-import OpenAI from "openai"
-import { storage } from "../storage"
+import type { RFP } from '@shared/schema';
+import OpenAI from 'openai';
+import { storage } from '../storage';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
-})
+});
 
 // Check if OpenAI API key is available
 if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
   console.warn(
-    "Warning: OpenAI API key not found. AI features will be limited."
-  )
+    'Warning: OpenAI API key not found. AI features will be limited.'
+  );
 }
 
 export class AIService {
   private checkApiKeyAvailable(): boolean {
-    return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR)
+    return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
   }
 
   async analyzeDocumentCompliance(
@@ -24,32 +24,32 @@ export class AIService {
   ): Promise<any> {
     if (!this.checkApiKeyAvailable()) {
       console.warn(
-        "OpenAI API key not available - returning basic compliance analysis"
-      )
+        'OpenAI API key not available - returning basic compliance analysis'
+      );
       return {
         requirements: [
           {
-            type: "general",
-            description: "Review document for compliance requirements",
+            type: 'general',
+            description: 'Review document for compliance requirements',
             mandatory: true,
           },
         ],
         complianceItems: [
           {
-            field: "Company Information",
-            description: "Provide company registration details",
-            format: "text",
+            field: 'Company Information',
+            description: 'Provide company registration details',
+            format: 'text',
           },
         ],
         riskFlags: [],
         mandatoryFields: [
           {
-            field: "Company Information",
-            description: "Provide company registration details",
-            format: "text",
+            field: 'Company Information',
+            description: 'Provide company registration details',
+            format: 'text',
           },
         ],
-      }
+      };
     }
 
     try {
@@ -80,126 +80,126 @@ Pay special attention to:
 - Bonding requirements
 
 RFP Context:
-Title: ${rfpContext?.title || "Unknown"}
-Agency: ${rfpContext?.agency || "Unknown"}
+Title: ${rfpContext?.title || 'Unknown'}
+Agency: ${rfpContext?.agency || 'Unknown'}
 
 Document text:
 ${documentText}
-`
+`;
 
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
+        model: process.env.OPENAI_MODEL || 'gpt-5',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
         temperature: 0.3,
-      })
+      });
 
-      const content = response.choices[0].message.content
-      const result = content ? JSON.parse(content) : null
+      const content = response.choices[0].message.content;
+      const result = content ? JSON.parse(content) : null;
 
       // Ensure the result has the expected structure
       if (result) {
-        result.requirements = result.requirements || []
+        result.requirements = result.requirements || [];
         result.complianceItems =
-          result.complianceItems || result.mandatoryFields || []
-        result.riskFlags = result.riskFlags || []
+          result.complianceItems || result.mandatoryFields || [];
+        result.riskFlags = result.riskFlags || [];
         result.mandatoryFields =
-          result.mandatoryFields || result.complianceItems || []
+          result.mandatoryFields || result.complianceItems || [];
       }
 
-      return result
+      return result;
     } catch (error) {
-      console.error("Error analyzing document compliance:", error)
-      throw new Error("Failed to analyze document compliance")
+      console.error('Error analyzing document compliance:', error);
+      throw new Error('Failed to analyze document compliance');
     }
   }
 
   async generateProposal(rfp: RFP): Promise<void> {
     if (!this.checkApiKeyAvailable()) {
       console.warn(
-        "OpenAI API key not available - skipping proposal generation"
-      )
-      return
+        'OpenAI API key not available - skipping proposal generation'
+      );
+      return;
     }
 
     try {
       // Get related documents for context
-      const documents = await storage.getDocumentsByRFP(rfp.id)
+      const documents = await storage.getDocumentsByRFP(rfp.id);
       const documentContext = documents
-        .map((doc) => doc.extractedText)
-        .join("\n\n")
+        .map(doc => doc.extractedText)
+        .join('\n\n');
 
       // Generate proposal content
       const proposalContent = await this.generateProposalContent(
         rfp,
         documentContext
-      )
+      );
 
       // Generate pricing
       const pricingTables = await this.generatePricingTables(
         rfp,
         documentContext
-      )
+      );
 
       // Create or update proposal
-      const existingProposal = await storage.getProposalByRFP(rfp.id)
+      const existingProposal = await storage.getProposalByRFP(rfp.id);
 
       if (existingProposal) {
         await storage.updateProposal(existingProposal.id, {
           content: proposalContent,
           pricingTables,
-          status: "review",
-          estimatedMargin: pricingTables?.defaultMargin || "40.00",
-        })
+          status: 'review',
+          estimatedMargin: pricingTables?.defaultMargin || '40.00',
+        });
       } else {
         await storage.createProposal({
           rfpId: rfp.id,
           content: proposalContent,
           pricingTables,
-          status: "review",
-          estimatedMargin: pricingTables?.defaultMargin || "40.00",
-        })
+          status: 'review',
+          estimatedMargin: pricingTables?.defaultMargin || '40.00',
+        });
       }
 
       // Update RFP status
       await storage.updateRFP(rfp.id, {
-        status: "review",
+        status: 'review',
         progress: 85,
-      })
+      });
 
       // Create notification
       await storage.createNotification({
-        type: "approval",
-        title: "Proposal Ready for Review",
+        type: 'approval',
+        title: 'Proposal Ready for Review',
         message: `AI has completed the proposal for ${rfp.title}`,
-        relatedEntityType: "rfp",
+        relatedEntityType: 'rfp',
         relatedEntityId: rfp.id,
-      })
+      });
 
       // Create audit log
       await storage.createAuditLog({
-        entityType: "rfp",
+        entityType: 'rfp',
         entityId: rfp.id,
-        action: "proposal_generated",
+        action: 'proposal_generated',
         details: { aiGenerated: true },
-      })
+      });
     } catch (error) {
-      console.error("Error generating proposal:", error)
+      console.error('Error generating proposal:', error);
 
       // Update RFP status to indicate error
       await storage.updateRFP(rfp.id, {
-        status: "discovered",
+        status: 'discovered',
         progress: 0,
-      })
+      });
 
       // Create notification about error
       await storage.createNotification({
-        type: "compliance",
-        title: "Proposal Generation Failed",
+        type: 'compliance',
+        title: 'Proposal Generation Failed',
         message: `Failed to generate proposal for ${rfp.title}`,
-        relatedEntityType: "rfp",
+        relatedEntityType: 'rfp',
         relatedEntityId: rfp.id,
-      })
+      });
     }
   }
 
@@ -231,17 +231,17 @@ ${documentContext}
 
 Focus on water supply expertise, compliance with government regulations, and proven track record.
 Use professional language suitable for government procurement.
-`
+`;
 
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      model: process.env.OPENAI_MODEL || 'gpt-5',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
       temperature: 0.4,
-    })
+    });
 
-    const content = response.choices[0].message.content
-    return content ? JSON.parse(content) : null
+    const content = response.choices[0].message.content;
+    return content ? JSON.parse(content) : null;
   }
 
   private async generatePricingTables(
@@ -280,17 +280,17 @@ Base your pricing on industry standards for:
 - Insurance and bonding
 
 Target 40% gross margin. Be competitive but profitable.
-`
+`;
 
     const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-5",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
+      model: process.env.OPENAI_MODEL || 'gpt-5',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
       temperature: 0.3,
-    })
+    });
 
-    const content = response.choices[0].message.content
-    return content ? JSON.parse(content) : null
+    const content = response.choices[0].message.content;
+    return content ? JSON.parse(content) : null;
   }
 
   async extractRFPDetails(
@@ -298,8 +298,8 @@ Target 40% gross margin. Be competitive but profitable.
     sourceUrl: string
   ): Promise<any> {
     if (!this.checkApiKeyAvailable()) {
-      console.warn("OpenAI API key not available - using basic RFP extraction")
-      return null
+      console.warn('OpenAI API key not available - using basic RFP extraction');
+      return null;
     }
 
     try {
@@ -338,28 +338,28 @@ If this is clearly NOT a procurement opportunity, return null.
 
 Source URL: ${sourceUrl}
 Content: ${scrapedContent}
-`
+`;
 
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-      })
+        model: process.env.OPENAI_MODEL || 'gpt-5',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+      });
 
-      const content = response.choices[0].message.content
-      if (!content) return null
+      const content = response.choices[0].message.content;
+      if (!content) return null;
 
-      const result = JSON.parse(content)
+      const result = JSON.parse(content);
 
       // Ensure confidence score exists
       if (result && result.title && !result.confidence) {
-        result.confidence = 0.6 // Default moderate confidence
+        result.confidence = 0.6; // Default moderate confidence
       }
 
-      return result && result.title ? result : null
+      return result && result.title ? result : null;
     } catch (error) {
-      console.error("Error extracting RFP details:", error)
-      return null
+      console.error('Error extracting RFP details:', error);
+      return null;
     }
   }
 
@@ -368,24 +368,24 @@ Content: ${scrapedContent}
    */
   async generateContent(prompt: string): Promise<string> {
     if (!this.checkApiKeyAvailable()) {
-      console.warn("OpenAI API key not available - returning empty response")
-      return ""
+      console.warn('OpenAI API key not available - returning empty response');
+      return '';
     }
 
     try {
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-5",
-        messages: [{ role: "user", content: prompt }],
+        model: process.env.OPENAI_MODEL || 'gpt-5',
+        messages: [{ role: 'user', content: prompt }],
         temperature: 0.7,
-      })
+      });
 
-      return response.choices[0].message.content || ""
+      return response.choices[0].message.content || '';
     } catch (error) {
-      console.error("Error generating content:", error)
-      throw new Error("Failed to generate content")
+      console.error('Error generating content:', error);
+      throw new Error('Failed to generate content');
     }
   }
 }
 
 // Export singleton instance
-export const aiService = new AIService()
+export const aiService = new AIService();

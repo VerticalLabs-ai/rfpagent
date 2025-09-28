@@ -20,28 +20,31 @@ router.post('/analyze/:rfpId', async (req, res) => {
 
     if (!rfpId) {
       return res.status(400).json({
-        error: 'RFP ID is required'
+        error: 'RFP ID is required',
       });
     }
 
     console.log(`🔍 Triggering compliance analysis for RFP: ${rfpId}`);
 
-    const result = await complianceIntegrationService.triggerComplianceAnalysisForDiscoveredRFP(rfpId);
+    const result =
+      await complianceIntegrationService.triggerComplianceAnalysisForDiscoveredRFP(
+        rfpId
+      );
 
     res.json({
       success: result.success,
       rfpId: result.rfpId,
       result: result.complianceData || null,
       error: result.error || null,
-      metadata: result.metadata || null
+      metadata: result.metadata || null,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Compliance analysis failed:', error);
     res.status(500).json({
       error: 'Failed to trigger compliance analysis',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -54,18 +57,23 @@ router.post('/batch-process', async (req, res) => {
   try {
     const { limit = 20, dryRun = false } = req.body;
 
-    console.log(`🔄 Starting batch compliance processing (limit: ${limit}, dryRun: ${dryRun})`);
+    console.log(
+      `🔄 Starting batch compliance processing (limit: ${limit}, dryRun: ${dryRun})`
+    );
 
     if (dryRun) {
       // For dry run, just return what would be processed
       const { rfps: allRfps } = await storage.getAllRFPs({ limit: 1000 });
 
-      const unprocessedRfps = allRfps.filter(rfp =>
-        !rfp.requirements ||
-        !rfp.complianceItems ||
-        !rfp.riskFlags ||
-        (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
-      ).slice(0, limit);
+      const unprocessedRfps = allRfps
+        .filter(
+          rfp =>
+            !rfp.requirements ||
+            !rfp.complianceItems ||
+            !rfp.riskFlags ||
+            (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
+        )
+        .slice(0, limit);
 
       return res.json({
         success: true,
@@ -73,19 +81,20 @@ router.post('/batch-process', async (req, res) => {
         summary: {
           totalRfps: allRfps.length,
           unprocessedRfps: unprocessedRfps.length,
-          wouldProcess: Math.min(unprocessedRfps.length, limit)
+          wouldProcess: Math.min(unprocessedRfps.length, limit),
         },
         rfpsSummary: unprocessedRfps.slice(0, 10).map(rfp => ({
           id: rfp.id,
           title: rfp.title,
           agency: rfp.agency,
-          status: rfp.status
-        }))
+          status: rfp.status,
+        })),
       });
     }
 
     // Perform actual batch processing
-    const results = await complianceIntegrationService.batchProcessUnprocessedRFPs(limit);
+    const results =
+      await complianceIntegrationService.batchProcessUnprocessedRFPs(limit);
 
     const successCount = results.filter(r => r.success).length;
     const errorCount = results.filter(r => !r.success).length;
@@ -97,7 +106,10 @@ router.post('/batch-process', async (req, res) => {
         totalProcessed: results.length,
         successful: successCount,
         errors: errorCount,
-        successRate: results.length > 0 ? Math.round((successCount / results.length) * 100) : 0
+        successRate:
+          results.length > 0
+            ? Math.round((successCount / results.length) * 100)
+            : 0,
       },
       results: results.map(r => ({
         rfpId: r.rfpId,
@@ -106,16 +118,16 @@ router.post('/batch-process', async (req, res) => {
         analysisType: r.metadata?.analysisType || null,
         requirementsCount: r.complianceData?.requirements?.length || 0,
         complianceItemsCount: r.complianceData?.complianceItems?.length || 0,
-        riskFlagsCount: r.complianceData?.riskFlags?.length || 0
-      }))
+        riskFlagsCount: r.complianceData?.riskFlags?.length || 0,
+      })),
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Batch processing failed:', error);
     res.status(500).json({
       error: 'Failed to run batch processing',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -132,32 +144,38 @@ router.get('/status', async (req, res) => {
     const { rfps: allRfps } = await storage.getAllRFPs({ limit: 1000 });
 
     const totalRfps = allRfps.length;
-    const rfpsWithCompliance = allRfps.filter(rfp =>
-      rfp.requirements &&
-      rfp.complianceItems &&
-      rfp.riskFlags &&
-      Array.isArray(rfp.requirements) &&
-      rfp.requirements.length > 0
+    const rfpsWithCompliance = allRfps.filter(
+      rfp =>
+        rfp.requirements &&
+        rfp.complianceItems &&
+        rfp.riskFlags &&
+        Array.isArray(rfp.requirements) &&
+        rfp.requirements.length > 0
     );
 
-    const unprocessedRfps = allRfps.filter(rfp =>
-      !rfp.requirements ||
-      !rfp.complianceItems ||
-      !rfp.riskFlags ||
-      (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
+    const unprocessedRfps = allRfps.filter(
+      rfp =>
+        !rfp.requirements ||
+        !rfp.complianceItems ||
+        !rfp.riskFlags ||
+        (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
     );
 
     // Analyze risk distribution
     const riskDistribution = {
       high: 0,
       medium: 0,
-      low: 0
+      low: 0,
     };
 
     rfpsWithCompliance.forEach(rfp => {
       if (rfp.riskFlags && Array.isArray(rfp.riskFlags)) {
-        const hasHighRisk = rfp.riskFlags.some((flag: any) => flag.type === 'high');
-        const hasMediumRisk = rfp.riskFlags.some((flag: any) => flag.type === 'medium');
+        const hasHighRisk = rfp.riskFlags.some(
+          (flag: any) => flag.type === 'high'
+        );
+        const hasMediumRisk = rfp.riskFlags.some(
+          (flag: any) => flag.type === 'medium'
+        );
 
         if (hasHighRisk) {
           riskDistribution.high++;
@@ -176,26 +194,29 @@ router.get('/status', async (req, res) => {
       totalRfps,
       rfpsWithCompliance: rfpsWithCompliance.length,
       unprocessedRfps: unprocessedRfps.length,
-      complianceCoverage: totalRfps > 0 ? Math.round((rfpsWithCompliance.length / totalRfps) * 100) : 0,
+      complianceCoverage:
+        totalRfps > 0
+          ? Math.round((rfpsWithCompliance.length / totalRfps) * 100)
+          : 0,
       riskDistribution,
       processing: {
         currentlyProcessing: processingStatus.currentlyProcessing,
-        queueSize: processingStatus.queueSize
+        queueSize: processingStatus.queueSize,
       },
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
 
     res.json({
       success: true,
-      status: statusOverview
+      status: statusOverview,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get compliance status failed:', error);
     res.status(500).json({
       error: 'Failed to get compliance status',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -210,7 +231,7 @@ router.get('/rfp/:rfpId', async (req, res) => {
 
     if (!rfpId) {
       return res.status(400).json({
-        error: 'RFP ID is required'
+        error: 'RFP ID is required',
       });
     }
 
@@ -218,7 +239,7 @@ router.get('/rfp/:rfpId', async (req, res) => {
 
     if (!rfp) {
       return res.status(404).json({
-        error: 'RFP not found'
+        error: 'RFP not found',
       });
     }
 
@@ -230,7 +251,7 @@ router.get('/rfp/:rfpId', async (req, res) => {
         agency: rfp.agency,
         status: rfp.status,
         deadline: rfp.deadline,
-        estimatedValue: rfp.estimatedValue
+        estimatedValue: rfp.estimatedValue,
       },
       requirements: (rfp.requirements as any[]) || [],
       complianceItems: (rfp.complianceItems as any[]) || [],
@@ -241,21 +262,21 @@ router.get('/rfp/:rfpId', async (req, res) => {
         rfp.riskFlags &&
         Array.isArray(rfp.requirements) &&
         rfp.requirements.length > 0
-      )
+      ),
     };
 
     res.json({
       success: true,
       rfpId,
-      complianceData
+      complianceData,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get RFP compliance data failed:', error);
     res.status(500).json({
       error: 'Failed to get RFP compliance data',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -270,7 +291,7 @@ router.post('/refresh/:rfpId', async (req, res) => {
 
     if (!rfpId) {
       return res.status(400).json({
-        error: 'RFP ID is required'
+        error: 'RFP ID is required',
       });
     }
 
@@ -280,11 +301,14 @@ router.post('/refresh/:rfpId', async (req, res) => {
     await storage.updateRFP(rfpId, {
       requirements: null,
       complianceItems: null,
-      riskFlags: null
+      riskFlags: null,
     });
 
     // Trigger fresh analysis
-    const result = await complianceIntegrationService.triggerComplianceAnalysisForDiscoveredRFP(rfpId);
+    const result =
+      await complianceIntegrationService.triggerComplianceAnalysisForDiscoveredRFP(
+        rfpId
+      );
 
     res.json({
       success: result.success,
@@ -294,16 +318,16 @@ router.post('/refresh/:rfpId', async (req, res) => {
       metadata: {
         ...result.metadata,
         refreshed: true,
-        refreshedAt: new Date().toISOString()
-      }
+        refreshedAt: new Date().toISOString(),
+      },
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Compliance refresh failed:', error);
     res.status(500).json({
       error: 'Failed to refresh compliance analysis',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });

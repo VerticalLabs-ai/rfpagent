@@ -1,7 +1,7 @@
-import cron from "node-cron";
-import { getMastraScrapingService } from "../services/mastraScrapingService";
-import { NotificationService } from "../services/notificationService";
-import { storage } from "../storage";
+import cron from 'node-cron';
+import { getMastraScrapingService } from '../services/mastraScrapingService';
+import { NotificationService } from '../services/notificationService';
+import { storage } from '../storage';
 
 export function setupScrapingScheduler(): void {
   const scrapingService = getMastraScrapingService();
@@ -54,7 +54,7 @@ export function setupScrapingScheduler(): void {
 async function checkUpcomingDeadlines(): Promise<void> {
   try {
     const notificationService = new NotificationService();
-    
+
     // Get active RFPs with deadlines
     const activeRfps = await storage.getRFPsByStatus('approved');
     const today = new Date();
@@ -70,23 +70,22 @@ async function checkUpcomingDeadlines(): Promise<void> {
       if (daysRemaining <= 7 && daysRemaining > 0) {
         await notificationService.sendDeadlineReminder(rfp.id, daysRemaining);
       }
-      
+
       // Mark as overdue if past deadline
       if (daysRemaining <= 0 && rfp.status !== 'submitted') {
-        await storage.updateRFP(rfp.id, { 
-          status: 'closed' 
+        await storage.updateRFP(rfp.id, {
+          status: 'closed',
         });
 
         await storage.createNotification({
-          type: "compliance",
-          title: "RFP Deadline Missed",
+          type: 'compliance',
+          title: 'RFP Deadline Missed',
           message: `${rfp.title} deadline has passed`,
-          relatedEntityType: "rfp",
-          relatedEntityId: rfp.id
+          relatedEntityType: 'rfp',
+          relatedEntityId: rfp.id,
         });
       }
     }
-
   } catch (error) {
     console.error('Error checking deadlines:', error);
   }
@@ -95,31 +94,38 @@ async function checkUpcomingDeadlines(): Promise<void> {
 async function monitorCompliance(): Promise<void> {
   try {
     const notificationService = new NotificationService();
-    
+
     // Get RFPs in review status that might need attention
     const reviewRfps = await storage.getRFPsByStatus('review');
-    
+
     for (const rfp of reviewRfps) {
       if (rfp.riskFlags) {
-        const highRiskFlags = (rfp.riskFlags as any[]).filter(flag => flag.type === 'high');
-        
+        const highRiskFlags = (rfp.riskFlags as any[]).filter(
+          flag => flag.type === 'high'
+        );
+
         if (highRiskFlags.length > 0) {
           // Check if we've already sent alerts for these risk flags
           const recentNotifications = await storage.getAllNotifications(10);
-          const hasRecentAlert = recentNotifications.some(notification => 
-            notification.relatedEntityId === rfp.id && 
-            notification.type === 'compliance' &&
-            notification.createdAt && 
-            (new Date().getTime() - new Date(notification.createdAt).getTime()) < 24 * 60 * 60 * 1000 // 24 hours
+          const hasRecentAlert = recentNotifications.some(
+            notification =>
+              notification.relatedEntityId === rfp.id &&
+              notification.type === 'compliance' &&
+              notification.createdAt &&
+              new Date().getTime() -
+                new Date(notification.createdAt).getTime() <
+                24 * 60 * 60 * 1000 // 24 hours
           );
 
           if (!hasRecentAlert) {
-            await notificationService.sendComplianceAlert(rfp.id, highRiskFlags);
+            await notificationService.sendComplianceAlert(
+              rfp.id,
+              highRiskFlags
+            );
           }
         }
       }
     }
-
   } catch (error) {
     console.error('Error monitoring compliance:', error);
   }

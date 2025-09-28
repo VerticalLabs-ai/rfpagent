@@ -13,7 +13,9 @@ export interface AuthenticationStrategy {
 /**
  * Abstract base class for authentication strategies
  */
-export abstract class BaseAuthenticationStrategy implements AuthenticationStrategy {
+export abstract class BaseAuthenticationStrategy
+  implements AuthenticationStrategy
+{
   protected portalType: string;
 
   constructor(portalType: string) {
@@ -55,9 +57,7 @@ export abstract class BaseAuthenticationStrategy implements AuthenticationStrate
       ? response.headers['set-cookie']
       : [response.headers['set-cookie']];
 
-    return cookies
-      .map((cookie: string) => cookie.split(';')[0])
-      .join('; ');
+    return cookies.map((cookie: string) => cookie.split(';')[0]).join('; ');
   }
 
   /**
@@ -88,17 +88,20 @@ export abstract class BaseAuthenticationStrategy implements AuthenticationStrate
   protected redactSensitiveInfo(data: any): any {
     if (typeof data === 'string') {
       // Redact common password patterns
-      return data.replace(/password[^&]*=[^&]*/gi, 'password=***')
-                 .replace(/pass[^&]*=[^&]*/gi, 'pass=***')
-                 .replace(/pwd[^&]*=[^&]*/gi, 'pwd=***');
+      return data
+        .replace(/password[^&]*=[^&]*/gi, 'password=***')
+        .replace(/pass[^&]*=[^&]*/gi, 'pass=***')
+        .replace(/pwd[^&]*=[^&]*/gi, 'pwd=***');
     }
 
     if (typeof data === 'object' && data !== null) {
       const redacted = { ...data };
       Object.keys(redacted).forEach(key => {
-        if (key.toLowerCase().includes('password') ||
-            key.toLowerCase().includes('secret') ||
-            key.toLowerCase().includes('token')) {
+        if (
+          key.toLowerCase().includes('password') ||
+          key.toLowerCase().includes('secret') ||
+          key.toLowerCase().includes('token')
+        ) {
           redacted[key] = '***';
         }
       });
@@ -124,7 +127,7 @@ export abstract class BaseAuthenticationStrategy implements AuthenticationStrate
     return {
       success: false,
       sessionId: '',
-      error: errorMessage
+      error: errorMessage,
     };
   }
 }

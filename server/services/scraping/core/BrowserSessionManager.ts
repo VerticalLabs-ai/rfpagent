@@ -19,11 +19,13 @@ export class BrowserSessionManager {
       portalType,
       isAuthenticated: false,
       createdAt: new Date(),
-      lastUsed: new Date()
+      lastUsed: new Date(),
     };
 
     this.sessions.set(sessionId, session);
-    console.log(`🔧 Created browser session ${sessionId} for portal type: ${portalType}`);
+    console.log(
+      `🔧 Created browser session ${sessionId} for portal type: ${portalType}`
+    );
 
     return sessionId;
   }
@@ -35,12 +37,18 @@ export class BrowserSessionManager {
     const session = this.sessions.get(sessionId);
 
     if (!session) {
-      throw new ScrapingError(`Session ${sessionId} not found`, 'SESSION_NOT_FOUND');
+      throw new ScrapingError(
+        `Session ${sessionId} not found`,
+        'SESSION_NOT_FOUND'
+      );
     }
 
     if (this.isSessionExpired(session)) {
       this.sessions.delete(sessionId);
-      throw new ScrapingError(`Session ${sessionId} has expired`, 'SESSION_EXPIRED');
+      throw new ScrapingError(
+        `Session ${sessionId} has expired`,
+        'SESSION_EXPIRED'
+      );
     }
 
     // Update last used timestamp
@@ -51,11 +59,14 @@ export class BrowserSessionManager {
   /**
    * Update session with authentication data
    */
-  async updateSessionAuth(sessionId: string, authData: {
-    cookies?: string;
-    authToken?: string;
-    isAuthenticated: boolean;
-  }): Promise<void> {
+  async updateSessionAuth(
+    sessionId: string,
+    authData: {
+      cookies?: string;
+      authToken?: string;
+      isAuthenticated: boolean;
+    }
+  ): Promise<void> {
     const session = await this.getSession(sessionId);
 
     session.cookies = authData.cookies;
@@ -81,11 +92,10 @@ export class BrowserSessionManager {
    * Get all active sessions for a portal type
    */
   getActiveSessionsForPortal(portalType: string): BrowserSession[] {
-    return Array.from(this.sessions.values())
-      .filter(session =>
-        session.portalType === portalType &&
-        !this.isSessionExpired(session)
-      );
+    return Array.from(this.sessions.values()).filter(
+      session =>
+        session.portalType === portalType && !this.isSessionExpired(session)
+    );
   }
 
   /**
@@ -140,7 +150,7 @@ export class BrowserSessionManager {
   private isSessionExpired(session: BrowserSession): boolean {
     const now = new Date().getTime();
     const sessionTime = session.lastUsed.getTime();
-    return (now - sessionTime) > this.sessionTimeout;
+    return now - sessionTime > this.sessionTimeout;
   }
 
   /**
@@ -162,13 +172,14 @@ export class BrowserSessionManager {
     const byPortalType: Record<string, number> = {};
 
     sessions.forEach(session => {
-      byPortalType[session.portalType] = (byPortalType[session.portalType] || 0) + 1;
+      byPortalType[session.portalType] =
+        (byPortalType[session.portalType] || 0) + 1;
     });
 
     return {
       total: sessions.length,
       authenticated: sessions.filter(s => s.isAuthenticated).length,
-      byPortalType
+      byPortalType,
     };
   }
 }

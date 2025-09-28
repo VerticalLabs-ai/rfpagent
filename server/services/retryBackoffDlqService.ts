@@ -48,26 +48,34 @@ export class RetryBackoffDlqService {
   private retryPolicies: Map<string, RetryPolicy> = new Map();
   private activeRetries: Map<string, RetryAttempt[]> = new Map();
   private dlqEntries: Map<string, DLQEntry> = new Map();
-  
+
   constructor() {
     this.initializeDefaultRetryPolicies();
-    
+
     // Check environment variables to enable automatic background services
     const autoRetryScheduler = process.env.AUTO_RETRY_SCHEDULER === 'true';
     const autoDlqMonitor = process.env.AUTO_DLQ_MONITOR === 'true';
-    
+
     if (autoRetryScheduler) {
-      console.log('🔄 Auto-starting retry scheduler (enabled via AUTO_RETRY_SCHEDULER=true)');
+      console.log(
+        '🔄 Auto-starting retry scheduler (enabled via AUTO_RETRY_SCHEDULER=true)'
+      );
       this.startRetryScheduler();
     } else {
-      console.log('⏸️ Retry scheduler disabled by default (set AUTO_RETRY_SCHEDULER=true to enable)');
+      console.log(
+        '⏸️ Retry scheduler disabled by default (set AUTO_RETRY_SCHEDULER=true to enable)'
+      );
     }
-    
+
     if (autoDlqMonitor) {
-      console.log('🔄 Auto-starting DLQ monitor (enabled via AUTO_DLQ_MONITOR=true)');
+      console.log(
+        '🔄 Auto-starting DLQ monitor (enabled via AUTO_DLQ_MONITOR=true)'
+      );
       this.startDLQMonitor();
     } else {
-      console.log('⏸️ DLQ monitor disabled by default (set AUTO_DLQ_MONITOR=true to enable)');
+      console.log(
+        '⏸️ DLQ monitor disabled by default (set AUTO_DLQ_MONITOR=true to enable)'
+      );
     }
   }
 
@@ -91,16 +99,16 @@ export class RetryBackoffDlqService {
           'TIMEOUT',
           'RATE_LIMITED',
           'PORTAL_UNAVAILABLE',
-          'CAPTCHA_REQUIRED'
+          'CAPTCHA_REQUIRED',
         ],
         permanentFailureErrors: [
           'AUTHENTICATION_FAILED',
           'AUTHORIZATION_DENIED',
           'PORTAL_NOT_FOUND',
-          'MALFORMED_URL'
-        ]
+          'MALFORMED_URL',
+        ],
       },
-      
+
       // RFP parsing retry policy
       {
         taskType: 'rfp_parsing',
@@ -109,18 +117,14 @@ export class RetryBackoffDlqService {
         backoffMultiplier: 1.5,
         maxDelayMs: 60000, // 1 minute
         jitterPercent: 5,
-        retryableErrors: [
-          'PARSE_ERROR',
-          'INCOMPLETE_DATA',
-          'DOCUMENT_CORRUPT'
-        ],
+        retryableErrors: ['PARSE_ERROR', 'INCOMPLETE_DATA', 'DOCUMENT_CORRUPT'],
         permanentFailureErrors: [
           'UNSUPPORTED_FORMAT',
           'DOCUMENT_ENCRYPTED',
-          'DOCUMENT_EMPTY'
-        ]
+          'DOCUMENT_EMPTY',
+        ],
       },
-      
+
       // Compliance checking retry policy
       {
         taskType: 'compliance_check',
@@ -132,15 +136,15 @@ export class RetryBackoffDlqService {
         retryableErrors: [
           'AI_SERVICE_ERROR',
           'ANALYSIS_TIMEOUT',
-          'REFERENCE_DATA_UNAVAILABLE'
+          'REFERENCE_DATA_UNAVAILABLE',
         ],
         permanentFailureErrors: [
           'INSUFFICIENT_RFP_DATA',
           'COMPLIANCE_RULES_MISSING',
-          'ANALYSIS_IMPOSSIBLE'
-        ]
+          'ANALYSIS_IMPOSSIBLE',
+        ],
       },
-      
+
       // Proposal generation retry policy
       {
         taskType: 'proposal_generation',
@@ -152,15 +156,15 @@ export class RetryBackoffDlqService {
         retryableErrors: [
           'AI_GENERATION_ERROR',
           'TEMPLATE_UNAVAILABLE',
-          'CONTENT_GENERATION_FAILED'
+          'CONTENT_GENERATION_FAILED',
         ],
         permanentFailureErrors: [
           'REQUIREMENTS_INSUFFICIENT',
           'TEMPLATE_CORRUPT',
-          'GENERATION_IMPOSSIBLE'
-        ]
+          'GENERATION_IMPOSSIBLE',
+        ],
       },
-      
+
       // Portal submission retry policy
       {
         taskType: 'portal_submission',
@@ -173,16 +177,16 @@ export class RetryBackoffDlqService {
           'SUBMISSION_TIMEOUT',
           'PORTAL_BUSY',
           'TEMPORARY_ERROR',
-          'NETWORK_INTERRUPTION'
+          'NETWORK_INTERRUPTION',
         ],
         permanentFailureErrors: [
           'DEADLINE_PASSED',
           'SUBMISSION_REJECTED',
           'INVALID_CREDENTIALS',
-          'PROPOSAL_INVALID'
-        ]
+          'PROPOSAL_INVALID',
+        ],
       },
-      
+
       // Document processing retry policy
       {
         taskType: 'document_processing',
@@ -194,15 +198,15 @@ export class RetryBackoffDlqService {
         retryableErrors: [
           'PROCESSING_ERROR',
           'CONVERSION_FAILED',
-          'STORAGE_UNAVAILABLE'
+          'STORAGE_UNAVAILABLE',
         ],
         permanentFailureErrors: [
           'DOCUMENT_CORRUPTED',
           'FORMAT_UNSUPPORTED',
-          'SIZE_EXCEEDED'
-        ]
+          'SIZE_EXCEEDED',
+        ],
       },
-      
+
       // AI service interaction retry policy
       {
         taskType: 'ai_service',
@@ -215,15 +219,15 @@ export class RetryBackoffDlqService {
           'API_RATE_LIMITED',
           'SERVICE_BUSY',
           'TEMPORARY_UNAVAILABLE',
-          'TOKEN_LIMIT_EXCEEDED'
+          'TOKEN_LIMIT_EXCEEDED',
         ],
         permanentFailureErrors: [
           'API_KEY_INVALID',
           'QUOTA_EXCEEDED',
           'REQUEST_TOO_LARGE',
-          'MODEL_UNAVAILABLE'
-        ]
-      }
+          'MODEL_UNAVAILABLE',
+        ],
+      },
     ];
 
     // Register policies
@@ -231,7 +235,9 @@ export class RetryBackoffDlqService {
       this.retryPolicies.set(policy.taskType, policy);
     });
 
-    console.log(`✅ Initialized ${policies.length} retry policies for RFP task types`);
+    console.log(
+      `✅ Initialized ${policies.length} retry policies for RFP task types`
+    );
   }
 
   /**
@@ -251,7 +257,7 @@ export class RetryBackoffDlqService {
         shouldRetry: false,
         reason: `No retry policy defined for task type: ${taskType}`,
         attempt: currentRetries + 1,
-        moveToDLQ: true
+        moveToDLQ: true,
       };
     }
 
@@ -261,7 +267,7 @@ export class RetryBackoffDlqService {
         shouldRetry: false,
         reason: `Permanent failure detected: ${error}`,
         attempt: currentRetries + 1,
-        moveToDLQ: true
+        moveToDLQ: true,
       };
     }
 
@@ -271,7 +277,7 @@ export class RetryBackoffDlqService {
         shouldRetry: false,
         reason: `Max retries exceeded (${policy.maxRetries})`,
         attempt: currentRetries + 1,
-        moveToDLQ: true
+        moveToDLQ: true,
       };
     }
 
@@ -281,7 +287,7 @@ export class RetryBackoffDlqService {
         shouldRetry: false,
         reason: `Error is not retryable: ${error}`,
         attempt: currentRetries + 1,
-        moveToDLQ: true
+        moveToDLQ: true,
       };
     }
 
@@ -293,7 +299,9 @@ export class RetryBackoffDlqService {
     // Record retry attempt
     this.recordRetryAttempt(workItemId, attempt, delayMs, error, context);
 
-    console.log(`🔄 Scheduling retry ${attempt}/${policy.maxRetries} for work item ${workItemId} in ${delayMs}ms`);
+    console.log(
+      `🔄 Scheduling retry ${attempt}/${policy.maxRetries} for work item ${workItemId} in ${delayMs}ms`
+    );
 
     return {
       shouldRetry: true,
@@ -301,7 +309,7 @@ export class RetryBackoffDlqService {
       delayMs,
       reason: `Retryable error, attempt ${attempt}/${policy.maxRetries}`,
       attempt,
-      moveToDLQ: false
+      moveToDLQ: false,
     };
   }
 
@@ -310,16 +318,17 @@ export class RetryBackoffDlqService {
    */
   private calculateRetryDelay(attempt: number, policy: RetryPolicy): number {
     // Basic exponential backoff calculation
-    let delayMs = policy.initialDelayMs * Math.pow(policy.backoffMultiplier, attempt - 1);
-    
+    let delayMs =
+      policy.initialDelayMs * Math.pow(policy.backoffMultiplier, attempt - 1);
+
     // Apply maximum delay cap
     delayMs = Math.min(delayMs, policy.maxDelayMs);
-    
+
     // Add jitter to prevent thundering herd
     const jitterAmount = delayMs * (policy.jitterPercent / 100);
     const jitter = (Math.random() - 0.5) * 2 * jitterAmount;
     delayMs = Math.max(0, delayMs + jitter);
-    
+
     return Math.round(delayMs);
   }
 
@@ -327,8 +336,9 @@ export class RetryBackoffDlqService {
    * Check if an error represents a permanent failure
    */
   private isPermanentFailure(error: string, policy: RetryPolicy): boolean {
-    return policy.permanentFailureErrors.some(permanentError => 
-      error.includes(permanentError) || error === permanentError
+    return policy.permanentFailureErrors.some(
+      permanentError =>
+        error.includes(permanentError) || error === permanentError
     );
   }
 
@@ -336,8 +346,9 @@ export class RetryBackoffDlqService {
    * Check if an error is retryable
    */
   private isRetryableError(error: string, policy: RetryPolicy): boolean {
-    return policy.retryableErrors.some(retryableError => 
-      error.includes(retryableError) || error === retryableError
+    return policy.retryableErrors.some(
+      retryableError =>
+        error.includes(retryableError) || error === retryableError
     );
   }
 
@@ -356,13 +367,13 @@ export class RetryBackoffDlqService {
       timestamp: new Date(),
       delayMs,
       reason,
-      context
+      context,
     };
 
     if (!this.activeRetries.has(workItemId)) {
       this.activeRetries.set(workItemId, []);
     }
-    
+
     this.activeRetries.get(workItemId)!.push(retryAttempt);
   }
 
@@ -393,8 +404,8 @@ export class RetryBackoffDlqService {
         metadata: {
           ...metadata,
           movedToDLQAt: new Date().toISOString(),
-          retryHistory: this.activeRetries.get(workItemId) || []
-        }
+          retryHistory: this.activeRetries.get(workItemId) || [],
+        },
       };
 
       // Store in database
@@ -407,7 +418,7 @@ export class RetryBackoffDlqService {
         canBeReprocessed,
         reprocessAttempts: 0,
         maxReprocessAttempts: canBeReprocessed ? 5 : 0,
-        metadata: dlqEntry.metadata
+        metadata: dlqEntry.metadata,
       });
 
       // Store in memory for quick access
@@ -416,13 +427,17 @@ export class RetryBackoffDlqService {
       // Clean up retry history
       this.activeRetries.delete(workItemId);
 
-      console.log(`💀 Moved work item ${workItemId} to Dead Letter Queue: ${failureReason}`);
-      
+      console.log(
+        `💀 Moved work item ${workItemId} to Dead Letter Queue: ${failureReason}`
+      );
+
       // Check if this requires immediate escalation
       if (failureCount >= 10 || this.isHighPriorityFailure(failureReason)) {
-        await this.escalateDLQEntry(dlqEntry.id, 'High failure count or critical error');
+        await this.escalateDLQEntry(
+          dlqEntry.id,
+          'High failure count or critical error'
+        );
       }
-
     } catch (error) {
       console.error(`❌ Failed to move work item ${workItemId} to DLQ:`, error);
       throw error;
@@ -438,9 +453,9 @@ export class RetryBackoffDlqService {
       'DATA_CORRUPTION',
       'SYSTEM_CRITICAL',
       'DEADLINE_MISSED',
-      'COMPLIANCE_VIOLATION'
+      'COMPLIANCE_VIOLATION',
     ];
-    
+
     return highPriorityErrors.some(error => failureReason.includes(error));
   }
 
@@ -461,23 +476,24 @@ export class RetryBackoffDlqService {
     try {
       // Import storage dynamically
       const { storage } = await import('../storage');
-      
+
       // Update database record
       const dbEntries = await storage.getDeadLetterQueueEntries();
-      const dbEntry = dbEntries.find(e => e.originalWorkItemId === entry.originalWorkItemId);
-      
+      const dbEntry = dbEntries.find(
+        e => e.originalWorkItemId === entry.originalWorkItemId
+      );
+
       if (dbEntry) {
         await storage.updateDeadLetterQueueEntry(dbEntry.id, {
           escalatedAt: new Date(),
-          metadata: entry.metadata
+          metadata: entry.metadata,
         });
       }
 
       console.log(`🚨 Escalated DLQ entry ${dlqEntryId}: ${reason}`);
-      
+
       // Here you could integrate with notification systems, ticketing systems, etc.
       await this.sendEscalationNotification(entry, reason);
-      
     } catch (error) {
       console.error(`❌ Failed to escalate DLQ entry ${dlqEntryId}:`, error);
     }
@@ -486,13 +502,18 @@ export class RetryBackoffDlqService {
   /**
    * Send escalation notification (placeholder for integration)
    */
-  private async sendEscalationNotification(entry: DLQEntry, reason: string): Promise<void> {
+  private async sendEscalationNotification(
+    entry: DLQEntry,
+    reason: string
+  ): Promise<void> {
     // This could integrate with email, Slack, PagerDuty, etc.
-    console.log(`📢 ESCALATION NOTIFICATION: Work item ${entry.originalWorkItemId} requires manual intervention`);
+    console.log(
+      `📢 ESCALATION NOTIFICATION: Work item ${entry.originalWorkItemId} requires manual intervention`
+    );
     console.log(`   Reason: ${reason}`);
     console.log(`   Failure: ${entry.failureReason}`);
     console.log(`   Failure Count: ${entry.failureCount}`);
-    
+
     // Example integration with notification system
     try {
       // await notificationService.sendAlert({
@@ -510,7 +531,11 @@ export class RetryBackoffDlqService {
   /**
    * Attempt to reprocess a DLQ entry
    */
-  async reprocessDLQEntry(dlqEntryId: string, triggeredBy: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+  async reprocessDLQEntry(
+    dlqEntryId: string,
+    triggeredBy: string,
+    reason?: string
+  ): Promise<{ success: boolean; error?: string }> {
     const entry = this.dlqEntries.get(dlqEntryId);
     if (!entry) {
       return { success: false, error: `DLQ entry not found: ${dlqEntryId}` };
@@ -537,8 +562,8 @@ export class RetryBackoffDlqService {
           reprocessedBy: triggeredBy,
           reprocessedAt: new Date().toISOString(),
           originalFailureReason: entry.failureReason,
-          reprocessReason: reason
-        }
+          reprocessReason: reason,
+        },
       };
 
       // Create new work item
@@ -551,19 +576,23 @@ export class RetryBackoffDlqService {
           ...entry.metadata,
           reprocessedAt: new Date().toISOString(),
           reprocessedBy: triggeredBy,
-          newWorkItemId: newWorkItem.id
-        }
+          newWorkItemId: newWorkItem.id,
+        },
       });
 
       // Remove from memory DLQ (will be added back if it fails again)
       this.dlqEntries.delete(dlqEntryId);
 
-      console.log(`🔄 Reprocessed DLQ entry ${dlqEntryId} as new work item ${newWorkItem.id}`);
+      console.log(
+        `🔄 Reprocessed DLQ entry ${dlqEntryId} as new work item ${newWorkItem.id}`
+      );
       return { success: true };
-
     } catch (error) {
       console.error(`❌ Failed to reprocess DLQ entry ${dlqEntryId}:`, error);
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
@@ -572,7 +601,7 @@ export class RetryBackoffDlqService {
    */
   startRetryScheduler(): void {
     console.log('⏰ Starting retry scheduler...');
-    
+
     setInterval(async () => {
       await this.processScheduledRetries();
     }, 5000); // Check every 5 seconds
@@ -584,21 +613,24 @@ export class RetryBackoffDlqService {
   private async processScheduledRetries(): Promise<void> {
     try {
       const { storage } = await import('../storage');
-      
+
       // Get work items that are ready for retry
       const workItems = await storage.getWorkItems();
-      const retryableItems = workItems.filter(item => 
-        item.status === 'failed' && 
-        item.nextRetryAt && 
-        new Date(item.nextRetryAt) <= new Date() &&
-        item.canRetry
+      const retryableItems = workItems.filter(
+        item =>
+          item.status === 'failed' &&
+          item.nextRetryAt &&
+          new Date(item.nextRetryAt) <= new Date() &&
+          item.canRetry
       );
 
       if (retryableItems.length === 0) {
         return;
       }
 
-      console.log(`🔄 Processing ${retryableItems.length} scheduled retries...`);
+      console.log(
+        `🔄 Processing ${retryableItems.length} scheduled retries...`
+      );
 
       for (const item of retryableItems) {
         try {
@@ -608,16 +640,16 @@ export class RetryBackoffDlqService {
             assignedAgentId: null,
             nextRetryAt: null,
             lastRetryAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
           });
 
-          console.log(`⚡ Requeued work item ${item.id} for retry (attempt ${item.retries + 1})`);
-
+          console.log(
+            `⚡ Requeued work item ${item.id} for retry (attempt ${item.retries + 1})`
+          );
         } catch (error) {
           console.error(`❌ Failed to requeue work item ${item.id}:`, error);
         }
       }
-
     } catch (error) {
       console.error('❌ Error in retry scheduler:', error);
     }
@@ -628,7 +660,7 @@ export class RetryBackoffDlqService {
    */
   startDLQMonitor(): void {
     console.log('👁️ Starting DLQ monitor...');
-    
+
     setInterval(async () => {
       await this.monitorDLQHealth();
     }, 30000); // Check every 30 seconds
@@ -641,20 +673,26 @@ export class RetryBackoffDlqService {
     try {
       const { storage } = await import('../storage');
       const dlqEntries = await storage.getDeadLetterQueueEntries();
-      
+
       const stats = {
         total: dlqEntries.length,
-        canReprocess: dlqEntries.filter(e => e.canBeReprocessed && !e.escalatedAt).length,
+        canReprocess: dlqEntries.filter(
+          e => e.canBeReprocessed && !e.escalatedAt
+        ).length,
         escalated: dlqEntries.filter(e => e.escalatedAt).length,
         oldEntries: dlqEntries.filter(e => {
-          const hoursSinceFailure = (Date.now() - new Date(e.lastFailureAt).getTime()) / (1000 * 60 * 60);
+          const hoursSinceFailure =
+            (Date.now() - new Date(e.lastFailureAt).getTime()) /
+            (1000 * 60 * 60);
           return hoursSinceFailure > 24;
-        }).length
+        }).length,
       };
 
       // Log DLQ statistics
       if (stats.total > 0) {
-        console.log(`📊 DLQ Health: ${stats.total} total, ${stats.canReprocess} reprocessable, ${stats.escalated} escalated, ${stats.oldEntries} old`);
+        console.log(
+          `📊 DLQ Health: ${stats.total} total, ${stats.canReprocess} reprocessable, ${stats.escalated} escalated, ${stats.oldEntries} old`
+        );
       }
 
       // Alert on high DLQ volume
@@ -665,14 +703,17 @@ export class RetryBackoffDlqService {
       // Auto-escalate old entries
       const autoEscalateThresholdHours = 48;
       const oldUnescalatedEntries = dlqEntries.filter(e => {
-        const hoursSinceFailure = (Date.now() - new Date(e.lastFailureAt).getTime()) / (1000 * 60 * 60);
+        const hoursSinceFailure =
+          (Date.now() - new Date(e.lastFailureAt).getTime()) / (1000 * 60 * 60);
         return hoursSinceFailure > autoEscalateThresholdHours && !e.escalatedAt;
       });
 
       for (const entry of oldUnescalatedEntries) {
-        await this.escalateDLQEntry(entry.id, `Auto-escalation: entry older than ${autoEscalateThresholdHours} hours`);
+        await this.escalateDLQEntry(
+          entry.id,
+          `Auto-escalation: entry older than ${autoEscalateThresholdHours} hours`
+        );
       }
-
     } catch (error) {
       console.error('❌ Error in DLQ monitor:', error);
     }
@@ -698,22 +739,26 @@ export class RetryBackoffDlqService {
     try {
       const { storage } = await import('../storage');
       const dlqEntries = await storage.getDeadLetterQueueEntries();
-      
+
       const stats = {
         totalEntries: dlqEntries.length,
-        reprocessableEntries: dlqEntries.filter(e => e.canBeReprocessed && !e.escalatedAt).length,
+        reprocessableEntries: dlqEntries.filter(
+          e => e.canBeReprocessed && !e.escalatedAt
+        ).length,
         escalatedEntries: dlqEntries.filter(e => e.escalatedAt).length,
         entriesByTaskType: {} as Record<string, number>,
-        entriesByFailureReason: {} as Record<string, number>
+        entriesByFailureReason: {} as Record<string, number>,
       };
 
       // Group by task type and failure reason
       dlqEntries.forEach(entry => {
         const taskType = entry.workItemData?.taskType || 'unknown';
-        stats.entriesByTaskType[taskType] = (stats.entriesByTaskType[taskType] || 0) + 1;
-        
+        stats.entriesByTaskType[taskType] =
+          (stats.entriesByTaskType[taskType] || 0) + 1;
+
         const failureReason = entry.failureReason || 'unknown';
-        stats.entriesByFailureReason[failureReason] = (stats.entriesByFailureReason[failureReason] || 0) + 1;
+        stats.entriesByFailureReason[failureReason] =
+          (stats.entriesByFailureReason[failureReason] || 0) + 1;
       });
 
       return stats;
@@ -724,7 +769,7 @@ export class RetryBackoffDlqService {
         reprocessableEntries: 0,
         escalatedEntries: 0,
         entriesByTaskType: {},
-        entriesByFailureReason: {}
+        entriesByFailureReason: {},
       };
     }
   }
@@ -735,13 +780,15 @@ export class RetryBackoffDlqService {
   updateRetryPolicy(taskType: string, policy: Partial<RetryPolicy>): void {
     const existingPolicy = this.retryPolicies.get(taskType);
     if (!existingPolicy) {
-      throw new Error(`No existing retry policy found for task type: ${taskType}`);
+      throw new Error(
+        `No existing retry policy found for task type: ${taskType}`
+      );
     }
 
     const updatedPolicy: RetryPolicy = {
       ...existingPolicy,
       ...policy,
-      taskType // Ensure taskType cannot be changed
+      taskType, // Ensure taskType cannot be changed
     };
 
     this.retryPolicies.set(taskType, updatedPolicy);

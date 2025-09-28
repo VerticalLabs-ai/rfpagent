@@ -73,7 +73,15 @@ export interface PortalNavigationStrategy {
 }
 
 export interface NavigationStep {
-  action: 'navigate' | 'click' | 'type' | 'wait' | 'select' | 'upload' | 'download' | 'validate';
+  action:
+    | 'navigate'
+    | 'click'
+    | 'type'
+    | 'wait'
+    | 'select'
+    | 'upload'
+    | 'download'
+    | 'validate';
   selector?: string;
   value?: string;
   waitCondition?: string;
@@ -140,7 +148,9 @@ export class AdaptivePortalNavigator {
   /**
    * Get adaptive navigation strategy for a portal
    */
-  async getNavigationStrategy(portalId: string): Promise<PortalNavigationStrategy | null> {
+  async getNavigationStrategy(
+    portalId: string
+  ): Promise<PortalNavigationStrategy | null> {
     try {
       // First try to get existing strategy
       let strategy = await this.loadStrategy(portalId);
@@ -157,7 +167,10 @@ export class AdaptivePortalNavigator {
 
       return strategy;
     } catch (error) {
-      console.error(`❌ Failed to get navigation strategy for portal ${portalId}:`, error);
+      console.error(
+        `❌ Failed to get navigation strategy for portal ${portalId}:`,
+        error
+      );
       return null;
     }
   }
@@ -169,7 +182,9 @@ export class AdaptivePortalNavigator {
     if (!this.learningEnabled) return;
 
     try {
-      console.log(`📊 Recording navigation attempt for portal: ${attempt.portalId}`);
+      console.log(
+        `📊 Recording navigation attempt for portal: ${attempt.portalId}`
+      );
 
       // Store attempt in memory for analysis
       await agentMemoryService.storeMemory({
@@ -179,12 +194,16 @@ export class AdaptivePortalNavigator {
         title: `Navigation Attempt: ${attempt.portalId}`,
         content: attempt,
         importance: attempt.overallResult.success ? 6 : 8, // Failures are more important
-        tags: ['portal_navigation', attempt.portalId, attempt.overallResult.success ? 'success' : 'failure'],
+        tags: [
+          'portal_navigation',
+          attempt.portalId,
+          attempt.overallResult.success ? 'success' : 'failure',
+        ],
         metadata: {
           portalId: attempt.portalId,
           duration: attempt.overallResult.duration,
-          success: attempt.overallResult.success
-        }
+          success: attempt.overallResult.success,
+        },
       });
 
       // Create learning outcome for the self-improving system
@@ -208,14 +227,22 @@ export class AdaptivePortalNavigator {
   /**
    * Adapt navigation strategy based on performance
    */
-  async adaptNavigationStrategy(portalId: string, adaptationReason: string): Promise<void> {
+  async adaptNavigationStrategy(
+    portalId: string,
+    adaptationReason: string
+  ): Promise<void> {
     try {
       const strategy = await this.loadStrategy(portalId);
       if (!strategy) return;
 
-      console.log(`🔄 Adapting navigation strategy for ${strategy.portalName}: ${adaptationReason}`);
+      console.log(
+        `🔄 Adapting navigation strategy for ${strategy.portalName}: ${adaptationReason}`
+      );
 
-      const adaptations = await this.generateAdaptations(strategy, adaptationReason);
+      const adaptations = await this.generateAdaptations(
+        strategy,
+        adaptationReason
+      );
 
       // Apply adaptations
       for (const adaptation of adaptations) {
@@ -231,9 +258,15 @@ export class AdaptivePortalNavigator {
       await this.saveStrategy(strategy);
 
       // Record adaptation in learning system
-      await this.recordAdaptationLearning(strategy, adaptations, adaptationReason);
+      await this.recordAdaptationLearning(
+        strategy,
+        adaptations,
+        adaptationReason
+      );
 
-      console.log(`✅ Applied ${adaptations.length} adaptations to ${strategy.portalName}`);
+      console.log(
+        `✅ Applied ${adaptations.length} adaptations to ${strategy.portalName}`
+      );
     } catch (error) {
       console.error(`❌ Failed to adapt navigation strategy:`, error);
     }
@@ -253,14 +286,20 @@ export class AdaptivePortalNavigator {
       const validationResults = await this.testSelectors(strategy);
 
       // Update validation status
-      const overallValid = validationResults.validCount / validationResults.totalCount > 0.7;
-      strategy.learningData.validationStatus = overallValid ? 'valid' : 'needs_validation';
-      strategy.learningData.confidenceScore = validationResults.validCount / validationResults.totalCount;
+      const overallValid =
+        validationResults.validCount / validationResults.totalCount > 0.7;
+      strategy.learningData.validationStatus = overallValid
+        ? 'valid'
+        : 'needs_validation';
+      strategy.learningData.confidenceScore =
+        validationResults.validCount / validationResults.totalCount;
 
       // Update individual selector scores
       for (const result of validationResults.results) {
         if (strategy.selectors[result.selectorKey]) {
-          strategy.selectors[result.selectorKey].adaptiveScore = result.valid ? 1.0 : 0.0;
+          strategy.selectors[result.selectorKey].adaptiveScore = result.valid
+            ? 1.0
+            : 0.0;
           strategy.selectors[result.selectorKey].lastValidated = new Date();
         }
       }
@@ -272,7 +311,9 @@ export class AdaptivePortalNavigator {
         await this.adaptNavigationStrategy(portalId, 'validation_failure');
       }
 
-      console.log(`📊 Strategy validation completed: ${overallValid ? 'VALID' : 'NEEDS ADAPTATION'}`);
+      console.log(
+        `📊 Strategy validation completed: ${overallValid ? 'VALID' : 'NEEDS ADAPTATION'}`
+      );
       return overallValid;
     } catch (error) {
       console.error('❌ Failed to validate portal strategy:', error);
@@ -285,7 +326,9 @@ export class AdaptivePortalNavigator {
   /**
    * Analyze failure patterns and generate adaptive responses
    */
-  private async analyzeFailureAndAdapt(attempt: NavigationAttempt): Promise<void> {
+  private async analyzeFailureAndAdapt(
+    attempt: NavigationAttempt
+  ): Promise<void> {
     const strategy = await this.loadStrategy(attempt.portalId);
     if (!strategy) return;
 
@@ -307,7 +350,10 @@ export class AdaptivePortalNavigator {
     if (recentFailures.length >= 3) {
       const patterns = this.identifyFailurePatterns(recentFailures);
       if (patterns.length > 0) {
-        await this.adaptNavigationStrategy(attempt.portalId, `pattern_detected_${patterns[0].type}`);
+        await this.adaptNavigationStrategy(
+          attempt.portalId,
+          `pattern_detected_${patterns[0].type}`
+        );
       }
     }
   }
@@ -315,24 +361,31 @@ export class AdaptivePortalNavigator {
   /**
    * Generate adaptations based on performance and feedback
    */
-  private async generateAdaptations(strategy: PortalNavigationStrategy, reason: string): Promise<any[]> {
+  private async generateAdaptations(
+    strategy: PortalNavigationStrategy,
+    reason: string
+  ): Promise<any[]> {
     const adaptations = [];
 
     switch (reason) {
       case 'low_success_rate':
-        adaptations.push(...await this.generateSuccessRateAdaptations(strategy));
+        adaptations.push(
+          ...(await this.generateSuccessRateAdaptations(strategy))
+        );
         break;
       case 'timeout_errors':
         adaptations.push(...this.generateTimingAdaptations(strategy));
         break;
       case 'selector_failures':
-        adaptations.push(...await this.generateSelectorAdaptations(strategy));
+        adaptations.push(...(await this.generateSelectorAdaptations(strategy)));
         break;
       case 'validation_failure':
-        adaptations.push(...await this.generateValidationAdaptations(strategy));
+        adaptations.push(
+          ...(await this.generateValidationAdaptations(strategy))
+        );
         break;
       default:
-        adaptations.push(...await this.generateGenericAdaptations(strategy));
+        adaptations.push(...(await this.generateGenericAdaptations(strategy)));
     }
 
     return adaptations;
@@ -341,7 +394,10 @@ export class AdaptivePortalNavigator {
   /**
    * Apply specific adaptation to strategy
    */
-  private async applyAdaptation(strategy: PortalNavigationStrategy, adaptation: any): Promise<void> {
+  private async applyAdaptation(
+    strategy: PortalNavigationStrategy,
+    adaptation: any
+  ): Promise<void> {
     switch (adaptation.type) {
       case 'timing_adjustment':
         this.applyTimingAdaptation(strategy, adaptation);
@@ -363,7 +419,9 @@ export class AdaptivePortalNavigator {
    */
   private async learnTimingPatterns(portalId: string): Promise<void> {
     const recentAttempts = await this.getRecentAttempts(portalId, 20);
-    const successfulAttempts = recentAttempts.filter(a => a.overallResult.success);
+    const successfulAttempts = recentAttempts.filter(
+      a => a.overallResult.success
+    );
 
     if (successfulAttempts.length < 5) return;
 
@@ -372,7 +430,10 @@ export class AdaptivePortalNavigator {
 
     const strategy = await this.loadStrategy(portalId);
     if (strategy) {
-      strategy.timingPatterns = { ...strategy.timingPatterns, ...optimizedTimings };
+      strategy.timingPatterns = {
+        ...strategy.timingPatterns,
+        ...optimizedTimings,
+      };
       await this.saveStrategy(strategy);
     }
   }
@@ -389,13 +450,16 @@ export class AdaptivePortalNavigator {
 
     // Update strategy with new selectors
     for (const [key, selectorData] of Object.entries(discoveredSelectors)) {
-      const selector = selectorData as { primary: string; fallbacks?: string[] };
+      const selector = selectorData as {
+        primary: string;
+        fallbacks?: string[];
+      };
       if (!strategy.selectors[key]) {
         strategy.selectors[key] = {
           primary: selector.primary,
           fallbacks: selector.fallbacks || [],
           adaptiveScore: 0.5, // Start with neutral score
-          lastValidated: new Date()
+          lastValidated: new Date(),
         };
       } else {
         // Add as fallback if different from current primary
@@ -403,7 +467,9 @@ export class AdaptivePortalNavigator {
           if (!strategy.selectors[key].fallbacks.includes(selector.primary)) {
             strategy.selectors[key].fallbacks.unshift(selector.primary);
             // Keep only top 3 fallbacks
-            strategy.selectors[key].fallbacks = strategy.selectors[key].fallbacks.slice(0, 3);
+            strategy.selectors[key].fallbacks = strategy.selectors[
+              key
+            ].fallbacks.slice(0, 3);
           }
         }
       }
@@ -417,7 +483,9 @@ export class AdaptivePortalNavigator {
   /**
    * Load navigation strategy from persistent storage
    */
-  private async loadStrategy(portalId: string): Promise<PortalNavigationStrategy | null> {
+  private async loadStrategy(
+    portalId: string
+  ): Promise<PortalNavigationStrategy | null> {
     const memory = await agentMemoryService.getMemoryByContext(
       'portal-navigator',
       `strategy_${portalId}`
@@ -429,7 +497,9 @@ export class AdaptivePortalNavigator {
   /**
    * Save navigation strategy to persistent storage
    */
-  private async saveStrategy(strategy: PortalNavigationStrategy): Promise<void> {
+  private async saveStrategy(
+    strategy: PortalNavigationStrategy
+  ): Promise<void> {
     await agentMemoryService.storeMemory({
       agentId: 'portal-navigator',
       memoryType: 'procedural',
@@ -441,8 +511,8 @@ export class AdaptivePortalNavigator {
       metadata: {
         portalId: strategy.portalId,
         successRate: strategy.performance.successRate,
-        lastAdaptation: strategy.learningData.lastAdaptation
-      }
+        lastAdaptation: strategy.learningData.lastAdaptation,
+      },
     });
 
     // Also store as knowledge
@@ -455,14 +525,16 @@ export class AdaptivePortalNavigator {
       content: strategy,
       confidenceScore: strategy.learningData.confidenceScore,
       sourceType: 'experience',
-      tags: ['portal_strategy', 'navigation', strategy.portalName]
+      tags: ['portal_strategy', 'navigation', strategy.portalName],
     });
   }
 
   /**
    * Create initial strategy for new portal
    */
-  private async createInitialStrategy(portalId: string): Promise<PortalNavigationStrategy> {
+  private async createInitialStrategy(
+    portalId: string
+  ): Promise<PortalNavigationStrategy> {
     const portal = await storage.getPortal(portalId);
     if (!portal) throw new Error(`Portal not found: ${portalId}`);
 
@@ -475,7 +547,7 @@ export class AdaptivePortalNavigator {
         loginSequence: this.createDefaultLoginSequence(),
         searchSequence: this.createDefaultSearchSequence(),
         detailPageSequence: this.createDefaultDetailSequence(),
-        documentDownloadSequence: this.createDefaultDownloadSequence()
+        documentDownloadSequence: this.createDefaultDownloadSequence(),
       },
 
       selectors: this.createDefaultSelectors(portal),
@@ -485,7 +557,7 @@ export class AdaptivePortalNavigator {
         elementWait: 2000,
         downloadWait: 5000,
         retryDelay: 1000,
-        adaptiveMultiplier: 1.0
+        adaptiveMultiplier: 1.0,
       },
 
       errorHandling: {
@@ -494,8 +566,8 @@ export class AdaptivePortalNavigator {
         escalationThresholds: {
           maxRetries: 3,
           timeoutThreshold: 30000,
-          errorRateThreshold: 0.5
-        }
+          errorRateThreshold: 0.5,
+        },
       },
 
       performance: {
@@ -504,7 +576,7 @@ export class AdaptivePortalNavigator {
         errorFrequency: 0,
         lastSuccess: new Date(),
         totalAttempts: 0,
-        adaptationCount: 0
+        adaptationCount: 0,
       },
 
       learningData: {
@@ -512,8 +584,8 @@ export class AdaptivePortalNavigator {
         lastAdaptation: new Date(),
         adaptationTriggers: [],
         validationStatus: 'needs_validation',
-        confidenceScore: 0.5
-      }
+        confidenceScore: 0.5,
+      },
     };
 
     await this.saveStrategy(strategy);
@@ -533,53 +605,60 @@ export class AdaptivePortalNavigator {
         conditions: {
           portalState: 'active',
           networkConditions: 'normal',
-          timestamp: attempt.timestamp
+          timestamp: attempt.timestamp,
         },
         inputs: {
           portalId: attempt.portalId,
-          navigationSteps: attempt.steps.length
+          navigationSteps: attempt.steps.length,
         },
         expectedOutput: 'successful_navigation',
-        actualOutput: attempt.overallResult.success ? 'success' : 'failure'
+        actualOutput: attempt.overallResult.success ? 'success' : 'failure',
       },
       outcome: {
         success: attempt.overallResult.success,
         metrics: {
           duration: attempt.overallResult.duration,
           stepsCompleted: attempt.steps.filter(s => s.success).length,
-          totalSteps: attempt.steps.length
+          totalSteps: attempt.steps.length,
         },
         feedback: attempt.overallResult.errorDetails?.message,
         errorDetails: attempt.overallResult.errorDetails,
-        improvementAreas: this.identifyNavigationImprovements(attempt)
+        improvementAreas: this.identifyNavigationImprovements(attempt),
       },
       learnedPatterns: this.extractNavigationPatterns(attempt),
       adaptations: attempt.overallResult.adaptationsApplied || [],
       confidenceScore: attempt.overallResult.success ? 0.8 : 0.6,
       domain: 'portal_navigation',
       category: 'navigation_automation',
-      timestamp: attempt.timestamp
+      timestamp: attempt.timestamp,
     };
   }
 
-  private async updateStrategyFromAttempt(attempt: NavigationAttempt): Promise<void> {
+  private async updateStrategyFromAttempt(
+    attempt: NavigationAttempt
+  ): Promise<void> {
     const strategy = await this.loadStrategy(attempt.portalId);
     if (!strategy) return;
 
     // Update performance metrics
     strategy.performance.totalAttempts++;
 
-    const successCount = strategy.performance.successRate * (strategy.performance.totalAttempts - 1) +
-                        (attempt.overallResult.success ? 1 : 0);
-    strategy.performance.successRate = successCount / strategy.performance.totalAttempts;
+    const successCount =
+      strategy.performance.successRate *
+        (strategy.performance.totalAttempts - 1) +
+      (attempt.overallResult.success ? 1 : 0);
+    strategy.performance.successRate =
+      successCount / strategy.performance.totalAttempts;
 
     if (attempt.overallResult.success) {
       strategy.performance.lastSuccess = attempt.timestamp;
       strategy.performance.averageLatency =
-        (strategy.performance.averageLatency + attempt.overallResult.duration) / 2;
+        (strategy.performance.averageLatency + attempt.overallResult.duration) /
+        2;
     } else {
       strategy.performance.errorFrequency =
-        (strategy.performance.errorFrequency + 1) / strategy.performance.totalAttempts;
+        (strategy.performance.errorFrequency + 1) /
+        strategy.performance.totalAttempts;
     }
 
     // Check if adaptation is needed
@@ -596,9 +675,11 @@ export class AdaptivePortalNavigator {
     return {
       failureType: this.categorizeFailure(failedSteps),
       failedSelectors: failedSteps.map(step => step.selector).filter(Boolean),
-      commonErrors: failedSteps.map(step => step.errorDetails?.message).filter(Boolean),
+      commonErrors: failedSteps
+        .map(step => step.errorDetails?.message)
+        .filter(Boolean),
       failureStage: this.identifyFailureStage(attempt.steps),
-      recoverability: this.assessRecoverability(failedSteps)
+      recoverability: this.assessRecoverability(failedSteps),
     };
   }
 
@@ -610,7 +691,7 @@ export class AdaptivePortalNavigator {
         type: 'selector_update',
         confidence: 0.9,
         selectors: failureAnalysis.failedSelectors,
-        action: 'discover_alternatives'
+        action: 'discover_alternatives',
       });
     }
 
@@ -619,21 +700,29 @@ export class AdaptivePortalNavigator {
         type: 'timing_adjustment',
         confidence: 0.8,
         adjustment: 'increase_wait_times',
-        multiplier: 1.5
+        multiplier: 1.5,
       });
     }
 
     return responses;
   }
 
-  private async getRecentFailures(portalId: string, count: number): Promise<NavigationAttempt[]> {
-    const memories = await agentMemoryService.getAgentMemories('portal-navigator', 'episodic', count * 2);
+  private async getRecentFailures(
+    portalId: string,
+    count: number
+  ): Promise<NavigationAttempt[]> {
+    const memories = await agentMemoryService.getAgentMemories(
+      'portal-navigator',
+      'episodic',
+      count * 2
+    );
 
     return memories
-      .filter(m =>
-        m.content.portalId === portalId &&
-        !m.content.overallResult.success &&
-        Date.now() - new Date(m.createdAt).getTime() < 24 * 60 * 60 * 1000 // Last 24 hours
+      .filter(
+        m =>
+          m.content.portalId === portalId &&
+          !m.content.overallResult.success &&
+          Date.now() - new Date(m.createdAt).getTime() < 24 * 60 * 60 * 1000 // Last 24 hours
       )
       .map(m => m.content)
       .slice(0, count);
@@ -656,7 +745,7 @@ export class AdaptivePortalNavigator {
           type: 'repeated_selector_failure',
           selector,
           frequency: count,
-          confidence: 0.8
+          confidence: 0.8,
         });
       }
     }
@@ -670,14 +759,16 @@ export class AdaptivePortalNavigator {
       patterns.push({
         type: 'timeout_pattern',
         frequency: timeoutFailures.length,
-        confidence: 0.7
+        confidence: 0.7,
       });
     }
 
     return patterns;
   }
 
-  private async generateSuccessRateAdaptations(strategy: PortalNavigationStrategy): Promise<any[]> {
+  private async generateSuccessRateAdaptations(
+    strategy: PortalNavigationStrategy
+  ): Promise<any[]> {
     const adaptations = [];
 
     // Analyze recent performance
@@ -689,7 +780,7 @@ export class AdaptivePortalNavigator {
         type: 'selector_update',
         priority: 'high',
         action: 'refresh_selectors',
-        confidence: 0.8
+        confidence: 0.8,
       });
     }
 
@@ -699,7 +790,7 @@ export class AdaptivePortalNavigator {
         priority: 'medium',
         action: 'increase_wait_times',
         multiplier: 1.3,
-        confidence: 0.7
+        confidence: 0.7,
       });
     }
 
@@ -707,18 +798,22 @@ export class AdaptivePortalNavigator {
   }
 
   private generateTimingAdaptations(strategy: PortalNavigationStrategy): any[] {
-    return [{
-      type: 'timing_adjustment',
-      adjustments: {
-        pageLoadWait: strategy.timingPatterns.pageLoadWait * 1.5,
-        elementWait: strategy.timingPatterns.elementWait * 1.3,
-        retryDelay: strategy.timingPatterns.retryDelay * 1.2
+    return [
+      {
+        type: 'timing_adjustment',
+        adjustments: {
+          pageLoadWait: strategy.timingPatterns.pageLoadWait * 1.5,
+          elementWait: strategy.timingPatterns.elementWait * 1.3,
+          retryDelay: strategy.timingPatterns.retryDelay * 1.2,
+        },
+        confidence: 0.8,
       },
-      confidence: 0.8
-    }];
+    ];
   }
 
-  private async generateSelectorAdaptations(strategy: PortalNavigationStrategy): Promise<any[]> {
+  private async generateSelectorAdaptations(
+    strategy: PortalNavigationStrategy
+  ): Promise<any[]> {
     const adaptations = [];
 
     // Find selectors with low adaptive scores
@@ -731,34 +826,45 @@ export class AdaptivePortalNavigator {
         type: 'selector_update',
         selectors: lowScoreSelectors,
         action: 'discover_new_selectors',
-        confidence: 0.9
+        confidence: 0.9,
       });
     }
 
     return adaptations;
   }
 
-  private async generateValidationAdaptations(_strategy: PortalNavigationStrategy): Promise<any[]> {
-    return [{
-      type: 'full_strategy_refresh',
-      action: 'revalidate_and_update',
-      confidence: 0.7
-    }];
-  }
-
-  private async generateGenericAdaptations(_strategy: PortalNavigationStrategy): Promise<any[]> {
-    return [{
-      type: 'conservative_adjustment',
-      adjustments: {
-        increaseWaitTimes: true,
-        addRetryLogic: true,
-        updateErrorHandling: true
+  private async generateValidationAdaptations(
+    _strategy: PortalNavigationStrategy
+  ): Promise<any[]> {
+    return [
+      {
+        type: 'full_strategy_refresh',
+        action: 'revalidate_and_update',
+        confidence: 0.7,
       },
-      confidence: 0.6
-    }];
+    ];
   }
 
-  private applyTimingAdaptation(_strategy: PortalNavigationStrategy, _adaptation: any): void {
+  private async generateGenericAdaptations(
+    _strategy: PortalNavigationStrategy
+  ): Promise<any[]> {
+    return [
+      {
+        type: 'conservative_adjustment',
+        adjustments: {
+          increaseWaitTimes: true,
+          addRetryLogic: true,
+          updateErrorHandling: true,
+        },
+        confidence: 0.6,
+      },
+    ];
+  }
+
+  private applyTimingAdaptation(
+    _strategy: PortalNavigationStrategy,
+    _adaptation: any
+  ): void {
     if (adaptation.adjustments) {
       Object.assign(strategy.timingPatterns, adaptation.adjustments);
     }
@@ -767,7 +873,10 @@ export class AdaptivePortalNavigator {
     }
   }
 
-  private async applySelectorAdaptation(strategy: PortalNavigationStrategy, adaptation: any): Promise<void> {
+  private async applySelectorAdaptation(
+    strategy: PortalNavigationStrategy,
+    adaptation: any
+  ): Promise<void> {
     if (adaptation.action === 'discover_new_selectors') {
       await this.discoverNewSelectors(strategy.portalId);
     }
@@ -781,15 +890,25 @@ export class AdaptivePortalNavigator {
     }
   }
 
-  private applyFlowAdaptation(_strategy: PortalNavigationStrategy, _adaptation: any): void {
+  private applyFlowAdaptation(
+    _strategy: PortalNavigationStrategy,
+    _adaptation: any
+  ): void {
     // Implementation would modify navigation flows based on adaptation
   }
 
-  private applyErrorHandlingAdaptation(_strategy: PortalNavigationStrategy, _adaptation: any): void {
+  private applyErrorHandlingAdaptation(
+    _strategy: PortalNavigationStrategy,
+    _adaptation: any
+  ): void {
     // Implementation would update error handling strategies
   }
 
-  private async recordAdaptationLearning(strategy: PortalNavigationStrategy, adaptations: any[], reason: string): Promise<void> {
+  private async recordAdaptationLearning(
+    strategy: PortalNavigationStrategy,
+    adaptations: any[],
+    reason: string
+  ): Promise<void> {
     await agentMemoryService.storeMemory({
       agentId: 'portal-navigator',
       memoryType: 'episodic',
@@ -800,29 +919,38 @@ export class AdaptivePortalNavigator {
         reason,
         adaptations,
         performanceBefore: { ...strategy.performance },
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       importance: 8,
       tags: ['adaptation', 'strategy_update', strategy.portalName],
       metadata: {
         portalId: strategy.portalId,
         adaptationCount: adaptations.length,
-        reason
-      }
+        reason,
+      },
     });
   }
 
-  private async needsValidation(strategy: PortalNavigationStrategy): Promise<boolean> {
-    const timeSinceValidation = Date.now() - strategy.learningData.lastAdaptation.getTime();
-    return timeSinceValidation > this.validationInterval ||
-           strategy.learningData.validationStatus === 'needs_validation';
+  private async needsValidation(
+    strategy: PortalNavigationStrategy
+  ): Promise<boolean> {
+    const timeSinceValidation =
+      Date.now() - strategy.learningData.lastAdaptation.getTime();
+    return (
+      timeSinceValidation > this.validationInterval ||
+      strategy.learningData.validationStatus === 'needs_validation'
+    );
   }
 
-  private async validateAndUpdateStrategy(strategy: PortalNavigationStrategy): Promise<void> {
+  private async validateAndUpdateStrategy(
+    strategy: PortalNavigationStrategy
+  ): Promise<void> {
     await this.validatePortalStrategy(strategy.portalId);
   }
 
-  private async testSelectors(strategy: PortalNavigationStrategy): Promise<any> {
+  private async testSelectors(
+    strategy: PortalNavigationStrategy
+  ): Promise<any> {
     // Mock implementation - would actually test selectors against live portal
     const results = [];
     let validCount = 0;
@@ -832,7 +960,7 @@ export class AdaptivePortalNavigator {
       results.push({
         selectorKey: key,
         selector: selector.primary,
-        valid
+        valid,
       });
       if (valid) validCount++;
     }
@@ -840,21 +968,23 @@ export class AdaptivePortalNavigator {
     return {
       results,
       validCount,
-      totalCount: results.length
+      totalCount: results.length,
     };
   }
 
-  private async explorePortalSelectors(_strategy: PortalNavigationStrategy): Promise<any> {
+  private async explorePortalSelectors(
+    _strategy: PortalNavigationStrategy
+  ): Promise<any> {
     // Mock implementation - would use web scraping to discover current selectors
     return {
-      'search_input': {
+      search_input: {
         primary: '#search-input',
-        fallbacks: ['input[name="search"]', '.search-box input']
+        fallbacks: ['input[name="search"]', '.search-box input'],
       },
-      'login_button': {
+      login_button: {
         primary: '#login-btn',
-        fallbacks: ['button[type="submit"]', '.login-button']
-      }
+        fallbacks: ['button[type="submit"]', '.login-button'],
+      },
     };
   }
 
@@ -864,7 +994,7 @@ export class AdaptivePortalNavigator {
       { action: 'type', selector: 'username_input', value: '{username}' },
       { action: 'type', selector: 'password_input', value: '{password}' },
       { action: 'click', selector: 'login_button' },
-      { action: 'wait', waitCondition: 'page_load', timeout: 10000 }
+      { action: 'wait', waitCondition: 'page_load', timeout: 10000 },
     ];
   }
 
@@ -873,7 +1003,7 @@ export class AdaptivePortalNavigator {
       { action: 'click', selector: 'search_input' },
       { action: 'type', selector: 'search_input', value: '{search_term}' },
       { action: 'click', selector: 'search_button' },
-      { action: 'wait', waitCondition: 'results_load', timeout: 8000 }
+      { action: 'wait', waitCondition: 'results_load', timeout: 8000 },
     ];
   }
 
@@ -881,32 +1011,35 @@ export class AdaptivePortalNavigator {
     return [
       { action: 'click', selector: 'rfp_link' },
       { action: 'wait', waitCondition: 'detail_page_load', timeout: 8000 },
-      { action: 'validate', validationRules: ['title_present', 'deadline_present'] }
+      {
+        action: 'validate',
+        validationRules: ['title_present', 'deadline_present'],
+      },
     ];
   }
 
   private createDefaultDownloadSequence(): NavigationStep[] {
     return [
       { action: 'click', selector: 'download_link' },
-      { action: 'wait', waitCondition: 'download_start', timeout: 5000 }
+      { action: 'wait', waitCondition: 'download_start', timeout: 5000 },
     ];
   }
 
   private createDefaultSelectors(portal: any): any {
     // Create default selectors based on portal configuration
     const baseSelectors = {
-      'search_input': {
+      search_input: {
         primary: '#search',
         fallbacks: ['input[name="search"]', '.search-input'],
         adaptiveScore: 0.5,
-        lastValidated: new Date()
+        lastValidated: new Date(),
       },
-      'search_button': {
+      search_button: {
         primary: '#search-btn',
         fallbacks: ['button[type="submit"]', '.search-button'],
         adaptiveScore: 0.5,
-        lastValidated: new Date()
-      }
+        lastValidated: new Date(),
+      },
     };
 
     // Merge with portal-specific selectors if available
@@ -925,11 +1058,11 @@ export class AdaptivePortalNavigator {
         applicableErrors: ['timeout', 'element_not_found'],
         steps: [
           { action: 'navigate', selector: 'current_page' },
-          { action: 'wait', waitCondition: 'page_load', timeout: 10000 }
+          { action: 'wait', waitCondition: 'page_load', timeout: 10000 },
         ],
         successRate: 0.7,
-        averageRecoveryTime: 5000
-      }
+        averageRecoveryTime: 5000,
+      },
     ];
   }
 
@@ -987,8 +1120,15 @@ export class AdaptivePortalNavigator {
     return 'low';
   }
 
-  private async getRecentAttempts(portalId: string, count: number): Promise<NavigationAttempt[]> {
-    const memories = await agentMemoryService.getAgentMemories('portal-navigator', 'episodic', count * 2);
+  private async getRecentAttempts(
+    portalId: string,
+    count: number
+  ): Promise<NavigationAttempt[]> {
+    const memories = await agentMemoryService.getAgentMemories(
+      'portal-navigator',
+      'episodic',
+      count * 2
+    );
 
     return memories
       .filter(m => m.content.portalId === portalId)
@@ -1005,7 +1145,10 @@ export class AdaptivePortalNavigator {
       if (!attempt.overallResult.success) {
         total++;
         const errorMessage = attempt.overallResult.errorDetails?.message || '';
-        if (errorMessage.includes('not found') || errorMessage.includes('selector')) {
+        if (
+          errorMessage.includes('not found') ||
+          errorMessage.includes('selector')
+        ) {
           selectorFailures++;
         }
         if (errorMessage.includes('timeout')) {
@@ -1019,8 +1162,12 @@ export class AdaptivePortalNavigator {
 
   private extractTimingData(attempts: NavigationAttempt[]): any {
     return {
-      averageDuration: attempts.reduce((sum, a) => sum + a.overallResult.duration, 0) / attempts.length,
-      stepTimings: attempts.flatMap(a => a.steps.map(s => ({ action: s.action, duration: s.duration })))
+      averageDuration:
+        attempts.reduce((sum, a) => sum + a.overallResult.duration, 0) /
+        attempts.length,
+      stepTimings: attempts.flatMap(a =>
+        a.steps.map(s => ({ action: s.action, duration: s.duration }))
+      ),
     };
   }
 
@@ -1028,7 +1175,7 @@ export class AdaptivePortalNavigator {
     return {
       pageLoadWait: Math.max(3000, timingData.averageDuration * 0.2),
       elementWait: Math.max(2000, timingData.averageDuration * 0.1),
-      downloadWait: Math.max(5000, timingData.averageDuration * 0.3)
+      downloadWait: Math.max(5000, timingData.averageDuration * 0.3),
     };
   }
 }

@@ -14,12 +14,18 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from Austin Finance content
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🏛️ Starting Austin Finance content extraction for ${url}`);
 
       if (!this.validateContent(content)) {
-        console.warn(`⚠️ Invalid content provided for Austin Finance extraction`);
+        console.warn(
+          `⚠️ Invalid content provided for Austin Finance extraction`
+        );
         return [];
       }
 
@@ -31,7 +37,11 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
       const tableOpportunities = this.extractFromTables($, url);
       const listOpportunities = this.extractFromLists($, url);
 
-      opportunities.push(...detailLinkOpportunities, ...tableOpportunities, ...listOpportunities);
+      opportunities.push(
+        ...detailLinkOpportunities,
+        ...tableOpportunities,
+        ...listOpportunities
+      );
 
       // Calculate confidence scores and filter
       opportunities.forEach(opp => {
@@ -39,19 +49,25 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
       // Remove duplicates based on solicitation ID
-      const uniqueOpportunities = this.removeDuplicatesBySolicitationId(filteredOpportunities);
+      const uniqueOpportunities = this.removeDuplicatesBySolicitationId(
+        filteredOpportunities
+      );
 
-      console.log(`🏛️ Austin Finance extraction completed: ${opportunities.length} found, ${uniqueOpportunities.length} unique opportunities above confidence threshold`);
+      console.log(
+        `🏛️ Austin Finance extraction completed: ${opportunities.length} found, ${uniqueOpportunities.length} unique opportunities above confidence threshold`
+      );
 
       return uniqueOpportunities;
-
     } catch (error) {
-      console.error(`❌ Austin Finance content extraction failed for ${url}:`, error);
+      console.error(
+        `❌ Austin Finance content extraction failed for ${url}:`,
+        error
+      );
       return [];
     }
   }
@@ -81,7 +97,10 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
    * Extract opportunities from solicitation detail links
    * This is the primary method for Austin Finance portal
    */
-  private extractFromDetailLinks($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromDetailLinks(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Target solicitation detail links directly
@@ -103,12 +122,16 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
         text = this.normalizeText($container.parent().text());
       }
 
-      console.log(`📄 Austin Finance: Processing container text (${text.length} chars): ${text.substring(0, 100)}...`);
+      console.log(
+        `📄 Austin Finance: Processing container text (${text.length} chars): ${text.substring(0, 100)}...`
+      );
 
       const opportunity = this.parseAustinOpportunity(text, href, baseUrl);
       if (opportunity) {
         opportunities.push(opportunity);
-        console.log(`🎯 Austin Finance: Created opportunity: ${opportunity.solicitationId} - ${opportunity.title}`);
+        console.log(
+          `🎯 Austin Finance: Created opportunity: ${opportunity.solicitationId} - ${opportunity.title}`
+        );
       }
     });
 
@@ -118,7 +141,10 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from table structures
    */
-  private extractFromTables($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromTables(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('table tr').each((index, element) => {
@@ -132,14 +158,19 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
         const opportunity = this.parseAustinOpportunity(text, '', baseUrl);
         if (opportunity) {
           // Look for links in the row
-          const link = $row.find('a[href*="solicitation_details.cfm"]').first().attr('href');
+          const link = $row
+            .find('a[href*="solicitation_details.cfm"]')
+            .first()
+            .attr('href');
           if (link) {
             opportunity.url = this.validateAndFixSourceUrl(link, baseUrl);
             opportunity.link = opportunity.url;
           }
 
           opportunities.push(opportunity);
-          console.log(`✅ Austin Finance table opportunity found: ${opportunity.title}`);
+          console.log(
+            `✅ Austin Finance table opportunity found: ${opportunity.title}`
+          );
         }
       }
     });
@@ -150,25 +181,37 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from list structures
    */
-  private extractFromLists($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromLists(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('li, div').each((_, element) => {
       const $item = $(element);
       const text = this.normalizeText($item.text());
 
-      if (this.hasAustinSolicitationPattern(text) && text.length > 20 && text.length < 1000) {
+      if (
+        this.hasAustinSolicitationPattern(text) &&
+        text.length > 20 &&
+        text.length < 1000
+      ) {
         const opportunity = this.parseAustinOpportunity(text, '', baseUrl);
         if (opportunity) {
           // Look for links in the item
-          const link = $item.find('a[href*="solicitation_details.cfm"]').first().attr('href');
+          const link = $item
+            .find('a[href*="solicitation_details.cfm"]')
+            .first()
+            .attr('href');
           if (link) {
             opportunity.url = this.validateAndFixSourceUrl(link, baseUrl);
             opportunity.link = opportunity.url;
           }
 
           opportunities.push(opportunity);
-          console.log(`✅ Austin Finance list opportunity found: ${opportunity.title}`);
+          console.log(
+            `✅ Austin Finance list opportunity found: ${opportunity.title}`
+          );
         }
       }
     });
@@ -179,7 +222,9 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Find the appropriate container element for an opportunity
    */
-  private findOpportunityContainer($link: cheerio.Cheerio<cheerio.Element>): cheerio.Cheerio<cheerio.Element> {
+  private findOpportunityContainer(
+    $link: cheerio.Cheerio<cheerio.Element>
+  ): cheerio.Cheerio<cheerio.Element> {
     // Try different container types in order of preference
     const containerSelectors = ['tr', 'li', 'div', 'td', 'p'];
 
@@ -200,7 +245,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   private normalizeText(text: string): string {
     return text
       .replace(/\u00A0/g, ' ') // Replace NBSP
-      .replace(/\s+/g, ' ')    // Collapse whitespace
+      .replace(/\s+/g, ' ') // Collapse whitespace
       .trim();
   }
 
@@ -211,7 +256,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     const patterns = [
       /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}/i,
       /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i,
-      /solicitation\s*[#:\.-]?\s*\d+/i
+      /solicitation\s*[#:\.-]?\s*\d+/i,
     ];
 
     return patterns.some(pattern => pattern.test(text));
@@ -220,15 +265,22 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Parse Austin-specific opportunity from text
    */
-  private parseAustinOpportunity(text: string, href: string, baseUrl: string): RFPOpportunity | null {
+  private parseAustinOpportunity(
+    text: string,
+    href: string,
+    baseUrl: string
+  ): RFPOpportunity | null {
     // Extract solicitation ID using tolerant patterns
-    const tolerantPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
+    const tolerantPattern =
+      /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
     const fallbackPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i;
 
     const idMatch = text.match(tolerantPattern) || text.match(fallbackPattern);
 
     if (!idMatch) {
-      console.log(`⚠️ Austin Finance: No solicitation ID found in: ${text.substring(0, 50)}...`);
+      console.log(
+        `⚠️ Austin Finance: No solicitation ID found in: ${text.substring(0, 50)}...`
+      );
       return null;
     }
 
@@ -236,19 +288,26 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     console.log(`✅ Austin Finance: Found solicitation ID: ${solicitationId}`);
 
     // Extract title - look for text in bold/strong or after ID
-    let title = this.extractTitle(text, solicitationId);
+    const title = this.extractTitle(text, solicitationId);
 
     // Extract due date
     const dueDate = this.extractDueDate(text);
 
     // Extract description
-    let description = this.extractDescription(text, title, solicitationId, dueDate);
+    const description = this.extractDescription(
+      text,
+      title,
+      solicitationId,
+      dueDate
+    );
 
     // Determine category
     const category = this.inferAustinCategory(solicitationId);
 
     if (!title) {
-      console.log(`⚠️ Austin Finance: No title found for solicitation ${solicitationId}`);
+      console.log(
+        `⚠️ Austin Finance: No title found for solicitation ${solicitationId}`
+      );
       return null;
     }
 
@@ -261,7 +320,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
       link: href ? this.validateAndFixSourceUrl(href, baseUrl) : undefined,
       category,
       confidence: 0.8,
-      solicitationId
+      solicitationId,
     };
   }
 
@@ -270,7 +329,9 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
    */
   private extractTitle(text: string, solicitationId: string): string {
     // Try to find title after the ID
-    const afterId = text.substring(text.indexOf(solicitationId) + solicitationId.length).trim();
+    const afterId = text
+      .substring(text.indexOf(solicitationId) + solicitationId.length)
+      .trim();
     const lines = afterId.split(/\n|Due Date|View Details|Deadline/i);
     let title = lines[0] ? lines[0].trim() : '';
 
@@ -285,13 +346,19 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     if (!title || title.length < 5) {
       // Look for text before "Due Date" or before the solicitation ID
       const beforeDueDate = text.split(/due\s+date/i)[0];
-      const beforeId = beforeDueDate.substring(0, beforeDueDate.indexOf(solicitationId));
+      const beforeId = beforeDueDate.substring(
+        0,
+        beforeDueDate.indexOf(solicitationId)
+      );
 
       if (beforeId.trim().length > 10) {
         title = beforeId.trim();
       } else {
         // Use a portion of the description as title
-        title = afterId.substring(0, 100).replace(/[\n\r]/g, ' ').trim();
+        title = afterId
+          .substring(0, 100)
+          .replace(/[\n\r]/g, ' ')
+          .trim();
       }
     }
 
@@ -310,7 +377,12 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Extract description from Austin opportunity text
    */
-  private extractDescription(text: string, title: string, solicitationId: string, dueDate: string): string {
+  private extractDescription(
+    text: string,
+    title: string,
+    solicitationId: string,
+    dueDate: string
+  ): string {
     let description = text;
 
     // Remove various components from description
@@ -335,18 +407,25 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     const type = solicitationId.substring(0, 3).toUpperCase();
 
     switch (type) {
-      case 'IFQ': return 'Invitation for Quote';
-      case 'IFB': return 'Invitation for Bid';
-      case 'RFP': return 'Request for Proposal';
-      case 'RFQ': return 'Request for Quote';
-      default: return 'Solicitation';
+      case 'IFQ':
+        return 'Invitation for Quote';
+      case 'IFB':
+        return 'Invitation for Bid';
+      case 'RFP':
+        return 'Request for Proposal';
+      case 'RFQ':
+        return 'Request for Quote';
+      default:
+        return 'Solicitation';
     }
   }
 
   /**
    * Remove duplicates based on solicitation ID
    */
-  private removeDuplicatesBySolicitationId(opportunities: RFPOpportunity[]): RFPOpportunity[] {
+  private removeDuplicatesBySolicitationId(
+    opportunities: RFPOpportunity[]
+  ): RFPOpportunity[] {
     const seen = new Set<string>();
     const unique: RFPOpportunity[] = [];
 
@@ -393,12 +472,22 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     }
 
     // Boost score for solicitation detail URLs
-    if (opportunity.url && opportunity.url.includes('solicitation_details.cfm')) {
+    if (
+      opportunity.url &&
+      opportunity.url.includes('solicitation_details.cfm')
+    ) {
       score += 0.15;
     }
 
     // Boost score for proper category assignment
-    if (opportunity.category && ['Invitation for Quote', 'Invitation for Bid', 'Request for Proposal'].includes(opportunity.category)) {
+    if (
+      opportunity.category &&
+      [
+        'Invitation for Quote',
+        'Invitation for Bid',
+        'Request for Proposal',
+      ].includes(opportunity.category)
+    ) {
       score += 0.1;
     }
 

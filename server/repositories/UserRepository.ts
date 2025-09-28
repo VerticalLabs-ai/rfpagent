@@ -5,7 +5,11 @@ import { eq } from 'drizzle-orm';
 /**
  * User repository for user-specific database operations
  */
-export class UserRepository extends BaseRepository<typeof users, User, InsertUser> {
+export class UserRepository extends BaseRepository<
+  typeof users,
+  User,
+  InsertUser
+> {
   constructor() {
     super(users);
   }
@@ -45,7 +49,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    */
   async updateLastLogin(id: string): Promise<void> {
     await this.update(id, {
-      lastLoginAt: new Date()
+      lastLoginAt: new Date(),
     });
   }
 
@@ -55,7 +59,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
   async activateUser(id: string): Promise<User | undefined> {
     return await this.update(id, {
       isActive: true,
-      activatedAt: new Date()
+      activatedAt: new Date(),
     });
   }
 
@@ -64,7 +68,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    */
   async deactivateUser(id: string): Promise<User | undefined> {
     return await this.update(id, {
-      isActive: false
+      isActive: false,
     });
   }
 

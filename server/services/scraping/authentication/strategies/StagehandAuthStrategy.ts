@@ -19,7 +19,9 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
 
   async authenticate(context: AuthContext): Promise<AuthResult> {
     try {
-      console.log(`🌐 Starting Stagehand browser authentication for: ${context.portalUrl}`);
+      console.log(
+        `🌐 Starting Stagehand browser authentication for: ${context.portalUrl}`
+      );
 
       const authResult = await stagehandAuthTool.execute({
         context: {
@@ -28,8 +30,8 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
           password: context.password,
           targetUrl: context.portalUrl,
           sessionId: context.sessionId,
-          portalType: context.portalType || 'generic'
-        }
+          portalType: context.portalType || 'generic',
+        },
       });
 
       if (authResult.success) {
@@ -38,17 +40,18 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
           success: true,
           sessionId: context.sessionId,
           cookies: authResult.cookies,
-          authToken: authResult.authToken
+          authToken: authResult.authToken,
         };
       } else {
-        console.log(`❌ Stagehand authentication failed: ${authResult.message}`);
+        console.log(
+          `❌ Stagehand authentication failed: ${authResult.message}`
+        );
         return {
           success: false,
           sessionId: context.sessionId,
-          error: authResult.message || 'Stagehand authentication failed'
+          error: authResult.message || 'Stagehand authentication failed',
         };
       }
-
     } catch (error) {
       return this.handleAuthError(error, 'StagehandAuthStrategy');
     }
@@ -57,7 +60,10 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Enhanced validation for browser automation
    */
-  validateCredentials(credentials: { username: string; password: string }): boolean {
+  validateCredentials(credentials: {
+    username: string;
+    password: string;
+  }): boolean {
     // More strict validation for browser automation
     const isValid = !!(
       credentials.username &&
@@ -80,7 +86,7 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
     // Use Stagehand for known complex authentication portals
     const complexAuthPortals = [
       'bonfire_hub',
-      'sam_gov' // SAM.gov can have complex flows
+      'sam_gov', // SAM.gov can have complex flows
     ];
 
     // Use for OAuth/SSO indicators in URL
@@ -109,8 +115,8 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
         customSelectors: {
           usernameField: 'input[name="traits.email"], input[type="email"]',
           passwordField: 'input[name="password"], input[type="password"]',
-          submitButton: 'button[type="submit"], input[type="submit"]'
-        }
+          submitButton: 'button[type="submit"], input[type="submit"]',
+        },
       },
       sam_gov: {
         timeout: 60000,
@@ -119,14 +125,14 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
         customSelectors: {
           usernameField: 'input[name="username"], input[name="email"]',
           passwordField: 'input[name="password"]',
-          submitButton: 'button[type="submit"]'
-        }
+          submitButton: 'button[type="submit"]',
+        },
       },
       generic: {
         timeout: 45000,
         waitForNavigation: true,
-        enableJavaScript: true
-      }
+        enableJavaScript: true,
+      },
     };
 
     return configs[portalType] || configs.generic;
@@ -150,7 +156,9 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Handle Bonfire Hub special authentication cases
    */
-  private async handleBonfireSpecialCase(context: AuthContext): Promise<AuthResult | null> {
+  private async handleBonfireSpecialCase(
+    context: AuthContext
+  ): Promise<AuthResult | null> {
     // Handle Euna Supplier Network (ESN) redirects
     if (context.portalUrl.includes('network.euna.com')) {
       console.log('🔄 Detected ESN redirect for Bonfire Hub');
@@ -168,15 +176,20 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Handle SAM.gov special authentication cases
    */
-  private async handleSamGovSpecialCase(context: AuthContext): Promise<AuthResult | null> {
+  private async handleSamGovSpecialCase(
+    context: AuthContext
+  ): Promise<AuthResult | null> {
     // SAM.gov might have PIV card authentication
-    if (context.portalUrl.includes('sam.gov') && context.authContext?.includes('piv')) {
+    if (
+      context.portalUrl.includes('sam.gov') &&
+      context.authContext?.includes('piv')
+    ) {
       console.log('🔄 Detected PIV card authentication for SAM.gov');
 
       return {
         success: false,
         sessionId: context.sessionId,
-        error: 'PIV card authentication not supported in automated flows'
+        error: 'PIV card authentication not supported in automated flows',
       };
     }
 
@@ -186,7 +199,10 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Authenticate with specific configuration
    */
-  private async authenticateWithConfig(context: AuthContext, config: any): Promise<AuthResult> {
+  private async authenticateWithConfig(
+    context: AuthContext,
+    config: any
+  ): Promise<AuthResult> {
     try {
       const authResult = await stagehandAuthTool.execute({
         context: {
@@ -196,8 +212,8 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
           targetUrl: context.portalUrl,
           sessionId: context.sessionId,
           portalType: context.portalType || 'generic',
-          config // Pass configuration to Stagehand
-        }
+          config, // Pass configuration to Stagehand
+        },
       });
 
       return {
@@ -205,9 +221,8 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
         sessionId: context.sessionId,
         cookies: authResult.cookies,
         authToken: authResult.authToken,
-        error: authResult.success ? undefined : authResult.message
+        error: authResult.success ? undefined : authResult.message,
       };
-
     } catch (error) {
       return this.handleAuthError(error, 'authenticateWithConfig');
     }

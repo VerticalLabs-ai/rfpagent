@@ -13,7 +13,11 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from JSON content
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`📊 Starting JSON content extraction for ${url}`);
 
@@ -25,10 +29,19 @@ export class JSONContentExtractor extends BaseContentExtractor {
       const opportunities: RFPOpportunity[] = [];
 
       // Try different JSON extraction strategies
-      const directJsonOpportunities = await this.extractDirectJSON(content, url);
-      const embeddedJsonOpportunities = await this.extractEmbeddedJSON(content, url);
+      const directJsonOpportunities = await this.extractDirectJSON(
+        content,
+        url
+      );
+      const embeddedJsonOpportunities = await this.extractEmbeddedJSON(
+        content,
+        url
+      );
       const jsonLdOpportunities = await this.extractJSONLD(content, url);
-      const apiResponseOpportunities = await this.extractAPIResponse(content, url);
+      const apiResponseOpportunities = await this.extractAPIResponse(
+        content,
+        url
+      );
 
       opportunities.push(
         ...directJsonOpportunities,
@@ -43,14 +56,15 @@ export class JSONContentExtractor extends BaseContentExtractor {
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(`📊 JSON extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`);
+      console.log(
+        `📊 JSON extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
+      );
 
       return this.removeDuplicates(filteredOpportunities);
-
     } catch (error) {
       console.error(`❌ JSON content extraction failed for ${url}:`, error);
       return [];
@@ -79,7 +93,10 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Extract from direct JSON content
    */
-  private async extractDirectJSON(content: string, url: string): Promise<RFPOpportunity[]> {
+  private async extractDirectJSON(
+    content: string,
+    url: string
+  ): Promise<RFPOpportunity[]> {
     const opportunities: RFPOpportunity[] = [];
 
     try {
@@ -95,7 +112,6 @@ export class JSONContentExtractor extends BaseContentExtractor {
 
       opportunities.push(...extracted);
       console.log(`📊 Direct JSON: Found ${extracted.length} opportunities`);
-
     } catch (error) {
       console.log(`⚠️ Failed to parse direct JSON:`, error);
     }
@@ -106,7 +122,10 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Extract from embedded JSON in HTML
    */
-  private async extractEmbeddedJSON(content: string, url: string): Promise<RFPOpportunity[]> {
+  private async extractEmbeddedJSON(
+    content: string,
+    url: string
+  ): Promise<RFPOpportunity[]> {
     const opportunities: RFPOpportunity[] = [];
 
     try {
@@ -116,7 +135,7 @@ export class JSONContentExtractor extends BaseContentExtractor {
         /<script[^>]*>(.*?var\s+\w+\s*=\s*(\{.*?\});.*?)<\/script>/gis,
         /data-json=["']({.*?})["']/gi,
         /data-opportunities=["']({.*?})["']/gi,
-        /window\.\w+\s*=\s*(\{.*?\});/gi
+        /window\.\w+\s*=\s*(\{.*?\});/gi,
       ];
 
       for (const pattern of jsonPatterns) {
@@ -135,8 +154,9 @@ export class JSONContentExtractor extends BaseContentExtractor {
         }
       }
 
-      console.log(`📊 Embedded JSON: Found ${opportunities.length} opportunities`);
-
+      console.log(
+        `📊 Embedded JSON: Found ${opportunities.length} opportunities`
+      );
     } catch (error) {
       console.log(`⚠️ Failed to extract embedded JSON:`, error);
     }
@@ -147,12 +167,16 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Extract from JSON-LD structured data
    */
-  private async extractJSONLD(content: string, url: string): Promise<RFPOpportunity[]> {
+  private async extractJSONLD(
+    content: string,
+    url: string
+  ): Promise<RFPOpportunity[]> {
     const opportunities: RFPOpportunity[] = [];
 
     try {
       // Find JSON-LD script tags
-      const jsonLdPattern = /<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis;
+      const jsonLdPattern =
+        /<script[^>]*type=["']application\/ld\+json["'][^>]*>(.*?)<\/script>/gis;
       let match;
 
       while ((match = jsonLdPattern.exec(content)) !== null) {
@@ -166,7 +190,6 @@ export class JSONContentExtractor extends BaseContentExtractor {
       }
 
       console.log(`📊 JSON-LD: Found ${opportunities.length} opportunities`);
-
     } catch (error) {
       console.log(`⚠️ Failed to extract JSON-LD:`, error);
     }
@@ -177,7 +200,10 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Extract from API response patterns
    */
-  private async extractAPIResponse(content: string, url: string): Promise<RFPOpportunity[]> {
+  private async extractAPIResponse(
+    content: string,
+    url: string
+  ): Promise<RFPOpportunity[]> {
     const opportunities: RFPOpportunity[] = [];
 
     try {
@@ -194,7 +220,6 @@ export class JSONContentExtractor extends BaseContentExtractor {
       opportunities.push(...extracted);
 
       console.log(`📊 API Response: Found ${extracted.length} opportunities`);
-
     } catch (error) {
       console.log(`⚠️ Failed to parse API response:`, error);
     }
@@ -205,7 +230,11 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Parse generic JSON data for opportunities
    */
-  private parseJSONData(data: any, url: string, source: string): RFPOpportunity[] {
+  private parseJSONData(
+    data: any,
+    url: string,
+    source: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     if (!data) return opportunities;
@@ -222,15 +251,29 @@ export class JSONContentExtractor extends BaseContentExtractor {
     } else if (typeof data === 'object') {
       // Check for common property names that might contain opportunities
       const possibleArrays = [
-        'opportunities', 'results', 'data', 'items', 'records',
-        'rfps', 'bids', 'solicitations', 'contracts', 'tenders',
-        'listings', 'entries', 'documents'
+        'opportunities',
+        'results',
+        'data',
+        'items',
+        'records',
+        'rfps',
+        'bids',
+        'solicitations',
+        'contracts',
+        'tenders',
+        'listings',
+        'entries',
+        'documents',
       ];
 
       for (const prop of possibleArrays) {
         if (data[prop] && Array.isArray(data[prop])) {
           data[prop].forEach((item: any) => {
-            const opportunity = this.createOpportunityFromObject(item, url, source);
+            const opportunity = this.createOpportunityFromObject(
+              item,
+              url,
+              source
+            );
             if (opportunity) {
               opportunities.push(opportunity);
             }
@@ -304,7 +347,11 @@ export class JSONContentExtractor extends BaseContentExtractor {
       const items = this.getNestedProperty(data, pattern.path);
       if (Array.isArray(items)) {
         items.forEach(item => {
-          const opportunity = this.createOpportunityFromObject(item, url, 'api');
+          const opportunity = this.createOpportunityFromObject(
+            item,
+            url,
+            'api'
+          );
           if (opportunity) {
             opportunities.push(opportunity);
           }
@@ -319,52 +366,107 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Create opportunity from JSON object
    */
-  private createOpportunityFromObject(obj: any, url: string, source: string): RFPOpportunity | null {
+  private createOpportunityFromObject(
+    obj: any,
+    url: string,
+    source: string
+  ): RFPOpportunity | null {
     if (!obj || typeof obj !== 'object') return null;
 
     // Extract title using various possible field names
     const title = this.extractFieldValue(obj, [
-      'title', 'name', 'subject', 'opportunity_title', 'opportunityTitle',
-      'solicitation_title', 'solicitationTitle', 'description', 'summary'
+      'title',
+      'name',
+      'subject',
+      'opportunity_title',
+      'opportunityTitle',
+      'solicitation_title',
+      'solicitationTitle',
+      'description',
+      'summary',
     ]);
 
     if (!title || title.length < 5) return null;
 
     // Extract other fields
     const description = this.extractFieldValue(obj, [
-      'description', 'summary', 'details', 'overview', 'abstract',
-      'opportunity_description', 'opportunityDescription'
+      'description',
+      'summary',
+      'details',
+      'overview',
+      'abstract',
+      'opportunity_description',
+      'opportunityDescription',
     ]);
 
     const agency = this.extractFieldValue(obj, [
-      'agency', 'organization', 'department', 'office', 'entity',
-      'contracting_office', 'contractingOffice', 'issuer'
+      'agency',
+      'organization',
+      'department',
+      'office',
+      'entity',
+      'contracting_office',
+      'contractingOffice',
+      'issuer',
     ]);
 
     const deadline = this.extractFieldValue(obj, [
-      'deadline', 'due_date', 'dueDate', 'closing_date', 'closingDate',
-      'response_date', 'responseDate', 'submission_deadline', 'submissionDeadline',
-      'expires', 'expiration_date', 'expirationDate'
+      'deadline',
+      'due_date',
+      'dueDate',
+      'closing_date',
+      'closingDate',
+      'response_date',
+      'responseDate',
+      'submission_deadline',
+      'submissionDeadline',
+      'expires',
+      'expiration_date',
+      'expirationDate',
     ]);
 
     const opportunityUrl = this.extractFieldValue(obj, [
-      'url', 'link', 'href', 'opportunity_url', 'opportunityUrl',
-      'details_url', 'detailsUrl', 'view_url', 'viewUrl'
+      'url',
+      'link',
+      'href',
+      'opportunity_url',
+      'opportunityUrl',
+      'details_url',
+      'detailsUrl',
+      'view_url',
+      'viewUrl',
     ]);
 
     const estimatedValue = this.extractFieldValue(obj, [
-      'value', 'amount', 'estimated_value', 'estimatedValue',
-      'contract_value', 'contractValue', 'budget', 'cost'
+      'value',
+      'amount',
+      'estimated_value',
+      'estimatedValue',
+      'contract_value',
+      'contractValue',
+      'budget',
+      'cost',
     ]);
 
     const category = this.extractFieldValue(obj, [
-      'category', 'type', 'classification', 'opportunity_type', 'opportunityType',
-      'solicitation_type', 'solicitationType'
+      'category',
+      'type',
+      'classification',
+      'opportunity_type',
+      'opportunityType',
+      'solicitation_type',
+      'solicitationType',
     ]);
 
     const solicitationNumber = this.extractFieldValue(obj, [
-      'solicitation_number', 'solicitationNumber', 'number', 'id',
-      'opportunity_id', 'opportunityId', 'reference', 'reference_number'
+      'solicitation_number',
+      'solicitationNumber',
+      'number',
+      'id',
+      'opportunity_id',
+      'opportunityId',
+      'reference',
+      'reference_number',
     ]);
 
     return {
@@ -374,18 +476,27 @@ export class JSONContentExtractor extends BaseContentExtractor {
       deadline: this.parseDate(deadline),
       url: this.validateAndFixSourceUrl(opportunityUrl, url),
       link: this.validateAndFixSourceUrl(opportunityUrl, url),
-      category: category ? this.cleanText(category) : this.inferCategoryFromTitle(title),
-      estimatedValue: estimatedValue ? this.cleanText(estimatedValue) : undefined,
+      category: category
+        ? this.cleanText(category)
+        : this.inferCategoryFromTitle(title),
+      estimatedValue: estimatedValue
+        ? this.cleanText(estimatedValue)
+        : undefined,
       confidence: this.calculateJSONConfidence(obj, source),
       // Additional fields that might be present
-      ...(solicitationNumber && { solicitationNumber: this.cleanText(solicitationNumber) })
+      ...(solicitationNumber && {
+        solicitationNumber: this.cleanText(solicitationNumber),
+      }),
     };
   }
 
   /**
    * Create opportunity from JSON-LD object
    */
-  private createOpportunityFromJSONLD(obj: any, url: string): RFPOpportunity | null {
+  private createOpportunityFromJSONLD(
+    obj: any,
+    url: string
+  ): RFPOpportunity | null {
     if (!obj) return null;
 
     const title = obj.name || obj.headline || obj.title;
@@ -393,20 +504,27 @@ export class JSONContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: obj.description ? this.cleanText(obj.description) : undefined,
-      agency: obj.organization ? this.cleanText(obj.organization.name || obj.organization) : undefined,
+      description: obj.description
+        ? this.cleanText(obj.description)
+        : undefined,
+      agency: obj.organization
+        ? this.cleanText(obj.organization.name || obj.organization)
+        : undefined,
       deadline: this.parseDate(obj.endDate || obj.deadline),
       url: this.validateAndFixSourceUrl(obj.url, url),
       link: this.validateAndFixSourceUrl(obj.url, url),
       category: obj.category ? this.cleanText(obj.category) : undefined,
-      confidence: 0.8 // JSON-LD is highly structured
+      confidence: 0.8, // JSON-LD is highly structured
     };
   }
 
   /**
    * Extract field value using multiple possible field names
    */
-  private extractFieldValue(obj: any, fieldNames: string[]): string | undefined {
+  private extractFieldValue(
+    obj: any,
+    fieldNames: string[]
+  ): string | undefined {
     for (const fieldName of fieldNames) {
       const value = this.getNestedProperty(obj, [fieldName]);
       if (value && typeof value === 'string' && value.trim().length > 0) {
@@ -428,8 +546,14 @@ export class JSONContentExtractor extends BaseContentExtractor {
    */
   private isRelevantSchemaType(type: string | string[]): boolean {
     const relevantTypes = [
-      'JobPosting', 'Event', 'Offer', 'Product', 'Service',
-      'GovernmentService', 'PublicService', 'BroadcastEvent'
+      'JobPosting',
+      'Event',
+      'Offer',
+      'Product',
+      'Service',
+      'GovernmentService',
+      'PublicService',
+      'BroadcastEvent',
     ];
 
     const types = Array.isArray(type) ? type : [type];
@@ -447,7 +571,7 @@ export class JSONContentExtractor extends BaseContentExtractor {
       'window.',
       'var ',
       'const ',
-      'let '
+      'let ',
     ];
 
     return jsonIndicators.some(indicator => content.includes(indicator));
@@ -465,8 +589,16 @@ export class JSONContentExtractor extends BaseContentExtractor {
     if (source === 'embedded') score += 0.1;
 
     // Boost for structured fields
-    const structuredFields = ['deadline', 'agency', 'url', 'category', 'estimatedValue'];
-    const presentFields = structuredFields.filter(field => obj[field] || obj[this.camelCase(field)]);
+    const structuredFields = [
+      'deadline',
+      'agency',
+      'url',
+      'category',
+      'estimatedValue',
+    ];
+    const presentFields = structuredFields.filter(
+      field => obj[field] || obj[this.camelCase(field)]
+    );
     score += presentFields.length * 0.05;
 
     // Boost for RFP-specific fields
@@ -523,9 +655,10 @@ export class JSONContentExtractor extends BaseContentExtractor {
       opportunity.agency,
       opportunity.deadline,
       opportunity.category,
-      opportunity.estimatedValue
+      opportunity.estimatedValue,
     ];
-    const completeness = structuredFields.filter(Boolean).length / structuredFields.length;
+    const completeness =
+      structuredFields.filter(Boolean).length / structuredFields.length;
     score += completeness * 0.2;
 
     // Boost score for proper URLs

@@ -4,16 +4,26 @@ import { RFPRepository } from './RFPRepository';
 
 // Additional repositories (to be created)
 import type {
-  Proposal, InsertProposal,
-  Document, InsertDocument,
-  Submission, InsertSubmission,
-  SubmissionPipeline, InsertSubmissionPipeline,
-  SubmissionEvent, InsertSubmissionEvent,
-  SubmissionStatusHistory, InsertSubmissionStatusHistory,
-  AuditLog, InsertAuditLog,
-  Notification, InsertNotification,
-  Scan, InsertScan,
-  ScanEvent, InsertScanEvent
+  Proposal,
+  InsertProposal,
+  Document,
+  InsertDocument,
+  Submission,
+  InsertSubmission,
+  SubmissionPipeline,
+  InsertSubmissionPipeline,
+  SubmissionEvent,
+  InsertSubmissionEvent,
+  SubmissionStatusHistory,
+  InsertSubmissionStatusHistory,
+  AuditLog,
+  InsertAuditLog,
+  Notification,
+  InsertNotification,
+  Scan,
+  InsertScan,
+  ScanEvent,
+  InsertScanEvent,
 } from '@shared/schema';
 
 /**
@@ -104,7 +114,7 @@ export class RepositoryManager {
     const checks = {
       users: false,
       portals: false,
-      rfps: false
+      rfps: false,
     };
 
     try {
@@ -143,7 +153,7 @@ export class RepositoryManager {
 
     return {
       status,
-      repositories: checks
+      repositories: checks,
     };
   }
 
@@ -158,24 +168,26 @@ export class RepositoryManager {
     const [userStats, portalStats, rfpStats] = await Promise.all([
       this._userRepository.count(),
       this._portalRepository.getPortalStats(),
-      this._rfpRepository.getRFPStats()
+      this._rfpRepository.getRFPStats(),
     ]);
 
-    const activeUsers = await this._userRepository.count({ isActive: true } as any);
+    const activeUsers = await this._userRepository.count({
+      isActive: true,
+    } as any);
 
     return {
       users: {
         total: userStats,
-        active: activeUsers
+        active: activeUsers,
       },
       portals: {
         total: portalStats.total,
-        active: portalStats.active
+        active: portalStats.active,
       },
       rfps: {
         total: rfpStats.total,
-        active: rfpStats.active
-      }
+        active: rfpStats.active,
+      },
     };
   }
 
@@ -187,7 +199,7 @@ export class RepositoryManager {
   ): Promise<T> {
     // For now, use the base repository transaction from one of the repositories
     // In a more advanced implementation, this would coordinate transactions across all repositories
-    return await this._userRepository.transaction(async (tx) => {
+    return await this._userRepository.transaction(async tx => {
       // Create a temporary repository manager with transaction-aware repositories
       // This is a simplified implementation - in production, you'd want to pass the transaction
       // context to all repositories
@@ -232,6 +244,7 @@ export const repositories = {
   getStats: () => repositoryManager.getStats(),
 
   // Transaction support
-  executeTransaction: <T>(callback: (repos: typeof repositories) => Promise<T>) =>
-    repositoryManager.executeTransaction(() => callback(repositories))
+  executeTransaction: <T>(
+    callback: (repos: typeof repositories) => Promise<T>
+  ) => repositoryManager.executeTransaction(() => callback(repositories)),
 };

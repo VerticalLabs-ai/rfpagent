@@ -2,8 +2,8 @@ import { AgentFactory } from '../AgentFactory';
 import { AgentRegistry } from '../AgentRegistry';
 import { PortalDetectionService } from '../../portal/PortalDetectionService';
 import { ScrapingConfigurationService } from '../../core/ScrapingConfigurationService';
-import type { Portal } from "@shared/schema";
-import { Agent } from "@mastra/core/agent";
+import type { Portal } from '@shared/schema';
+import { Agent } from '@mastra/core/agent';
 
 /**
  * Specialized manager for portal-specific agent operations
@@ -42,18 +42,22 @@ export class PortalAgentManager {
       return {
         agent: existingAgent,
         agentKey,
-        isSpecialized: agentKey !== 'generic'
+        isSpecialized: agentKey !== 'generic',
       };
     }
 
     // Create specialized agent if we don't have one
     const specializedAgent = await this.createSpecializedAgent(portal);
     if (specializedAgent) {
-      this.agentRegistry.registerAgent(agentKey, specializedAgent.agent, specializedAgent.config);
+      this.agentRegistry.registerAgent(
+        agentKey,
+        specializedAgent.agent,
+        specializedAgent.config
+      );
       return {
         agent: specializedAgent.agent,
         agentKey,
-        isSpecialized: true
+        isSpecialized: true,
       };
     }
 
@@ -66,7 +70,7 @@ export class PortalAgentManager {
     return {
       agent: genericAgent,
       agentKey: 'generic',
-      isSpecialized: false
+      isSpecialized: false,
     };
   }
 
@@ -79,7 +83,8 @@ export class PortalAgentManager {
   } | null> {
     try {
       // Detect portal type
-      const validationResult = this.portalDetectionService.validateAndDetectPortal(portal.url);
+      const validationResult =
+        this.portalDetectionService.validateAndDetectPortal(portal.url);
       if (!validationResult.isValid || !validationResult.portalType) {
         return null;
       }
@@ -87,16 +92,25 @@ export class PortalAgentManager {
       const portalType = validationResult.portalType;
 
       // Get portal configuration
-      const portalConfig = this.portalDetectionService.getPortalConfiguration(portalType);
+      const portalConfig =
+        this.portalDetectionService.getPortalConfiguration(portalType);
       if (!portalConfig) {
         return null;
       }
 
       // Create specialized instructions based on portal characteristics
-      const instructions = this.generateSpecializedInstructions(portal, portalType, portalConfig);
+      const instructions = this.generateSpecializedInstructions(
+        portal,
+        portalType,
+        portalConfig
+      );
 
       // Determine required tools
-      const tools = this.determineRequiredTools(portal, portalType, portalConfig);
+      const tools = this.determineRequiredTools(
+        portal,
+        portalType,
+        portalConfig
+      );
 
       // Create the specialized agent
       const agent = this.agentFactory.createCustomAgent(
@@ -110,15 +124,19 @@ export class PortalAgentManager {
         name: `${portal.name} Specialist`,
         instructions,
         portalType,
-        tools
+        tools,
       };
 
-      console.log(`🎯 Created specialized agent for ${portal.name} (${portalType})`);
+      console.log(
+        `🎯 Created specialized agent for ${portal.name} (${portalType})`
+      );
 
       return { agent, config };
-
     } catch (error) {
-      console.error(`❌ Failed to create specialized agent for ${portal.name}:`, error);
+      console.error(
+        `❌ Failed to create specialized agent for ${portal.name}:`,
+        error
+      );
       return null;
     }
   }
@@ -126,19 +144,27 @@ export class PortalAgentManager {
   /**
    * Generate specialized instructions based on portal characteristics
    */
-  private generateSpecializedInstructions(portal: Portal, portalType: string, portalConfig: any): string {
+  private generateSpecializedInstructions(
+    portal: Portal,
+    portalType: string,
+    portalConfig: any
+  ): string {
     const baseInstructions = `You are a specialized agent for ${portal.name} procurement portal.`;
 
     // Portal-specific instructions
-    const portalSpecificInstructions = this.getPortalSpecificInstructions(portalType);
+    const portalSpecificInstructions =
+      this.getPortalSpecificInstructions(portalType);
 
     // Authentication instructions
-    const authInstructions = portalConfig.authRequired ?
-      this.getAuthenticationInstructions(portalType) :
-      'This portal provides public access to opportunities.';
+    const authInstructions = portalConfig.authRequired
+      ? this.getAuthenticationInstructions(portalType)
+      : 'This portal provides public access to opportunities.';
 
     // Extraction patterns
-    const extractionInstructions = this.getExtractionInstructions(portalType, portalConfig);
+    const extractionInstructions = this.getExtractionInstructions(
+      portalType,
+      portalConfig
+    );
 
     return `${baseInstructions}
 
@@ -194,10 +220,13 @@ Always focus on extracting accurate, complete information and return structured 
 - Extract from Active Solicitations table format
 - Handle solicitation ID patterns (IFQ, IFB, RFP, RFQS)
 - Convert Austin-specific date formats
-- Generate proper detail URLs (solicitation_details.cfm?sid=XXXXX)`
+- Generate proper detail URLs (solicitation_details.cfm?sid=XXXXX)`,
     };
 
-    return instructions[portalType] || 'Navigate this portal using general procurement knowledge.';
+    return (
+      instructions[portalType] ||
+      'Navigate this portal using general procurement knowledge.'
+    );
   }
 
   /**
@@ -221,7 +250,7 @@ Always focus on extracting accurate, complete information and return structured 
 - Detect and handle various login form patterns
 - Support multiple authentication methods
 - Handle session management and cookies
-- Verify successful authentication`
+- Verify successful authentication`,
     };
 
     return authInstructions[portalType] || authInstructions.generic;
@@ -230,7 +259,10 @@ Always focus on extracting accurate, complete information and return structured 
   /**
    * Get extraction instructions for portal type
    */
-  private getExtractionInstructions(portalType: string, portalConfig: any): string {
+  private getExtractionInstructions(
+    portalType: string,
+    portalConfig: any
+  ): string {
     const selectors = portalConfig.selectors || {};
 
     let selectorInfo = '';
@@ -252,7 +284,11 @@ ${selectorInfo}
   /**
    * Determine required tools based on portal characteristics
    */
-  private determineRequiredTools(portal: Portal, portalType: string, portalConfig: any): string[] {
+  private determineRequiredTools(
+    portal: Portal,
+    portalType: string,
+    portalConfig: any
+  ): string[] {
     const tools = ['webScrape', 'extractRFP'];
 
     // Add authentication tool if required
@@ -266,7 +302,11 @@ ${selectorInfo}
     }
 
     // Add document download tool for portals with attachments
-    if (portalType === 'bonfire_hub' || portalType === 'sam_gov' || portalType === 'austin_finance') {
+    if (
+      portalType === 'bonfire_hub' ||
+      portalType === 'sam_gov' ||
+      portalType === 'austin_finance'
+    ) {
       tools.push('documentDownload');
     }
 
@@ -289,7 +329,11 @@ ${selectorInfo}
       // Create new specialized agent
       const newAgent = await this.createSpecializedAgent(portal);
       if (newAgent) {
-        this.agentRegistry.registerAgent(agentKey, newAgent.agent, newAgent.config);
+        this.agentRegistry.registerAgent(
+          agentKey,
+          newAgent.agent,
+          newAgent.config
+        );
         console.log(`🔄 Updated agent for ${portal.name}`);
         return true;
       }
@@ -316,8 +360,8 @@ ${selectorInfo}
         totalRuns: 0,
         successfulRuns: 0,
         lastUsed: new Date(),
-        averageResponseTime: 0
-      }
+        averageResponseTime: 0,
+      },
     };
   }
 
@@ -350,16 +394,18 @@ ${selectorInfo}
 
         // Recommend optimization if success rate is low or response time is high
         if (successRate < 0.7 || avgResponseTime > 30000) {
-          const recommendedAgent = successRate < 0.5 ? 'generic' : currentAgentKey;
-          const reason = successRate < 0.7
-            ? `Low success rate: ${(successRate * 100).toFixed(1)}%`
-            : `High response time: ${(avgResponseTime / 1000).toFixed(1)}s`;
+          const recommendedAgent =
+            successRate < 0.5 ? 'generic' : currentAgentKey;
+          const reason =
+            successRate < 0.7
+              ? `Low success rate: ${(successRate * 100).toFixed(1)}%`
+              : `High response time: ${(avgResponseTime / 1000).toFixed(1)}s`;
 
           optimizations.push({
             portal: portal.name,
             currentAgent: currentAgentKey,
             recommendedAgent,
-            reason
+            reason,
           });
         }
       }
@@ -367,7 +413,7 @@ ${selectorInfo}
 
     return {
       optimizations,
-      totalOptimizations: optimizations.length
+      totalOptimizations: optimizations.length,
     };
   }
 }

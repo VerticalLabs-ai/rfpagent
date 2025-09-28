@@ -14,14 +14,18 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
   }
 
   canHandle(portalType: string, url: string): boolean {
-    return portalType === 'bonfire_hub' ||
-           url.includes('bonfirehub.com') ||
-           url.includes('vendor.bonfirehub.com');
+    return (
+      portalType === 'bonfire_hub' ||
+      url.includes('bonfirehub.com') ||
+      url.includes('vendor.bonfirehub.com')
+    );
   }
 
   async authenticate(context: AuthContext): Promise<AuthResult> {
     try {
-      console.log(`🔐 Starting Bonfire Hub authentication for: ${context.portalUrl}`);
+      console.log(
+        `🔐 Starting Bonfire Hub authentication for: ${context.portalUrl}`
+      );
 
       // Method 1: Try unified Stagehand authentication first
       const stagehandResult = await this.tryStagehandAuth(context);
@@ -29,7 +33,9 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
         return stagehandResult;
       }
 
-      console.log(`⚠️ Stagehand auth failed, trying Ory Kratos flow: ${stagehandResult.error}`);
+      console.log(
+        `⚠️ Stagehand auth failed, trying Ory Kratos flow: ${stagehandResult.error}`
+      );
 
       // Method 2: Fall back to manual Ory Kratos authentication
       const oryResult = await this.performOryKratosAuth(context);
@@ -38,9 +44,10 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       }
 
       // Method 3: Try browser automation as last resort
-      console.log(`⚠️ Ory Kratos auth failed, trying browser automation: ${oryResult.error}`);
+      console.log(
+        `⚠️ Ory Kratos auth failed, trying browser automation: ${oryResult.error}`
+      );
       return await this.performBrowserAuth(context);
-
     } catch (error) {
       return this.handleAuthError(error, 'BonfireHubAuthStrategy');
     }
@@ -58,8 +65,8 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           password: context.password,
           targetUrl: context.portalUrl,
           sessionId: context.sessionId,
-          portalType: this.portalType
-        }
+          portalType: this.portalType,
+        },
       });
 
       if (authResult.success) {
@@ -68,20 +75,23 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           success: true,
           sessionId: context.sessionId,
           cookies: authResult.cookies,
-          authToken: authResult.authToken
+          authToken: authResult.authToken,
         };
       } else {
         return {
           success: false,
           sessionId: context.sessionId,
-          error: authResult.message || 'Stagehand authentication failed'
+          error: authResult.message || 'Stagehand authentication failed',
         };
       }
     } catch (error) {
       return {
         success: false,
         sessionId: context.sessionId,
-        error: error instanceof Error ? error.message : 'Stagehand authentication error'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Stagehand authentication error',
       };
     }
   }
@@ -89,18 +99,25 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Perform Ory Kratos authentication flow
    */
-  private async performOryKratosAuth(context: AuthContext): Promise<AuthResult> {
+  private async performOryKratosAuth(
+    context: AuthContext
+  ): Promise<AuthResult> {
     try {
-      console.log(`🔐 Starting Ory Kratos authentication flow for ${context.portalUrl}`);
+      console.log(
+        `🔐 Starting Ory Kratos authentication flow for ${context.portalUrl}`
+      );
 
       // Step 1: Get the login flow URL with flow ID
-      const loginFlowUrl = 'https://account-flows.bonfirehub.com/self-service/login/browser?return_to=https%3A%2F%2Fvendor.bonfirehub.com%2Fopportunities%2Fall';
+      const loginFlowUrl =
+        'https://account-flows.bonfirehub.com/self-service/login/browser?return_to=https%3A%2F%2Fvendor.bonfirehub.com%2Fopportunities%2Fall';
       console.log(`🌐 Step 1: Getting login flow from ${loginFlowUrl}`);
 
       const flowResponse = await this.getWithRedirects(loginFlowUrl);
 
       if (!flowResponse.finalUrl.includes('/login?flow=')) {
-        throw new Error(`Expected login flow URL with flow ID, got: ${flowResponse.finalUrl}`);
+        throw new Error(
+          `Expected login flow URL with flow ID, got: ${flowResponse.finalUrl}`
+        );
       }
 
       // Extract flow ID from URL
@@ -118,14 +135,17 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       const flowDataResponse = await request(flowJsonUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Cookie': flowResponse.cookieHeader
-        }
+          Accept: 'application/json',
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Cookie: flowResponse.cookieHeader,
+        },
       });
 
-      const flowData = await flowDataResponse.body.json() as any;
-      console.log(`📋 Form structure received for flow ${flowId.substring(0, 8)}...`);
+      const flowData = (await flowDataResponse.body.json()) as any;
+      console.log(
+        `📋 Form structure received for flow ${flowId.substring(0, 8)}...`
+      );
 
       // Extract form action and CSRF token
       const formAction = flowData.ui?.action;
@@ -136,13 +156,13 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       // Build form payload
       const loginPayload: any = {
         'traits.email': context.username,
-        'password': context.password,
-        'method': 'password'
+        password: context.password,
+        method: 'password',
       };
 
       // Add CSRF token if present
-      const csrfNode = flowData.ui?.nodes?.find((node: any) =>
-        node.attributes?.name === 'csrf_token'
+      const csrfNode = flowData.ui?.nodes?.find(
+        (node: any) => node.attributes?.name === 'csrf_token'
       );
       if (csrfNode) {
         loginPayload['csrf_token'] = csrfNode.attributes.value;
@@ -156,19 +176,25 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Cookie': flowResponse.cookieHeader
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Cookie: flowResponse.cookieHeader,
         },
-        body: new URLSearchParams(loginPayload).toString()
+        body: new URLSearchParams(loginPayload).toString(),
       });
 
-      console.log(`📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.statusCode}`);
+      console.log(
+        `📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.statusCode}`
+      );
 
       // Step 4: Follow redirects to complete authentication
       if ([302, 303, 307, 308].includes(loginSubmitResponse.statusCode)) {
-        console.log(`🔄 Step 4: Following redirects to complete authentication`);
+        console.log(
+          `🔄 Step 4: Following redirects to complete authentication`
+        );
 
         const location = loginSubmitResponse.headers.location;
         if (!location) {
@@ -177,36 +203,44 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
 
         // Merge cookies from login response
         const loginCookies = this.extractCookies(loginSubmitResponse);
-        const allCookies = this.mergeCookies(flowResponse.cookieHeader, loginCookies);
+        const allCookies = this.mergeCookies(
+          flowResponse.cookieHeader,
+          loginCookies
+        );
 
         const finalResponse = await this.getWithRedirects(location, allCookies);
 
         // Check if we're authenticated (should be on vendor.bonfirehub.com)
-        if (finalResponse.finalUrl.includes('vendor.bonfirehub.com') &&
-            !finalResponse.finalUrl.includes('login')) {
+        if (
+          finalResponse.finalUrl.includes('vendor.bonfirehub.com') &&
+          !finalResponse.finalUrl.includes('login')
+        ) {
           console.log(`🎉 Ory Kratos authentication successful!`);
 
           return {
             success: true,
             sessionId: context.sessionId,
             cookies: finalResponse.cookieHeader,
-            authToken: flowId
+            authToken: flowId,
           };
         } else {
           return {
             success: false,
             sessionId: context.sessionId,
-            error: 'Authentication failed - not redirected to vendor portal'
+            error: 'Authentication failed - not redirected to vendor portal',
           };
         }
       } else if (loginSubmitResponse.statusCode === 200) {
         const responseText = await loginSubmitResponse.body.text();
 
-        if (responseText.includes('Invalid credentials') || responseText.includes('error')) {
+        if (
+          responseText.includes('Invalid credentials') ||
+          responseText.includes('error')
+        ) {
           return {
             success: false,
             sessionId: context.sessionId,
-            error: 'Invalid credentials or login error'
+            error: 'Invalid credentials or login error',
           };
         } else {
           // Success without redirect
@@ -214,19 +248,23 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
             success: true,
             sessionId: context.sessionId,
             cookies: this.extractCookies(loginSubmitResponse),
-            authToken: flowId
+            authToken: flowId,
           };
         }
       } else {
-        throw new Error(`Unexpected login response: HTTP ${loginSubmitResponse.statusCode}`);
+        throw new Error(
+          `Unexpected login response: HTTP ${loginSubmitResponse.statusCode}`
+        );
       }
-
     } catch (error) {
       console.error(`❌ Ory Kratos authentication failed:`, error);
       return {
         success: false,
         sessionId: context.sessionId,
-        error: error instanceof Error ? error.message : 'Ory Kratos authentication failed'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Ory Kratos authentication failed',
       };
     }
   }
@@ -237,19 +275,25 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
   private async performBrowserAuth(context: AuthContext): Promise<AuthResult> {
     // This would integrate with browser automation tools
     // For now, return a placeholder implementation
-    console.log(`🌐 Browser authentication for Bonfire Hub not yet implemented`);
+    console.log(
+      `🌐 Browser authentication for Bonfire Hub not yet implemented`
+    );
 
     return {
       success: false,
       sessionId: context.sessionId,
-      error: 'Browser authentication not yet implemented for Bonfire Hub'
+      error: 'Browser authentication not yet implemented for Bonfire Hub',
     };
   }
 
   /**
    * Helper to handle redirects and extract cookies
    */
-  private async getWithRedirects(url: string, initialCookies?: string, maxRedirects = 10): Promise<{
+  private async getWithRedirects(
+    url: string,
+    initialCookies?: string,
+    maxRedirects = 10
+  ): Promise<{
     finalResponse: any;
     finalUrl: string;
     cookieHeader: string;
@@ -265,11 +309,13 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       const response = await request(currentUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Cookie': cookieHeader
-        }
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Cookie: cookieHeader,
+        },
       });
 
       finalResponse = response;
@@ -284,11 +330,15 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
         const location = response.headers.location;
         if (!location) {
-          throw new Error(`Redirect response without location header: ${response.statusCode}`);
+          throw new Error(
+            `Redirect response without location header: ${response.statusCode}`
+          );
         }
 
         // Handle relative URLs
-        currentUrl = location.startsWith('http') ? location : new URL(location, currentUrl).toString();
+        currentUrl = location.startsWith('http')
+          ? location
+          : new URL(location, currentUrl).toString();
         redirectCount++;
       } else {
         // No more redirects
@@ -303,7 +353,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
     return {
       finalResponse,
       finalUrl: currentUrl,
-      cookieHeader
+      cookieHeader,
     };
   }
 }

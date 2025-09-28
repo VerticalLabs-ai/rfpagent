@@ -8,7 +8,10 @@ import { submissionMaterialsService } from '../services/submissionMaterialsServi
 import { progressTracker } from '../services/progressTracker';
 import { validateRequest } from './middleware/validation';
 import { handleAsyncError } from './middleware/errorHandling';
-import { aiOperationLimiter, heavyOperationLimiter } from './middleware/rateLimiting';
+import {
+  aiOperationLimiter,
+  heavyOperationLimiter,
+} from './middleware/rateLimiting';
 
 const router = express.Router();
 
@@ -20,63 +23,72 @@ const router = express.Router();
  * Get proposals for specific RFP
  * GET /api/proposals/rfp/:rfpId
  */
-router.get('/rfp/:rfpId', handleAsyncError(async (req, res) => {
-  const proposal = await storage.getProposalByRFP(req.params.rfpId);
-  // Return as array to match the expected format
-  const proposals = proposal ? [proposal] : [];
-  res.json(proposals);
-}));
+router.get(
+  '/rfp/:rfpId',
+  handleAsyncError(async (req, res) => {
+    const proposal = await storage.getProposalByRFP(req.params.rfpId);
+    // Return as array to match the expected format
+    const proposals = proposal ? [proposal] : [];
+    res.json(proposals);
+  })
+);
 
 /**
  * Delete a specific proposal
  * DELETE /api/proposals/:id
  */
-router.delete('/:id', handleAsyncError(async (req, res) => {
-  const proposalId = req.params.id;
+router.delete(
+  '/:id',
+  handleAsyncError(async (req, res) => {
+    const proposalId = req.params.id;
 
-  // Check if proposal exists
-  const proposal = await storage.getProposal(proposalId);
-  if (!proposal) {
-    return res.status(404).json({ error: 'Proposal not found' });
-  }
+    // Check if proposal exists
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
 
-  // Delete the proposal
-  await storage.deleteProposal(proposalId);
+    // Delete the proposal
+    await storage.deleteProposal(proposalId);
 
-  res.json({ success: true, message: 'Proposal deleted successfully' });
-}));
+    res.json({ success: true, message: 'Proposal deleted successfully' });
+  })
+);
 
 /**
  * Enhanced proposal generation (moved before parameterized routes)
  * POST /api/proposals/enhanced/generate
  */
-router.post('/enhanced/generate',
+router.post(
+  '/enhanced/generate',
   heavyOperationLimiter,
   handleAsyncError(async (req, res) => {
     const { rfpId, companyProfileId, options = {} } = req.body;
 
     if (!rfpId) {
       return res.status(400).json({
-        error: 'RFP ID is required'
+        error: 'RFP ID is required',
       });
     }
 
     const sessionId = `enhanced_${rfpId}_${Date.now()}`;
 
     // Start enhanced proposal generation
-    enhancedProposalService.generateEnhancedProposal({
-      rfpId,
-      companyProfileId,
-      sessionId,
-      options
-    }).catch(error => {
-      console.error('Enhanced proposal generation failed:', error);
-    });
+    enhancedProposalService
+      .generateEnhancedProposal({
+        rfpId,
+        companyProfileId,
+        sessionId,
+        options,
+      })
+      .catch(error => {
+        console.error('Enhanced proposal generation failed:', error);
+      });
 
     res.json({
       success: true,
       sessionId,
-      message: 'Enhanced proposal generation started'
+      message: 'Enhanced proposal generation started',
     });
   })
 );
@@ -85,41 +97,49 @@ router.post('/enhanced/generate',
  * Pipeline proposal generation (moved before parameterized routes)
  * POST /api/proposals/pipeline/generate
  */
-router.post('/pipeline/generate',
+router.post(
+  '/pipeline/generate',
   heavyOperationLimiter,
   handleAsyncError(async (req, res) => {
-    const { rfpIds, companyProfileId, priority = 5, parallelExecution = true } = req.body;
+    const {
+      rfpIds,
+      companyProfileId,
+      priority = 5,
+      parallelExecution = true,
+    } = req.body;
 
     if (!rfpIds || !Array.isArray(rfpIds) || rfpIds.length === 0) {
       return res.status(400).json({
-        error: 'RFP IDs array is required'
+        error: 'RFP IDs array is required',
       });
     }
 
     if (!companyProfileId) {
       return res.status(400).json({
-        error: 'Company profile ID is required'
+        error: 'Company profile ID is required',
       });
     }
 
     const pipelineId = `pipeline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Start pipeline generation
-    proposalGenerationOrchestrator.startPipeline({
-      pipelineId,
-      rfpIds,
-      companyProfileId,
-      priority,
-      parallelExecution
-    }).catch(error => {
-      console.error('Pipeline generation failed:', error);
-    });
+    proposalGenerationOrchestrator
+      .startPipeline({
+        pipelineId,
+        rfpIds,
+        companyProfileId,
+        priority,
+        parallelExecution,
+      })
+      .catch(error => {
+        console.error('Pipeline generation failed:', error);
+      });
 
     res.json({
       success: true,
       pipelineId,
       rfpCount: rfpIds.length,
-      message: 'Proposal pipeline started'
+      message: 'Proposal pipeline started',
     });
   })
 );
@@ -128,7 +148,8 @@ router.post('/pipeline/generate',
  * Generate proposal using AI
  * POST /api/proposals/:id/generate
  */
-router.post('/:id/generate',
+router.post(
+  '/:id/generate',
   aiOperationLimiter,
   handleAsyncError(async (req, res) => {
     const proposalId = req.params.id;
@@ -142,19 +163,21 @@ router.post('/:id/generate',
     // Start AI proposal generation
     const sessionId = `proposal_gen_${proposalId}_${Date.now()}`;
 
-    aiProposalService.generateProposal({
-      proposalId,
-      companyProfileId,
-      sessionId,
-      options
-    }).catch(error => {
-      console.error('Proposal generation failed:', error);
-    });
+    aiProposalService
+      .generateProposal({
+        proposalId,
+        companyProfileId,
+        sessionId,
+        options,
+      })
+      .catch(error => {
+        console.error('Proposal generation failed:', error);
+      });
 
     res.json({
       success: true,
       sessionId,
-      message: 'Proposal generation started'
+      message: 'Proposal generation started',
     });
   })
 );
@@ -163,10 +186,14 @@ router.post('/:id/generate',
  * Update proposal
  * PUT /api/proposals/:id
  */
-router.put('/:id',
+router.put(
+  '/:id',
   validateRequest(insertProposalSchema.partial()),
   handleAsyncError(async (req, res) => {
-    const updatedProposal = await storage.updateProposal(req.params.id, req.body);
+    const updatedProposal = await storage.updateProposal(
+      req.params.id,
+      req.body
+    );
 
     if (!updatedProposal) {
       return res.status(404).json({ error: 'Proposal not found' });
@@ -180,101 +207,124 @@ router.put('/:id',
  * Approve proposal for submission
  * POST /api/proposals/:id/approve
  */
-router.post('/:id/approve', handleAsyncError(async (req, res) => {
-  const proposalId = req.params.id;
-  const { approvedBy, notes } = req.body;
+router.post(
+  '/:id/approve',
+  handleAsyncError(async (req, res) => {
+    const proposalId = req.params.id;
+    const { approvedBy, notes } = req.body;
 
-  const proposal = await storage.getProposal(proposalId);
-  if (!proposal) {
-    return res.status(404).json({ error: 'Proposal not found' });
-  }
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
 
-  const updatedProposal = await storage.updateProposal(proposalId, {
-    status: 'approved',
-    approvedBy,
-    approvedAt: new Date(),
-    approvalNotes: notes
-  });
+    const updatedProposal = await storage.updateProposal(proposalId, {
+      status: 'approved',
+      approvedBy,
+      approvedAt: new Date(),
+      approvalNotes: notes,
+    });
 
-  res.json({
-    success: true,
-    proposal: updatedProposal,
-    message: 'Proposal approved successfully'
-  });
-}));
-
+    res.json({
+      success: true,
+      proposal: updatedProposal,
+      message: 'Proposal approved successfully',
+    });
+  })
+);
 
 /**
  * Get enhanced proposal status
  * GET /api/proposals/enhanced/status/:rfpId
  */
-router.get('/enhanced/status/:rfpId', handleAsyncError(async (req, res) => {
-  const progress = await enhancedProposalService.getGenerationStatus(req.params.rfpId);
+router.get(
+  '/enhanced/status/:rfpId',
+  handleAsyncError(async (req, res) => {
+    const progress = await enhancedProposalService.getGenerationStatus(
+      req.params.rfpId
+    );
 
-  if (!progress) {
-    return res.status(404).json({
-      error: 'No generation process found for this RFP'
-    });
-  }
+    if (!progress) {
+      return res.status(404).json({
+        error: 'No generation process found for this RFP',
+      });
+    }
 
-  res.json(progress);
-}));
-
+    res.json(progress);
+  })
+);
 
 /**
  * Get pipeline status
  * GET /api/proposals/pipeline/status/:pipelineId
  */
-router.get('/pipeline/status/:pipelineId', handleAsyncError(async (req, res) => {
-  const status = await proposalGenerationOrchestrator.getPipelineStatus(req.params.pipelineId);
+router.get(
+  '/pipeline/status/:pipelineId',
+  handleAsyncError(async (req, res) => {
+    const status = await proposalGenerationOrchestrator.getPipelineStatus(
+      req.params.pipelineId
+    );
 
-  if (!status) {
-    return res.status(404).json({
-      error: 'Pipeline not found'
-    });
-  }
+    if (!status) {
+      return res.status(404).json({
+        error: 'Pipeline not found',
+      });
+    }
 
-  res.json(status);
-}));
+    res.json(status);
+  })
+);
 
 /**
  * Delete pipeline
  * DELETE /api/proposals/pipeline/:pipelineId
  */
-router.delete('/pipeline/:pipelineId', handleAsyncError(async (req, res) => {
-  const success = await proposalGenerationOrchestrator.cancelPipeline(req.params.pipelineId);
+router.delete(
+  '/pipeline/:pipelineId',
+  handleAsyncError(async (req, res) => {
+    const success = await proposalGenerationOrchestrator.cancelPipeline(
+      req.params.pipelineId
+    );
 
-  if (!success) {
-    return res.status(404).json({
-      error: 'Pipeline not found or cannot be cancelled'
+    if (!success) {
+      return res.status(404).json({
+        error: 'Pipeline not found or cannot be cancelled',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Pipeline cancelled successfully',
     });
-  }
-
-  res.json({
-    success: true,
-    message: 'Pipeline cancelled successfully'
-  });
-}));
+  })
+);
 
 /**
  * Get pipeline workflows
  * GET /api/proposals/pipeline/workflows
  */
-router.get('/pipeline/workflows', handleAsyncError(async (req, res) => {
-  const workflows = await proposalGenerationOrchestrator.getActiveWorkflows();
-  res.json(workflows);
-}));
+router.get(
+  '/pipeline/workflows',
+  handleAsyncError(async (req, res) => {
+    const workflows = await proposalGenerationOrchestrator.getActiveWorkflows();
+    res.json(workflows);
+  })
+);
 
 /**
  * Generate submission materials
  * POST /api/proposals/:id/submission-materials
  * Note: :id can be either proposalId or rfpId - we try both
  */
-router.post('/:id/submission-materials',
+router.post(
+  '/:id/submission-materials',
   heavyOperationLimiter,
   handleAsyncError(async (req, res) => {
     const id = req.params.id;
-    const { materialTypes = ['cover_letter', 'technical_proposal', 'cost_proposal'], options = {} } = req.body;
+    const {
+      materialTypes = ['cover_letter', 'technical_proposal', 'cost_proposal'],
+      options = {},
+    } = req.body;
 
     // Try to get proposal by ID first, then by RFP ID
     let proposal = await storage.getProposal(id);
@@ -289,13 +339,15 @@ router.post('/:id/submission-materials',
     const sessionId = `materials_${proposal.id}_${Date.now()}`;
 
     // Start submission materials generation in background
-    submissionMaterialsService.generateSubmissionMaterials({
-      rfpId: proposal.rfpId,
-      sessionId, // Pass the sessionId to ensure consistency
-      ...options
-    }).catch(error => {
-      console.error('Submission materials generation failed:', error);
-    });
+    submissionMaterialsService
+      .generateSubmissionMaterials({
+        rfpId: proposal.rfpId,
+        sessionId, // Pass the sessionId to ensure consistency
+        ...options,
+      })
+      .catch(error => {
+        console.error('Submission materials generation failed:', error);
+      });
 
     // Return immediate response with sessionId for tracking
     res.json({
@@ -303,9 +355,9 @@ router.post('/:id/submission-materials',
       data: {
         sessionId,
         proposalId: proposal.id,
-        materialTypes
+        materialTypes,
       },
-      message: 'Submission materials generation started'
+      message: 'Submission materials generation started',
     });
   })
 );
@@ -319,7 +371,7 @@ router.get('/submission-materials/progress/:sessionId', (req, res) => {
 
   if (!progress) {
     return res.status(404).json({
-      error: 'Session not found'
+      error: 'Session not found',
     });
   }
 
@@ -333,17 +385,24 @@ router.get('/submission-materials/progress/:sessionId', (req, res) => {
 router.get('/submission-materials/stream/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
-    console.log(`📡 SSE connection established for submission materials session: ${sessionId}`);
+    console.log(
+      `📡 SSE connection established for submission materials session: ${sessionId}`
+    );
 
     // Register SSE client for the session
     progressTracker.registerSSEClient(sessionId, res);
 
     // Handle client disconnect
     req.on('close', () => {
-      console.log(`📡 SSE connection closed for submission materials session: ${sessionId}`);
+      console.log(
+        `📡 SSE connection closed for submission materials session: ${sessionId}`
+      );
     });
   } catch (error) {
-    console.error('Error setting up SSE connection for submission materials:', error);
+    console.error(
+      'Error setting up SSE connection for submission materials:',
+      error
+    );
     res.status(500).json({ error: 'Failed to establish progress stream' });
   }
 });

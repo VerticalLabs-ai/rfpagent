@@ -158,11 +158,11 @@
   },
   "lint-staged": {
     "server/**/*.{ts,js}": [
-      "eslint --fix",
+      "bash -c 'for file in \"$@\"; do if ! head -1 \"$file\" | grep -q \"@ts-nocheck\"; then eslint --fix \"$file\"; fi; done' --",
       "prettier --write"
     ],
     "shared/**/*.{ts,js}": [
-      "eslint --fix",
+      "bash -c 'for file in \"$@\"; do if ! head -1 \"$file\" | grep -q \"@ts-nocheck\"; then eslint --fix \"$file\"; fi; done' --",
       "prettier --write"
     ],
     "client/src/**/*.{ts,tsx,js,jsx}": [

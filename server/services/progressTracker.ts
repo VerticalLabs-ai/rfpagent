@@ -23,7 +23,10 @@ export interface RFPProcessingProgress {
 class ProgressTracker extends EventEmitter {
   private progressMap: Map<string, RFPProcessingProgress> = new Map();
   private sseClients: Map<string, Response[]> = new Map();
-  private workflowTypes: Map<string, 'rfp_processing' | 'submission_materials'> = new Map();
+  private workflowTypes: Map<
+    string,
+    'rfp_processing' | 'submission_materials'
+  > = new Map();
 
   // Processing steps definitions for different workflows
   private readonly WORKFLOW_STEPS = {
@@ -35,7 +38,7 @@ class ProgressTracker extends EventEmitter {
       { id: 'document_download', name: 'Downloading Documents' },
       { id: 'database_save', name: 'Saving to Database' },
       { id: 'ai_analysis', name: 'AI Analysis & Proposal Generation' },
-      { id: 'completion', name: 'Processing Complete' }
+      { id: 'completion', name: 'Processing Complete' },
     ],
     submission_materials: [
       { id: 'initialization', name: 'Initializing Generation Process' },
@@ -45,8 +48,8 @@ class ProgressTracker extends EventEmitter {
       { id: 'compliance_check', name: 'Validating Compliance' },
       { id: 'document_assembly', name: 'Assembling Documents' },
       { id: 'quality_review', name: 'Quality Review & Validation' },
-      { id: 'completion', name: 'Materials Ready for Review' }
-    ]
+      { id: 'completion', name: 'Materials Ready for Review' },
+    ],
   };
 
   // Default to RFP processing steps for backward compatibility
@@ -55,7 +58,11 @@ class ProgressTracker extends EventEmitter {
   /**
    * Start tracking a new processing job
    */
-  startTracking(sessionId: string, url: string, workflowType: 'rfp_processing' | 'submission_materials' = 'rfp_processing'): void {
+  startTracking(
+    sessionId: string,
+    url: string,
+    workflowType: 'rfp_processing' | 'submission_materials' = 'rfp_processing'
+  ): void {
     const steps = this.WORKFLOW_STEPS[workflowType] || this.PROCESSING_STEPS;
 
     const progress: RFPProcessingProgress = {
@@ -68,8 +75,8 @@ class ProgressTracker extends EventEmitter {
         step: step.name,
         status: 'pending',
         message: `${step.name} - Waiting`,
-        timestamp: new Date()
-      }))
+        timestamp: new Date(),
+      })),
     };
 
     this.progressMap.set(sessionId, progress);
@@ -103,7 +110,7 @@ class ProgressTracker extends EventEmitter {
       status,
       message,
       details,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     // Update overall progress
@@ -160,9 +167,9 @@ class ProgressTracker extends EventEmitter {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
+      Connection: 'keep-alive',
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
+      'Access-Control-Allow-Headers': 'Cache-Control',
     });
 
     // Send initial connection message
@@ -173,13 +180,19 @@ class ProgressTracker extends EventEmitter {
       this.sseClients.set(sessionId, []);
     }
     this.sseClients.get(sessionId)!.push(res);
-    console.log(`📡 SSE client added. Total clients for session ${sessionId}: ${this.sseClients.get(sessionId)!.length}`);
+    console.log(
+      `📡 SSE client added. Total clients for session ${sessionId}: ${this.sseClients.get(sessionId)!.length}`
+    );
 
     // Send current progress if available
     const progress = this.progressMap.get(sessionId);
     if (progress) {
-      console.log(`📡 Sending existing progress to new client: ${progress.status}`);
-      res.write(`data: ${JSON.stringify({ type: 'progress', data: progress })}\n\n`);
+      console.log(
+        `📡 Sending existing progress to new client: ${progress.status}`
+      );
+      res.write(
+        `data: ${JSON.stringify({ type: 'progress', data: progress })}\n\n`
+      );
     } else {
       console.log(`📡 No existing progress found for session: ${sessionId}`);
     }
@@ -193,9 +206,13 @@ class ProgressTracker extends EventEmitter {
     // Keep connection alive with periodic heartbeat
     const heartbeat = setInterval(() => {
       try {
-        res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`
+        );
       } catch (error) {
-        console.log(`📡 Heartbeat failed for session ${sessionId}, removing client`);
+        console.log(
+          `📡 Heartbeat failed for session ${sessionId}, removing client`
+        );
         clearInterval(heartbeat);
         this.removeSSEClient(sessionId, res);
       }
@@ -233,7 +250,7 @@ class ProgressTracker extends EventEmitter {
     if (progress && clients) {
       const data = JSON.stringify({
         type: 'progress',
-        data: progress
+        data: progress,
       });
 
       clients.forEach(client => {
@@ -269,7 +286,9 @@ class ProgressTracker extends EventEmitter {
       if (clients) {
         clients.forEach(client => {
           try {
-            client.write(`data: ${JSON.stringify({ type: 'complete', rfpId })}\n\n`);
+            client.write(
+              `data: ${JSON.stringify({ type: 'complete', rfpId })}\n\n`
+            );
             client.end();
           } catch (error) {
             // Client may already be disconnected
@@ -297,7 +316,9 @@ class ProgressTracker extends EventEmitter {
         if (clients) {
           clients.forEach(client => {
             try {
-              client.write(`data: ${JSON.stringify({ type: 'error', error })}\n\n`);
+              client.write(
+                `data: ${JSON.stringify({ type: 'error', error })}\n\n`
+              );
               client.end();
             } catch (error) {
               // Client may already be disconnected

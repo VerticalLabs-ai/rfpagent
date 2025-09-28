@@ -20,8 +20,8 @@ router.post('/start', async (req, res) => {
     const { rfpId, sessionId, companyProfileId, priority } = req.body;
 
     if (!rfpId || !sessionId) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: rfpId and sessionId' 
+      return res.status(400).json({
+        error: 'Missing required fields: rfpId and sessionId',
       });
     }
 
@@ -31,21 +31,21 @@ router.post('/start', async (req, res) => {
       rfpId,
       sessionId,
       companyProfileId,
-      priority: priority || 5
+      priority: priority || 5,
     });
 
     res.json({
       success: true,
       result,
-      message: 'Analysis workflow started successfully'
+      message: 'Analysis workflow started successfully',
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Analysis workflow start failed:', error);
     res.status(500).json({
       error: 'Failed to start analysis workflow',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -57,7 +57,7 @@ router.post('/start', async (req, res) => {
 router.get('/progress/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    
+
     const progressData = analysisProgressTracker.getRFPProgress(rfpId);
     const progressSummary = analysisProgressTracker.getProgressSummary();
 
@@ -65,15 +65,15 @@ router.get('/progress/:rfpId', async (req, res) => {
       success: true,
       rfpId,
       workflows: progressData,
-      summary: progressSummary
+      summary: progressSummary,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get progress failed:', error);
     res.status(500).json({
       error: 'Failed to get analysis progress',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -85,13 +85,13 @@ router.get('/progress/:rfpId', async (req, res) => {
 router.get('/workflow/:workflowId/progress', async (req, res) => {
   try {
     const { workflowId } = req.params;
-    
+
     const progress = analysisProgressTracker.getProgress(workflowId);
     const stepHistory = analysisProgressTracker.getStepHistory(workflowId);
 
     if (!progress) {
       return res.status(404).json({
-        error: 'Workflow progress not found'
+        error: 'Workflow progress not found',
       });
     }
 
@@ -99,15 +99,15 @@ router.get('/workflow/:workflowId/progress', async (req, res) => {
       success: true,
       workflowId,
       progress,
-      stepHistory
+      stepHistory,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get workflow progress failed:', error);
     res.status(500).json({
       error: 'Failed to get workflow progress',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -119,13 +119,13 @@ router.get('/workflow/:workflowId/progress', async (req, res) => {
 router.get('/results/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    
+
     const rfp = await storage.getRFP(rfpId);
     const documents = await storage.getDocumentsByRFP(rfpId);
 
     if (!rfp) {
       return res.status(404).json({
-        error: 'RFP not found'
+        error: 'RFP not found',
       });
     }
 
@@ -137,37 +137,41 @@ router.get('/results/:rfpId', async (req, res) => {
         status: rfp.status,
         requirements: rfp.requirements || [],
         complianceItems: rfp.complianceItems || [],
-        riskFlags: rfp.riskFlags || []
+        riskFlags: rfp.riskFlags || [],
       },
       documents: documents.map(doc => ({
         id: doc.id,
         filename: doc.filename,
         fileType: doc.fileType,
         extractedText: doc.extractedText,
-        parsedData: doc.parsedData
+        parsedData: doc.parsedData,
       })),
       summary: {
         totalDocuments: documents.length,
         documentsWithText: documents.filter(d => d.extractedText).length,
         documentsWithAnalysis: documents.filter(d => d.parsedData).length,
-        requirementsCount: Array.isArray(rfp.requirements) ? rfp.requirements.length : 0,
-        complianceItemsCount: Array.isArray(rfp.complianceItems) ? rfp.complianceItems.length : 0,
-        riskFlagsCount: Array.isArray(rfp.riskFlags) ? rfp.riskFlags.length : 0
-      }
+        requirementsCount: Array.isArray(rfp.requirements)
+          ? rfp.requirements.length
+          : 0,
+        complianceItemsCount: Array.isArray(rfp.complianceItems)
+          ? rfp.complianceItems.length
+          : 0,
+        riskFlagsCount: Array.isArray(rfp.riskFlags) ? rfp.riskFlags.length : 0,
+      },
     };
 
     res.json({
       success: true,
       rfpId,
-      analysisResults
+      analysisResults,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get analysis results failed:', error);
     res.status(500).json({
       error: 'Failed to get analysis results',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -189,13 +193,13 @@ router.post('/test', async (req, res) => {
       testResults = {
         testType: 'smoke',
         success: smokeTestResult,
-        message: smokeTestResult ? 'Smoke test passed' : 'Smoke test failed'
+        message: smokeTestResult ? 'Smoke test passed' : 'Smoke test failed',
       };
     } else if (testType === 'comprehensive') {
       const comprehensiveResults = await analysisTestRunner.runAnalysisTests();
       const passedTests = comprehensiveResults.filter(r => r.success).length;
       const totalTests = comprehensiveResults.length;
-      
+
       testResults = {
         testType: 'comprehensive',
         success: passedTests === totalTests,
@@ -204,26 +208,26 @@ router.post('/test', async (req, res) => {
           totalTests,
           passedTests,
           failedTests: totalTests - passedTests,
-          passRate: Math.round((passedTests / totalTests) * 100)
-        }
+          passRate: Math.round((passedTests / totalTests) * 100),
+        },
       };
     } else {
       return res.status(400).json({
-        error: 'Invalid test type. Use "smoke" or "comprehensive"'
+        error: 'Invalid test type. Use "smoke" or "comprehensive"',
       });
     }
 
     res.json({
       success: true,
-      testResults
+      testResults,
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Analysis test failed:', error);
     res.status(500).json({
       error: 'Failed to run analysis test',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });
@@ -235,7 +239,7 @@ router.post('/test', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const progressSummary = analysisProgressTracker.getProgressSummary();
-    
+
     // Get system metrics
     const systemStatus = {
       analysisOrchestrator: 'active',
@@ -243,13 +247,13 @@ router.get('/status', async (req, res) => {
       specialists: {
         documentProcessor: 'ready',
         requirementsExtractor: 'ready',
-        complianceChecker: 'ready'
+        complianceChecker: 'ready',
       },
       services: {
         documentParsingService: 'available',
         documentIntelligenceService: 'available',
-        aiService: 'available'
-      }
+        aiService: 'available',
+      },
     };
 
     res.json({
@@ -257,15 +261,15 @@ router.get('/status', async (req, res) => {
       status: systemStatus,
       metrics: progressSummary,
       timestamp: new Date().toISOString(),
-      version: '7.0.0' // Phase 7 implementation
+      version: '7.0.0', // Phase 7 implementation
     });
-
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred';
     console.error('❌ Get analysis status failed:', error);
     res.status(500).json({
       error: 'Failed to get analysis status',
-      details: errorMessage
+      details: errorMessage,
     });
   }
 });

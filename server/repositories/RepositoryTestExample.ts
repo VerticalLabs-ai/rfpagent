@@ -16,14 +16,22 @@ export async function repositoryUsageExample() {
     console.log('1. Health Check:');
     const health = await repositoryManager.healthCheck();
     console.log(`   Status: ${health.status}`);
-    console.log(`   Repositories: ${JSON.stringify(health.repositories, null, 2)}\n`);
+    console.log(
+      `   Repositories: ${JSON.stringify(health.repositories, null, 2)}\n`
+    );
 
     // ===== Statistics =====
     console.log('2. Repository Statistics:');
     const stats = await repositoryManager.getStats();
-    console.log(`   Users: ${stats.users.total} total, ${stats.users.active} active`);
-    console.log(`   Portals: ${stats.portals.total} total, ${stats.portals.active} active`);
-    console.log(`   RFPs: ${stats.rfps.total} total, ${stats.rfps.active} active\n`);
+    console.log(
+      `   Users: ${stats.users.total} total, ${stats.users.active} active`
+    );
+    console.log(
+      `   Portals: ${stats.portals.total} total, ${stats.portals.active} active`
+    );
+    console.log(
+      `   RFPs: ${stats.rfps.total} total, ${stats.rfps.active} active\n`
+    );
 
     // ===== User Repository Examples =====
     console.log('3. User Repository Features:');
@@ -39,7 +47,9 @@ export async function repositoryUsageExample() {
     // Search functionality (if users exist)
     if (userCount > 0) {
       const searchResults = await repositories.users.searchUsers('test');
-      console.log(`   Search results for 'test': ${searchResults.length} users`);
+      console.log(
+        `   Search results for 'test': ${searchResults.length} users`
+      );
     }
 
     console.log();
@@ -54,12 +64,15 @@ export async function repositoryUsageExample() {
     // Get portals with filtering
     const activePortals = await repositories.portals.findAllPortals({
       status: 'active',
-      limit: 5
+      limit: 5,
     });
-    console.log(`   Active portals (first 5): ${activePortals.data.length} found`);
+    console.log(
+      `   Active portals (first 5): ${activePortals.data.length} found`
+    );
 
     // Get portals needing scanning
-    const needScanning = await repositories.portals.getPortalsNeedingScanning(24);
+    const needScanning =
+      await repositories.portals.getPortalsNeedingScanning(24);
     console.log(`   Portals needing scanning: ${needScanning.length}`);
 
     console.log();
@@ -92,27 +105,33 @@ export async function repositoryUsageExample() {
 
     // Test that the new repositories work with the old interface
     const legacyPortals = await repositories.portals.findAllPortals();
-    console.log(`   Legacy-style portal fetch: ${legacyPortals.data.length} portals`);
+    console.log(
+      `   Legacy-style portal fetch: ${legacyPortals.data.length} portals`
+    );
 
     // Test pagination
     const paginatedRFPs = await repositories.rfps.findAllRFPs({
       limit: 10,
       offset: 0,
       orderBy: 'createdAt',
-      direction: 'desc'
+      direction: 'desc',
     });
-    console.log(`   Paginated RFPs: ${paginatedRFPs.data.length} of ${paginatedRFPs.total} total`);
+    console.log(
+      `   Paginated RFPs: ${paginatedRFPs.data.length} of ${paginatedRFPs.total} total`
+    );
 
     console.log();
 
     // ===== Transaction Example =====
     console.log('7. Transaction Support:');
     try {
-      await repositories.executeTransaction(async (repos) => {
+      await repositories.executeTransaction(async repos => {
         // This would be a real transaction in production
         const userCount = await repos.users.count();
         const portalCount = await repos.portals.count();
-        console.log(`   Transaction: ${userCount} users, ${portalCount} portals`);
+        console.log(
+          `   Transaction: ${userCount} users, ${portalCount} portals`
+        );
         return { userCount, portalCount };
       });
       console.log(`   Transaction completed successfully`);
@@ -131,9 +150,8 @@ export async function repositoryUsageExample() {
       portalStats,
       rfpStats,
       categories: categories.length,
-      agencies: agencies.length
+      agencies: agencies.length,
     };
-
   } catch (error) {
     console.error('❌ Repository test failed:', error);
     throw error;
@@ -152,7 +170,7 @@ export async function performanceComparison() {
   const newPatternResults = await Promise.all([
     repositories.users.count(),
     repositories.portals.getPortalStats(),
-    repositories.rfps.getRFPStats()
+    repositories.rfps.getRFPStats(),
   ]);
 
   const newPatternTime = Date.now() - start;
@@ -175,12 +193,12 @@ export async function performanceComparison() {
 
   return {
     newPatternTime,
-    results: newPatternResults
+    results: newPatternResults,
   };
 }
 
 // Export test functions for manual testing
 export const repositoryTests = {
   usageExample: repositoryUsageExample,
-  performanceComparison
+  performanceComparison,
 };

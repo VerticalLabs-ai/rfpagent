@@ -12,7 +12,7 @@ export const rateLimiter = rateLimit({
   message: {
     error: 'Too many requests',
     details: 'Rate limit exceeded. Please try again later.',
-    retryAfter: 15 * 60 // 15 minutes in seconds
+    retryAfter: 15 * 60, // 15 minutes in seconds
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -20,9 +20,11 @@ export const rateLimiter = rateLimit({
     res.status(429).json({
       error: 'Too many requests',
       details: 'Rate limit exceeded. Please try again later.',
-      retryAfter: Math.ceil(req.rateLimit?.resetTime?.getTime() - Date.now()) / 1000 || 900
+      retryAfter:
+        Math.ceil(req.rateLimit?.resetTime?.getTime() - Date.now()) / 1000 ||
+        900,
     });
-  }
+  },
 });
 
 // Strict rate limiter for sensitive operations
@@ -32,10 +34,10 @@ export const strictRateLimiter = rateLimit({
   message: {
     error: 'Rate limit exceeded for sensitive operation',
     details: 'This endpoint has stricter rate limits. Please try again later.',
-    retryAfter: 15 * 60
+    retryAfter: 15 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // Heavy operation rate limiter (for resource-intensive endpoints)
@@ -44,11 +46,12 @@ export const heavyOperationLimiter = rateLimit({
   max: 10, // Limit each IP to 10 requests per hour
   message: {
     error: 'Rate limit exceeded for heavy operation',
-    details: 'This resource-intensive operation has strict limits. Please try again later.',
-    retryAfter: 60 * 60
+    details:
+      'This resource-intensive operation has strict limits. Please try again later.',
+    retryAfter: 60 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // AI operation rate limiter
@@ -58,10 +61,10 @@ export const aiOperationLimiter = rateLimit({
   message: {
     error: 'AI operation rate limit exceeded',
     details: 'Too many AI requests. Please try again later.',
-    retryAfter: 10 * 60
+    retryAfter: 10 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // File upload rate limiter
@@ -71,10 +74,10 @@ export const uploadLimiter = rateLimit({
   message: {
     error: 'Upload rate limit exceeded',
     details: 'Too many file uploads. Please try again later.',
-    retryAfter: 15 * 60
+    retryAfter: 15 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // Portal scanning rate limiter
@@ -84,10 +87,10 @@ export const scanLimiter = rateLimit({
   message: {
     error: 'Portal scan rate limit exceeded',
     details: 'Portal scanning is resource intensive. Please try again later.',
-    retryAfter: 30 * 60
+    retryAfter: 30 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
 // Create dynamic rate limiter based on operation type
@@ -102,10 +105,10 @@ export const createDynamicLimiter = (config: {
     message: {
       error: `${config.operation} rate limit exceeded`,
       details: `Too many ${config.operation.toLowerCase()} requests. Please try again later.`,
-      retryAfter: Math.ceil(config.windowMs / 1000)
+      retryAfter: Math.ceil(config.windowMs / 1000),
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
   });
 };
 
@@ -122,8 +125,12 @@ export const skipRateLimit = (req: Request): boolean => {
   }
 
   // Skip for localhost in development
-  if (process.env.NODE_ENV === 'development' &&
-      (req.ip === '127.0.0.1' || req.ip === '::1' || req.ip?.startsWith('192.168.'))) {
+  if (
+    process.env.NODE_ENV === 'development' &&
+    (req.ip === '127.0.0.1' ||
+      req.ip === '::1' ||
+      req.ip?.startsWith('192.168.'))
+  ) {
     return true;
   }
 
@@ -138,8 +145,8 @@ export const smartRateLimiter = rateLimit({
   message: {
     error: 'Too many requests',
     details: 'Rate limit exceeded. Please try again later.',
-    retryAfter: 15 * 60
+    retryAfter: 15 * 60,
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });

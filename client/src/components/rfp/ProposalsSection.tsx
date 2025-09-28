@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   FileText,
   Download,
@@ -14,24 +14,24 @@ import {
   Edit3,
   Wand2,
   Save,
-  X
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+  X,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient } from '@/lib/queryClient';
 
 interface Proposal {
   id: string;
@@ -41,8 +41,9 @@ interface Proposal {
   narratives?: string;
   pricingTables?: string;
   estimatedMargin?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  generatedAt?: string;
+  updatedAt?: string;
 }
 
 interface ProposalsSectionProps {
@@ -50,12 +51,18 @@ interface ProposalsSectionProps {
 }
 
 export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
-  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(null);
+  const [selectedProposal, setSelectedProposal] = useState<Proposal | null>(
+    null
+  );
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
   const { toast } = useToast();
 
-  const { data: proposals = [], isLoading, error } = useQuery<Proposal[]>({
+  const {
+    data: proposals = [],
+    isLoading,
+    error,
+  } = useQuery<Proposal[]>({
     queryKey: ['/api/proposals/rfp', rfpId],
     queryFn: async () => {
       try {
@@ -65,7 +72,11 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
             return []; // No proposals found, return empty array
           }
           // For other errors, still return empty array to avoid showing error state
-          console.warn('Failed to fetch proposals:', response.status, response.statusText);
+          console.warn(
+            'Failed to fetch proposals:',
+            response.status,
+            response.statusText
+          );
           return [];
         }
         const data = await response.json();
@@ -92,17 +103,20 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     },
     onSuccess: () => {
       toast({
-        title: "Proposal Deleted",
-        description: "The proposal has been deleted successfully.",
+        title: 'Proposal Deleted',
+        description: 'The proposal has been deleted successfully.',
       });
       // Invalidate and refetch proposals
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', rfpId],
+      });
     },
     onError: (error: any) => {
       toast({
-        title: "Delete Failed",
-        description: error?.message || "Failed to delete proposal. Please try again.",
-        variant: "destructive",
+        title: 'Delete Failed',
+        description:
+          error?.message || 'Failed to delete proposal. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -128,44 +142,50 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       // Here you would call an API to update the proposal section
       // For now, we'll just show a toast
       toast({
-        title: "Section Updated",
-        description: "The proposal section has been updated successfully.",
+        title: 'Section Updated',
+        description: 'The proposal section has been updated successfully.',
       });
       setEditingSection(null);
       setEditContent('');
       // Invalidate queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', rfpId],
+      });
     } catch (error) {
       toast({
-        title: "Update Failed",
-        description: "Failed to update the proposal section. Please try again.",
-        variant: "destructive",
+        title: 'Update Failed',
+        description: 'Failed to update the proposal section. Please try again.',
+        variant: 'destructive',
       });
     }
   };
 
-  const handleAIImprove = async (sectionKey: string, currentContent: string) => {
+  const handleAIImprove = async (
+    sectionKey: string,
+    currentContent: string
+  ) => {
     try {
       // Here you would call your AI service to improve the content
       toast({
-        title: "AI Enhancement Started",
-        description: "Our AI agents are improving this section. Please wait...",
+        title: 'AI Enhancement Started',
+        description: 'Our AI agents are improving this section. Please wait...',
       });
 
       // For now, simulate AI improvement
       setTimeout(() => {
         toast({
-          title: "AI Enhancement Complete",
-          description: "The section has been enhanced by our AI agents.",
+          title: 'AI Enhancement Complete',
+          description: 'The section has been enhanced by our AI agents.',
         });
-        queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+        queryClient.invalidateQueries({
+          queryKey: ['/api/proposals/rfp', rfpId],
+        });
       }, 3000);
-
     } catch (error) {
       toast({
-        title: "AI Enhancement Failed",
-        description: "Failed to enhance the section. Please try again.",
-        variant: "destructive",
+        title: 'AI Enhancement Failed',
+        description: 'Failed to enhance the section. Please try again.',
+        variant: 'destructive',
       });
     }
   };
@@ -229,7 +249,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       if (typeof value === 'string') return value;
       if (Array.isArray(value)) {
         const flattened = value
-          .map((item) => {
+          .map(item => {
             if (item == null) return '';
             if (typeof item === 'string') return item;
             if (typeof item === 'number' || typeof item === 'boolean') {
@@ -256,11 +276,40 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
     const aliasMap: Record<string, string[]> = {
       executiveSummary: ['summary', 'executive_summary', 'overview'],
-      technicalApproach: ['approach', 'projectApproach', 'implementationApproach', 'solutionApproach', 'methodology'],
-      qualifications: ['companyOverview', 'capabilities', 'experience', 'companyQualifications', 'companyProfile'],
-      timeline: ['projectTimeline', 'schedule', 'implementationTimeline', 'timelineOverview'],
-      teamStructure: ['staffingPlan', 'projectTeam', 'team', 'personnelPlan', 'organizationalStructure'],
-      riskManagement: ['riskMitigation', 'riskPlan', 'qualityAssurance', 'riskStrategy', 'qualityControl'],
+      technicalApproach: [
+        'approach',
+        'projectApproach',
+        'implementationApproach',
+        'solutionApproach',
+        'methodology',
+      ],
+      qualifications: [
+        'companyOverview',
+        'capabilities',
+        'experience',
+        'companyQualifications',
+        'companyProfile',
+      ],
+      timeline: [
+        'projectTimeline',
+        'schedule',
+        'implementationTimeline',
+        'timelineOverview',
+      ],
+      teamStructure: [
+        'staffingPlan',
+        'projectTeam',
+        'team',
+        'personnelPlan',
+        'organizationalStructure',
+      ],
+      riskManagement: [
+        'riskMitigation',
+        'riskPlan',
+        'qualityAssurance',
+        'riskStrategy',
+        'qualityControl',
+      ],
     };
 
     const textFields = [
@@ -312,12 +361,17 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       // Check if all content is combined in executiveSummary
       if (content.executiveSummary && content.executiveSummary.length > 500) {
         // Check if other fields are just placeholders
-        const hasPlaceholders = (content.technicalApproach && content.technicalApproach.includes('content...')) ||
-                               (content.timeline && content.timeline.includes('content...')) ||
-                               (content.qualifications && content.qualifications.includes('content...'));
+        const hasPlaceholders =
+          (content.technicalApproach &&
+            content.technicalApproach.includes('content...')) ||
+          (content.timeline && content.timeline.includes('content...')) ||
+          (content.qualifications &&
+            content.qualifications.includes('content...'));
 
         if (hasPlaceholders) {
-          console.log('Detected combined content in executiveSummary, extracting sections...');
+          console.log(
+            'Detected combined content in executiveSummary, extracting sections...'
+          );
 
           // Extract sections from the combined executiveSummary
           const combinedText = content.executiveSummary;
@@ -327,53 +381,72 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
             timeline: '',
             qualifications: '',
             teamStructure: '',
-            riskManagement: ''
+            riskManagement: '',
           };
 
           // Look for section markers
           const sections = [
             { marker: 'Executive Summary:', field: 'executiveSummary' },
             { marker: 'Technical Approach:', field: 'technicalApproach' },
-            { marker: '\\n\\nTechnical Approach\\n', field: 'technicalApproach' },
-            { marker: 'Scope and product specifications:', field: 'technicalApproach' },
+            {
+              marker: '\\n\\nTechnical Approach\\n',
+              field: 'technicalApproach',
+            },
+            {
+              marker: 'Scope and product specifications:',
+              field: 'technicalApproach',
+            },
             { marker: 'Timeline:', field: 'timeline' },
             { marker: 'Project Timeline:', field: 'timeline' },
             { marker: 'Qualifications:', field: 'qualifications' },
             { marker: 'Company Qualifications:', field: 'qualifications' },
             { marker: 'Team Structure:', field: 'teamStructure' },
             { marker: 'Risk Management:', field: 'riskManagement' },
-            { marker: 'Regulatory and quality assurance:', field: 'qualifications' },
-            { marker: 'Shelf life and coding:', field: 'timeline' }
+            {
+              marker: 'Regulatory and quality assurance:',
+              field: 'qualifications',
+            },
+            { marker: 'Shelf life and coding:', field: 'timeline' },
           ];
 
           // If no section markers, extract by content patterns
           if (combinedText.includes('iByte Enterprises LLC')) {
             // Extract executive summary (first paragraph)
-            const execSummaryMatch = combinedText.match(/^(.*?iByte Enterprises LLC.*?PHLContracts processes)/s);
+            const execSummaryMatch = combinedText.match(
+              /^(.*?iByte Enterprises LLC.*?PHLContracts processes)/s
+            );
             if (execSummaryMatch) {
               extractedContent.executiveSummary = execSummaryMatch[1].trim();
             }
 
             // Extract technical approach
-            const techMatch = combinedText.match(/Scope and product specifications:(.*?)(?=Materials:|Regulatory|Shelf life|$)/si);
+            const techMatch = combinedText.match(
+              /Scope and product specifications:(.*?)(?=Materials:|Regulatory|Shelf life|$)/is
+            );
             if (techMatch) {
               extractedContent.technicalApproach = techMatch[0].trim();
             }
 
             // Extract materials/qualifications
-            const materialsMatch = combinedText.match(/Materials:(.*?)(?=Regulatory|Shelf life|Testing|$)/si);
+            const materialsMatch = combinedText.match(
+              /Materials:(.*?)(?=Regulatory|Shelf life|Testing|$)/is
+            );
             if (materialsMatch) {
               extractedContent.qualifications = materialsMatch[0].trim();
             }
 
             // Extract timeline/shelf life
-            const shelfMatch = combinedText.match(/Shelf life and coding:(.*?)(?=Labeling:|Testing|$)/si);
+            const shelfMatch = combinedText.match(
+              /Shelf life and coding:(.*?)(?=Labeling:|Testing|$)/is
+            );
             if (shelfMatch) {
               extractedContent.timeline = shelfMatch[0].trim();
             }
 
             // Extract regulatory/compliance
-            const regMatch = combinedText.match(/Regulatory and quality assurance:(.*?)(?=Testing|Supplier|$)/si);
+            const regMatch = combinedText.match(
+              /Regulatory and quality assurance:(.*?)(?=Testing|Supplier|$)/is
+            );
             if (regMatch) {
               if (!extractedContent.qualifications) {
                 extractedContent.qualifications = regMatch[0].trim();
@@ -384,7 +457,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           }
 
           // If we extracted any content, use it
-          if (extractedContent.executiveSummary || extractedContent.technicalApproach) {
+          if (
+            extractedContent.executiveSummary ||
+            extractedContent.technicalApproach
+          ) {
             console.log('Successfully extracted sections:', extractedContent);
             return extractedContent;
           }
@@ -392,7 +468,11 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       }
 
       // If it already has structured fields, return it
-      if (content.executiveSummary || content.technicalApproach || content.timeline) {
+      if (
+        content.executiveSummary ||
+        content.technicalApproach ||
+        content.timeline
+      ) {
         console.log('Found structured content directly in object');
         return normalizeProposalContent(content);
       }
@@ -401,7 +481,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       if (content.content) {
         console.log('Found nested content field:', typeof content.content);
         if (typeof content.content === 'object' && content.content !== null) {
-          if (content.content.executiveSummary || content.content.technicalApproach) {
+          if (
+            content.content.executiveSummary ||
+            content.content.technicalApproach
+          ) {
             console.log('Found structured content in nested content object');
             return normalizeProposalContent(content.content);
           }
@@ -420,7 +503,11 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
       if (typeof parsed === 'object' && parsed !== null) {
         // If it already has structured fields, return it
-        if (parsed.executiveSummary || parsed.technicalApproach || parsed.timeline) {
+        if (
+          parsed.executiveSummary ||
+          parsed.technicalApproach ||
+          parsed.timeline
+        ) {
           console.log('Found structured content directly');
           return normalizeProposalContent(parsed);
         }
@@ -431,7 +518,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
           // If content is already an object with structured fields
           if (typeof parsed.content === 'object' && parsed.content !== null) {
-            if (parsed.content.executiveSummary || parsed.content.technicalApproach) {
+            if (
+              parsed.content.executiveSummary ||
+              parsed.content.technicalApproach
+            ) {
               console.log('Found structured content in content object');
               return normalizeProposalContent(parsed.content);
             }
@@ -443,8 +533,13 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
               const contentParsed = JSON.parse(parsed.content);
               console.log('Parsed content string:', contentParsed);
               if (typeof contentParsed === 'object' && contentParsed !== null) {
-                if (contentParsed.executiveSummary || contentParsed.technicalApproach) {
-                  console.log('Found structured content in parsed content string');
+                if (
+                  contentParsed.executiveSummary ||
+                  contentParsed.technicalApproach
+                ) {
+                  console.log(
+                    'Found structured content in parsed content string'
+                  );
                   return normalizeProposalContent(contentParsed);
                 }
               }
@@ -452,7 +547,9 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
             } catch {
               // If content string isn't JSON, parse it as text sections
               console.log('Content string is not JSON, parsing as text');
-              return normalizeProposalContent(parseTextIntoSections(parsed.content));
+              return normalizeProposalContent(
+                parseTextIntoSections(parsed.content)
+              );
             }
           }
         }
@@ -549,7 +646,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
   const formatContentForDisplay = (content: string) => {
     // If content looks like JSON, try to extract readable text
-    if (content.trim().startsWith('{') && content.includes('"executiveSummary"')) {
+    if (
+      content.trim().startsWith('{') &&
+      content.includes('"executiveSummary"')
+    ) {
       try {
         const parsed = JSON.parse(content);
         if (parsed.executiveSummary) {
@@ -597,7 +697,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     sectionKey,
     icon,
     bgClass,
-    titleClass
+    titleClass,
   }: {
     title: string;
     content: string;
@@ -614,7 +714,9 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     return (
       <div className={`${bgClass} rounded-lg p-6`}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className={`text-xl font-bold flex items-center gap-2 ${titleClass}`}>
+          <h3
+            className={`text-xl font-bold flex items-center gap-2 ${titleClass}`}
+          >
             {icon}
             {title}
           </h3>
@@ -663,7 +765,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         {isEditing ? (
           <Textarea
             value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
+            onChange={e => setEditContent(e.target.value)}
             className="min-h-[200px] bg-gray-900/50 border-gray-600 text-gray-200"
             placeholder="Edit content..."
           />
@@ -676,28 +778,31 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     );
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (proposal: Proposal) => {
+    const dateString =
+      proposal.createdAt || proposal.generatedAt || proposal.updatedAt;
     if (!dateString) return 'N/A';
 
-    // Try different date parsing strategies
-    let date: Date;
+    let date = new Date(dateString);
 
-    // First try direct parsing
-    date = new Date(dateString);
-
-    // If that fails, try ISO string parsing
     if (isNaN(date.getTime())) {
-      const isoString = dateString.includes('T') ? dateString : `${dateString}T00:00:00.000Z`;
+      const isoString = dateString.includes('T')
+        ? dateString
+        : `${dateString}T00:00:00.000Z`;
       date = new Date(isoString);
     }
 
-    // If still invalid, try timestamp parsing
     if (isNaN(date.getTime()) && !isNaN(Number(dateString))) {
       date = new Date(Number(dateString));
     }
 
     if (isNaN(date.getTime())) {
-      console.warn('Invalid date string:', dateString, 'Type:', typeof dateString);
+      console.warn(
+        'Invalid date string:',
+        dateString,
+        'Type:',
+        typeof dateString
+      );
       return 'Invalid Date';
     }
 
@@ -708,6 +813,43 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  type ComplianceAction = 'upload' | 'certification' | 'report';
+
+  const getDisplayMargin = (proposal: Proposal) => {
+    if (!proposal.estimatedMargin) return '—';
+    const numericMargin = Number(proposal.estimatedMargin);
+    if (Number.isNaN(numericMargin)) {
+      return proposal.estimatedMargin;
+    }
+    return `${numericMargin.toFixed(2)}%`;
+  };
+
+  const handleComplianceAction = (action: ComplianceAction) => {
+    const actionMap: Record<
+      ComplianceAction,
+      { title: string; description: string }
+    > = {
+      upload: {
+        title: 'Upload Insurance Certificates',
+        description:
+          'Document upload automation is coming soon. Please attach supporting files via the Documents tab for now.',
+      },
+      certification: {
+        title: 'Add Certification',
+        description:
+          'Certification tracking is not automated yet. Record this requirement manually until the workflow is released.',
+      },
+      report: {
+        title: 'Generate Compliance Report',
+        description:
+          'Compliance report generation is scheduled for a future release. Review the checklist items manually for now.',
+      },
+    };
+
+    const { title, description } = actionMap[action];
+    toast({ title, description });
   };
 
   if (isLoading) {
@@ -743,7 +885,8 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           <FileText className="w-5 h-5" />
           Generated Proposals
           <Badge variant="secondary" className="ml-auto">
-            {proposals.length} {proposals.length === 1 ? 'Proposal' : 'Proposals'}
+            {proposals.length}{' '}
+            {proposals.length === 1 ? 'Proposal' : 'Proposals'}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -751,34 +894,38 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         <div className="space-y-4">
           {proposals.map((proposal, index) => {
             const content = formatJsonContent(proposal.content);
-            const narratives = proposal.narratives ? parseContent(proposal.narratives) : null;
-            const pricing = proposal.pricingTables ? parseContent(proposal.pricingTables) : null;
+            const narratives = proposal.narratives
+              ? parseContent(proposal.narratives)
+              : null;
+            const pricing = proposal.pricingTables
+              ? parseContent(proposal.pricingTables)
+              : null;
 
             return (
-              <div key={proposal.id} className="border rounded-lg p-4 space-y-3">
+              <div
+                key={proposal.id}
+                className="border rounded-lg p-4 space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {getStatusIcon(proposal.status)}
-                    <span className="font-medium">
-                      Proposal #{index + 1}
-                    </span>
+                    <span className="font-medium">Proposal #{index + 1}</span>
                     <Badge className={getStatusColor(proposal.status)}>
-                      {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                      {proposal.status.charAt(0).toUpperCase() +
+                        proposal.status.slice(1)}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="w-3 h-3" />
-                    {formatDate(proposal.createdAt)}
+                    {formatDate(proposal)}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  {proposal.estimatedMargin && (
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
-                      <span>Margin: {proposal.estimatedMargin}%</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-green-600" />
+                    <span>Margin: {getDisplayMargin(proposal)}</span>
+                  </div>
 
                   {content.executiveSummary && (
                     <div className="flex items-center gap-2">
@@ -814,32 +961,59 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                         <DialogTitle className="text-2xl font-bold flex items-center gap-3">
                           <FileText className="w-6 h-6 text-blue-600" />
                           Proposal #{index + 1}
-                          <Badge className={`${getStatusColor(proposal.status)} text-sm`}>
-                            {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
+                          <Badge
+                            className={`${getStatusColor(proposal.status)} text-sm`}
+                          >
+                            {proposal.status.charAt(0).toUpperCase() +
+                              proposal.status.slice(1)}
                           </Badge>
                         </DialogTitle>
                       </DialogHeader>
                       <ScrollArea className="max-h-[75vh] pr-4">
                         <div className="space-y-8 py-4">
-
                           {/* Debug Section - Remove once working */}
                           <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-                            <h3 className="text-lg font-bold text-yellow-300 mb-2">Debug: Content Analysis</h3>
+                            <h3 className="text-lg font-bold text-yellow-300 mb-2">
+                              Debug: Content Analysis
+                            </h3>
                             <div className="text-sm text-yellow-200 space-y-2">
-                              <div>Content object keys: {Object.keys(content).join(', ')}</div>
-                              <div>Has executiveSummary: {!!content.executiveSummary}</div>
-                              <div>Has technicalApproach: {!!content.technicalApproach}</div>
+                              <div>
+                                Content object keys:{' '}
+                                {Object.keys(content).join(', ')}
+                              </div>
+                              <div>
+                                Has executiveSummary:{' '}
+                                {!!content.executiveSummary}
+                              </div>
+                              <div>
+                                Has technicalApproach:{' '}
+                                {!!content.technicalApproach}
+                              </div>
                               <div>Has approach: {!!content.approach}</div>
-                              <div>Has qualifications: {!!content.qualifications}</div>
-                              <div>Has companyOverview: {!!content.companyOverview}</div>
+                              <div>
+                                Has qualifications: {!!content.qualifications}
+                              </div>
+                              <div>
+                                Has companyOverview: {!!content.companyOverview}
+                              </div>
                               <div>Has timeline: {!!content.timeline}</div>
-                              <div>Raw content length: {typeof proposal.content === 'string' ? proposal.content.length : (proposal.content ? JSON.stringify(proposal.content).length : 0)}</div>
+                              <div>
+                                Raw content length:{' '}
+                                {typeof proposal.content === 'string'
+                                  ? proposal.content.length
+                                  : proposal.content
+                                    ? JSON.stringify(proposal.content).length
+                                    : 0}
+                              </div>
                               <div>Content type: {typeof proposal.content}</div>
                               {content.executiveSummary && (
                                 <div className="mt-2">
-                                  <div className="font-semibold">Executive Summary Preview:</div>
+                                  <div className="font-semibold">
+                                    Executive Summary Preview:
+                                  </div>
                                   <div className="bg-yellow-800/30 p-2 rounded text-xs">
-                                    {content.executiveSummary.substring(0, 200)}...
+                                    {content.executiveSummary.substring(0, 200)}
+                                    ...
                                   </div>
                                 </div>
                               )}
@@ -864,14 +1038,19 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                 /^Timeline content\.\.\.$/i,
                                 /^Qualifications content\.\.\.$/i,
                                 /^Team structure content\.\.\.$/i,
-                                /^Risk management content\.\.\.$/i
+                                /^Risk management content\.\.\.$/i,
                               ];
 
-                              const isPlaceholder = placeholderPatterns.some(pattern => pattern.test(cleaned));
+                              const isPlaceholder = placeholderPatterns.some(
+                                pattern => pattern.test(cleaned)
+                              );
 
                               // Debug logging to see what's being filtered
                               if (isPlaceholder) {
-                                console.log('Filtering placeholder content:', cleaned);
+                                console.log(
+                                  'Filtering placeholder content:',
+                                  cleaned
+                                );
                               }
 
                               return !isPlaceholder && cleaned.length > 10; // Content should be more than 10 characters
@@ -881,16 +1060,27 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                             // Debug logging to see what content we have
                             console.log('Content object:', content);
-                            console.log('Available fields:', Object.keys(content));
+                            console.log(
+                              'Available fields:',
+                              Object.keys(content)
+                            );
 
                             // Executive Summary
                             if (content.executiveSummary) {
-                              console.log('Executive Summary content:', content.executiveSummary);
-                              const isValid = isValidContent(content.executiveSummary);
+                              console.log(
+                                'Executive Summary content:',
+                                content.executiveSummary
+                              );
+                              const isValid = isValidContent(
+                                content.executiveSummary
+                              );
                               console.log('Executive Summary valid:', isValid);
 
                               // Show content even if not perfectly valid, as long as it exists
-                              if (isValid || content.executiveSummary.trim().length > 0) {
+                              if (
+                                isValid ||
+                                content.executiveSummary.trim().length > 0
+                              ) {
                                 sections.push(
                                   <EditableSection
                                     key="executiveSummary"
@@ -906,7 +1096,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Company Overview
-                            if (content.companyOverview && content.companyOverview.trim().length > 0) {
+                            if (
+                              content.companyOverview &&
+                              content.companyOverview.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="companyOverview"
@@ -921,7 +1114,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Technical Approach
-                            if (content.technicalApproach && content.technicalApproach.trim().length > 0) {
+                            if (
+                              content.technicalApproach &&
+                              content.technicalApproach.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="technicalApproach"
@@ -936,7 +1132,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Company Qualifications
-                            if (content.qualifications && content.qualifications.trim().length > 0) {
+                            if (
+                              content.qualifications &&
+                              content.qualifications.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="qualifications"
@@ -951,7 +1150,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Project Timeline
-                            if (content.timeline && content.timeline.trim().length > 0) {
+                            if (
+                              content.timeline &&
+                              content.timeline.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="timeline"
@@ -966,7 +1168,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Team Structure
-                            if (content.teamStructure && content.teamStructure.trim().length > 0) {
+                            if (
+                              content.teamStructure &&
+                              content.teamStructure.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="teamStructure"
@@ -981,7 +1186,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                             }
 
                             // Risk Management
-                            if (content.riskManagement && content.riskManagement.trim().length > 0) {
+                            if (
+                              content.riskManagement &&
+                              content.riskManagement.trim().length > 0
+                            ) {
                               sections.push(
                                 <EditableSection
                                   key="riskManagement"
@@ -1000,19 +1208,28 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                           {/* Force display raw content if no sections were created */}
                           {(() => {
-                            const hasValidSections = (content.executiveSummary && content.executiveSummary.trim().length > 0) ||
-                                                    (content.companyOverview && content.companyOverview.trim().length > 0) ||
-                                                    (content.technicalApproach && content.technicalApproach.trim().length > 0) ||
-                                                    (content.timeline && content.timeline.trim().length > 0) ||
-                                                    (content.qualifications && content.qualifications.trim().length > 0) ||
-                                                    (content.teamStructure && content.teamStructure.trim().length > 0) ||
-                                                    (content.riskManagement && content.riskManagement.trim().length > 0);
+                            const hasValidSections =
+                              (content.executiveSummary &&
+                                content.executiveSummary.trim().length > 0) ||
+                              (content.companyOverview &&
+                                content.companyOverview.trim().length > 0) ||
+                              (content.technicalApproach &&
+                                content.technicalApproach.trim().length > 0) ||
+                              (content.timeline &&
+                                content.timeline.trim().length > 0) ||
+                              (content.qualifications &&
+                                content.qualifications.trim().length > 0) ||
+                              (content.teamStructure &&
+                                content.teamStructure.trim().length > 0) ||
+                              (content.riskManagement &&
+                                content.riskManagement.trim().length > 0);
 
                             // If no structured sections but we have content, show it as raw proposal content
                             if (!hasValidSections && proposal.content) {
-                              const contentStr = typeof proposal.content === 'string'
-                                ? proposal.content
-                                : JSON.stringify(proposal.content, null, 2);
+                              const contentStr =
+                                typeof proposal.content === 'string'
+                                  ? proposal.content
+                                  : JSON.stringify(proposal.content, null, 2);
 
                               if (contentStr && contentStr.trim().length > 0) {
                                 return (
@@ -1042,13 +1259,19 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                   <div className="bg-gray-800/70 p-4 rounded-lg border border-purple-700/30">
                                     <div className="grid grid-cols-2 gap-4 text-lg">
                                       <div>
-                                        <span className="font-semibold text-gray-300">Total Cost:</span>
+                                        <span className="font-semibold text-gray-300">
+                                          Total Cost:
+                                        </span>
                                         <span className="ml-2 font-bold text-purple-300">
-                                          ${pricing.summary.total?.toFixed(2) || 'N/A'}
+                                          $
+                                          {pricing.summary.total?.toFixed(2) ||
+                                            'N/A'}
                                         </span>
                                       </div>
                                       <div>
-                                        <span className="font-semibold text-gray-300">Estimated Margin:</span>
+                                        <span className="font-semibold text-gray-300">
+                                          Estimated Margin:
+                                        </span>
                                         <span className="ml-2 font-bold text-green-400">
                                           {pricing.summary.margin || 'N/A'}%
                                         </span>
@@ -1056,21 +1279,33 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                     </div>
                                   </div>
                                 )}
-                                {pricing.lineItems && pricing.lineItems.length > 0 && (
-                                  <div className="bg-gray-800/70 p-4 rounded-lg border border-purple-700/30">
-                                    <h4 className="font-semibold text-lg mb-3 text-gray-200">Line Items:</h4>
-                                    <div className="space-y-2">
-                                      {pricing.lineItems.map((item: any, idx: number) => (
-                                        <div key={idx} className="flex justify-between items-center py-2 px-3 bg-gray-700/50 rounded">
-                                          <span className="text-gray-200">{item.description}</span>
-                                          <span className="font-semibold text-purple-300">
-                                            ${item.total?.toFixed(2) || 'N/A'}
-                                          </span>
-                                        </div>
-                                      ))}
+                                {pricing.lineItems &&
+                                  pricing.lineItems.length > 0 && (
+                                    <div className="bg-gray-800/70 p-4 rounded-lg border border-purple-700/30">
+                                      <h4 className="font-semibold text-lg mb-3 text-gray-200">
+                                        Line Items:
+                                      </h4>
+                                      <div className="space-y-2">
+                                        {pricing.lineItems.map(
+                                          (item: any, idx: number) => (
+                                            <div
+                                              key={idx}
+                                              className="flex justify-between items-center py-2 px-3 bg-gray-700/50 rounded"
+                                            >
+                                              <span className="text-gray-200">
+                                                {item.description}
+                                              </span>
+                                              <span className="font-semibold text-purple-300">
+                                                $
+                                                {item.total?.toFixed(2) ||
+                                                  'N/A'}
+                                              </span>
+                                            </div>
+                                          )
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
+                                  )}
                               </div>
                             </div>
                           )}
@@ -1085,53 +1320,82 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                               <div className="space-y-4">
                                 {/* Compliance Status Overview */}
                                 <div className="bg-gray-800/70 p-4 rounded-lg border border-emerald-700/30">
-                                  <h4 className="font-semibold text-emerald-300 mb-3">Compliance Status</h4>
+                                  <h4 className="font-semibold text-emerald-300 mb-3">
+                                    Compliance Status
+                                  </h4>
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div className="flex items-center gap-2">
                                       <CheckCircle className="w-4 h-4 text-green-400" />
-                                      <span className="text-gray-200">Requirements Met: 15/18</span>
+                                      <span className="text-gray-200">
+                                        Requirements Met: 15/18
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <AlertCircle className="w-4 h-4 text-yellow-400" />
-                                      <span className="text-gray-200">Needs Review: 2</span>
+                                      <span className="text-gray-200">
+                                        Needs Review: 2
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Clock className="w-4 h-4 text-blue-400" />
-                                      <span className="text-gray-200">Pending: 1</span>
+                                      <span className="text-gray-200">
+                                        Pending: 1
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
 
                                 {/* Key Requirements */}
                                 <div className="bg-gray-800/70 p-4 rounded-lg border border-emerald-700/30">
-                                  <h4 className="font-semibold text-emerald-300 mb-3">Key Requirements Analysis</h4>
+                                  <h4 className="font-semibold text-emerald-300 mb-3">
+                                    Key Requirements Analysis
+                                  </h4>
                                   <div className="space-y-3">
                                     <div className="flex items-start gap-3">
                                       <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                                       <div>
-                                        <div className="font-medium text-gray-200">Technical Specifications</div>
-                                        <div className="text-sm text-gray-400">All technical requirements met with FDA-compliant facilities</div>
+                                        <div className="font-medium text-gray-200">
+                                          Technical Specifications
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                          All technical requirements met with
+                                          FDA-compliant facilities
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                       <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                                       <div>
-                                        <div className="font-medium text-gray-200">Delivery Schedule</div>
-                                        <div className="text-sm text-gray-400">Proposed timeline meets all delivery deadlines</div>
+                                        <div className="font-medium text-gray-200">
+                                          Delivery Schedule
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                          Proposed timeline meets all delivery
+                                          deadlines
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                       <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
                                       <div>
-                                        <div className="font-medium text-gray-200">Insurance Requirements</div>
-                                        <div className="text-sm text-gray-400">Need to verify current insurance certificates</div>
+                                        <div className="font-medium text-gray-200">
+                                          Insurance Requirements
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                          Need to verify current insurance
+                                          certificates
+                                        </div>
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
                                       <Clock className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
                                       <div>
-                                        <div className="font-medium text-gray-200">Minority Business Certification</div>
-                                        <div className="text-sm text-gray-400">Documentation pending review</div>
+                                        <div className="font-medium text-gray-200">
+                                          Minority Business Certification
+                                        </div>
+                                        <div className="text-sm text-gray-400">
+                                          Documentation pending review
+                                        </div>
                                       </div>
                                     </div>
                                   </div>
@@ -1139,17 +1403,24 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                                 {/* Actions Required */}
                                 <div className="bg-gray-800/70 p-4 rounded-lg border border-emerald-700/30">
-                                  <h4 className="font-semibold text-emerald-300 mb-3">Required Actions</h4>
+                                  <h4 className="font-semibold text-emerald-300 mb-3">
+                                    Required Actions
+                                  </h4>
                                   <div className="space-y-3">
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2 text-sm">
                                         <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                                        <span className="text-gray-200">Upload current insurance certificates</span>
+                                        <span className="text-gray-200">
+                                          Upload current insurance certificates
+                                        </span>
                                       </div>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         className="text-yellow-400 border-yellow-400 hover:bg-yellow-400/10"
+                                        onClick={() =>
+                                          handleComplianceAction('upload')
+                                        }
                                       >
                                         Upload Files
                                       </Button>
@@ -1157,12 +1428,19 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2 text-sm">
                                         <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                        <span className="text-gray-200">Submit minority business certification</span>
+                                        <span className="text-gray-200">
+                                          Submit minority business certification
+                                        </span>
                                       </div>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         className="text-blue-400 border-blue-400 hover:bg-blue-400/10"
+                                        onClick={() =>
+                                          handleComplianceAction(
+                                            'certification'
+                                          )
+                                        }
                                       >
                                         Add Certification
                                       </Button>
@@ -1170,12 +1448,17 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                     <div className="flex items-center justify-between">
                                       <div className="flex items-center gap-2 text-sm">
                                         <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span className="text-gray-200">Generate compliance checklist</span>
+                                        <span className="text-gray-200">
+                                          Generate compliance checklist
+                                        </span>
                                       </div>
                                       <Button
                                         size="sm"
                                         variant="outline"
                                         className="text-green-400 border-green-400 hover:bg-green-400/10"
+                                        onClick={() =>
+                                          handleComplianceAction('report')
+                                        }
                                       >
                                         Generate Report
                                       </Button>
@@ -1185,23 +1468,36 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                                 {/* Agent Actions */}
                                 <div className="bg-gray-800/70 p-4 rounded-lg border border-emerald-700/30">
-                                  <h4 className="font-semibold text-emerald-300 mb-3">AI Agent Actions</h4>
+                                  <h4 className="font-semibold text-emerald-300 mb-3">
+                                    AI Agent Actions
+                                  </h4>
                                   <div className="space-y-2 text-sm">
                                     <div className="flex items-center gap-2">
                                       <CheckCircle className="w-4 h-4 text-green-400" />
-                                      <span className="text-gray-200">Analyzed all RFP requirements against proposal content</span>
+                                      <span className="text-gray-200">
+                                        Analyzed all RFP requirements against
+                                        proposal content
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <CheckCircle className="w-4 h-4 text-green-400" />
-                                      <span className="text-gray-200">Verified technical specifications compliance</span>
+                                      <span className="text-gray-200">
+                                        Verified technical specifications
+                                        compliance
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <CheckCircle className="w-4 h-4 text-green-400" />
-                                      <span className="text-gray-200">Cross-referenced pricing with market standards</span>
+                                      <span className="text-gray-200">
+                                        Cross-referenced pricing with market
+                                        standards
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <Wand2 className="w-4 h-4 text-purple-400" />
-                                      <span className="text-gray-200">Generated compliance recommendations</span>
+                                      <span className="text-gray-200">
+                                        Generated compliance recommendations
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
@@ -1211,19 +1507,33 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                           {/* Fallback content - show if no structured content available */}
                           {(() => {
-                            const hasAnySection = (content.executiveSummary && content.executiveSummary.trim().length > 0) ||
-                                                (content.companyOverview && content.companyOverview.trim().length > 0) ||
-                                                (content.technicalApproach && content.technicalApproach.trim().length > 0) ||
-                                                (content.timeline && content.timeline.trim().length > 0) ||
-                                                (content.qualifications && content.qualifications.trim().length > 0) ||
-                                                (content.teamStructure && content.teamStructure.trim().length > 0) ||
-                                                (content.riskManagement && content.riskManagement.trim().length > 0);
+                            const hasAnySection =
+                              (content.executiveSummary &&
+                                content.executiveSummary.trim().length > 0) ||
+                              (content.companyOverview &&
+                                content.companyOverview.trim().length > 0) ||
+                              (content.technicalApproach &&
+                                content.technicalApproach.trim().length > 0) ||
+                              (content.timeline &&
+                                content.timeline.trim().length > 0) ||
+                              (content.qualifications &&
+                                content.qualifications.trim().length > 0) ||
+                              (content.teamStructure &&
+                                content.teamStructure.trim().length > 0) ||
+                              (content.riskManagement &&
+                                content.riskManagement.trim().length > 0);
 
                             // Only show fallback if no structured sections AND we have raw content
-                            if (!hasAnySection && !narratives && !pricing && proposal.content) {
-                              const contentStr = typeof proposal.content === 'string'
-                                ? proposal.content
-                                : JSON.stringify(proposal.content, null, 2);
+                            if (
+                              !hasAnySection &&
+                              !narratives &&
+                              !pricing &&
+                              proposal.content
+                            ) {
+                              const contentStr =
+                                typeof proposal.content === 'string'
+                                  ? proposal.content
+                                  : JSON.stringify(proposal.content, null, 2);
 
                               return (
                                 <EditableSection
@@ -1240,18 +1550,21 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                           })()}
 
                           {/* Emergency fallback - if all content checks fail */}
-                          {Object.keys(content).length === 0 && !proposal.content && (
-                            <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-6">
-                              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-300">
-                                <AlertCircle className="w-5 h-5" />
-                                No Content Available
-                              </h3>
-                              <p className="text-base text-red-200 leading-relaxed">
-                                This proposal appears to be empty. This might indicate an issue with the generation process.
-                                Please try regenerating the proposal or contact support if the issue persists.
-                              </p>
-                            </div>
-                          )}
+                          {Object.keys(content).length === 0 &&
+                            !proposal.content && (
+                              <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-6">
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-300">
+                                  <AlertCircle className="w-5 h-5" />
+                                  No Content Available
+                                </h3>
+                                <p className="text-base text-red-200 leading-relaxed">
+                                  This proposal appears to be empty. This might
+                                  indicate an issue with the generation process.
+                                  Please try regenerating the proposal or
+                                  contact support if the issue persists.
+                                </p>
+                              </div>
+                            )}
                         </div>
                       </ScrollArea>
                     </DialogContent>

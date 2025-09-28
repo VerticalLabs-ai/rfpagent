@@ -11,8 +11,8 @@ router.get('/metrics', async (req, res) => {
     const metrics = await storage.getDashboardMetrics();
     res.json(metrics);
   } catch (error) {
-    console.error("Error fetching dashboard metrics:", error);
-    res.status(500).json({ error: "Failed to fetch dashboard metrics" });
+    console.error('Error fetching dashboard metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard metrics' });
   }
 });
 

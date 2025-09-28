@@ -1,7 +1,7 @@
-import { Agent } from "@mastra/core/agent";
+import { Agent } from '@mastra/core/agent';
 import { AgentRegistry } from './AgentRegistry';
 import { ScrapingContext, RFPOpportunity, ScrapingError } from '../types';
-import type { Portal } from "@shared/schema";
+import type { Portal } from '@shared/schema';
 
 /**
  * Orchestrator for managing agent execution and coordination
@@ -49,34 +49,41 @@ export class AgentOrchestrator {
         // Record successful execution
         this.agentRegistry.recordAgentExecution(agentKey, true, executionTime);
 
-        console.log(`✅ Agent ${agentKey} executed successfully in ${executionTime}ms`);
+        console.log(
+          `✅ Agent ${agentKey} executed successfully in ${executionTime}ms`
+        );
 
         return {
           success: true,
           opportunities: agentResult.opportunities || [],
           agentUsed: agentKey,
-          executionTime
+          executionTime,
         };
       } else {
         // Record failed execution
         this.agentRegistry.recordAgentExecution(agentKey, false, executionTime);
 
-        console.log(`❌ Agent ${agentKey} execution failed: ${agentResult.error}`);
+        console.log(
+          `❌ Agent ${agentKey} execution failed: ${agentResult.error}`
+        );
 
         return {
           success: false,
           opportunities: [],
           agentUsed: agentKey,
           executionTime,
-          error: agentResult.error
+          error: agentResult.error,
         };
       }
-
     } catch (error) {
       const executionTime = Date.now() - startTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
 
-      console.error(`💥 Agent execution error for portal ${portal.name}:`, error);
+      console.error(
+        `💥 Agent execution error for portal ${portal.name}:`,
+        error
+      );
 
       // Record failed execution if we have an agent key
       if (agentKey!) {
@@ -88,7 +95,7 @@ export class AgentOrchestrator {
         opportunities: [],
         agentUsed: agentKey! || 'unknown',
         executionTime,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -96,7 +103,10 @@ export class AgentOrchestrator {
   /**
    * Execute agent with prompt and tools
    */
-  private async executeAgent(agent: Agent, context: any): Promise<{
+  private async executeAgent(
+    agent: Agent,
+    context: any
+  ): Promise<{
     success: boolean;
     opportunities?: RFPOpportunity[];
     error?: string;
@@ -106,7 +116,7 @@ export class AgentOrchestrator {
 
       // Generate response using the agent
       const response = await agent.generateVNext(context.prompt, {
-        context: context.toolContext
+        context: context.toolContext,
       });
 
       console.log(`🤖 Agent response received (${response.text.length} chars)`);
@@ -116,16 +126,16 @@ export class AgentOrchestrator {
 
       return {
         success: true,
-        opportunities
+        opportunities,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`❌ Agent execution failed:`, error);
 
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -133,15 +143,25 @@ export class AgentOrchestrator {
   /**
    * Build context for agent execution
    */
-  private async buildAgentContext(portal: Portal, scrapingContext: ScrapingContext): Promise<{
+  private async buildAgentContext(
+    portal: Portal,
+    scrapingContext: ScrapingContext
+  ): Promise<{
     prompt: string;
     toolContext: any;
   }> {
     // Build portal context
-    const portalContextString = await this.buildPortalContext(portal, scrapingContext.searchFilter);
+    const portalContextString = await this.buildPortalContext(
+      portal,
+      scrapingContext.searchFilter
+    );
 
     // Build scraping prompt
-    const prompt = this.buildScrapingPrompt(portal, portalContextString, scrapingContext.searchFilter);
+    const prompt = this.buildScrapingPrompt(
+      portal,
+      portalContextString,
+      scrapingContext.searchFilter
+    );
 
     // Build tool context
     const toolContext = {
@@ -150,23 +170,28 @@ export class AgentOrchestrator {
       credentials: scrapingContext.credentials,
       portalType: scrapingContext.portalType,
       searchFilter: scrapingContext.searchFilter,
-      sessionId: scrapingContext.sessionId
+      sessionId: scrapingContext.sessionId,
     };
 
     return {
       prompt,
-      toolContext
+      toolContext,
     };
   }
 
   /**
    * Build portal context for agent prompt
    */
-  private async buildPortalContext(portal: Portal, searchFilter?: string): Promise<string> {
+  private async buildPortalContext(
+    portal: Portal,
+    searchFilter?: string
+  ): Promise<string> {
     // This would ideally get recent RFP data from storage
     // For now, providing basic context
-    const searchFilterInfo = searchFilter ? `
-    - Search Filter: "${searchFilter}" - Focus only on opportunities related to this term` : '';
+    const searchFilterInfo = searchFilter
+      ? `
+    - Search Filter: "${searchFilter}" - Focus only on opportunities related to this term`
+      : '';
 
     return `Portal Context:
     - Name: ${portal.name}
@@ -179,15 +204,23 @@ export class AgentOrchestrator {
   /**
    * Build scraping prompt based on portal type
    */
-  private buildScrapingPrompt(portal: Portal, context: string, searchFilter?: string): string {
-    const isAustinFinance = portal.name.toLowerCase().includes('austin finance');
+  private buildScrapingPrompt(
+    portal: Portal,
+    context: string,
+    searchFilter?: string
+  ): string {
+    const isAustinFinance = portal.name
+      .toLowerCase()
+      .includes('austin finance');
 
-    const austinFinanceFilterInstructions = searchFilter ? `
+    const austinFinanceFilterInstructions = searchFilter
+      ? `
 
 🔍 SEARCH FILTER ACTIVE: Only extract solicitations related to "${searchFilter}"
 - Filter results to only include RFPs with titles/descriptions containing or related to "${searchFilter}"
 - Ignore solicitations that are not related to this search term
-- If no results match the filter, return an empty array` : '';
+- If no results match the filter, return an empty array`
+      : '';
 
     if (isAustinFinance) {
       return `Please scrape the Austin Finance Online portal for procurement opportunities:
@@ -218,13 +251,15 @@ Look specifically for table rows or list items that contain solicitation codes l
 Return results as structured JSON array with all found solicitations.`;
     }
 
-    const generalFilterInstructions = searchFilter ? `
+    const generalFilterInstructions = searchFilter
+      ? `
 
 🔍 SEARCH FILTER ACTIVE: Only look for opportunities related to "${searchFilter}"
 - If the portal has a search function, use it to search for "${searchFilter}"
 - Filter results to only include RFPs that contain or are related to "${searchFilter}"
 - Ignore opportunities that are not related to this search term
-- If no results match the filter, return an empty array` : '';
+- If no results match the filter, return an empty array`
+      : '';
 
     return `Please scrape the following RFP portal for procurement opportunities:
 
@@ -277,7 +312,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             return this.validateOpportunities(parsedData);
           }
 
-          if (parsedData.opportunities && Array.isArray(parsedData.opportunities)) {
+          if (
+            parsedData.opportunities &&
+            Array.isArray(parsedData.opportunities)
+          ) {
             return this.validateOpportunities(parsedData.opportunities);
           }
 
@@ -289,19 +327,20 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           if (parsedData.title) {
             return this.validateOpportunities([parsedData]);
           }
-
         } catch (parseError) {
           console.warn(`⚠️ Failed to parse JSON block:`, parseError);
           continue;
         }
       }
 
-      console.warn("No valid JSON opportunities found in agent response");
-      console.log(`🚨 Agent response (first 1000 chars):`, response.substring(0, 1000));
+      console.warn('No valid JSON opportunities found in agent response');
+      console.log(
+        `🚨 Agent response (first 1000 chars):`,
+        response.substring(0, 1000)
+      );
       return [];
-
     } catch (error) {
-      console.error("Error parsing agent response:", error);
+      console.error('Error parsing agent response:', error);
       return [];
     }
   }
@@ -315,7 +354,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       /```json\s*([\s\S]*?)\s*```/gi,
       /```\s*([\s\S]*?)\s*```/gi,
       /\[[\s\S]*?\]/g,
-      /\{[\s\S]*?\}/g
+      /\{[\s\S]*?\}/g,
     ];
 
     for (const pattern of patterns) {
@@ -344,16 +383,21 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           description: item.description ? String(item.description) : '',
           agency: item.agency ? String(item.agency) : undefined,
           deadline: item.deadline ? String(item.deadline) : undefined,
-          estimatedValue: item.estimatedValue ? String(item.estimatedValue) : undefined,
+          estimatedValue: item.estimatedValue
+            ? String(item.estimatedValue)
+            : undefined,
           url: item.url ? String(item.url) : undefined,
           link: item.link ? String(item.link) : undefined,
           category: item.category ? String(item.category) : undefined,
-          confidence: typeof item.confidence === 'number' ? item.confidence : 0.5
+          confidence:
+            typeof item.confidence === 'number' ? item.confidence : 0.5,
         });
       }
     }
 
-    console.log(`✅ Validated ${opportunities.length} opportunities from agent response`);
+    console.log(
+      `✅ Validated ${opportunities.length} opportunities from agent response`
+    );
     return opportunities;
   }
 

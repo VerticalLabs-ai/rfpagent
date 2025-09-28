@@ -176,7 +176,8 @@ router.post('/:id/documents', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const objectPath = objectStorageService.normalizeObjectEntityPath(documentURL);
+    const objectPath =
+      objectStorageService.normalizeObjectEntityPath(documentURL);
 
     const document = await storage.createDocument({
       rfpId: id,
@@ -211,9 +212,13 @@ router.post('/manual', async (req, res) => {
       });
     }
 
-    console.log(`📝 Processing manual RFP submission: ${validationResult.data.url}`);
+    console.log(
+      `📝 Processing manual RFP submission: ${validationResult.data.url}`
+    );
 
-    const result = await manualRfpService.processManualRfp(validationResult.data);
+    const result = await manualRfpService.processManualRfp(
+      validationResult.data
+    );
 
     if (result.success) {
       // Create audit log for manual RFP addition
@@ -341,13 +346,18 @@ router.post('/:id/download-documents', async (req, res) => {
           });
           savedDocuments.push(savedDoc);
         } catch (error) {
-          console.error(`Failed to save document ${doc.name} to database:`, error);
+          console.error(
+            `Failed to save document ${doc.name} to database:`,
+            error
+          );
         }
       }
     }
 
     // Update RFP status
-    const successCount = results.filter((d) => d.downloadStatus === 'completed').length;
+    const successCount = results.filter(
+      d => d.downloadStatus === 'completed'
+    ).length;
     await storage.updateRFP(id, {
       status: successCount > 0 ? 'parsing' : 'open',
       progress: successCount > 0 ? 40 : 20,
@@ -442,7 +452,7 @@ router.post('/:id/rescrape', async (req, res) => {
       ];
 
       const isAllowed = allowedDomains.some(
-        (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+        domain => hostname === domain || hostname.endsWith(`.${domain}`)
       );
 
       if (!isAllowed) {
@@ -466,7 +476,10 @@ router.post('/:id/rescrape', async (req, res) => {
     console.log(`🤖 Using Mastra service for re-scraping RFP ${id}`);
 
     // Use enhanced scraping with proper RFP ID preservation
-    const scrapingResult = await mastraService.enhancedScrapeFromUrl(targetUrl, id);
+    const scrapingResult = await mastraService.enhancedScrapeFromUrl(
+      targetUrl,
+      id
+    );
 
     if (!scrapingResult || !scrapingResult.success) {
       return res.status(400).json({

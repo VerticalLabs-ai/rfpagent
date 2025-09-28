@@ -9,7 +9,7 @@ import { eq, sql, and, or, gte, lte, desc, asc, count } from 'drizzle-orm';
 export abstract class BaseRepository<
   TTable extends PgTableWithColumns<any>,
   TSelect = TTable['$inferSelect'],
-  TInsert = TTable['$inferInsert']
+  TInsert = TTable['$inferInsert'],
 > {
   protected constructor(
     protected table: TTable,
@@ -35,7 +35,9 @@ export abstract class BaseRepository<
 
     if (options?.orderBy) {
       const column = this.table[options.orderBy as keyof TTable] as PgColumn;
-      query = query.orderBy(options.direction === 'desc' ? desc(column) : asc(column)) as any;
+      query = query.orderBy(
+        options.direction === 'desc' ? desc(column) : asc(column)
+      ) as any;
     }
 
     if (options?.limit) {
@@ -52,10 +54,12 @@ export abstract class BaseRepository<
   /**
    * Find entities with count for pagination
    */
-  async findWithCount(options?: FindAllOptions): Promise<{ data: TSelect[]; total: number }> {
+  async findWithCount(
+    options?: FindAllOptions
+  ): Promise<{ data: TSelect[]; total: number }> {
     const [data, [{ total }]] = await Promise.all([
       this.findAll(options),
-      db.select({ total: count() }).from(this.table)
+      db.select({ total: count() }).from(this.table),
     ]);
 
     return { data, total: Number(total) };
@@ -65,10 +69,7 @@ export abstract class BaseRepository<
    * Create new entity
    */
   async create(data: TInsert): Promise<TSelect> {
-    const [result] = await db
-      .insert(this.table)
-      .values(data)
-      .returning();
+    const [result] = await db.insert(this.table).values(data).returning();
     return result;
   }
 
@@ -76,16 +77,16 @@ export abstract class BaseRepository<
    * Create multiple entities
    */
   async createMany(data: TInsert[]): Promise<TSelect[]> {
-    return await db
-      .insert(this.table)
-      .values(data)
-      .returning();
+    return await db.insert(this.table).values(data).returning();
   }
 
   /**
    * Update entity by ID
    */
-  async update(id: string | number, updates: Partial<TInsert>): Promise<TSelect | undefined> {
+  async update(
+    id: string | number,
+    updates: Partial<TInsert>
+  ): Promise<TSelect | undefined> {
     const [result] = await db
       .update(this.table)
       .set(updates)
@@ -98,9 +99,7 @@ export abstract class BaseRepository<
    * Delete entity by ID
    */
   async delete(id: string | number): Promise<boolean> {
-    const result = await db
-      .delete(this.table)
-      .where(eq(this.primaryKey, id));
+    const result = await db.delete(this.table).where(eq(this.primaryKey, id));
     return result.rowCount > 0;
   }
 
@@ -110,7 +109,9 @@ export abstract class BaseRepository<
   async softDelete(id: string | number): Promise<TSelect | undefined> {
     const deletedAtColumn = (this.table as any).deletedAt;
     if (!deletedAtColumn) {
-      throw new Error('Table does not support soft delete (missing deletedAt column)');
+      throw new Error(
+        'Table does not support soft delete (missing deletedAt column)'
+      );
     }
 
     const [result] = await db
@@ -152,16 +153,16 @@ export abstract class BaseRepository<
    */
   async findBy(column: keyof TTable, value: any): Promise<TSelect[]> {
     const tableColumn = this.table[column] as PgColumn;
-    return await db
-      .select()
-      .from(this.table)
-      .where(eq(tableColumn, value));
+    return await db.select().from(this.table).where(eq(tableColumn, value));
   }
 
   /**
    * Find single entity by column value
    */
-  async findOneBy(column: keyof TTable, value: any): Promise<TSelect | undefined> {
+  async findOneBy(
+    column: keyof TTable,
+    value: any
+  ): Promise<TSelect | undefined> {
     const tableColumn = this.table[column] as PgColumn;
     const [result] = await db
       .select()
@@ -174,7 +175,10 @@ export abstract class BaseRepository<
   /**
    * Execute raw SQL query
    */
-  protected async executeRaw<T = any>(query: string, params?: any[]): Promise<T[]> {
+  protected async executeRaw<T = any>(
+    query: string,
+    params?: any[]
+  ): Promise<T[]> {
     return await db.execute(sql.raw(query, params));
   }
 
@@ -235,6 +239,6 @@ export function createPaginatedResult<T>(
     page,
     pageSize,
     hasNext: page < totalPages,
-    hasPrevious: page > 1
+    hasPrevious: page > 1,
   };
 }

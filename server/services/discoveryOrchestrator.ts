@@ -4,7 +4,13 @@ import { workflowCoordinator } from './workflowCoordinator';
 import { scanManager } from './scan-manager';
 import { PortalMonitoringService } from './portal-monitoring-service';
 import { agentMemoryService } from './agentMemoryService';
-import type { Portal, AgentRegistry, WorkItem, InsertWorkItem, AgentSession } from '@shared/schema';
+import type {
+  Portal,
+  AgentRegistry,
+  WorkItem,
+  InsertWorkItem,
+  AgentSession,
+} from '@shared/schema';
 import { nanoid } from 'nanoid';
 
 export interface DiscoveryWorkflowRequest {
@@ -48,7 +54,7 @@ export interface WorkItemSequence {
 
 /**
  * DiscoveryOrchestrator - Orchestrates complete portal discovery workflows
- * 
+ *
  * This class implements the discovery pipeline integration by:
  * 1. Creating sequenced work items for portal scanning workflows
  * 2. Coordinating between portal-manager and portal specialists
@@ -71,13 +77,13 @@ export class DiscoveryOrchestrator {
     try {
       // Register Discovery Orchestrator Agent (Tier 1)
       await this.registerDiscoveryOrchestrator();
-      
+
       // Register Portal Manager Agent (Tier 2)
       await this.registerPortalManager();
-      
+
       // Register Portal Specialist Agents (Tier 3)
       await this.registerPortalSpecialists();
-      
+
       console.log('✅ Discovery agents initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize discovery agents:', error);
@@ -99,21 +105,21 @@ export class DiscoveryOrchestrator {
         'discovery_coordination',
         'portal_workflow_management',
         'progress_tracking',
-        'error_recovery'
+        'error_recovery',
       ],
       tools: [
         'workflow_coordinator',
-        'scan_manager', 
+        'scan_manager',
         'agent_registry',
-        'notification_service'
+        'notification_service',
       ],
       maxConcurrency: 5,
       configuration: {
         maxPortalsPerWorkflow: 10,
         defaultTimeout: 3600000, // 1 hour
         retryAttempts: 3,
-        progressReportingInterval: 30000 // 30 seconds
-      }
+        progressReportingInterval: 30000, // 30 seconds
+      },
     });
   }
 
@@ -132,20 +138,20 @@ export class DiscoveryOrchestrator {
         'specialist_management',
         'task_distribution',
         'progress_aggregation',
-        'quality_control'
+        'quality_control',
       ],
       tools: [
         'portal_monitoring_service',
         'scan_manager',
-        'mastra_scraping_service'
+        'mastra_scraping_service',
       ],
       maxConcurrency: 3,
       parentAgentId: 'discovery-orchestrator',
       configuration: {
         maxSpecialistsPerPortal: 2,
         taskTimeout: 1800000, // 30 minutes
-        qualityCheckEnabled: true
-      }
+        qualityCheckEnabled: true,
+      },
     });
   }
 
@@ -157,36 +163,37 @@ export class DiscoveryOrchestrator {
       {
         agentId: 'portal-scanner-specialist',
         displayName: 'Portal Scanner Specialist',
-        description: 'Specializes in portal authentication and content scanning',
+        description:
+          'Specializes in portal authentication and content scanning',
         capabilities: [
           'portal_authentication',
           'content_scanning',
           'page_navigation',
-          'data_extraction'
-        ]
+          'data_extraction',
+        ],
       },
       {
-        agentId: 'portal-monitor-specialist', 
+        agentId: 'portal-monitor-specialist',
         displayName: 'Portal Monitor Specialist',
         description: 'Specializes in RFP extraction and monitoring',
         capabilities: [
           'rfp_extraction',
           'content_monitoring',
           'data_parsing',
-          'change_detection'
-        ]
+          'change_detection',
+        ],
       },
       {
         agentId: 'portal-validator-specialist',
-        displayName: 'Portal Validator Specialist', 
+        displayName: 'Portal Validator Specialist',
         description: 'Specializes in data validation and quality control',
         capabilities: [
           'data_validation',
           'quality_control',
           'duplicate_detection',
-          'content_verification'
-        ]
-      }
+          'content_verification',
+        ],
+      },
     ];
 
     for (const specialist of specialists) {
@@ -198,15 +205,15 @@ export class DiscoveryOrchestrator {
           'mastra_scraping_service',
           'portal_monitoring_service',
           'document_parsing_service',
-          'scan_manager'
+          'scan_manager',
         ],
         maxConcurrency: 2,
         parentAgentId: 'portal-manager',
         configuration: {
           taskTimeout: 900000, // 15 minutes
           maxRetries: 2,
-          detailedLogging: true
-        }
+          detailedLogging: true,
+        },
       });
     }
   }
@@ -214,9 +221,13 @@ export class DiscoveryOrchestrator {
   /**
    * Main entry point: Create a complete discovery workflow
    */
-  async createDiscoveryWorkflow(request: DiscoveryWorkflowRequest): Promise<DiscoveryWorkflowResult> {
-    console.log(`🚀 Creating discovery workflow for ${request.portalIds.length} portals`);
-    
+  async createDiscoveryWorkflow(
+    request: DiscoveryWorkflowRequest
+  ): Promise<DiscoveryWorkflowResult> {
+    console.log(
+      `🚀 Creating discovery workflow for ${request.portalIds.length} portals`
+    );
+
     try {
       const workflowId = request.workflowId || nanoid();
       const sequences: WorkItemSequence[] = [];
@@ -232,7 +243,7 @@ export class DiscoveryOrchestrator {
         }
 
         console.log(`📋 Creating work sequence for portal: ${portal.name}`);
-        
+
         const sequence = await this.createPortalWorkSequence({
           portalId,
           portalName: portal.name,
@@ -240,13 +251,13 @@ export class DiscoveryOrchestrator {
           workflowId,
           priority: request.priority || 5,
           deadline: request.deadline,
-          options: request.options
+          options: request.options,
         });
 
         sequences.push(sequence);
         createdWorkItems.push(
           sequence.workItems.authentication,
-          sequence.workItems.scanning, 
+          sequence.workItems.scanning,
           sequence.workItems.extraction,
           sequence.workItems.monitoring
         );
@@ -256,10 +267,13 @@ export class DiscoveryOrchestrator {
       this.activeWorkflows.set(workflowId, sequences);
 
       // Assign work items to available agents
-      const portalManager = await agentRegistryService.findAgentsByCapability(['portal_coordination'], 'manager');
+      const portalManager = await agentRegistryService.findAgentsByCapability(
+        ['portal_coordination'],
+        'manager'
+      );
       if (portalManager.length > 0) {
         assignedAgents.push(portalManager[0]);
-        
+
         // Assign initial authentication tasks to portal manager
         for (const sequence of sequences) {
           await workflowCoordinator.assignWorkItem(
@@ -281,16 +295,18 @@ export class DiscoveryOrchestrator {
             sequenceId: s.sequenceId,
             portalId: s.portalId,
             portalName: s.portalName,
-            workItemIds: Object.values(s.workItems).map(wi => wi.id)
+            workItemIds: Object.values(s.workItems).map(wi => wi.id),
           })),
           createdAt: new Date(),
-          status: 'active'
+          status: 'active',
         },
         importance: 8,
-        tags: ['discovery_workflow', 'portal_scanning']
+        tags: ['discovery_workflow', 'portal_scanning'],
       });
 
-      console.log(`✅ Created discovery workflow ${workflowId} with ${createdWorkItems.length} work items`);
+      console.log(
+        `✅ Created discovery workflow ${workflowId} with ${createdWorkItems.length} work items`
+      );
 
       return {
         success: true,
@@ -298,9 +314,10 @@ export class DiscoveryOrchestrator {
         sessionId: request.sessionId,
         createdWorkItems,
         assignedAgents,
-        estimatedCompletion: this.calculateEstimatedCompletion(sequences.length)
+        estimatedCompletion: this.calculateEstimatedCompletion(
+          sequences.length
+        ),
       };
-
     } catch (error) {
       console.error('❌ Failed to create discovery workflow:', error);
       return {
@@ -309,7 +326,7 @@ export class DiscoveryOrchestrator {
         sessionId: request.sessionId,
         createdWorkItems: [],
         assignedAgents: [],
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -326,10 +343,9 @@ export class DiscoveryOrchestrator {
     deadline?: Date;
     options?: DiscoveryWorkflowRequest['options'];
   }): Promise<WorkItemSequence> {
-    
     const sequenceId = nanoid();
     const scanId = scanManager.startScan(params.portalId, params.portalName);
-    
+
     // Create authentication work item (Step 1)
     const authWorkItem = await workflowCoordinator.createWorkItem({
       sessionId: params.sessionId,
@@ -339,9 +355,13 @@ export class DiscoveryOrchestrator {
         portalName: params.portalName,
         scanId: scanId,
         sequenceId: sequenceId,
-        authenticationRequired: true
+        authenticationRequired: true,
       },
-      expectedOutputs: ['authentication_status', 'session_data', 'credentials_validated'],
+      expectedOutputs: [
+        'authentication_status',
+        'session_data',
+        'credentials_validated',
+      ],
       priority: params.priority,
       deadline: params.deadline,
       contextRef: params.portalId,
@@ -352,8 +372,8 @@ export class DiscoveryOrchestrator {
         step: 1,
         sequenceId: sequenceId,
         scanId: scanId,
-        nextStep: 'portal_scanning'
-      }
+        nextStep: 'portal_scanning',
+      },
     });
 
     // Create scanning work item (Step 2)
@@ -366,7 +386,7 @@ export class DiscoveryOrchestrator {
         scanId: scanId,
         sequenceId: sequenceId,
         fullScan: params.options?.fullScan || false,
-        dependsOn: authWorkItem.id
+        dependsOn: authWorkItem.id,
       },
       expectedOutputs: ['scanned_content', 'page_data', 'navigation_map'],
       priority: params.priority,
@@ -380,8 +400,8 @@ export class DiscoveryOrchestrator {
         sequenceId: sequenceId,
         scanId: scanId,
         previousStep: authWorkItem.id,
-        nextStep: 'rfp_extraction'
-      }
+        nextStep: 'rfp_extraction',
+      },
     });
 
     // Create RFP extraction work item (Step 3)
@@ -394,7 +414,7 @@ export class DiscoveryOrchestrator {
         scanId: scanId,
         sequenceId: sequenceId,
         deepExtraction: params.options?.deepExtraction || false,
-        dependsOn: scanWorkItem.id
+        dependsOn: scanWorkItem.id,
       },
       expectedOutputs: ['discovered_rfps', 'rfp_metadata', 'extraction_report'],
       priority: params.priority,
@@ -408,8 +428,8 @@ export class DiscoveryOrchestrator {
         sequenceId: sequenceId,
         scanId: scanId,
         previousStep: scanWorkItem.id,
-        nextStep: 'portal_monitoring'
-      }
+        nextStep: 'portal_monitoring',
+      },
     });
 
     // Create monitoring work item (Step 4)
@@ -422,9 +442,13 @@ export class DiscoveryOrchestrator {
         scanId: scanId,
         sequenceId: sequenceId,
         realTimeNotifications: params.options?.realTimeNotifications || true,
-        dependsOn: extractionWorkItem.id
+        dependsOn: extractionWorkItem.id,
       },
-      expectedOutputs: ['monitoring_status', 'change_notifications', 'final_report'],
+      expectedOutputs: [
+        'monitoring_status',
+        'change_notifications',
+        'final_report',
+      ],
       priority: params.priority,
       deadline: params.deadline,
       contextRef: params.portalId,
@@ -436,8 +460,8 @@ export class DiscoveryOrchestrator {
         sequenceId: sequenceId,
         scanId: scanId,
         previousStep: extractionWorkItem.id,
-        finalStep: true
-      }
+        finalStep: true,
+      },
     });
 
     return {
@@ -448,19 +472,22 @@ export class DiscoveryOrchestrator {
         authentication: authWorkItem,
         scanning: scanWorkItem,
         extraction: extractionWorkItem,
-        monitoring: monitoringWorkItem
+        monitoring: monitoringWorkItem,
       },
       scanId,
-      status: 'pending'
+      status: 'pending',
     };
   }
 
   /**
    * Execute the next step in a portal work sequence
    */
-  async executeNextWorkflowStep(workItemId: string, result: any): Promise<void> {
+  async executeNextWorkflowStep(
+    workItemId: string,
+    result: any
+  ): Promise<void> {
     console.log(`🔄 Executing next workflow step for work item: ${workItemId}`);
-    
+
     try {
       const workItem = await storage.getWorkItem(workItemId);
       if (!workItem || !workItem.metadata?.sequenceId) {
@@ -474,7 +501,9 @@ export class DiscoveryOrchestrator {
         return;
       }
 
-      const sequence = sequences.find(s => s.sequenceId === workItem.metadata.sequenceId);
+      const sequence = sequences.find(
+        s => s.sequenceId === workItem.metadata.sequenceId
+      );
       if (!sequence) {
         console.warn(`Sequence not found: ${workItem.metadata.sequenceId}`);
         return;
@@ -482,16 +511,31 @@ export class DiscoveryOrchestrator {
 
       // Determine next work item based on completed step
       let nextWorkItem: WorkItem | null = null;
-      
+
       if (workItem.taskType === 'portal_authentication') {
         nextWorkItem = sequence.workItems.scanning;
-        scanManager.updateStep(sequence.scanId, 'authenticated', 25, 'Portal authentication completed');
+        scanManager.updateStep(
+          sequence.scanId,
+          'authenticated',
+          25,
+          'Portal authentication completed'
+        );
       } else if (workItem.taskType === 'portal_scanning') {
         nextWorkItem = sequence.workItems.extraction;
-        scanManager.updateStep(sequence.scanId, 'extracting', 50, 'Portal scanning completed, extracting RFPs');
+        scanManager.updateStep(
+          sequence.scanId,
+          'extracting',
+          50,
+          'Portal scanning completed, extracting RFPs'
+        );
       } else if (workItem.taskType === 'rfp_extraction') {
         nextWorkItem = sequence.workItems.monitoring;
-        scanManager.updateStep(sequence.scanId, 'parsing', 75, 'RFP extraction completed, starting monitoring');
+        scanManager.updateStep(
+          sequence.scanId,
+          'parsing',
+          75,
+          'RFP extraction completed, starting monitoring'
+        );
       } else if (workItem.taskType === 'portal_monitoring') {
         // Final step - complete the workflow
         sequence.status = 'completed';
@@ -502,13 +546,18 @@ export class DiscoveryOrchestrator {
 
       if (nextWorkItem) {
         // Assign next work item to an appropriate agent
-        const portalManager = await agentRegistryService.getAgent('portal-manager');
+        const portalManager =
+          await agentRegistryService.getAgent('portal-manager');
         if (portalManager) {
-          await workflowCoordinator.assignWorkItem(nextWorkItem.id, portalManager.agentId);
-          console.log(`📋 Assigned next work item ${nextWorkItem.id} to ${portalManager.agentId}`);
+          await workflowCoordinator.assignWorkItem(
+            nextWorkItem.id,
+            portalManager.agentId
+          );
+          console.log(
+            `📋 Assigned next work item ${nextWorkItem.id} to ${portalManager.agentId}`
+          );
         }
       }
-
     } catch (error) {
       console.error('❌ Failed to execute next workflow step:', error);
     }
@@ -517,9 +566,12 @@ export class DiscoveryOrchestrator {
   /**
    * Complete a workflow sequence and persist results
    */
-  private async completeWorkflowSequence(sequence: WorkItemSequence, finalResult: any): Promise<void> {
+  private async completeWorkflowSequence(
+    sequence: WorkItemSequence,
+    finalResult: any
+  ): Promise<void> {
     console.log(`✅ Completing workflow sequence: ${sequence.sequenceId}`);
-    
+
     try {
       // Update agent memory with workflow completion
       await agentMemoryService.storeMemory({
@@ -533,10 +585,10 @@ export class DiscoveryOrchestrator {
           portalName: sequence.portalName,
           completedAt: new Date(),
           finalResult,
-          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0
+          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0,
         },
         importance: 7,
-        tags: ['workflow_completion', 'portal_discovery']
+        tags: ['workflow_completion', 'portal_discovery'],
       });
 
       // Create audit log
@@ -548,8 +600,8 @@ export class DiscoveryOrchestrator {
           portalId: sequence.portalId,
           portalName: sequence.portalName,
           workItems: Object.keys(sequence.workItems).length,
-          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0
-        }
+          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0,
+        },
       });
 
       // Create notification
@@ -558,11 +610,12 @@ export class DiscoveryOrchestrator {
         title: 'Portal Discovery Completed',
         message: `Discovery workflow completed for ${sequence.portalName}. Found ${finalResult?.discoveredRFPs?.length || 0} RFPs.`,
         relatedEntityType: 'portal',
-        relatedEntityId: sequence.portalId
+        relatedEntityId: sequence.portalId,
       });
 
-      console.log(`🎉 Workflow sequence ${sequence.sequenceId} completed successfully`);
-      
+      console.log(
+        `🎉 Workflow sequence ${sequence.sequenceId} completed successfully`
+      );
     } catch (error) {
       console.error('❌ Failed to complete workflow sequence:', error);
     }
@@ -597,9 +650,9 @@ export class DiscoveryOrchestrator {
           authentication: { status: seq.workItems.authentication.status },
           scanning: { status: seq.workItems.scanning.status },
           extraction: { status: seq.workItems.extraction.status },
-          monitoring: { status: seq.workItems.monitoring.status }
-        }
-      }))
+          monitoring: { status: seq.workItems.monitoring.status },
+        },
+      })),
     };
 
     return status;
@@ -625,7 +678,7 @@ export class DiscoveryOrchestrator {
 
       // Remove from active workflows
       this.activeWorkflows.delete(workflowId);
-      
+
       console.log(`❌ Cancelled workflow: ${workflowId}`);
       return true;
     } catch (error) {

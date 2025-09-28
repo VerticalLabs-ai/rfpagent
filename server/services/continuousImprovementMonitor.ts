@@ -1,5 +1,5 @@
-import { and, avg, count, eq, gte, lte, sql, sum } from "drizzle-orm"
-import { z } from "zod"
+import { and, avg, count, eq, gte, lte, sql, sum } from 'drizzle-orm';
+import { z } from 'zod';
 import {
   agentKnowledgeBase,
   agentMemory,
@@ -7,20 +7,20 @@ import {
   documents,
   proposals,
   scans,
-} from "../../shared/schema"
-import { db } from "../db"
+} from '../../shared/schema';
+import { db } from '../db';
 
 // Schemas for monitoring data structures
 const MetricTrendSchema = z.object({
   metricName: z.string(),
-  timeframe: z.enum(["hour", "day", "week", "month"]),
+  timeframe: z.enum(['hour', 'day', 'week', 'month']),
   currentValue: z.number(),
   previousValue: z.number(),
   changePercent: z.number(),
-  trend: z.enum(["improving", "declining", "stable"]),
-  significance: z.enum(["low", "medium", "high"]),
+  trend: z.enum(['improving', 'declining', 'stable']),
+  significance: z.enum(['low', 'medium', 'high']),
   context: z.any().optional() as any,
-})
+});
 
 const PerformanceDashboardSchema = z.object({
   timestamp: z.string(),
@@ -44,21 +44,21 @@ const PerformanceDashboardSchema = z.object({
     z.object({
       component: z.string(),
       opportunity: z.string(),
-      impact: z.enum(["low", "medium", "high"]),
-      effort: z.enum(["low", "medium", "high"]),
+      impact: z.enum(['low', 'medium', 'high']),
+      effort: z.enum(['low', 'medium', 'high']),
       recommendation: z.string(),
     })
   ),
   alerts: z.array(
     z.object({
-      severity: z.enum(["info", "warning", "critical"]),
+      severity: z.enum(['info', 'warning', 'critical']),
       component: z.string(),
       message: z.string(),
       timestamp: z.string(),
       actionRequired: z.boolean(),
     })
   ),
-})
+});
 
 const ImprovementPlanSchema = z.object({
   planId: z.string(),
@@ -76,9 +76,9 @@ const ImprovementPlanSchema = z.object({
     z.object({
       actionId: z.string(),
       description: z.string(),
-      priority: z.enum(["low", "medium", "high"]),
+      priority: z.enum(['low', 'medium', 'high']),
       estimatedImpact: z.number(),
-      status: z.enum(["planned", "in_progress", "completed", "cancelled"]),
+      status: z.enum(['planned', 'in_progress', 'completed', 'cancelled']),
       assignedComponent: z.string(),
     })
   ),
@@ -97,18 +97,18 @@ const ImprovementPlanSchema = z.object({
     risks: z.array(
       z.object({
         description: z.string(),
-        probability: z.enum(["low", "medium", "high"]),
-        impact: z.enum(["low", "medium", "high"]),
+        probability: z.enum(['low', 'medium', 'high']),
+        impact: z.enum(['low', 'medium', 'high']),
         mitigation: z.string(),
       })
     ),
-    overallRisk: z.enum(["low", "medium", "high"]),
+    overallRisk: z.enum(['low', 'medium', 'high']),
   }),
-})
+});
 
-type MetricTrend = z.infer<typeof MetricTrendSchema>
-type PerformanceDashboard = z.infer<typeof PerformanceDashboardSchema>
-type ImprovementPlan = z.infer<typeof ImprovementPlanSchema>
+type MetricTrend = z.infer<typeof MetricTrendSchema>;
+type PerformanceDashboard = z.infer<typeof PerformanceDashboardSchema>;
+type ImprovementPlan = z.infer<typeof ImprovementPlanSchema>;
 
 export class ContinuousImprovementMonitor {
   private alertThresholds = {
@@ -117,7 +117,7 @@ export class ContinuousImprovementMonitor {
     portalNavigationSuccess: { warning: 0.8, critical: 0.7 },
     learningRate: { warning: 0.05, critical: 0.02 },
     systemHealth: { warning: 70, critical: 50 },
-  }
+  };
 
   private improvementTargets = {
     proposalWinRate: 0.25,
@@ -126,33 +126,33 @@ export class ContinuousImprovementMonitor {
     documentProcessingTime: 30, // seconds
     learningRate: 0.15,
     knowledgeGrowth: 0.2,
-  }
+  };
 
   /**
    * Generate comprehensive performance dashboard
    */
   async generatePerformanceDashboard(
-    timeframe: string = "7d"
+    timeframe: string = '7d'
   ): Promise<PerformanceDashboard> {
-    const endDate = new Date()
-    const startDate = new Date()
+    const endDate = new Date();
+    const startDate = new Date();
 
     // Calculate date range based on timeframe
     switch (timeframe) {
-      case "1h":
-        startDate.setHours(startDate.getHours() - 1)
-        break
-      case "24h":
-        startDate.setDate(startDate.getDate() - 1)
-        break
-      case "7d":
-        startDate.setDate(startDate.getDate() - 7)
-        break
-      case "30d":
-        startDate.setDate(startDate.getDate() - 30)
-        break
+      case '1h':
+        startDate.setHours(startDate.getHours() - 1);
+        break;
+      case '24h':
+        startDate.setDate(startDate.getDate() - 1);
+        break;
+      case '7d':
+        startDate.setDate(startDate.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(startDate.getDate() - 30);
+        break;
       default:
-        startDate.setDate(startDate.getDate() - 7)
+        startDate.setDate(startDate.getDate() - 7);
     }
 
     try {
@@ -169,7 +169,7 @@ export class ContinuousImprovementMonitor {
         this.calculatePerformanceMetrics(startDate, endDate),
         this.identifyImprovementOpportunities(),
         this.generateAlerts(startDate, endDate),
-      ])
+      ]);
 
       const dashboard: PerformanceDashboard = {
         timestamp: new Date().toISOString(),
@@ -178,15 +178,15 @@ export class ContinuousImprovementMonitor {
         performanceMetrics,
         improvementOpportunities,
         alerts,
-      }
+      };
 
       // Store dashboard snapshot for historical analysis
-      await this.storeDashboardSnapshot(dashboard)
+      await this.storeDashboardSnapshot(dashboard);
 
-      return dashboard
+      return dashboard;
     } catch (error) {
-      console.error("Error generating performance dashboard:", error)
-      throw error
+      console.error('Error generating performance dashboard:', error);
+      throw error;
     }
   }
 
@@ -197,8 +197,8 @@ export class ContinuousImprovementMonitor {
     startDate: Date,
     endDate: Date
   ): Promise<{
-    overall: number
-    components: Record<string, number>
+    overall: number;
+    components: Record<string, number>;
   }> {
     try {
       // Query component health metrics
@@ -214,40 +214,40 @@ export class ContinuousImprovementMonitor {
           and(
             gte(agentPerformanceMetrics.recordedAt, startDate),
             lte(agentPerformanceMetrics.recordedAt, endDate),
-            eq(agentPerformanceMetrics.metricType, "task_completion")
+            eq(agentPerformanceMetrics.metricType, 'task_completion')
           )
         )
-        .groupBy(agentPerformanceMetrics.agentId)
+        .groupBy(agentPerformanceMetrics.agentId);
 
-      const components: Record<string, number> = {}
-      let totalHealth = 0
-      let componentCount = 0
+      const components: Record<string, number> = {};
+      let totalHealth = 0;
+      let componentCount = 0;
 
       for (const metric of healthMetrics) {
-        const successScore = (Number(metric.avgSuccess) || 0) * 40
-        const efficiencyScore = (Number(metric.avgEfficiency) || 0) * 40
+        const successScore = (Number(metric.avgSuccess) || 0) * 40;
+        const efficiencyScore = (Number(metric.avgEfficiency) || 0) * 40;
         const reliabilityScore = Math.max(
           0,
           20 - (Number(metric.errorCount) || 0)
-        )
+        );
 
         const componentHealth = Math.min(
           100,
           successScore + efficiencyScore + reliabilityScore
-        )
-        components[metric.component || "unknown"] = Math.round(componentHealth)
+        );
+        components[metric.component || 'unknown'] = Math.round(componentHealth);
 
-        totalHealth += componentHealth
-        componentCount++
+        totalHealth += componentHealth;
+        componentCount++;
       }
 
       const overall =
-        componentCount > 0 ? Math.round(totalHealth / componentCount) : 50
+        componentCount > 0 ? Math.round(totalHealth / componentCount) : 50;
 
-      return { overall, components }
+      return { overall, components };
     } catch (error) {
-      console.error("Error calculating system health:", error)
-      return { overall: 50, components: {} }
+      console.error('Error calculating system health:', error);
+      return { overall: 50, components: {} };
     }
   }
 
@@ -258,10 +258,10 @@ export class ContinuousImprovementMonitor {
     startDate: Date,
     endDate: Date
   ): Promise<{
-    totalLearningEvents: number
-    learningRate: number
-    knowledgeGrowth: number
-    adaptationSuccess: number
+    totalLearningEvents: number;
+    learningRate: number;
+    knowledgeGrowth: number;
+    adaptationSuccess: number;
   }> {
     try {
       // Count learning events
@@ -272,9 +272,9 @@ export class ContinuousImprovementMonitor {
           and(
             gte(agentMemory.createdAt, startDate),
             lte(agentMemory.createdAt, endDate),
-            eq(agentMemory.memoryType, "episodic")
+            eq(agentMemory.memoryType, 'episodic')
           )
-        )
+        );
 
       // Calculate knowledge growth
       const knowledgeEntries = await db
@@ -285,7 +285,7 @@ export class ContinuousImprovementMonitor {
             gte(agentKnowledgeBase.createdAt, startDate),
             lte(agentKnowledgeBase.createdAt, endDate)
           )
-        )
+        );
 
       // Calculate adaptation success from performance improvements
       const adaptationMetrics = await db
@@ -297,14 +297,14 @@ export class ContinuousImprovementMonitor {
           and(
             gte(agentPerformanceMetrics.recordedAt, startDate),
             lte(agentPerformanceMetrics.recordedAt, endDate),
-            eq(agentPerformanceMetrics.metricType, "task_completion")
+            eq(agentPerformanceMetrics.metricType, 'task_completion')
           )
-        )
+        );
 
-      const totalLearningEvents = Number(learningEvents[0]?.count) || 0
-      const knowledgeGrowth = Number(knowledgeEntries[0]?.count) || 0
+      const totalLearningEvents = Number(learningEvents[0]?.count) || 0;
+      const knowledgeGrowth = Number(knowledgeEntries[0]?.count) || 0;
       const adaptationSuccess =
-        Number(adaptationMetrics[0]?.avgImprovement) || 0
+        Number(adaptationMetrics[0]?.avgImprovement) || 0;
 
       // Calculate learning rate (learning events per day)
       const daysDiff = Math.max(
@@ -312,23 +312,23 @@ export class ContinuousImprovementMonitor {
         Math.ceil(
           (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
         )
-      )
-      const learningRate = totalLearningEvents / daysDiff
+      );
+      const learningRate = totalLearningEvents / daysDiff;
 
       return {
         totalLearningEvents,
         learningRate: Number(learningRate.toFixed(2)),
         knowledgeGrowth: Number((knowledgeGrowth / daysDiff).toFixed(2)),
         adaptationSuccess: Number((adaptationSuccess * 100).toFixed(2)),
-      }
+      };
     } catch (error) {
-      console.error("Error calculating learning metrics:", error)
+      console.error('Error calculating learning metrics:', error);
       return {
         totalLearningEvents: 0,
         learningRate: 0,
         knowledgeGrowth: 0,
         adaptationSuccess: 0,
-      }
+      };
     }
   }
 
@@ -339,10 +339,10 @@ export class ContinuousImprovementMonitor {
     startDate: Date,
     endDate: Date
   ): Promise<{
-    proposalWinRate: number
-    parsingAccuracy: number
-    portalNavigationSuccess: number
-    documentProcessingTime: number
+    proposalWinRate: number;
+    parsingAccuracy: number;
+    portalNavigationSuccess: number;
+    documentProcessingTime: number;
   }> {
     try {
       // Calculate proposal win rate
@@ -359,12 +359,12 @@ export class ContinuousImprovementMonitor {
             gte(proposals.generatedAt, startDate),
             lte(proposals.generatedAt, endDate)
           )
-        )
+        );
 
-      const totalProposals = Number(proposalMetrics[0]?.total) || 0
-      const wonProposals = Number(proposalMetrics[0]?.won) || 0
+      const totalProposals = Number(proposalMetrics[0]?.total) || 0;
+      const wonProposals = Number(proposalMetrics[0]?.won) || 0;
       const proposalWinRate =
-        totalProposals > 0 ? wonProposals / totalProposals : 0
+        totalProposals > 0 ? wonProposals / totalProposals : 0;
 
       // Calculate parsing accuracy from memory feedback
       const parsingMetrics = await db
@@ -378,12 +378,12 @@ export class ContinuousImprovementMonitor {
           and(
             gte(agentMemory.createdAt, startDate),
             lte(agentMemory.createdAt, endDate),
-            eq(agentMemory.memoryType, "procedural"),
+            eq(agentMemory.memoryType, 'procedural'),
             sql`${agentMemory.metadata}->>'context' = 'document_parsing'`
           )
-        )
+        );
 
-      const parsingAccuracy = Number(parsingMetrics[0]?.avgAccuracy) || 0.85
+      const parsingAccuracy = Number(parsingMetrics[0]?.avgAccuracy) || 0.85;
 
       // Calculate portal navigation success
       const portalMetrics = await db
@@ -396,12 +396,12 @@ export class ContinuousImprovementMonitor {
         .from(scans)
         .where(
           and(gte(scans.startedAt, startDate), lte(scans.startedAt, endDate))
-        )
+        );
 
-      const totalSessions = Number(portalMetrics[0]?.total) || 0
-      const successfulSessions = Number(portalMetrics[0]?.successful) || 0
+      const totalSessions = Number(portalMetrics[0]?.total) || 0;
+      const successfulSessions = Number(portalMetrics[0]?.successful) || 0;
       const portalNavigationSuccess =
-        totalSessions > 0 ? successfulSessions / totalSessions : 0
+        totalSessions > 0 ? successfulSessions / totalSessions : 0;
 
       // Calculate average document processing time
       const processingMetrics = await db
@@ -416,10 +416,10 @@ export class ContinuousImprovementMonitor {
             gte(documents.uploadedAt, startDate),
             lte(documents.uploadedAt, endDate)
           )
-        )
+        );
 
       const documentProcessingTime =
-        Number(processingMetrics[0]?.avgProcessingTime) || 45
+        Number(processingMetrics[0]?.avgProcessingTime) || 45;
 
       return {
         proposalWinRate: Number((proposalWinRate * 100).toFixed(2)),
@@ -428,15 +428,15 @@ export class ContinuousImprovementMonitor {
           (portalNavigationSuccess * 100).toFixed(2)
         ),
         documentProcessingTime: Number(documentProcessingTime.toFixed(1)),
-      }
+      };
     } catch (error) {
-      console.error("Error calculating performance metrics:", error)
+      console.error('Error calculating performance metrics:', error);
       return {
         proposalWinRate: 0,
         parsingAccuracy: 85,
         portalNavigationSuccess: 80,
         documentProcessingTime: 45,
-      }
+      };
     }
   }
 
@@ -445,16 +445,16 @@ export class ContinuousImprovementMonitor {
    */
   private async identifyImprovementOpportunities(): Promise<
     Array<{
-      component: string
-      opportunity: string
-      impact: "low" | "medium" | "high"
-      effort: "low" | "medium" | "high"
-      recommendation: string
+      component: string;
+      opportunity: string;
+      impact: 'low' | 'medium' | 'high';
+      effort: 'low' | 'medium' | 'high';
+      recommendation: string;
     }>
   > {
     try {
       // Analyze performance gaps
-      const opportunities = []
+      const opportunities = [];
 
       // Query underperforming components
       const performanceGaps = await db
@@ -470,63 +470,63 @@ export class ContinuousImprovementMonitor {
               agentPerformanceMetrics.recordedAt,
               new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             ),
-            eq(agentPerformanceMetrics.metricType, "task_completion")
+            eq(agentPerformanceMetrics.metricType, 'task_completion')
           )
         )
         .groupBy(agentPerformanceMetrics.agentId)
-        .having(sql`AVG(${agentPerformanceMetrics.metricValue}) < 0.8`)
+        .having(sql`AVG(${agentPerformanceMetrics.metricValue}) < 0.8`);
 
       for (const gap of performanceGaps) {
-        const successRate = Number(gap.avgSuccess) || 0
-        const efficiency = Number(gap.avgEfficiency) || 0
+        const successRate = Number(gap.avgSuccess) || 0;
+        const efficiency = Number(gap.avgEfficiency) || 0;
 
         if (successRate < 0.6) {
           opportunities.push({
-            component: gap.component || "unknown",
-            opportunity: "Critical performance improvement needed",
-            impact: "high" as const,
-            effort: "high" as const,
+            component: gap.component || 'unknown',
+            opportunity: 'Critical performance improvement needed',
+            impact: 'high' as const,
+            effort: 'high' as const,
             recommendation: `Component ${gap.component} has success rate of ${(
               successRate * 100
             ).toFixed(
               1
             )}%. Requires immediate attention and possible architectural review.`,
-          })
+          });
         } else if (successRate < 0.8) {
           opportunities.push({
-            component: gap.component || "unknown",
-            opportunity: "Performance optimization potential",
-            impact: "medium" as const,
-            effort: "medium" as const,
+            component: gap.component || 'unknown',
+            opportunity: 'Performance optimization potential',
+            impact: 'medium' as const,
+            effort: 'medium' as const,
             recommendation: `Component ${gap.component} can be improved through targeted optimizations and additional training data.`,
-          })
+          });
         }
 
         if (efficiency < 0.7) {
           opportunities.push({
-            component: gap.component || "unknown",
-            opportunity: "Efficiency enhancement opportunity",
-            impact: "medium" as const,
-            effort: "low" as const,
+            component: gap.component || 'unknown',
+            opportunity: 'Efficiency enhancement opportunity',
+            impact: 'medium' as const,
+            effort: 'low' as const,
             recommendation: `Component ${gap.component} efficiency can be improved through caching, parallel processing, or algorithm optimization.`,
-          })
+          });
         }
       }
 
       // Add general improvement opportunities
       opportunities.push({
-        component: "system",
-        opportunity: "Cross-component learning enhancement",
-        impact: "high" as const,
-        effort: "medium" as const,
+        component: 'system',
+        opportunity: 'Cross-component learning enhancement',
+        impact: 'high' as const,
+        effort: 'medium' as const,
         recommendation:
-          "Implement knowledge sharing between components to accelerate learning and reduce redundant discoveries.",
-      })
+          'Implement knowledge sharing between components to accelerate learning and reduce redundant discoveries.',
+      });
 
-      return opportunities.slice(0, 10) // Limit to top 10 opportunities
+      return opportunities.slice(0, 10); // Limit to top 10 opportunities
     } catch (error) {
-      console.error("Error identifying improvement opportunities:", error)
-      return []
+      console.error('Error identifying improvement opportunities:', error);
+      return [];
     }
   }
 
@@ -538,23 +538,23 @@ export class ContinuousImprovementMonitor {
     endDate: Date
   ): Promise<
     Array<{
-      severity: "info" | "warning" | "critical"
-      component: string
-      message: string
-      timestamp: string
-      actionRequired: boolean
+      severity: 'info' | 'warning' | 'critical';
+      component: string;
+      message: string;
+      timestamp: string;
+      actionRequired: boolean;
     }>
   > {
-    const alerts = []
-    const now = new Date().toISOString()
+    const alerts = [];
+    const now = new Date().toISOString();
 
     try {
       // Check performance metrics against thresholds
       const performanceMetrics = await this.calculatePerformanceMetrics(
         startDate,
         endDate
-      )
-      const systemHealth = await this.calculateSystemHealth(startDate, endDate)
+      );
+      const systemHealth = await this.calculateSystemHealth(startDate, endDate);
 
       // Proposal win rate alerts
       if (
@@ -562,23 +562,23 @@ export class ContinuousImprovementMonitor {
         this.alertThresholds.proposalWinRate.critical * 100
       ) {
         alerts.push({
-          severity: "critical" as const,
-          component: "proposal_generation",
+          severity: 'critical' as const,
+          component: 'proposal_generation',
           message: `Proposal win rate is critically low at ${performanceMetrics.proposalWinRate}%`,
           timestamp: now,
           actionRequired: true,
-        })
+        });
       } else if (
         performanceMetrics.proposalWinRate <
         this.alertThresholds.proposalWinRate.warning * 100
       ) {
         alerts.push({
-          severity: "warning" as const,
-          component: "proposal_generation",
+          severity: 'warning' as const,
+          component: 'proposal_generation',
           message: `Proposal win rate is below target at ${performanceMetrics.proposalWinRate}%`,
           timestamp: now,
           actionRequired: true,
-        })
+        });
       }
 
       // Parsing accuracy alerts
@@ -587,53 +587,53 @@ export class ContinuousImprovementMonitor {
         this.alertThresholds.parsingAccuracy.critical * 100
       ) {
         alerts.push({
-          severity: "critical" as const,
-          component: "document_processing",
+          severity: 'critical' as const,
+          component: 'document_processing',
           message: `Document parsing accuracy is critically low at ${performanceMetrics.parsingAccuracy}%`,
           timestamp: now,
           actionRequired: true,
-        })
+        });
       }
 
       // System health alerts
       if (systemHealth.overall < this.alertThresholds.systemHealth.critical) {
         alerts.push({
-          severity: "critical" as const,
-          component: "system",
+          severity: 'critical' as const,
+          component: 'system',
           message: `Overall system health is critically low at ${systemHealth.overall}%`,
           timestamp: now,
           actionRequired: true,
-        })
+        });
       }
 
       // Check for learning stagnation
       const learningMetrics = await this.calculateLearningMetrics(
         startDate,
         endDate
-      )
+      );
       if (
         learningMetrics.learningRate < this.alertThresholds.learningRate.warning
       ) {
         alerts.push({
-          severity: "warning" as const,
-          component: "learning_system",
+          severity: 'warning' as const,
+          component: 'learning_system',
           message: `Learning rate is low at ${learningMetrics.learningRate} events/day`,
           timestamp: now,
           actionRequired: false,
-        })
+        });
       }
 
-      return alerts
+      return alerts;
     } catch (error) {
-      console.error("Error generating alerts:", error)
+      console.error('Error generating alerts:', error);
       alerts.push({
-        severity: "warning" as const,
-        component: "monitoring",
-        message: "Error occurred while generating alerts",
+        severity: 'warning' as const,
+        component: 'monitoring',
+        message: 'Error occurred while generating alerts',
         timestamp: now,
         actionRequired: false,
-      })
-      return alerts
+      });
+      return alerts;
     }
   }
 
@@ -642,42 +642,42 @@ export class ContinuousImprovementMonitor {
    */
   async analyzeMetricTrends(
     metricName: string,
-    timeframes: string[] = ["24h", "7d", "30d"]
+    timeframes: string[] = ['24h', '7d', '30d']
   ): Promise<MetricTrend[]> {
-    const trends: MetricTrend[] = []
+    const trends: MetricTrend[] = [];
 
     for (const timeframe of timeframes) {
       try {
-        const currentPeriod = await this.generatePerformanceDashboard(timeframe)
+        const currentPeriod =
+          await this.generatePerformanceDashboard(timeframe);
 
         // Get comparison period (previous equivalent timeframe)
-        const previousTimeframe = this.getPreviousTimeframe(timeframe)
-        const previousPeriod = await this.generatePerformanceDashboard(
-          previousTimeframe
-        )
+        const previousTimeframe = this.getPreviousTimeframe(timeframe);
+        const previousPeriod =
+          await this.generatePerformanceDashboard(previousTimeframe);
 
-        const currentValue = this.extractMetricValue(currentPeriod, metricName)
+        const currentValue = this.extractMetricValue(currentPeriod, metricName);
         const previousValue = this.extractMetricValue(
           previousPeriod,
           metricName
-        )
+        );
 
         const changePercent =
           previousValue > 0
             ? ((currentValue - previousValue) / previousValue) * 100
-            : 0
+            : 0;
 
-        let trend: "improving" | "declining" | "stable" = "stable"
+        let trend: 'improving' | 'declining' | 'stable' = 'stable';
         if (Math.abs(changePercent) > 5) {
-          trend = changePercent > 0 ? "improving" : "declining"
+          trend = changePercent > 0 ? 'improving' : 'declining';
         }
 
         const significance =
           Math.abs(changePercent) > 20
-            ? "high"
+            ? 'high'
             : Math.abs(changePercent) > 10
-            ? "medium"
-            : "low"
+              ? 'medium'
+              : 'low';
 
         trends.push({
           metricName,
@@ -691,16 +691,16 @@ export class ContinuousImprovementMonitor {
             period: timeframe,
             comparison: previousTimeframe,
           },
-        })
+        });
       } catch (error) {
         console.error(
           `Error analyzing trend for ${metricName} over ${timeframe}:`,
           error
-        )
+        );
       }
     }
 
-    return trends
+    return trends;
   }
 
   /**
@@ -710,25 +710,25 @@ export class ContinuousImprovementMonitor {
     focusAreas: string[] = []
   ): Promise<ImprovementPlan> {
     try {
-      const dashboard = await this.generatePerformanceDashboard("30d")
-      const opportunities = dashboard.improvementOpportunities
+      const dashboard = await this.generatePerformanceDashboard('30d');
+      const opportunities = dashboard.improvementOpportunities;
 
       // Filter opportunities by focus areas if specified
       const filteredOpportunities =
         focusAreas.length > 0
-          ? opportunities.filter((opp) => focusAreas.includes(opp.component))
-          : opportunities
+          ? opportunities.filter(opp => focusAreas.includes(opp.component))
+          : opportunities;
 
       // Prioritize actions based on impact and effort
       const actions = filteredOpportunities
         .sort((a, b) => {
-          const impactWeight = { high: 3, medium: 2, low: 1 }
-          const effortWeight = { low: 3, medium: 2, high: 1 } // Inverse - low effort is better
+          const impactWeight = { high: 3, medium: 2, low: 1 };
+          const effortWeight = { low: 3, medium: 2, high: 1 }; // Inverse - low effort is better
 
-          const scoreA = impactWeight[a.impact] * effortWeight[a.effort]
-          const scoreB = impactWeight[b.impact] * effortWeight[b.effort]
+          const scoreA = impactWeight[a.impact] * effortWeight[a.effort];
+          const scoreB = impactWeight[b.impact] * effortWeight[b.effort];
 
-          return scoreB - scoreA
+          return scoreB - scoreA;
         })
         .slice(0, 8)
         .map((opp, index) => ({
@@ -736,49 +736,49 @@ export class ContinuousImprovementMonitor {
           description: opp.recommendation,
           priority: opp.impact,
           estimatedImpact: this.calculateEstimatedImpact(opp),
-          status: "planned" as const,
+          status: 'planned' as const,
           assignedComponent: opp.component,
-        }))
+        }));
 
       // Create target metrics based on current performance and improvement targets
       const targetMetrics = [
         {
-          metricName: "proposalWinRate",
+          metricName: 'proposalWinRate',
           currentValue: dashboard.performanceMetrics.proposalWinRate,
           targetValue: Math.min(
             dashboard.performanceMetrics.proposalWinRate * 1.5,
             this.improvementTargets.proposalWinRate * 100
           ),
-          timeframe: "90 days",
+          timeframe: '90 days',
         },
         {
-          metricName: "parsingAccuracy",
+          metricName: 'parsingAccuracy',
           currentValue: dashboard.performanceMetrics.parsingAccuracy,
           targetValue: Math.min(
             dashboard.performanceMetrics.parsingAccuracy * 1.1,
             this.improvementTargets.parsingAccuracy * 100
           ),
-          timeframe: "60 days",
+          timeframe: '60 days',
         },
         {
-          metricName: "systemHealth",
+          metricName: 'systemHealth',
           currentValue: dashboard.systemHealth.overall,
           targetValue: Math.min(dashboard.systemHealth.overall * 1.2, 95),
-          timeframe: "30 days",
+          timeframe: '30 days',
         },
-      ]
+      ];
 
-      const planId = `improvement_plan_${Date.now()}`
-      const startDate = new Date()
+      const planId = `improvement_plan_${Date.now()}`;
+      const startDate = new Date();
       const targetDate = new Date(
         startDate.getTime() + 90 * 24 * 60 * 60 * 1000
-      ) // 90 days
+      ); // 90 days
 
       const plan: ImprovementPlan = {
         planId,
-        title: "Continuous Improvement Plan",
+        title: 'Continuous Improvement Plan',
         description:
-          "Comprehensive plan to enhance system performance and learning capabilities",
+          'Comprehensive plan to enhance system performance and learning capabilities',
         targetMetrics,
         actions,
         timeline: {
@@ -793,32 +793,32 @@ export class ContinuousImprovementMonitor {
         riskAssessment: {
           risks: [
             {
-              description: "Changes may temporarily disrupt system performance",
-              probability: "medium" as const,
-              impact: "medium" as const,
+              description: 'Changes may temporarily disrupt system performance',
+              probability: 'medium' as const,
+              impact: 'medium' as const,
               mitigation:
-                "Implement changes gradually with rollback capabilities",
+                'Implement changes gradually with rollback capabilities',
             },
             {
               description:
-                "Resource constraints may limit implementation speed",
-              probability: "low" as const,
-              impact: "low" as const,
+                'Resource constraints may limit implementation speed',
+              probability: 'low' as const,
+              impact: 'low' as const,
               mitigation:
-                "Prioritize high-impact, low-effort improvements first",
+                'Prioritize high-impact, low-effort improvements first',
             },
           ],
-          overallRisk: "low" as const,
+          overallRisk: 'low' as const,
         },
-      }
+      };
 
       // Store improvement plan
-      await this.storeImprovementPlan(plan)
+      await this.storeImprovementPlan(plan);
 
-      return plan
+      return plan;
     } catch (error) {
-      console.error("Error creating improvement plan:", error)
-      throw error
+      console.error('Error creating improvement plan:', error);
+      throw error;
     }
   }
 
@@ -826,57 +826,57 @@ export class ContinuousImprovementMonitor {
    * Monitor improvement plan progress
    */
   async monitorImprovementProgress(planId: string): Promise<{
-    plan: ImprovementPlan
+    plan: ImprovementPlan;
     progress: {
-      overallProgress: number
-      completedActions: number
-      onTrackMetrics: number
-      risksRealized: number
-    }
-    recommendations: string[]
+      overallProgress: number;
+      completedActions: number;
+      onTrackMetrics: number;
+      risksRealized: number;
+    };
+    recommendations: string[];
   }> {
     try {
-      const plan = await this.getImprovementPlan(planId)
+      const plan = await this.getImprovementPlan(planId);
       if (!plan) {
-        throw new Error(`Improvement plan ${planId} not found`)
+        throw new Error(`Improvement plan ${planId} not found`);
       }
 
       // Calculate progress metrics
       const completedActions = plan.actions.filter(
-        (action) => action.status === "completed"
-      ).length
-      const overallProgress = (completedActions / plan.actions.length) * 100
+        action => action.status === 'completed'
+      ).length;
+      const overallProgress = (completedActions / plan.actions.length) * 100;
 
       // Check metric progress
-      const currentDashboard = await this.generatePerformanceDashboard("7d")
-      let onTrackMetrics = 0
+      const currentDashboard = await this.generatePerformanceDashboard('7d');
+      let onTrackMetrics = 0;
 
       for (const metric of plan.targetMetrics) {
         const currentValue = this.extractMetricValue(
           currentDashboard,
           metric.metricName
-        )
+        );
         const progress =
           (currentValue - metric.currentValue) /
-          (metric.targetValue - metric.currentValue)
+          (metric.targetValue - metric.currentValue);
 
         if (progress >= 0.1) {
           // At least 10% progress
-          onTrackMetrics++
+          onTrackMetrics++;
         }
       }
 
       // Generate recommendations
-      const recommendations = []
+      const recommendations = [];
       if (overallProgress < 30) {
         recommendations.push(
-          "Consider accelerating high-priority actions to maintain timeline"
-        )
+          'Consider accelerating high-priority actions to maintain timeline'
+        );
       }
       if (onTrackMetrics < plan.targetMetrics.length * 0.6) {
         recommendations.push(
-          "Review and adjust target metrics or implementation strategies"
-        )
+          'Review and adjust target metrics or implementation strategies'
+        );
       }
 
       return {
@@ -888,22 +888,22 @@ export class ContinuousImprovementMonitor {
           risksRealized: 0, // This would be calculated based on actual risk tracking
         },
         recommendations,
-      }
+      };
     } catch (error) {
-      console.error("Error monitoring improvement progress:", error)
-      throw error
+      console.error('Error monitoring improvement progress:', error);
+      throw error;
     }
   }
 
   // Helper methods
   private getPreviousTimeframe(timeframe: string): string {
     const multipliers: Record<string, string> = {
-      "1h": "2h",
-      "24h": "48h",
-      "7d": "14d",
-      "30d": "60d",
-    }
-    return multipliers[timeframe] || "14d"
+      '1h': '2h',
+      '24h': '48h',
+      '7d': '14d',
+      '30d': '60d',
+    };
+    return multipliers[timeframe] || '14d';
   }
 
   private extractMetricValue(
@@ -917,13 +917,13 @@ export class ContinuousImprovementMonitor {
         dashboard.performanceMetrics.portalNavigationSuccess,
       systemHealth: dashboard.systemHealth.overall,
       learningRate: dashboard.learningMetrics.learningRate,
-    }
-    return metricPaths[metricName] || 0
+    };
+    return metricPaths[metricName] || 0;
   }
 
   private calculateEstimatedImpact(opportunity: any): number {
-    const impactScores = { high: 0.8, medium: 0.5, low: 0.2 }
-    return impactScores[opportunity.impact as keyof typeof impactScores] || 0.3
+    const impactScores = { high: 0.8, medium: 0.5, low: 0.2 };
+    return impactScores[opportunity.impact as keyof typeof impactScores] || 0.3;
   }
 
   private generateMilestones(
@@ -931,30 +931,30 @@ export class ContinuousImprovementMonitor {
     endDate: Date,
     actionCount: number
   ): Array<{
-    date: string
-    description: string
-    completed: boolean
+    date: string;
+    description: string;
+    completed: boolean;
   }> {
-    const milestones = []
+    const milestones = [];
     const totalDays = Math.ceil(
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    const milestoneInterval = Math.floor(totalDays / 4) // 4 milestones
+    );
+    const milestoneInterval = Math.floor(totalDays / 4); // 4 milestones
 
     for (let i = 1; i <= 4; i++) {
       const milestoneDate = new Date(
         startDate.getTime() + i * milestoneInterval * 24 * 60 * 60 * 1000
-      )
+      );
       milestones.push({
         date: milestoneDate.toISOString(),
         description: `Complete ${Math.ceil(
           (actionCount * i) / 4
         )} improvement actions`,
         completed: false,
-      })
+      });
     }
 
-    return milestones
+    return milestones;
   }
 
   private async storeDashboardSnapshot(
@@ -963,20 +963,20 @@ export class ContinuousImprovementMonitor {
     try {
       await db.insert(agentMemory).values({
         id: `dashboard_${Date.now()}`,
-        agentId: "continuous_improvement_monitor",
-        memoryType: "semantic",
-        contextKey: "dashboard_snapshot",
-        title: "Performance Dashboard Snapshot",
+        agentId: 'continuous_improvement_monitor',
+        memoryType: 'semantic',
+        contextKey: 'dashboard_snapshot',
+        title: 'Performance Dashboard Snapshot',
         content: JSON.stringify(dashboard),
         metadata: {
-          type: "dashboard_snapshot",
+          type: 'dashboard_snapshot',
           timestamp: dashboard.timestamp,
         },
         importance: 8,
         createdAt: new Date(),
-      })
+      });
     } catch (error) {
-      console.error("Error storing dashboard snapshot:", error)
+      console.error('Error storing dashboard snapshot:', error);
     }
   }
 
@@ -984,21 +984,21 @@ export class ContinuousImprovementMonitor {
     try {
       await db.insert(agentMemory).values({
         id: plan.planId,
-        agentId: "continuous_improvement_monitor",
-        memoryType: "procedural",
-        contextKey: "improvement_plan",
-        title: "Improvement Plan",
+        agentId: 'continuous_improvement_monitor',
+        memoryType: 'procedural',
+        contextKey: 'improvement_plan',
+        title: 'Improvement Plan',
         content: JSON.stringify(plan),
         metadata: {
-          type: "improvement_plan",
+          type: 'improvement_plan',
           planId: plan.planId,
-          status: "active",
+          status: 'active',
         },
         importance: 9,
         createdAt: new Date(),
-      })
+      });
     } catch (error) {
-      console.error("Error storing improvement plan:", error)
+      console.error('Error storing improvement plan:', error);
     }
   }
 
@@ -1010,16 +1010,16 @@ export class ContinuousImprovementMonitor {
         .select()
         .from(agentMemory)
         .where(eq(agentMemory.id, planId))
-        .limit(1)
+        .limit(1);
 
-      if (result.length === 0) return null
+      if (result.length === 0) return null;
 
-      return JSON.parse(result[0].content as string)
+      return JSON.parse(result[0].content as string);
     } catch (error) {
-      console.error("Error retrieving improvement plan:", error)
-      return null
+      console.error('Error retrieving improvement plan:', error);
+      return null;
     }
   }
 }
 
-export type { ImprovementPlan, MetricTrend, PerformanceDashboard }
+export type { ImprovementPlan, MetricTrend, PerformanceDashboard };

@@ -1,4 +1,4 @@
-import type { Portal } from "@shared/schema";
+import type { Portal } from '@shared/schema';
 import { ValidationResult, PortalConfiguration } from '../types';
 
 export class PortalDetectionService {
@@ -23,7 +23,7 @@ export class PortalDetectionService {
       'find-rfp.com': 'findrfp',
       'phlcontracts.phila.gov': 'philadelphia',
       'financeonline.austintexas.gov': 'austin_finance',
-      'austintexas.gov': 'austin_finance'
+      'austintexas.gov': 'austin_finance',
     };
 
     // Check for exact matches first
@@ -59,17 +59,18 @@ export class PortalDetectionService {
       if (parsedUrl.protocol !== 'https:') {
         return {
           isValid: false,
-          error: 'Only HTTPS URLs are allowed for security'
+          error: 'Only HTTPS URLs are allowed for security',
         };
       }
 
       // Block private/localhost IPs
       const hostname = parsedUrl.hostname.toLowerCase();
-      const privateIpRegex = /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|localhost$|0\.0\.0\.0$)/;
+      const privateIpRegex =
+        /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|localhost$|0\.0\.0\.0$)/;
       if (privateIpRegex.test(hostname)) {
         return {
           isValid: false,
-          error: 'Private IP addresses and localhost are not allowed'
+          error: 'Private IP addresses and localhost are not allowed',
         };
       }
 
@@ -78,12 +79,12 @@ export class PortalDetectionService {
 
       return {
         isValid: true,
-        portalType
+        portalType,
       };
     } catch (error) {
       return {
         isValid: false,
-        error: 'Invalid URL format'
+        error: 'Invalid URL format',
       };
     }
   }
@@ -99,7 +100,9 @@ export class PortalDetectionService {
   /**
    * Get selectors for a portal type
    */
-  getPortalSelectors(portalType: string): PortalConfiguration['selectors'] | null {
+  getPortalSelectors(
+    portalType: string
+  ): PortalConfiguration['selectors'] | null {
     const config = this.getPortalConfiguration(portalType);
     return config?.selectors || null;
   }
@@ -126,11 +129,12 @@ export class PortalDetectionService {
       baseUrl: 'https://vendor.bonfirehub.com',
       selectors: {
         loginForm: 'form[action*="login"], .login-form',
-        usernameField: 'input[name="username"], input[name="email"], #username, #email',
+        usernameField:
+          'input[name="username"], input[name="email"], #username, #email',
         passwordField: 'input[name="password"], #password',
         opportunityList: '.opportunity-list, .bid-list, .rfp-list',
-        opportunityItem: '.opportunity-row, .bid-item, .rfp-item'
-      }
+        opportunityItem: '.opportunity-row, .bid-item, .rfp-item',
+      },
     });
 
     // SAM.gov configuration
@@ -140,8 +144,8 @@ export class PortalDetectionService {
       baseUrl: 'https://sam.gov',
       selectors: {
         opportunityList: '.search-results, .opportunity-results',
-        opportunityItem: '.search-result-item, .opportunity-item'
-      }
+        opportunityItem: '.search-result-item, .opportunity-item',
+      },
     });
 
     // FindRFP configuration
@@ -151,8 +155,8 @@ export class PortalDetectionService {
       baseUrl: 'https://findrfp.com',
       selectors: {
         opportunityList: '.rfp-listings, .opportunities',
-        opportunityItem: '.rfp-item, .opportunity'
-      }
+        opportunityItem: '.rfp-item, .opportunity',
+      },
     });
 
     // Philadelphia configuration
@@ -162,8 +166,8 @@ export class PortalDetectionService {
       baseUrl: 'https://phlcontracts.phila.gov',
       selectors: {
         opportunityList: '.contract-list, .bid-list',
-        opportunityItem: '.contract-item, .bid-item'
-      }
+        opportunityItem: '.contract-item, .bid-item',
+      },
     });
 
     // Austin Finance configuration
@@ -173,8 +177,8 @@ export class PortalDetectionService {
       baseUrl: 'https://financeonline.austintexas.gov',
       selectors: {
         opportunityList: '.opportunity-list, .bid-opportunities',
-        opportunityItem: '.opportunity, .bid-opportunity'
-      }
+        opportunityItem: '.opportunity, .bid-opportunity',
+      },
     });
 
     // Generic configuration
@@ -184,8 +188,8 @@ export class PortalDetectionService {
       baseUrl: '',
       selectors: {
         opportunityList: '.opportunities, .rfp-list, .bid-list, .procurements',
-        opportunityItem: '.opportunity, .rfp, .bid, .procurement'
-      }
+        opportunityItem: '.opportunity, .rfp, .bid, .procurement',
+      },
     });
   }
 

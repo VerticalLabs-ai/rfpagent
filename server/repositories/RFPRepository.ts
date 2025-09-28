@@ -1,4 +1,9 @@
-import { BaseRepository, type BaseFilter, type RepositoryResult, createPaginatedResult } from './BaseRepository';
+import {
+  BaseRepository,
+  type BaseFilter,
+  type RepositoryResult,
+  createPaginatedResult,
+} from './BaseRepository';
 import { rfps, portals, type RFP, type InsertRFP } from '@shared/schema';
 import { eq, and, or, sql, desc, asc, gte, lte } from 'drizzle-orm';
 import { db } from '../db';
@@ -67,7 +72,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
     if (filter?.orderBy) {
       const column = rfps[filter.orderBy as keyof typeof rfps];
       if (column) {
-        query = query.orderBy(filter.direction === 'desc' ? desc(column) : asc(column)) as any;
+        query = query.orderBy(
+          filter.direction === 'desc' ? desc(column) : asc(column)
+        ) as any;
       }
     } else {
       // Default ordering
@@ -81,7 +88,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
       data = await query;
     }
 
-    const total = await this.count(conditions.length > 0 ? and(...conditions) : undefined);
+    const total = await this.count(
+      conditions.length > 0 ? and(...conditions) : undefined
+    );
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;
@@ -123,8 +132,8 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
           id: portals.id,
           name: portals.name,
           url: portals.url,
-          status: portals.status
-        }
+          status: portals.status,
+        },
       })
       .from(rfps)
       .leftJoin(portals, eq(rfps.portalId, portals.id));
@@ -204,7 +213,8 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
   }> {
     const now = new Date();
 
-    const [stats] = await this.executeRaw(`
+    const [stats] = await this.executeRaw(
+      `
       SELECT
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'active' AND (deadline IS NULL OR deadline > $1) THEN 1 END) as active,
@@ -217,7 +227,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
           END
         ) as avg_response_time_days
       FROM rfps
-    `, [now]);
+    `,
+      [now]
+    );
 
     return {
       total: Number(stats.total),
@@ -225,7 +237,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
       expired: Number(stats.expired),
       draft: Number(stats.draft),
       submitted: Number(stats.submitted),
-      avgResponseTime: stats.avg_response_time_days ? Number(stats.avg_response_time_days) : null
+      avgResponseTime: stats.avg_response_time_days
+        ? Number(stats.avg_response_time_days)
+        : null,
     };
   }
 
@@ -341,7 +355,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
   /**
    * Get RFPs with upcoming deadlines for notifications
    */
-  async getRFPsForDeadlineNotifications(hoursAhead: number = 24): Promise<RFP[]> {
+  async getRFPsForDeadlineNotifications(
+    hoursAhead: number = 24
+  ): Promise<RFP[]> {
     const now = new Date();
     const future = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
 

@@ -1,7 +1,7 @@
-import { Agent } from "@mastra/core/agent";
+import { Agent } from '@mastra/core/agent';
 import { AgentFactory } from './AgentFactory';
 import { AgentConfig } from '../types';
-import type { Portal } from "@shared/schema";
+import type { Portal } from '@shared/schema';
 
 /**
  * Registry for managing and tracking all scraping agents
@@ -10,12 +10,15 @@ export class AgentRegistry {
   private agents: Map<string, Agent> = new Map();
   private agentFactory: AgentFactory;
   private agentConfigs: Map<string, AgentConfig> = new Map();
-  private agentUsageStats: Map<string, {
-    totalRuns: number;
-    successfulRuns: number;
-    lastUsed: Date;
-    averageResponseTime: number;
-  }> = new Map();
+  private agentUsageStats: Map<
+    string,
+    {
+      totalRuns: number;
+      successfulRuns: number;
+      lastUsed: Date;
+      averageResponseTime: number;
+    }
+  > = new Map();
 
   constructor(agentFactory: AgentFactory) {
     this.agentFactory = agentFactory;
@@ -30,12 +33,24 @@ export class AgentRegistry {
 
     // Create and register all default agents
     const agents = [
-      { key: 'generic', creator: () => this.agentFactory.createGenericRFPAgent() },
-      { key: 'bonfire_hub', creator: () => this.agentFactory.createBonfireAgent() },
+      {
+        key: 'generic',
+        creator: () => this.agentFactory.createGenericRFPAgent(),
+      },
+      {
+        key: 'bonfire_hub',
+        creator: () => this.agentFactory.createBonfireAgent(),
+      },
       { key: 'sam.gov', creator: () => this.agentFactory.createSAMGovAgent() },
       { key: 'findrfp', creator: () => this.agentFactory.createFindRFPAgent() },
-      { key: 'philadelphia', creator: () => this.agentFactory.createPhiladelphiaAgent() },
-      { key: 'austin_finance', creator: () => this.agentFactory.createAustinFinanceAgent() }
+      {
+        key: 'philadelphia',
+        creator: () => this.agentFactory.createPhiladelphiaAgent(),
+      },
+      {
+        key: 'austin_finance',
+        creator: () => this.agentFactory.createAustinFinanceAgent(),
+      },
     ];
 
     agents.forEach(({ key, creator }) => {
@@ -49,7 +64,9 @@ export class AgentRegistry {
       }
     });
 
-    console.log(`🎯 Agent registry initialized with ${this.agents.size} agents`);
+    console.log(
+      `🎯 Agent registry initialized with ${this.agents.size} agents`
+    );
   }
 
   /**
@@ -132,28 +149,38 @@ export class AgentRegistry {
     const portalUrl = portal.url.toLowerCase();
 
     // URL-based detection (more reliable)
-    if (portalUrl.includes('bonfirehub.com') || portalUrl.includes('vendor.bonfirehub.com')) {
+    if (
+      portalUrl.includes('bonfirehub.com') ||
+      portalUrl.includes('vendor.bonfirehub.com')
+    ) {
       return 'bonfire_hub';
     }
     if (portalUrl.includes('sam.gov')) {
       return 'sam.gov';
     }
-    if (portalUrl.includes('findrfp.com') || portalUrl.includes('find-rfp.com')) {
+    if (
+      portalUrl.includes('findrfp.com') ||
+      portalUrl.includes('find-rfp.com')
+    ) {
       return 'findrfp';
     }
     if (portalUrl.includes('phlcontracts.phila.gov')) {
       return 'philadelphia';
     }
-    if (portalUrl.includes('financeonline.austintexas.gov') ||
-        (portalUrl.includes('austin') && portalUrl.includes('finance'))) {
+    if (
+      portalUrl.includes('financeonline.austintexas.gov') ||
+      (portalUrl.includes('austin') && portalUrl.includes('finance'))
+    ) {
       return 'austin_finance';
     }
 
     // Name-based detection (fallback)
     if (portalName.includes('bonfire')) return 'bonfire_hub';
-    if (portalName.includes('sam.gov') || portalName.includes('sam_gov')) return 'sam.gov';
+    if (portalName.includes('sam.gov') || portalName.includes('sam_gov'))
+      return 'sam.gov';
     if (portalName.includes('findrfp')) return 'findrfp';
-    if (portalName.includes('philadelphia') || portalName.includes('phila')) return 'philadelphia';
+    if (portalName.includes('philadelphia') || portalName.includes('phila'))
+      return 'philadelphia';
     if (portalName.includes('austin')) return 'austin_finance';
 
     return 'generic';
@@ -171,7 +198,10 @@ export class AgentRegistry {
 
       // Calculate performance score (success rate weighted by response time)
       const successRate = stats.successfulRuns / stats.totalRuns;
-      const responseTimeFactor = Math.max(0.1, 1 / (stats.averageResponseTime / 1000)); // Faster is better
+      const responseTimeFactor = Math.max(
+        0.1,
+        1 / (stats.averageResponseTime / 1000)
+      ); // Faster is better
       const score = successRate * responseTimeFactor;
 
       if (!bestAgent || score > bestAgent.score) {
@@ -200,7 +230,11 @@ export class AgentRegistry {
   /**
    * Record agent execution result
    */
-  recordAgentExecution(agentKey: string, success: boolean, responseTime: number): void {
+  recordAgentExecution(
+    agentKey: string,
+    success: boolean,
+    responseTime: number
+  ): void {
     const stats = this.agentUsageStats.get(agentKey);
     if (!stats) {
       this.initializeAgentStats(agentKey);
@@ -213,10 +247,14 @@ export class AgentRegistry {
     }
 
     // Update running average of response time
-    stats.averageResponseTime = (stats.averageResponseTime * (stats.totalRuns - 1) + responseTime) / stats.totalRuns;
+    stats.averageResponseTime =
+      (stats.averageResponseTime * (stats.totalRuns - 1) + responseTime) /
+      stats.totalRuns;
     stats.lastUsed = new Date();
 
-    console.log(`📊 Agent ${agentKey} execution recorded: ${success ? 'success' : 'failure'}, ${responseTime}ms`);
+    console.log(
+      `📊 Agent ${agentKey} execution recorded: ${success ? 'success' : 'failure'}, ${responseTime}ms`
+    );
   }
 
   /**
@@ -227,7 +265,7 @@ export class AgentRegistry {
       totalRuns: 0,
       successfulRuns: 0,
       lastUsed: new Date(),
-      averageResponseTime: 0
+      averageResponseTime: 0,
     });
   }
 
@@ -289,13 +327,18 @@ export class AgentRegistry {
     portalType: string,
     tools: string[] = ['webScrape', 'extractRFP']
   ): Agent {
-    const agent = this.agentFactory.createCustomAgent(portalType, name, instructions, tools);
+    const agent = this.agentFactory.createCustomAgent(
+      portalType,
+      name,
+      instructions,
+      tools
+    );
 
     const config: AgentConfig = {
       name,
       instructions,
       portalType,
-      tools
+      tools,
     };
 
     this.registerAgent(key, agent, config);
@@ -321,32 +364,36 @@ export class AgentRegistry {
     let totalExecutions = 0;
     let totalSuccesses = 0;
 
-    const agentBreakdown = Array.from(this.agents.entries()).map(([key, agent]) => {
-      const stats = this.agentUsageStats.get(key) || {
-        totalRuns: 0,
-        successfulRuns: 0,
-        lastUsed: new Date(),
-        averageResponseTime: 0
-      };
+    const agentBreakdown = Array.from(this.agents.entries()).map(
+      ([key, agent]) => {
+        const stats = this.agentUsageStats.get(key) || {
+          totalRuns: 0,
+          successfulRuns: 0,
+          lastUsed: new Date(),
+          averageResponseTime: 0,
+        };
 
-      totalExecutions += stats.totalRuns;
-      totalSuccesses += stats.successfulRuns;
+        totalExecutions += stats.totalRuns;
+        totalSuccesses += stats.successfulRuns;
 
-      return {
-        key,
-        name: agent.name || key,
-        totalRuns: stats.totalRuns,
-        successRate: stats.totalRuns > 0 ? stats.successfulRuns / stats.totalRuns : 0,
-        averageResponseTime: stats.averageResponseTime,
-        lastUsed: stats.lastUsed.toISOString()
-      };
-    });
+        return {
+          key,
+          name: agent.name || key,
+          totalRuns: stats.totalRuns,
+          successRate:
+            stats.totalRuns > 0 ? stats.successfulRuns / stats.totalRuns : 0,
+          averageResponseTime: stats.averageResponseTime,
+          lastUsed: stats.lastUsed.toISOString(),
+        };
+      }
+    );
 
     return {
       totalAgents: this.agents.size,
       totalExecutions,
-      overallSuccessRate: totalExecutions > 0 ? totalSuccesses / totalExecutions : 0,
-      agentBreakdown
+      overallSuccessRate:
+        totalExecutions > 0 ? totalSuccesses / totalExecutions : 0,
+      agentBreakdown,
     };
   }
 
@@ -362,7 +409,7 @@ export class AgentRegistry {
     };
   }> {
     const now = Date.now();
-    const oneHourAgo = now - (60 * 60 * 1000);
+    const oneHourAgo = now - 60 * 60 * 1000;
 
     let activeAgents = 0;
     let recentFailures = 0;
@@ -372,7 +419,8 @@ export class AgentRegistry {
         activeAgents++;
       }
 
-      const recentSuccessRate = stats.totalRuns > 0 ? stats.successfulRuns / stats.totalRuns : 1;
+      const recentSuccessRate =
+        stats.totalRuns > 0 ? stats.successfulRuns / stats.totalRuns : 1;
       if (recentSuccessRate < 0.5) {
         recentFailures++;
       }
@@ -392,8 +440,8 @@ export class AgentRegistry {
       details: {
         totalAgents: this.agents.size,
         activeAgents,
-        recentFailures
-      }
+        recentFailures,
+      },
     };
   }
 }

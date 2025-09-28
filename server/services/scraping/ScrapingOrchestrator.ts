@@ -1,8 +1,16 @@
 import { ServiceRegistry } from './core/ServiceRegistry';
-import { ScrapingContext, ScrapingResult, RFPOpportunity, ScrapingError } from './types';
+import {
+  ScrapingContext,
+  ScrapingResult,
+  RFPOpportunity,
+  ScrapingError,
+} from './types';
 import { ContentProcessingManager } from './extraction/ContentProcessingManager';
-import { stagehandExtractTool, stagehandAuthTool } from '../../../src/mastra/tools';
-import { z } from "zod";
+import {
+  stagehandExtractTool,
+  stagehandAuthTool,
+} from '../../../src/mastra/tools';
+import { z } from 'zod';
 
 /**
  * Main orchestrator for the refactored scraping service
@@ -47,20 +55,24 @@ export class ScrapingOrchestrator {
       const opportunities = await this.extractContent(context, sessionId);
 
       // Phase 5: Validate results
-      const validatedOpportunities = await this.validateResults(opportunities, context);
+      const validatedOpportunities = await this.validateResults(
+        opportunities,
+        context
+      );
 
       // Phase 6: Cleanup session
       await this.cleanupSession(sessionId);
 
-      console.log(`✅ Successfully scraped ${validatedOpportunities.length} opportunities from ${context.portalType}`);
+      console.log(
+        `✅ Successfully scraped ${validatedOpportunities.length} opportunities from ${context.portalType}`
+      );
 
       return {
         success: true,
         opportunities: validatedOpportunities,
         documentsCount: validatedOpportunities.length,
-        message: `Successfully extracted ${validatedOpportunities.length} opportunities`
+        message: `Successfully extracted ${validatedOpportunities.length} opportunities`,
       };
-
     } catch (error) {
       console.error(`❌ Scraping failed for ${context.url}:`, error);
 
@@ -68,7 +80,8 @@ export class ScrapingOrchestrator {
         success: false,
         opportunities: [],
         documentsCount: 0,
-        error: error instanceof Error ? error.message : 'Unknown scraping error'
+        error:
+          error instanceof Error ? error.message : 'Unknown scraping error',
       };
     }
   }
@@ -85,11 +98,13 @@ export class ScrapingOrchestrator {
     const configurationService = this.services.getConfigurationService();
 
     // Validate URL and detect portal type
-    const validationResult = portalDetectionService.validateAndDetectPortal(context.url);
+    const validationResult = portalDetectionService.validateAndDetectPortal(
+      context.url
+    );
     if (!validationResult.isValid) {
       return {
         isValid: false,
-        error: validationResult.error
+        error: validationResult.error,
       };
     }
 
@@ -103,7 +118,7 @@ export class ScrapingOrchestrator {
     if (!contextValidation.isValid) {
       return {
         isValid: false,
-        error: contextValidation.errors.join(', ')
+        error: contextValidation.errors.join(', '),
       };
     }
 
@@ -114,7 +129,7 @@ export class ScrapingOrchestrator {
 
     return {
       isValid: true,
-      detectedPortalType: validationResult.portalType
+      detectedPortalType: validationResult.portalType,
     };
   }
 
@@ -131,7 +146,9 @@ export class ScrapingOrchestrator {
         console.log(`🔄 Reusing existing session: ${context.sessionId}`);
         return context.sessionId;
       } catch (error) {
-        console.warn(`⚠️ Session ${context.sessionId} not found, creating new session`);
+        console.warn(
+          `⚠️ Session ${context.sessionId} not found, creating new session`
+        );
       }
     }
 
@@ -143,12 +160,19 @@ export class ScrapingOrchestrator {
   /**
    * Handle portal authentication
    */
-  private async handleAuthentication(context: ScrapingContext, sessionId: string): Promise<void> {
+  private async handleAuthentication(
+    context: ScrapingContext,
+    sessionId: string
+  ): Promise<void> {
     const sessionManager = this.services.getBrowserSessionManager();
     const authenticationManager = this.services.getAuthenticationManager();
 
     if (!context.credentials) {
-      throw new ScrapingError('Credentials required for authentication', 'MISSING_CREDENTIALS', context.portalType);
+      throw new ScrapingError(
+        'Credentials required for authentication',
+        'MISSING_CREDENTIALS',
+        context.portalType
+      );
     }
 
     console.log(`🔐 Authenticating with ${context.portalType}...`);
@@ -160,7 +184,7 @@ export class ScrapingOrchestrator {
       password: context.credentials.password,
       sessionId,
       portalType: context.portalType,
-      authContext: `${context.portalType} portal authentication`
+      authContext: `${context.portalType} portal authentication`,
     };
 
     // Use authentication manager to handle authentication
@@ -179,7 +203,7 @@ export class ScrapingOrchestrator {
     await sessionManager.updateSessionAuth(sessionId, {
       isAuthenticated: true,
       cookies: authResult.cookies,
-      authToken: authResult.authToken
+      authToken: authResult.authToken,
     });
 
     console.log(`✅ Authentication successful for ${context.portalType}`);
@@ -188,32 +212,52 @@ export class ScrapingOrchestrator {
   /**
    * Extract content from portal using multiple strategies
    */
-  private async extractContent(context: ScrapingContext, sessionId: string): Promise<RFPOpportunity[]> {
-    console.log(`📊 Extracting content from ${context.portalType} using hybrid approach...`);
+  private async extractContent(
+    context: ScrapingContext,
+    sessionId: string
+  ): Promise<RFPOpportunity[]> {
+    console.log(
+      `📊 Extracting content from ${context.portalType} using hybrid approach...`
+    );
 
     // Strategy 1: Try agent orchestration first
-    const agentOpportunities = await this.tryAgentExtraction(context, sessionId);
+    const agentOpportunities = await this.tryAgentExtraction(
+      context,
+      sessionId
+    );
     if (agentOpportunities.length > 0) {
-      console.log(`✅ Agent extraction successful: ${agentOpportunities.length} opportunities`);
+      console.log(
+        `✅ Agent extraction successful: ${agentOpportunities.length} opportunities`
+      );
       return agentOpportunities;
     }
 
     // Strategy 2: Try content processing with specialized extractors
-    const contentOpportunities = await this.tryContentProcessing(context, sessionId);
+    const contentOpportunities = await this.tryContentProcessing(
+      context,
+      sessionId
+    );
     if (contentOpportunities.length > 0) {
-      console.log(`✅ Content processing successful: ${contentOpportunities.length} opportunities`);
+      console.log(
+        `✅ Content processing successful: ${contentOpportunities.length} opportunities`
+      );
       return contentOpportunities;
     }
 
     // Strategy 3: Fallback to direct Stagehand extraction
-    console.log(`⚠️ Primary strategies failed, falling back to direct extraction`);
+    console.log(
+      `⚠️ Primary strategies failed, falling back to direct extraction`
+    );
     return await this.fallbackDirectExtraction(context, sessionId);
   }
 
   /**
    * Try agent-based extraction
    */
-  private async tryAgentExtraction(context: ScrapingContext, sessionId: string): Promise<RFPOpportunity[]> {
+  private async tryAgentExtraction(
+    context: ScrapingContext,
+    sessionId: string
+  ): Promise<RFPOpportunity[]> {
     try {
       const agentOrchestrator = this.services.getAgentOrchestrator();
 
@@ -228,17 +272,22 @@ export class ScrapingOrchestrator {
         status: 'active' as const,
         lastScanned: null,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       // Use agent orchestrator to extract content
-      const agentResult = await agentOrchestrator.executeAgentForPortal(portal, {
-        ...context,
-        sessionId
-      });
+      const agentResult = await agentOrchestrator.executeAgentForPortal(
+        portal,
+        {
+          ...context,
+          sessionId,
+        }
+      );
 
       if (agentResult.success) {
-        console.log(`📄 Agent extracted ${agentResult.opportunities.length} opportunities using ${agentResult.agentUsed}`);
+        console.log(
+          `📄 Agent extracted ${agentResult.opportunities.length} opportunities using ${agentResult.agentUsed}`
+        );
         return agentResult.opportunities;
       } else {
         console.log(`⚠️ Agent extraction failed: ${agentResult.error}`);
@@ -253,7 +302,10 @@ export class ScrapingOrchestrator {
   /**
    * Try content processing with specialized extractors
    */
-  private async tryContentProcessing(context: ScrapingContext, sessionId: string): Promise<RFPOpportunity[]> {
+  private async tryContentProcessing(
+    context: ScrapingContext,
+    sessionId: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🔄 Trying content processing for ${context.portalType}...`);
 
@@ -280,15 +332,22 @@ export class ScrapingOrchestrator {
         context.portalType,
         {
           useParallelExtraction: true,
-          maxExtractors: 3
+          maxExtractors: 3,
         }
       );
 
-      if (processingResult.success && processingResult.opportunities.length > 0) {
-        console.log(`📊 Content processing extracted ${processingResult.opportunities.length} opportunities using: ${processingResult.extractorsUsed.join(', ')}`);
+      if (
+        processingResult.success &&
+        processingResult.opportunities.length > 0
+      ) {
+        console.log(
+          `📊 Content processing extracted ${processingResult.opportunities.length} opportunities using: ${processingResult.extractorsUsed.join(', ')}`
+        );
         return processingResult.opportunities;
       } else {
-        console.log(`⚠️ Content processing failed: ${processingResult.error || 'No opportunities found'}`);
+        console.log(
+          `⚠️ Content processing failed: ${processingResult.error || 'No opportunities found'}`
+        );
         return [];
       }
     } catch (error) {
@@ -301,7 +360,10 @@ export class ScrapingOrchestrator {
    * Fetch page content (placeholder implementation)
    * In a real implementation, this would get content from the browser session
    */
-  private async fetchPageContent(url: string, session: any): Promise<string | null> {
+  private async fetchPageContent(
+    url: string,
+    session: any
+  ): Promise<string | null> {
     // This is a placeholder - in the real implementation, this would:
     // 1. Use the browser session to navigate to the URL
     // 2. Extract the page content (HTML)
@@ -315,13 +377,19 @@ export class ScrapingOrchestrator {
   /**
    * Fallback to direct extraction when agent fails
    */
-  private async fallbackDirectExtraction(context: ScrapingContext, sessionId: string): Promise<RFPOpportunity[]> {
+  private async fallbackDirectExtraction(
+    context: ScrapingContext,
+    sessionId: string
+  ): Promise<RFPOpportunity[]> {
     const configurationService = this.services.getConfigurationService();
 
     console.log(`🔄 Performing fallback direct extraction...`);
 
     // Get extraction instructions for the portal type
-    const instruction = configurationService.getExtractionInstructions(context.portalType, context.searchFilter);
+    const instruction = configurationService.getExtractionInstructions(
+      context.portalType,
+      context.searchFilter
+    );
 
     // Extract content using Stagehand directly
     const extractionResult = await stagehandExtractTool.execute({
@@ -329,19 +397,24 @@ export class ScrapingOrchestrator {
         instruction,
         sessionId,
         schema: {
-          opportunities: z.array(z.object({
-            title: z.string().describe('RFP title or opportunity name'),
-            description: z.string().optional().describe('Description or summary'),
-            agency: z.string().optional().describe('Issuing agency'),
-            deadline: z.string().optional().describe('Submission deadline'),
-            estimatedValue: z.string().optional().describe('Contract value'),
-            url: z.string().optional().describe('Direct URL to opportunity'),
-            link: z.string().optional().describe('Link to opportunity'),
-            category: z.string().optional().describe('Category or type'),
-            confidence: z.number().min(0).max(1).default(0.5)
-          }))
-        }
-      }
+          opportunities: z.array(
+            z.object({
+              title: z.string().describe('RFP title or opportunity name'),
+              description: z
+                .string()
+                .optional()
+                .describe('Description or summary'),
+              agency: z.string().optional().describe('Issuing agency'),
+              deadline: z.string().optional().describe('Submission deadline'),
+              estimatedValue: z.string().optional().describe('Contract value'),
+              url: z.string().optional().describe('Direct URL to opportunity'),
+              link: z.string().optional().describe('Link to opportunity'),
+              category: z.string().optional().describe('Category or type'),
+              confidence: z.number().min(0).max(1).default(0.5),
+            })
+          ),
+        },
+      },
     });
 
     if (!extractionResult.success) {
@@ -354,7 +427,9 @@ export class ScrapingOrchestrator {
     }
 
     const opportunities = extractionResult.data?.opportunities || [];
-    console.log(`📄 Fallback extraction yielded ${opportunities.length} opportunities`);
+    console.log(
+      `📄 Fallback extraction yielded ${opportunities.length} opportunities`
+    );
 
     return opportunities;
   }
@@ -362,7 +437,10 @@ export class ScrapingOrchestrator {
   /**
    * Validate extracted results
    */
-  private async validateResults(opportunities: RFPOpportunity[], context: ScrapingContext): Promise<RFPOpportunity[]> {
+  private async validateResults(
+    opportunities: RFPOpportunity[],
+    context: ScrapingContext
+  ): Promise<RFPOpportunity[]> {
     const toolFactory = this.services.getToolFactory();
 
     console.log(`🔍 Validating extracted results...`);
@@ -372,7 +450,7 @@ export class ScrapingOrchestrator {
     const validationResult = await validationTool.execute({
       content: opportunities,
       portalType: context.portalType,
-      minOpportunities: 1
+      minOpportunities: 1,
     });
 
     if (!validationResult.isValid) {
@@ -383,7 +461,9 @@ export class ScrapingOrchestrator {
       console.info(`💡 Suggestions:`, validationResult.suggestions);
     }
 
-    console.log(`✅ Content validation score: ${(validationResult.score * 100).toFixed(1)}%`);
+    console.log(
+      `✅ Content validation score: ${(validationResult.score * 100).toFixed(1)}%`
+    );
 
     return opportunities;
   }
@@ -422,7 +502,7 @@ export class ScrapingOrchestrator {
       activeSessions: sessionStats.total,
       sessionsByPortal: sessionStats.byPortalType,
       supportedPortals,
-      healthStatus
+      healthStatus,
     };
   }
 
@@ -439,16 +519,16 @@ export class ScrapingOrchestrator {
         status: healthStatus.status,
         details: {
           services: healthStatus.services,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
     } catch (error) {
       return {
         status: 'unhealthy',
         details: {
           error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       };
     }
   }

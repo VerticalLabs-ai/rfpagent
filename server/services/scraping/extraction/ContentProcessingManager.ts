@@ -5,7 +5,11 @@ import { SAMGovContentExtractor } from './extractors/SAMGovContentExtractor';
 import { AustinFinanceContentExtractor } from './extractors/AustinFinanceContentExtractor';
 import { HTMLContentExtractor } from './extractors/HTMLContentExtractor';
 import { JSONContentExtractor } from './extractors/JSONContentExtractor';
-import { RFPOpportunity, ContentProcessingResult, ContentAnalysis } from '../types';
+import {
+  RFPOpportunity,
+  ContentProcessingResult,
+  ContentAnalysis,
+} from '../types';
 
 /**
  * Content processing manager that orchestrates multiple content extractors
@@ -39,10 +43,12 @@ export class ContentProcessingManager {
     this.fallbackExtractors = [
       new AIContentExtractor(),
       new HTMLContentExtractor(),
-      new JSONContentExtractor()
+      new JSONContentExtractor(),
     ];
 
-    console.log(`📊 Content Processing Manager initialized with ${this.extractors.size} specialized extractors and ${this.fallbackExtractors.length} fallback extractors`);
+    console.log(
+      `📊 Content Processing Manager initialized with ${this.extractors.size} specialized extractors and ${this.fallbackExtractors.length} fallback extractors`
+    );
   }
 
   /**
@@ -61,15 +67,25 @@ export class ContentProcessingManager {
       const analysis = this.analyzeContent(content, portalType);
 
       // Get extraction strategy based on analysis
-      const strategy = this.determineExtractionStrategy(analysis, portalType, options);
+      const strategy = this.determineExtractionStrategy(
+        analysis,
+        portalType,
+        options
+      );
 
       // Execute extraction strategy
-      const result = await this.executeExtractionStrategy(strategy, content, url, portalType);
+      const result = await this.executeExtractionStrategy(
+        strategy,
+        content,
+        url,
+        portalType
+      );
 
-      console.log(`✅ Content processing completed: ${result.opportunities.length} opportunities found using ${result.extractorsUsed.join(', ')}`);
+      console.log(
+        `✅ Content processing completed: ${result.opportunities.length} opportunities found using ${result.extractorsUsed.join(', ')}`
+      );
 
       return result;
-
     } catch (error) {
       console.error(`❌ Content processing failed for ${url}:`, error);
 
@@ -78,8 +94,9 @@ export class ContentProcessingManager {
         opportunities: [],
         extractorsUsed: [],
         analysis: this.analyzeContent(content, portalType),
-        error: error instanceof Error ? error.message : 'Unknown processing error',
-        processingTime: 0
+        error:
+          error instanceof Error ? error.message : 'Unknown processing error',
+        processingTime: 0,
       };
     }
   }
@@ -94,9 +111,12 @@ export class ContentProcessingManager {
       hasHTML: /<[^>]+>/.test(content),
       hasJSON: this.detectJSONContent(content),
       hasRFPKeywords: this.hasRFPKeywords(content),
-      portalSpecificIndicators: this.detectPortalIndicators(content, portalType),
+      portalSpecificIndicators: this.detectPortalIndicators(
+        content,
+        portalType
+      ),
       confidence: 0,
-      recommendedExtractors: []
+      recommendedExtractors: [],
     };
 
     // Determine content type
@@ -112,7 +132,10 @@ export class ContentProcessingManager {
     analysis.confidence = this.calculateContentConfidence(analysis);
 
     // Recommend extractors based on analysis
-    analysis.recommendedExtractors = this.recommendExtractors(analysis, portalType);
+    analysis.recommendedExtractors = this.recommendExtractors(
+      analysis,
+      portalType
+    );
 
     return analysis;
   }
@@ -129,7 +152,7 @@ export class ContentProcessingManager {
       primary: [],
       fallback: [],
       parallel: options.useParallelExtraction || false,
-      maxExtractors: options.maxExtractors || 3
+      maxExtractors: options.maxExtractors || 3,
     };
 
     // Add portal-specific extractor if available and recommended
@@ -202,14 +225,21 @@ export class ContentProcessingManager {
           allOpportunities.push(...result.value.opportunities);
           extractorsUsed.push(result.value.extractorType);
         } else {
-          errors.push(`${strategy.primary[index].getPortalType()}: ${result.reason}`);
+          errors.push(
+            `${strategy.primary[index].getPortalType()}: ${result.reason}`
+          );
         }
       });
     } else {
       // Sequential execution
       for (const extractor of strategy.primary) {
         try {
-          const result = await this.executeExtractor(extractor, content, url, portalType);
+          const result = await this.executeExtractor(
+            extractor,
+            content,
+            url,
+            portalType
+          );
           allOpportunities.push(...result.opportunities);
           extractorsUsed.push(result.extractorType);
 
@@ -224,8 +254,13 @@ export class ContentProcessingManager {
     }
 
     // Try fallback extractors if primary extractors didn't yield good results
-    if (allOpportunities.length === 0 || this.calculateAverageConfidence(allOpportunities) < 0.5) {
-      console.log(`🔄 Primary extractors yielded poor results, trying fallback extractors...`);
+    if (
+      allOpportunities.length === 0 ||
+      this.calculateAverageConfidence(allOpportunities) < 0.5
+    ) {
+      console.log(
+        `🔄 Primary extractors yielded poor results, trying fallback extractors...`
+      );
 
       for (const fallbackExtractor of strategy.fallback) {
         if (extractorsUsed.includes(fallbackExtractor.getPortalType())) {
@@ -233,14 +268,21 @@ export class ContentProcessingManager {
         }
 
         try {
-          const result = await this.executeExtractor(fallbackExtractor, content, url, portalType);
+          const result = await this.executeExtractor(
+            fallbackExtractor,
+            content,
+            url,
+            portalType
+          );
           if (result.opportunities.length > 0) {
             allOpportunities.push(...result.opportunities);
             extractorsUsed.push(result.extractorType);
             break; // Stop after first successful fallback
           }
         } catch (error) {
-          errors.push(`${fallbackExtractor.getPortalType()} (fallback): ${error}`);
+          errors.push(
+            `${fallbackExtractor.getPortalType()} (fallback): ${error}`
+          );
         }
       }
     }
@@ -256,7 +298,7 @@ export class ContentProcessingManager {
       analysis: this.analyzeContent(content, portalType),
       processingTime,
       avgConfidence: this.calculateAverageConfidence(uniqueOpportunities),
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
     };
   }
 
@@ -268,14 +310,20 @@ export class ContentProcessingManager {
     content: string,
     url: string,
     portalType: string
-  ): Promise<{ opportunities: RFPOpportunity[]; extractorType: string; avgConfidence: number }> {
+  ): Promise<{
+    opportunities: RFPOpportunity[];
+    extractorType: string;
+    avgConfidence: number;
+  }> {
     const extractorType = extractor.getPortalType();
     console.log(`🔧 Executing ${extractorType} extractor...`);
 
     const opportunities = await extractor.extract(content, url, portalType);
     const avgConfidence = this.calculateAverageConfidence(opportunities);
 
-    console.log(`📊 ${extractorType} extractor: ${opportunities.length} opportunities, avg confidence: ${(avgConfidence * 100).toFixed(1)}%`);
+    console.log(
+      `📊 ${extractorType} extractor: ${opportunities.length} opportunities, avg confidence: ${(avgConfidence * 100).toFixed(1)}%`
+    );
 
     return { opportunities, extractorType, avgConfidence };
   }
@@ -287,8 +335,10 @@ export class ContentProcessingManager {
     const trimmed = content.trim();
 
     // Direct JSON
-    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-        (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+    if (
+      (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+      (trimmed.startsWith('[') && trimmed.endsWith(']'))
+    ) {
       try {
         JSON.parse(trimmed);
         return true;
@@ -303,11 +353,13 @@ export class ContentProcessingManager {
       'application/ld+json',
       'data-json=',
       /window\.\w+\s*=\s*\{/,
-      /var\s+\w+\s*=\s*\{/
+      /var\s+\w+\s*=\s*\{/,
     ];
 
     return jsonIndicators.some(indicator =>
-      typeof indicator === 'string' ? content.includes(indicator) : indicator.test(content)
+      typeof indicator === 'string'
+        ? content.includes(indicator)
+        : indicator.test(content)
     );
   }
 
@@ -316,9 +368,20 @@ export class ContentProcessingManager {
    */
   private hasRFPKeywords(content: string): boolean {
     const keywords = [
-      'rfp', 'request for proposal', 'procurement', 'solicitation',
-      'bid', 'tender', 'contract', 'opportunity', 'ifb', 'invitation for bid',
-      'rfq', 'request for quote', 'proposal', 'quotes'
+      'rfp',
+      'request for proposal',
+      'procurement',
+      'solicitation',
+      'bid',
+      'tender',
+      'contract',
+      'opportunity',
+      'ifb',
+      'invitation for bid',
+      'rfq',
+      'request for quote',
+      'proposal',
+      'quotes',
     ];
 
     const lowerContent = content.toLowerCase();
@@ -328,17 +391,27 @@ export class ContentProcessingManager {
   /**
    * Detect portal-specific indicators
    */
-  private detectPortalIndicators(content: string, portalType: string): { indicators: string[]; score: number } {
+  private detectPortalIndicators(
+    content: string,
+    portalType: string
+  ): { indicators: string[]; score: number } {
     const portalPatterns: Record<string, string[]> = {
       bonfire: ['bonfirehub', 'bonfire-', 'solicitation_details.cfm'],
-      'sam.gov': ['sam.gov', 'opportunity-row', 'search-result', 'contract opportunities'],
+      'sam.gov': [
+        'sam.gov',
+        'opportunity-row',
+        'search-result',
+        'contract opportunities',
+      ],
       austin_finance: ['austintexas.gov', 'City of Austin', 'IFQ', 'IFB'],
       findrfp: ['findrfp', 'rfpdb.com'],
-      generic: []
+      generic: [],
     };
 
     const patterns = portalPatterns[portalType] || [];
-    const indicators = patterns.filter(pattern => content.toLowerCase().includes(pattern.toLowerCase()));
+    const indicators = patterns.filter(pattern =>
+      content.toLowerCase().includes(pattern.toLowerCase())
+    );
     const score = patterns.length > 0 ? indicators.length / patterns.length : 0;
 
     return { indicators, score };
@@ -369,11 +442,17 @@ export class ContentProcessingManager {
   /**
    * Recommend extractors based on content analysis
    */
-  private recommendExtractors(analysis: ContentAnalysis, portalType: string): string[] {
+  private recommendExtractors(
+    analysis: ContentAnalysis,
+    portalType: string
+  ): string[] {
     const recommendations: string[] = [];
 
     // Portal-specific extractor
-    if (analysis.portalSpecificIndicators.score > 0.3 && this.extractors.has(portalType)) {
+    if (
+      analysis.portalSpecificIndicators.score > 0.3 &&
+      this.extractors.has(portalType)
+    ) {
       recommendations.push(portalType);
     }
 
@@ -424,7 +503,10 @@ export class ContentProcessingManager {
   private calculateAverageConfidence(opportunities: RFPOpportunity[]): number {
     if (opportunities.length === 0) return 0;
 
-    const total = opportunities.reduce((sum, opp) => sum + (opp.confidence || 0.5), 0);
+    const total = opportunities.reduce(
+      (sum, opp) => sum + (opp.confidence || 0.5),
+      0
+    );
     return total / opportunities.length;
   }
 
@@ -434,7 +516,7 @@ export class ContentProcessingManager {
   getAvailableExtractors(): { name: string; type: string }[] {
     return Array.from(this.extractors.entries()).map(([name, extractor]) => ({
       name,
-      type: extractor.getPortalType()
+      type: extractor.getPortalType(),
     }));
   }
 

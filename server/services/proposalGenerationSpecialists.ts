@@ -25,12 +25,17 @@ export class ContentGenerationSpecialist {
   /**
    * Generate proposal outline and structure
    */
-  async generateProposalOutline(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`📋 Content Specialist: Creating proposal outline for ${workItem.inputs.rfpId}`);
-    
+  async generateProposalOutline(
+    workItem: WorkItem
+  ): Promise<SpecialistWorkResult> {
+    console.log(
+      `📋 Content Specialist: Creating proposal outline for ${workItem.inputs.rfpId}`
+    );
+
     try {
-      const { rfpId, proposalType, companyProfileId, pipelineId } = workItem.inputs;
-      
+      const { rfpId, proposalType, companyProfileId, pipelineId } =
+        workItem.inputs;
+
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -46,7 +51,9 @@ export class ContentGenerationSpecialist {
 
       // Get RFP documents for analysis
       const documents = await storage.getDocumentsByRFP(rfpId);
-      const documentContext = documents.map(doc => doc.extractedText).join('\n\n');
+      const documentContext = documents
+        .map(doc => doc.extractedText)
+        .join('\n\n');
 
       // Analyze RFP to understand requirements
       const rfpAnalysis = await aiProposalService.analyzeRFPDocument(
@@ -54,15 +61,21 @@ export class ContentGenerationSpecialist {
       );
 
       // Create proposal structure based on RFP type and requirements
-      const outline = this.createProposalStructure(proposalType, rfpAnalysis, rfp);
+      const outline = this.createProposalStructure(
+        proposalType,
+        rfpAnalysis,
+        rfp
+      );
 
       // Map company capabilities to requirements
       let companyMapping = null;
       if (companyProfile) {
-        const certifications = await storage.getCompanyCertifications(companyProfile.id);
+        const certifications = await storage.getCompanyCertifications(
+          companyProfile.id
+        );
         const insurance = await storage.getCompanyInsurance(companyProfile.id);
         const contacts = await storage.getCompanyContacts(companyProfile.id);
-        
+
         companyMapping = await aiProposalService.mapCompanyDataToRequirements(
           rfpAnalysis,
           companyProfile,
@@ -82,11 +95,11 @@ export class ContentGenerationSpecialist {
           outline,
           rfpAnalysis,
           companyMapping,
-          proposalType
+          proposalType,
         },
         importance: 7,
         tags: ['proposal_outline', proposalType, 'active'],
-        metadata: { rfpId, pipelineId }
+        metadata: { rfpId, pipelineId },
       });
 
       return {
@@ -95,17 +108,17 @@ export class ContentGenerationSpecialist {
           proposal_outline: outline,
           section_breakdown: outline.sections,
           requirements_mapping: companyMapping,
-          rfp_analysis: rfpAnalysis
+          rfp_analysis: rfpAnalysis,
         },
         qualityScore: 0.85,
-        metadata: { phase: 'outline', specialist: 'content-generator' }
+        metadata: { phase: 'outline', specialist: 'content-generator' },
       };
-
     } catch (error) {
       console.error('❌ Content Specialist outline generation failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Outline generation failed'
+        error:
+          error instanceof Error ? error.message : 'Outline generation failed',
       };
     }
   }
@@ -113,12 +126,16 @@ export class ContentGenerationSpecialist {
   /**
    * Generate executive summary and company overview
    */
-  async generateExecutiveSummary(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`✍️ Content Specialist: Generating executive summary for ${workItem.inputs.rfpId}`);
-    
+  async generateExecutiveSummary(
+    workItem: WorkItem
+  ): Promise<SpecialistWorkResult> {
+    console.log(
+      `✍️ Content Specialist: Generating executive summary for ${workItem.inputs.rfpId}`
+    );
+
     try {
       const { rfpId, companyProfileId, outline, pipelineId } = workItem.inputs;
-      
+
       // Get RFP and company data
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -134,31 +151,37 @@ export class ContentGenerationSpecialist {
       // Get outline from memory if not provided
       let proposalOutline = outline;
       if (!proposalOutline) {
-        const outlineMemory = await agentMemoryService.getMemoryByContext('content-generator', `outline_${pipelineId}`);
+        const outlineMemory = await agentMemoryService.getMemoryByContext(
+          'content-generator',
+          `outline_${pipelineId}`
+        );
         proposalOutline = outlineMemory?.content?.outline;
       }
 
       // Generate executive summary using AI
       const rfpText = `${rfp.title}\n${rfp.description || ''}\nAgency: ${rfp.agency}`;
-      
+
       let executiveSummary = '';
       let companyOverview = '';
 
       if (companyProfile) {
         // Get company data for enhanced generation
-        const certifications = await storage.getCompanyCertifications(companyProfile.id);
+        const certifications = await storage.getCompanyCertifications(
+          companyProfile.id
+        );
         const insurance = await storage.getCompanyInsurance(companyProfile.id);
         const contacts = await storage.getCompanyContacts(companyProfile.id);
-        
+
         // Analyze RFP and map company data
         const rfpAnalysis = await aiProposalService.analyzeRFPDocument(rfpText);
-        const companyMapping = await aiProposalService.mapCompanyDataToRequirements(
-          rfpAnalysis,
-          companyProfile,
-          certifications,
-          insurance,
-          contacts
-        );
+        const companyMapping =
+          await aiProposalService.mapCompanyDataToRequirements(
+            rfpAnalysis,
+            companyProfile,
+            certifications,
+            insurance,
+            contacts
+          );
 
         // Generate content using AI service
         const proposalContent = await aiProposalService.generateProposalContent(
@@ -176,8 +199,9 @@ export class ContentGenerationSpecialist {
           certifications: ['WBENC', 'HUB'],
           companyInfo: {
             name: 'Professional Services Company',
-            description: 'Leading provider of technology and consulting services'
-          }
+            description:
+              'Leading provider of technology and consulting services',
+          },
         };
 
         const rfpAnalysis = await aiProposalService.analyzeRFPDocument(rfpText);
@@ -200,28 +224,37 @@ export class ContentGenerationSpecialist {
         content: {
           executiveSummary,
           companyOverview,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
         importance: 8,
         tags: ['executive_summary', 'company_overview', 'active'],
-        metadata: { rfpId, pipelineId }
+        metadata: { rfpId, pipelineId },
       });
 
       return {
         success: true,
         data: {
           executive_summary: executiveSummary,
-          company_overview: companyOverview
+          company_overview: companyOverview,
         },
         qualityScore: 0.82,
-        metadata: { phase: 'content_generation', specialist: 'content-generator', contentType: 'executive' }
+        metadata: {
+          phase: 'content_generation',
+          specialist: 'content-generator',
+          contentType: 'executive',
+        },
       };
-
     } catch (error) {
-      console.error('❌ Content Specialist executive summary generation failed:', error);
+      console.error(
+        '❌ Content Specialist executive summary generation failed:',
+        error
+      );
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Executive summary generation failed'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Executive summary generation failed',
       };
     }
   }
@@ -229,12 +262,17 @@ export class ContentGenerationSpecialist {
   /**
    * Generate technical approach and methodology
    */
-  async generateTechnicalContent(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`🔧 Content Specialist: Generating technical content for ${workItem.inputs.rfpId}`);
-    
+  async generateTechnicalContent(
+    workItem: WorkItem
+  ): Promise<SpecialistWorkResult> {
+    console.log(
+      `🔧 Content Specialist: Generating technical content for ${workItem.inputs.rfpId}`
+    );
+
     try {
-      const { rfpId, companyProfileId, outline, proposalType, pipelineId } = workItem.inputs;
-      
+      const { rfpId, companyProfileId, outline, proposalType, pipelineId } =
+        workItem.inputs;
+
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -243,18 +281,26 @@ export class ContentGenerationSpecialist {
 
       // Get documents for technical analysis
       const documents = await storage.getDocumentsByRFP(rfpId);
-      const documentContext = documents.map(doc => doc.extractedText).join('\n\n');
+      const documentContext = documents
+        .map(doc => doc.extractedText)
+        .join('\n\n');
 
       // Generate technical content using AI service
-      const technicalContent = await aiService.generateProposalContent(rfp, documentContext);
+      const technicalContent = await aiService.generateProposalContent(
+        rfp,
+        documentContext
+      );
 
-      const technicalApproach = technicalContent?.sections?.approach || 
+      const technicalApproach =
+        technicalContent?.sections?.approach ||
         this.generateDefaultTechnicalApproach(proposalType, rfp);
-      
-      const methodology = technicalContent?.sections?.methodology || 
+
+      const methodology =
+        technicalContent?.sections?.methodology ||
         this.generateDefaultMethodology(proposalType);
-      
-      const timeline = technicalContent?.sections?.timeline || 
+
+      const timeline =
+        technicalContent?.sections?.timeline ||
         this.generateDefaultTimeline(rfp);
 
       // Store technical content in agent memory
@@ -267,11 +313,11 @@ export class ContentGenerationSpecialist {
           technicalApproach,
           methodology,
           timeline,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
         importance: 7,
         tags: ['technical_approach', 'methodology', 'timeline', 'active'],
-        metadata: { rfpId, pipelineId, proposalType }
+        metadata: { rfpId, pipelineId, proposalType },
       });
 
       return {
@@ -279,17 +325,26 @@ export class ContentGenerationSpecialist {
         data: {
           technical_approach: technicalApproach,
           methodology: methodology,
-          timeline: timeline
+          timeline: timeline,
         },
-        qualityScore: 0.80,
-        metadata: { phase: 'content_generation', specialist: 'content-generator', contentType: 'technical' }
+        qualityScore: 0.8,
+        metadata: {
+          phase: 'content_generation',
+          specialist: 'content-generator',
+          contentType: 'technical',
+        },
       };
-
     } catch (error) {
-      console.error('❌ Content Specialist technical content generation failed:', error);
+      console.error(
+        '❌ Content Specialist technical content generation failed:',
+        error
+      );
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Technical content generation failed'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Technical content generation failed',
       };
     }
   }
@@ -297,12 +352,16 @@ export class ContentGenerationSpecialist {
   /**
    * Generate qualifications and experience narratives
    */
-  async generateQualifications(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`🏆 Content Specialist: Generating qualifications for ${workItem.inputs.rfpId}`);
-    
+  async generateQualifications(
+    workItem: WorkItem
+  ): Promise<SpecialistWorkResult> {
+    console.log(
+      `🏆 Content Specialist: Generating qualifications for ${workItem.inputs.rfpId}`
+    );
+
     try {
       const { rfpId, companyProfileId, outline, pipelineId } = workItem.inputs;
-      
+
       // Get RFP and company data
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -314,14 +373,21 @@ export class ContentGenerationSpecialist {
       let caseStudies: string[] = [];
 
       if (companyProfileId) {
-        const companyProfile = await storage.getCompanyProfile(companyProfileId);
+        const companyProfile =
+          await storage.getCompanyProfile(companyProfileId);
         if (companyProfile) {
-          const certifications = await storage.getCompanyCertifications(companyProfile.id);
+          const certifications = await storage.getCompanyCertifications(
+            companyProfile.id
+          );
           const contacts = await storage.getCompanyContacts(companyProfile.id);
-          
+
           // Generate qualifications based on company data
-          qualifications = this.generateQualificationsFromProfile(companyProfile, certifications);
-          experienceNarratives = this.generateExperienceNarratives(companyProfile);
+          qualifications = this.generateQualificationsFromProfile(
+            companyProfile,
+            certifications
+          );
+          experienceNarratives =
+            this.generateExperienceNarratives(companyProfile);
           caseStudies = this.generateCaseStudies(companyProfile, rfp);
         }
       } else {
@@ -341,11 +407,11 @@ export class ContentGenerationSpecialist {
           qualifications,
           experienceNarratives,
           caseStudies,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
         importance: 7,
         tags: ['qualifications', 'experience', 'case_studies', 'active'],
-        metadata: { rfpId, pipelineId }
+        metadata: { rfpId, pipelineId },
       });
 
       return {
@@ -353,17 +419,26 @@ export class ContentGenerationSpecialist {
         data: {
           qualifications: qualifications,
           experience_narratives: experienceNarratives,
-          case_studies: caseStudies
+          case_studies: caseStudies,
         },
         qualityScore: 0.78,
-        metadata: { phase: 'content_generation', specialist: 'content-generator', contentType: 'qualifications' }
+        metadata: {
+          phase: 'content_generation',
+          specialist: 'content-generator',
+          contentType: 'qualifications',
+        },
       };
-
     } catch (error) {
-      console.error('❌ Content Specialist qualifications generation failed:', error);
+      console.error(
+        '❌ Content Specialist qualifications generation failed:',
+        error
+      );
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Qualifications generation failed'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Qualifications generation failed',
       };
     }
   }
@@ -371,7 +446,11 @@ export class ContentGenerationSpecialist {
   /**
    * Create proposal structure based on type and requirements
    */
-  private createProposalStructure(proposalType: string, rfpAnalysis: any, rfp: RFP): any {
+  private createProposalStructure(
+    proposalType: string,
+    rfpAnalysis: any,
+    rfp: RFP
+  ): any {
     const baseStructure = {
       title: `Proposal for ${rfp.title}`,
       proposalType,
@@ -380,57 +459,57 @@ export class ContentGenerationSpecialist {
           id: 'executive_summary',
           title: 'Executive Summary',
           required: true,
-          order: 1
+          order: 1,
         },
         {
           id: 'company_overview',
           title: 'Company Overview',
           required: true,
-          order: 2
+          order: 2,
         },
         {
           id: 'qualifications',
           title: 'Qualifications and Experience',
           required: true,
-          order: 3
+          order: 3,
         },
         {
           id: 'technical_approach',
           title: 'Technical Approach',
           required: proposalType === 'technical',
-          order: 4
+          order: 4,
         },
         {
           id: 'methodology',
           title: 'Project Methodology',
           required: true,
-          order: 5
+          order: 5,
         },
         {
           id: 'timeline',
           title: 'Project Timeline',
           required: true,
-          order: 6
+          order: 6,
         },
         {
           id: 'pricing',
           title: 'Pricing',
           required: true,
-          order: 7
+          order: 7,
         },
         {
           id: 'compliance',
           title: 'Compliance and Certifications',
           required: true,
-          order: 8
-        }
+          order: 8,
+        },
       ],
       requirements: rfpAnalysis.requirements || {},
       metadata: {
         createdAt: new Date(),
         rfpId: rfp.id,
-        agency: rfp.agency
-      }
+        agency: rfp.agency,
+      },
     };
 
     // Add construction-specific sections
@@ -440,13 +519,13 @@ export class ContentGenerationSpecialist {
           id: 'safety_plan',
           title: 'Safety Plan',
           required: true,
-          order: 9
+          order: 9,
         },
         {
           id: 'equipment_resources',
           title: 'Equipment and Resources',
           required: true,
-          order: 10
+          order: 10,
         }
       );
     }
@@ -455,7 +534,10 @@ export class ContentGenerationSpecialist {
   }
 
   // Helper methods for generating default content
-  private generateDefaultTechnicalApproach(proposalType: string, rfp: RFP): string {
+  private generateDefaultTechnicalApproach(
+    proposalType: string,
+    rfp: RFP
+  ): string {
     return `Our technical approach for ${rfp.title} leverages industry best practices and proven methodologies. We will implement a phased approach that ensures quality deliverables while maintaining project timelines and budget requirements.`;
   }
 
@@ -464,12 +546,19 @@ export class ContentGenerationSpecialist {
   }
 
   private generateDefaultTimeline(rfp: RFP): string {
-    const deadline = rfp.deadline ? new Date(rfp.deadline) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    const deadline = rfp.deadline
+      ? new Date(rfp.deadline)
+      : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
     return `Project timeline spans from project initiation to completion by ${deadline.toDateString()}, with key milestones at 25%, 50%, 75%, and 100% completion.`;
   }
 
-  private generateQualificationsFromProfile(profile: CompanyProfile, certifications: any[]): string {
-    const certNames = certifications.map(cert => cert.certificationType).join(', ');
+  private generateQualificationsFromProfile(
+    profile: CompanyProfile,
+    certifications: any[]
+  ): string {
+    const certNames = certifications
+      .map(cert => cert.certificationType)
+      .join(', ');
     return `${profile.companyName} brings extensive qualifications including ${certNames} certifications. Our team has successfully delivered similar projects for government and private sector clients.`;
   }
 
@@ -477,7 +566,7 @@ export class ContentGenerationSpecialist {
     return [
       `${profile.companyName} has over 10 years of experience in delivering complex projects similar to this RFP requirement.`,
       `Our team has successfully completed projects for government agencies and understands the unique compliance and quality requirements.`,
-      `We have a proven track record of on-time, on-budget project delivery with high client satisfaction ratings.`
+      `We have a proven track record of on-time, on-budget project delivery with high client satisfaction ratings.`,
     ];
   }
 
@@ -485,7 +574,7 @@ export class ContentGenerationSpecialist {
     return [
       `Case Study 1: Successfully delivered a similar project for ${rfp.agency} resulting in 25% efficiency improvement.`,
       `Case Study 2: Completed a comparable initiative that saved the client over $500,000 in operational costs.`,
-      `Case Study 3: Implemented a solution that exceeded performance requirements by 30%.`
+      `Case Study 3: Implemented a solution that exceeded performance requirements by 30%.`,
     ];
   }
 
@@ -497,7 +586,7 @@ export class ContentGenerationSpecialist {
     return [
       `Over 15 years of experience in government contracting and service delivery.`,
       `Proven track record of successful project completion with government agencies.`,
-      `Strong team of certified professionals with relevant expertise.`
+      `Strong team of certified professionals with relevant expertise.`,
     ];
   }
 
@@ -505,7 +594,7 @@ export class ContentGenerationSpecialist {
     return [
       `Case Study: Successfully delivered a complex government project ahead of schedule.`,
       `Case Study: Implemented cost-effective solution that exceeded client expectations.`,
-      `Case Study: Completed challenging project with 100% client satisfaction rating.`
+      `Case Study: Completed challenging project with 100% client satisfaction rating.`,
     ];
   }
 }
@@ -519,11 +608,20 @@ export class PricingAnalysisSpecialist {
    * Analyze pricing requirements and generate competitive pricing
    */
   async analyzePricing(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`💰 Pricing Specialist: Analyzing pricing for ${workItem.inputs.rfpId}`);
-    
+    console.log(
+      `💰 Pricing Specialist: Analyzing pricing for ${workItem.inputs.rfpId}`
+    );
+
     try {
-      const { rfpId, companyProfileId, outline, content, proposalType, pipelineId } = workItem.inputs;
-      
+      const {
+        rfpId,
+        companyProfileId,
+        outline,
+        content,
+        proposalType,
+        pipelineId,
+      } = workItem.inputs;
+
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -532,13 +630,21 @@ export class PricingAnalysisSpecialist {
 
       // Get documents for pricing analysis
       const documents = await storage.getDocumentsByRFP(rfpId);
-      const documentContext = documents.map(doc => doc.extractedText).join('\n\n');
+      const documentContext = documents
+        .map(doc => doc.extractedText)
+        .join('\n\n');
 
       // Generate pricing using AI service
-      const pricingTables = await aiService.generatePricingTables(rfp, documentContext);
+      const pricingTables = await aiService.generatePricingTables(
+        rfp,
+        documentContext
+      );
 
       // Perform competitive analysis
-      const competitiveAnalysis = await this.performCompetitiveAnalysis(rfp, proposalType);
+      const competitiveAnalysis = await this.performCompetitiveAnalysis(
+        rfp,
+        proposalType
+      );
 
       // Calculate recommended pricing strategy
       const pricingStrategy = this.calculatePricingStrategy(
@@ -558,11 +664,11 @@ export class PricingAnalysisSpecialist {
           pricingTables,
           competitiveAnalysis,
           pricingStrategy,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
         importance: 8,
         tags: ['pricing_analysis', 'competitive_strategy', 'active'],
-        metadata: { rfpId, pipelineId, proposalType }
+        metadata: { rfpId, pipelineId, proposalType },
       });
 
       return {
@@ -570,37 +676,44 @@ export class PricingAnalysisSpecialist {
         data: {
           pricing_breakdown: pricingTables,
           cost_analysis: competitiveAnalysis,
-          competitive_strategy: pricingStrategy
+          competitive_strategy: pricingStrategy,
         },
         qualityScore: 0.85,
-        metadata: { phase: 'pricing_analysis', specialist: 'pricing-analyst' }
+        metadata: { phase: 'pricing_analysis', specialist: 'pricing-analyst' },
       };
-
     } catch (error) {
       console.error('❌ Pricing Specialist analysis failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Pricing analysis failed'
+        error:
+          error instanceof Error ? error.message : 'Pricing analysis failed',
       };
     }
   }
 
-  private async performCompetitiveAnalysis(rfp: RFP, proposalType: string): Promise<any> {
+  private async performCompetitiveAnalysis(
+    rfp: RFP,
+    proposalType: string
+  ): Promise<any> {
     // Get historical bids for similar projects
     const historicalBids = await storage.getHistoricalBids({
       category: proposalType,
       agency: rfp.agency,
-      limit: 10
+      limit: 10,
     });
 
-    const averageBid = historicalBids.reduce((sum, bid) => {
-      return sum + (bid.bidAmount ? parseFloat(bid.bidAmount.toString()) : 0);
-    }, 0) / Math.max(historicalBids.length, 1);
+    const averageBid =
+      historicalBids.reduce((sum, bid) => {
+        return sum + (bid.bidAmount ? parseFloat(bid.bidAmount.toString()) : 0);
+      }, 0) / Math.max(historicalBids.length, 1);
 
     const winningBids = historicalBids.filter(bid => bid.isWinner);
-    const averageWinningBid = winningBids.reduce((sum, bid) => {
-      return sum + (bid.winningBid ? parseFloat(bid.winningBid.toString()) : 0);
-    }, 0) / Math.max(winningBids.length, 1);
+    const averageWinningBid =
+      winningBids.reduce((sum, bid) => {
+        return (
+          sum + (bid.winningBid ? parseFloat(bid.winningBid.toString()) : 0)
+        );
+      }, 0) / Math.max(winningBids.length, 1);
 
     return {
       historicalAverage: averageBid,
@@ -610,31 +723,37 @@ export class PricingAnalysisSpecialist {
       marketTrends: 'Competitive market with focus on value and quality',
       recommendedRange: {
         low: averageWinningBid * 0.9,
-        high: averageWinningBid * 1.1
-      }
+        high: averageWinningBid * 1.1,
+      },
     };
   }
 
-  private calculatePricingStrategy(rfp: RFP, pricingTables: any, competitiveAnalysis: any, proposalType: string): any {
-    const basePrice = pricingTables?.totalCost || competitiveAnalysis.winningAverage || 100000;
+  private calculatePricingStrategy(
+    rfp: RFP,
+    pricingTables: any,
+    competitiveAnalysis: any,
+    proposalType: string
+  ): any {
+    const basePrice =
+      pricingTables?.totalCost || competitiveAnalysis.winningAverage || 100000;
     const margin = this.calculateMargin(proposalType, rfp.estimatedValue);
-    
+
     return {
       recommendedBid: basePrice * (1 + margin),
       strategy: this.getPricingStrategy(margin, competitiveAnalysis),
       confidenceLevel: 0.75,
       riskFactors: this.identifyRiskFactors(rfp),
       justification: `Pricing based on competitive analysis and ${margin * 100}% margin for ${proposalType} projects`,
-      margin: margin
+      margin: margin,
     };
   }
 
   private calculateMargin(proposalType: string, estimatedValue?: any): number {
     const baseMargins = {
-      'standard': 0.15,
-      'technical': 0.20,
-      'construction': 0.12,
-      'professional_services': 0.18
+      standard: 0.15,
+      technical: 0.2,
+      construction: 0.12,
+      professional_services: 0.18,
     };
     return baseMargins[proposalType as keyof typeof baseMargins] || 0.15;
   }
@@ -651,17 +770,23 @@ export class PricingAnalysisSpecialist {
 
   private identifyRiskFactors(rfp: RFP): string[] {
     const risks = [];
-    
-    if (rfp.deadline && new Date(rfp.deadline) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)) {
+
+    if (
+      rfp.deadline &&
+      new Date(rfp.deadline) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+    ) {
       risks.push('Tight deadline may require premium pricing');
     }
-    
-    if (rfp.estimatedValue && parseFloat(rfp.estimatedValue.toString()) > 1000000) {
+
+    if (
+      rfp.estimatedValue &&
+      parseFloat(rfp.estimatedValue.toString()) > 1000000
+    ) {
       risks.push('Large contract size increases competition');
     }
-    
+
     risks.push('Government procurement requires competitive pricing');
-    
+
     return risks;
   }
 }
@@ -675,11 +800,21 @@ export class ComplianceValidationSpecialist {
    * Validate proposal compliance and perform risk assessment
    */
   async validateCompliance(workItem: WorkItem): Promise<SpecialistWorkResult> {
-    console.log(`✅ Compliance Specialist: Validating compliance for ${workItem.inputs.rfpId}`);
-    
+    console.log(
+      `✅ Compliance Specialist: Validating compliance for ${workItem.inputs.rfpId}`
+    );
+
     try {
-      const { rfpId, companyProfileId, outline, content, pricing, proposalType, pipelineId } = workItem.inputs;
-      
+      const {
+        rfpId,
+        companyProfileId,
+        outline,
+        content,
+        pricing,
+        proposalType,
+        pipelineId,
+      } = workItem.inputs;
+
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -688,7 +823,9 @@ export class ComplianceValidationSpecialist {
 
       // Get RFP documents for compliance analysis
       const documents = await storage.getDocumentsByRFP(rfpId);
-      const documentContext = documents.map(doc => doc.extractedText).join('\n\n');
+      const documentContext = documents
+        .map(doc => doc.extractedText)
+        .join('\n\n');
 
       // Analyze document compliance using AI
       const complianceAnalysis = await aiService.analyzeDocumentCompliance(
@@ -699,7 +836,10 @@ export class ComplianceValidationSpecialist {
       // Validate company certifications if profile provided
       let certificationCompliance = null;
       if (companyProfileId) {
-        certificationCompliance = await this.validateCertifications(companyProfileId, complianceAnalysis.requirements);
+        certificationCompliance = await this.validateCertifications(
+          companyProfileId,
+          complianceAnalysis.requirements
+        );
       }
 
       // Create compliance matrix
@@ -711,7 +851,11 @@ export class ComplianceValidationSpecialist {
       );
 
       // Perform risk assessment
-      const riskAssessment = this.performRiskAssessment(rfp, complianceAnalysis, complianceMatrix);
+      const riskAssessment = this.performRiskAssessment(
+        rfp,
+        complianceAnalysis,
+        complianceMatrix
+      );
 
       // Generate validation report
       const validationReport = this.generateValidationReport(
@@ -731,11 +875,16 @@ export class ComplianceValidationSpecialist {
           riskAssessment,
           validationReport,
           certificationCompliance,
-          generatedAt: new Date()
+          generatedAt: new Date(),
         },
         importance: 9,
-        tags: ['compliance_analysis', 'risk_assessment', 'validation', 'active'],
-        metadata: { rfpId, pipelineId, proposalType }
+        tags: [
+          'compliance_analysis',
+          'risk_assessment',
+          'validation',
+          'active',
+        ],
+        metadata: { rfpId, pipelineId, proposalType },
       });
 
       return {
@@ -743,45 +892,61 @@ export class ComplianceValidationSpecialist {
         data: {
           compliance_matrix: complianceMatrix,
           validation_report: validationReport,
-          risk_assessment: riskAssessment
+          risk_assessment: riskAssessment,
         },
         qualityScore: this.calculateComplianceScore(complianceMatrix),
-        metadata: { phase: 'compliance_validation', specialist: 'compliance-checker' }
+        metadata: {
+          phase: 'compliance_validation',
+          specialist: 'compliance-checker',
+        },
       };
-
     } catch (error) {
       console.error('❌ Compliance Specialist validation failed:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Compliance validation failed'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Compliance validation failed',
       };
     }
   }
 
-  private async validateCertifications(companyProfileId: string, requirements: any[]): Promise<any> {
-    const certifications = await storage.getCompanyCertifications(companyProfileId);
+  private async validateCertifications(
+    companyProfileId: string,
+    requirements: any[]
+  ): Promise<any> {
+    const certifications =
+      await storage.getCompanyCertifications(companyProfileId);
     const insurance = await storage.getCompanyInsurance(companyProfileId);
-    
+
     const certificationValidation = {
       required: requirements.filter(req => req.type === 'certification'),
       available: certifications.map(cert => ({
         type: cert.certificationType,
         status: cert.status,
         expirationDate: cert.expirationDate,
-        valid: cert.status === 'active' && (!cert.expirationDate || new Date(cert.expirationDate) > new Date())
+        valid:
+          cert.status === 'active' &&
+          (!cert.expirationDate || new Date(cert.expirationDate) > new Date()),
       })),
       insurance: insurance.map(ins => ({
         type: ins.insuranceType,
         coverage: ins.coverageAmount,
-        valid: ins.isActive && (!ins.expirationDate || new Date(ins.expirationDate) > new Date())
+        valid:
+          ins.isActive &&
+          (!ins.expirationDate || new Date(ins.expirationDate) > new Date()),
       })),
-      compliance: 'partial' // Will be calculated
+      compliance: 'partial', // Will be calculated
     };
 
     // Calculate compliance percentage
     const requiredCerts = certificationValidation.required.length;
-    const validCerts = certificationValidation.available.filter(cert => cert.valid).length;
-    certificationValidation.compliance = requiredCerts > 0 ? (validCerts / requiredCerts) : 1;
+    const validCerts = certificationValidation.available.filter(
+      cert => cert.valid
+    ).length;
+    certificationValidation.compliance =
+      requiredCerts > 0 ? validCerts / requiredCerts : 1;
 
     return certificationValidation;
   }
@@ -801,9 +966,19 @@ export class ComplianceValidationSpecialist {
           requirement: req.description,
           category: req.type,
           required: req.mandatory,
-          status: this.determineComplianceStatus(req, content, pricing, certificationCompliance),
-          evidence: this.gatherEvidence(req, content, pricing, certificationCompliance),
-          riskLevel: req.mandatory ? 'high' : 'medium'
+          status: this.determineComplianceStatus(
+            req,
+            content,
+            pricing,
+            certificationCompliance
+          ),
+          evidence: this.gatherEvidence(
+            req,
+            content,
+            pricing,
+            certificationCompliance
+          ),
+          riskLevel: req.mandatory ? 'high' : 'medium',
         });
       });
     }
@@ -811,14 +986,18 @@ export class ComplianceValidationSpecialist {
     // Add certification requirements
     if (certificationCompliance) {
       certificationCompliance.required.forEach((cert: any) => {
-        const availableCert = certificationCompliance.available.find((a: any) => a.type === cert.type);
+        const availableCert = certificationCompliance.available.find(
+          (a: any) => a.type === cert.type
+        );
         matrix.push({
           requirement: `${cert.type} certification required`,
           category: 'certification',
           required: true,
           status: availableCert?.valid ? 'compliant' : 'non-compliant',
-          evidence: availableCert ? [`${cert.type} certification active`] : ['Certification not found'],
-          riskLevel: 'high'
+          evidence: availableCert
+            ? [`${cert.type} certification active`]
+            : ['Certification not found'],
+          riskLevel: 'high',
         });
       });
     }
@@ -826,10 +1005,17 @@ export class ComplianceValidationSpecialist {
     return matrix;
   }
 
-  private determineComplianceStatus(req: any, content: any, pricing: any, certificationCompliance: any): string {
+  private determineComplianceStatus(
+    req: any,
+    content: any,
+    pricing: any,
+    certificationCompliance: any
+  ): string {
     // Simple compliance determination logic
     if (req.type === 'certification' && certificationCompliance) {
-      const cert = certificationCompliance.available.find((c: any) => c.type.includes(req.description));
+      const cert = certificationCompliance.available.find((c: any) =>
+        c.type.includes(req.description)
+      );
       return cert?.valid ? 'compliant' : 'non-compliant';
     }
 
@@ -844,11 +1030,18 @@ export class ComplianceValidationSpecialist {
     return req.mandatory ? 'requires-review' : 'compliant';
   }
 
-  private gatherEvidence(req: any, content: any, pricing: any, certificationCompliance: any): string[] {
+  private gatherEvidence(
+    req: any,
+    content: any,
+    pricing: any,
+    certificationCompliance: any
+  ): string[] {
     const evidence = [];
 
     if (req.type === 'certification' && certificationCompliance) {
-      const cert = certificationCompliance.available.find((c: any) => c.type.includes(req.description));
+      const cert = certificationCompliance.available.find((c: any) =>
+        c.type.includes(req.description)
+      );
       if (cert) {
         evidence.push(`${cert.type} certification (Status: ${cert.status})`);
       }
@@ -865,27 +1058,36 @@ export class ComplianceValidationSpecialist {
     return evidence.length > 0 ? evidence : ['Manual review required'];
   }
 
-  private performRiskAssessment(rfp: RFP, complianceAnalysis: any, complianceMatrix: any[]): any {
+  private performRiskAssessment(
+    rfp: RFP,
+    complianceAnalysis: any,
+    complianceMatrix: any[]
+  ): any {
     const risks = [];
 
     // Check for high-risk non-compliance items
-    const nonCompliantItems = complianceMatrix.filter(item => item.status === 'non-compliant' && item.required);
+    const nonCompliantItems = complianceMatrix.filter(
+      item => item.status === 'non-compliant' && item.required
+    );
     if (nonCompliantItems.length > 0) {
       risks.push({
         type: 'compliance',
         severity: 'high',
         description: `${nonCompliantItems.length} required compliance items not met`,
-        impact: 'Proposal may be disqualified'
+        impact: 'Proposal may be disqualified',
       });
     }
 
     // Check deadline risk
-    if (rfp.deadline && new Date(rfp.deadline) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)) {
+    if (
+      rfp.deadline &&
+      new Date(rfp.deadline) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    ) {
       risks.push({
         type: 'deadline',
         severity: 'medium',
         description: 'Tight submission deadline',
-        impact: 'Limited time for corrections'
+        impact: 'Limited time for corrections',
       });
     }
 
@@ -896,7 +1098,7 @@ export class ComplianceValidationSpecialist {
           type: flag.type,
           severity: flag.severity,
           description: flag.description,
-          impact: 'Review and mitigation required'
+          impact: 'Review and mitigation required',
         });
       });
     }
@@ -905,7 +1107,7 @@ export class ComplianceValidationSpecialist {
       overallRisk: this.calculateOverallRisk(risks),
       risks: risks,
       recommendations: this.generateRiskRecommendations(risks),
-      mitigationActions: this.generateMitigationActions(risks)
+      mitigationActions: this.generateMitigationActions(risks),
     };
   }
 
@@ -922,11 +1124,15 @@ export class ComplianceValidationSpecialist {
     const recommendations = [];
 
     if (risks.some(r => r.type === 'compliance')) {
-      recommendations.push('Review and address all compliance requirements before submission');
+      recommendations.push(
+        'Review and address all compliance requirements before submission'
+      );
     }
 
     if (risks.some(r => r.type === 'deadline')) {
-      recommendations.push('Prioritize critical sections and allocate additional resources if needed');
+      recommendations.push(
+        'Prioritize critical sections and allocate additional resources if needed'
+      );
     }
 
     if (risks.some(r => r.severity === 'high')) {
@@ -942,13 +1148,17 @@ export class ComplianceValidationSpecialist {
     risks.forEach(risk => {
       switch (risk.type) {
         case 'compliance':
-          actions.push('Obtain missing certifications or provide alternative compliance evidence');
+          actions.push(
+            'Obtain missing certifications or provide alternative compliance evidence'
+          );
           break;
         case 'deadline':
           actions.push('Develop expedited review and approval process');
           break;
         case 'requirements':
-          actions.push('Clarify requirements with contracting officer if possible');
+          actions.push(
+            'Clarify requirements with contracting officer if possible'
+          );
           break;
         default:
           actions.push('Monitor and review risk during proposal development');
@@ -963,32 +1173,49 @@ export class ComplianceValidationSpecialist {
     riskAssessment: any,
     certificationCompliance: any
   ): any {
-    const compliantItems = complianceMatrix.filter(item => item.status === 'compliant').length;
+    const compliantItems = complianceMatrix.filter(
+      item => item.status === 'compliant'
+    ).length;
     const totalItems = complianceMatrix.length;
-    const compliancePercentage = totalItems > 0 ? (compliantItems / totalItems) * 100 : 100;
+    const compliancePercentage =
+      totalItems > 0 ? (compliantItems / totalItems) * 100 : 100;
 
     return {
       summary: `Compliance validation completed. ${compliantItems}/${totalItems} requirements met (${compliancePercentage.toFixed(1)}%)`,
       compliancePercentage: compliancePercentage,
-      overallStatus: compliancePercentage >= 90 ? 'compliant' : compliancePercentage >= 75 ? 'mostly-compliant' : 'requires-attention',
-      criticalIssues: complianceMatrix.filter(item => item.status === 'non-compliant' && item.required),
+      overallStatus:
+        compliancePercentage >= 90
+          ? 'compliant'
+          : compliancePercentage >= 75
+            ? 'mostly-compliant'
+            : 'requires-attention',
+      criticalIssues: complianceMatrix.filter(
+        item => item.status === 'non-compliant' && item.required
+      ),
       recommendedActions: this.generateComplianceActions(complianceMatrix),
       riskLevel: riskAssessment.overallRisk,
-      readyForSubmission: compliancePercentage >= 85 && riskAssessment.overallRisk !== 'high'
+      readyForSubmission:
+        compliancePercentage >= 85 && riskAssessment.overallRisk !== 'high',
     };
   }
 
   private generateComplianceActions(complianceMatrix: any[]): string[] {
     const actions = [];
-    
-    const nonCompliant = complianceMatrix.filter(item => item.status === 'non-compliant');
+
+    const nonCompliant = complianceMatrix.filter(
+      item => item.status === 'non-compliant'
+    );
     if (nonCompliant.length > 0) {
       actions.push(`Address ${nonCompliant.length} non-compliant requirements`);
     }
 
-    const needsReview = complianceMatrix.filter(item => item.status === 'requires-review');
+    const needsReview = complianceMatrix.filter(
+      item => item.status === 'requires-review'
+    );
     if (needsReview.length > 0) {
-      actions.push(`Review ${needsReview.length} requirements that need manual validation`);
+      actions.push(
+        `Review ${needsReview.length} requirements that need manual validation`
+      );
     }
 
     if (actions.length === 0) {
@@ -1000,11 +1227,16 @@ export class ComplianceValidationSpecialist {
 
   private calculateComplianceScore(complianceMatrix: any[]): number {
     if (complianceMatrix.length === 0) return 0.8;
-    
-    const compliantItems = complianceMatrix.filter(item => item.status === 'compliant').length;
-    const partiallyCompliant = complianceMatrix.filter(item => item.status === 'requires-review').length;
-    
-    const score = (compliantItems + (partiallyCompliant * 0.5)) / complianceMatrix.length;
+
+    const compliantItems = complianceMatrix.filter(
+      item => item.status === 'compliant'
+    ).length;
+    const partiallyCompliant = complianceMatrix.filter(
+      item => item.status === 'requires-review'
+    ).length;
+
+    const score =
+      (compliantItems + partiallyCompliant * 0.5) / complianceMatrix.length;
     return Math.max(0.5, Math.min(1.0, score));
   }
 }
@@ -1012,4 +1244,5 @@ export class ComplianceValidationSpecialist {
 // Export specialist instances
 export const contentGenerationSpecialist = new ContentGenerationSpecialist();
 export const pricingAnalysisSpecialist = new PricingAnalysisSpecialist();
-export const complianceValidationSpecialist = new ComplianceValidationSpecialist();
+export const complianceValidationSpecialist =
+  new ComplianceValidationSpecialist();

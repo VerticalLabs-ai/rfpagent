@@ -3,7 +3,15 @@ import { workflowCoordinator } from './workflowCoordinator';
 import { agentRegistryService } from './agentRegistryService';
 import { agentMemoryService } from './agentMemoryService';
 import { stagehandTools } from './stagehandTools';
-import type { Submission, Proposal, Portal, RFP, SubmissionPipeline, WorkItem, AgentSession } from '@shared/schema';
+import type {
+  Submission,
+  Proposal,
+  Portal,
+  RFP,
+  SubmissionPipeline,
+  WorkItem,
+  AgentSession,
+} from '@shared/schema';
 import { nanoid } from 'nanoid';
 
 export interface SubmissionPipelineRequest {
@@ -47,7 +55,16 @@ export interface SubmissionPipelineInstance {
   rfpId: string;
   proposalId: string;
   portalId: string;
-  currentPhase: 'queued' | 'preflight' | 'authenticating' | 'filling' | 'uploading' | 'submitting' | 'verifying' | 'completed' | 'failed';
+  currentPhase:
+    | 'queued'
+    | 'preflight'
+    | 'authenticating'
+    | 'filling'
+    | 'uploading'
+    | 'submitting'
+    | 'verifying'
+    | 'completed'
+    | 'failed';
   status: 'pending' | 'in_progress' | 'suspended' | 'completed' | 'failed';
   progress: number;
   workItems: string[]; // IDs of created work items
@@ -74,12 +91,12 @@ export interface SubmissionPipelineInstance {
 
 /**
  * Submission Pipeline Orchestrator
- * 
+ *
  * Orchestrates the complete proposal submission pipeline through a 3-tier agent system:
  * - Orchestrator: Manages the overall submission pipeline and coordinates phases
  * - Manager: Coordinates specialists for each phase (submission-manager)
  * - Specialists: Execute specific tasks (portal-auth-specialist, form-submission-specialist, document-upload-specialist)
- * 
+ *
  * Pipeline Phases:
  * 1. Preflight Checks - Validate submission readiness and portal requirements
  * 2. Portal Authentication - Login to government portal with credentials
@@ -106,13 +123,13 @@ export class SubmissionOrchestrator {
     try {
       // Register Submission Orchestrator Agent (Tier 1)
       await this.registerSubmissionOrchestrator();
-      
+
       // Register Submission Manager Agent (Tier 2)
       await this.registerSubmissionManager();
-      
+
       // Register Submission Specialists (Tier 3)
       await this.registerSubmissionSpecialists();
-      
+
       console.log('✅ Submission agents initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize submission agents:', error);
@@ -126,22 +143,28 @@ export class SubmissionOrchestrator {
         tier: 'orchestrator',
         role: 'submission-orchestrator',
         displayName: 'Submission Pipeline Orchestrator',
-        description: 'Orchestrates complete proposal submission workflows through government portals',
+        description:
+          'Orchestrates complete proposal submission workflows through government portals',
         capabilities: [
           'submission_pipeline_management',
           'phase_coordination',
           'progress_tracking',
           'error_recovery',
-          'audit_logging'
+          'audit_logging',
         ],
-        tools: ['workflow_coordinator', 'agent_memory', 'storage', 'notifications'],
+        tools: [
+          'workflow_coordinator',
+          'agent_memory',
+          'storage',
+          'notifications',
+        ],
         maxConcurrency: 3,
         configuration: {
           phaseTimeout: this.phaseTimeout,
           authTimeout: this.authTimeout,
           submitTimeout: this.submitTimeout,
-          maxRetries: 3
-        }
+          maxRetries: 3,
+        },
       });
     } catch (error) {
       if (!error.message.includes('already exists')) {
@@ -157,13 +180,14 @@ export class SubmissionOrchestrator {
         tier: 'manager',
         role: 'submission-manager',
         displayName: 'Submission Manager',
-        description: 'Manages submission specialists and coordinates portal automation',
+        description:
+          'Manages submission specialists and coordinates portal automation',
         capabilities: [
           'specialist_coordination',
           'browser_session_management',
           'portal_navigation',
           'error_handling',
-          'retry_management'
+          'retry_management',
         ],
         tools: ['stagehand_tools', 'mastra_scraping', 'agent_coordination'],
         maxConcurrency: 5,
@@ -171,8 +195,8 @@ export class SubmissionOrchestrator {
         configuration: {
           browserTimeout: 300000, // 5 minutes
           retryDelay: 30000, // 30 seconds
-          maxConcurrentSessions: 3
-        }
+          maxConcurrentSessions: 3,
+        },
       });
     } catch (error) {
       if (!error.message.includes('already exists')) {
@@ -187,20 +211,35 @@ export class SubmissionOrchestrator {
         agentId: 'portal-authentication-specialist',
         displayName: 'Portal Authentication Specialist',
         description: 'Handles portal login, MFA, and session management',
-        capabilities: ['portal_login', 'mfa_handling', 'session_management', 'credential_validation']
+        capabilities: [
+          'portal_login',
+          'mfa_handling',
+          'session_management',
+          'credential_validation',
+        ],
       },
       {
         agentId: 'form-submission-specialist',
         displayName: 'Form Submission Specialist',
         description: 'Navigates and fills submission forms with proposal data',
-        capabilities: ['form_navigation', 'field_population', 'validation_handling', 'dynamic_forms']
+        capabilities: [
+          'form_navigation',
+          'field_population',
+          'validation_handling',
+          'dynamic_forms',
+        ],
       },
       {
         agentId: 'document-upload-specialist',
         displayName: 'Document Upload Specialist',
         description: 'Handles document uploads and attachment management',
-        capabilities: ['file_upload', 'document_validation', 'attachment_management', 'upload_verification']
-      }
+        capabilities: [
+          'file_upload',
+          'document_validation',
+          'attachment_management',
+          'upload_verification',
+        ],
+      },
     ];
 
     for (const specialist of specialists) {
@@ -218,12 +257,15 @@ export class SubmissionOrchestrator {
           configuration: {
             browserHeadless: false,
             actionTimeout: 30000,
-            waitTimeout: 10000
-          }
+            waitTimeout: 10000,
+          },
         });
       } catch (error) {
         if (!error.message.includes('already exists')) {
-          console.warn(`⚠️ Failed to register specialist ${specialist.agentId}:`, error.message);
+          console.warn(
+            `⚠️ Failed to register specialist ${specialist.agentId}:`,
+            error.message
+          );
         }
       }
     }
@@ -232,8 +274,12 @@ export class SubmissionOrchestrator {
   /**
    * Initiate a comprehensive submission pipeline
    */
-  async initiateSubmissionPipeline(request: SubmissionPipelineRequest): Promise<SubmissionPipelineResult> {
-    console.log(`🚀 Initiating submission pipeline for submission: ${request.submissionId}`);
+  async initiateSubmissionPipeline(
+    request: SubmissionPipelineRequest
+  ): Promise<SubmissionPipelineResult> {
+    console.log(
+      `🚀 Initiating submission pipeline for submission: ${request.submissionId}`
+    );
 
     try {
       // Validate submission exists and get related data
@@ -279,11 +325,14 @@ export class SubmissionOrchestrator {
           proposalType: proposal.status,
           priority: request.priority || 5,
           deadline: request.deadline,
-          browserOptions: request.browserOptions || { headless: false, timeout: 300000 },
-          ...request.metadata
+          browserOptions: request.browserOptions || {
+            headless: false,
+            timeout: 300000,
+          },
+          ...request.metadata,
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       this.activePipelines.set(pipelineId, pipeline);
@@ -296,7 +345,7 @@ export class SubmissionOrchestrator {
         status: 'pending',
         progress: 0,
         maxRetries: pipeline.maxRetries,
-        metadata: pipeline.metadata
+        metadata: pipeline.metadata,
       });
 
       // Store pipeline in agent memory for tracking
@@ -308,11 +357,11 @@ export class SubmissionOrchestrator {
         content: pipeline,
         importance: 9,
         tags: ['submission_pipeline', 'active_pipeline', portal.name],
-        metadata: { 
+        metadata: {
           submissionId: request.submissionId,
           sessionId: request.sessionId,
-          portalId: submission.portalId
-        }
+          portalId: submission.portalId,
+        },
       });
 
       // Update submission status
@@ -321,8 +370,8 @@ export class SubmissionOrchestrator {
         submissionData: {
           pipelineId,
           initiatedAt: new Date(),
-          portalName: portal.name
-        }
+          portalName: portal.name,
+        },
       });
 
       // Create audit log
@@ -334,8 +383,8 @@ export class SubmissionOrchestrator {
           pipelineId,
           portalId: submission.portalId,
           sessionId: request.sessionId,
-          rfpTitle: rfp.title
-        }
+          rfpTitle: rfp.title,
+        },
       });
 
       // Create initial event
@@ -349,9 +398,9 @@ export class SubmissionOrchestrator {
         details: {
           rfpTitle: rfp.title,
           portalName: portal.name,
-          proposalId: submission.proposalId
+          proposalId: submission.proposalId,
         },
-        agentId: 'submission-orchestrator'
+        agentId: 'submission-orchestrator',
       });
 
       // Start the pipeline with Phase 1: Preflight Checks
@@ -365,12 +414,11 @@ export class SubmissionOrchestrator {
         progress: pipeline.progress,
         status: pipeline.status,
         estimatedCompletion: this.calculateEstimatedCompletion(pipeline),
-        nextSteps: this.getNextSteps(pipeline)
+        nextSteps: this.getNextSteps(pipeline),
       };
-
     } catch (error) {
       console.error('❌ Failed to initiate submission pipeline:', error);
-      
+
       // Create failure event
       if (request.submissionId) {
         await storage.createSubmissionEvent({
@@ -381,14 +429,15 @@ export class SubmissionOrchestrator {
           level: 'error',
           message: 'Failed to initiate submission pipeline',
           details: { error: error.message },
-          agentId: 'submission-orchestrator'
+          agentId: 'submission-orchestrator',
         });
       }
 
       return {
         success: false,
         submissionId: request.submissionId,
-        error: error instanceof Error ? error.message : 'Pipeline initiation failed'
+        error:
+          error instanceof Error ? error.message : 'Pipeline initiation failed',
       };
     }
   }
@@ -397,8 +446,12 @@ export class SubmissionOrchestrator {
    * Phase 1: Preflight Checks
    * Validate submission readiness and portal requirements
    */
-  private async executePhase1_PreflightChecks(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`🔍 Phase 1: Preflight checks for pipeline ${pipeline.pipelineId}`);
+  private async executePhase1_PreflightChecks(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `🔍 Phase 1: Preflight checks for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.status = 'in_progress';
     pipeline.currentPhase = 'preflight';
@@ -416,7 +469,7 @@ export class SubmissionOrchestrator {
       phase: 'preflight',
       level: 'info',
       message: 'Starting preflight checks',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for preflight checks
@@ -428,28 +481,41 @@ export class SubmissionOrchestrator {
         proposalId: pipeline.proposalId,
         portalId: pipeline.portalId,
         rfpId: pipeline.rfpId,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['portal_requirements', 'document_checklist', 'form_mapping', 'validation_results'],
+      expectedOutputs: [
+        'portal_requirements',
+        'document_checklist',
+        'form_mapping',
+        'validation_results',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'preflight', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'preflight', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(preflightWorkItem.id);
 
     // Schedule phase monitoring
-    this.schedulePhaseCompletion(pipeline, preflightWorkItem.id, 'authenticating');
+    this.schedulePhaseCompletion(
+      pipeline,
+      preflightWorkItem.id,
+      'authenticating'
+    );
   }
 
   /**
    * Phase 2: Portal Authentication
    * Login to government portal with credentials
    */
-  private async executePhase2_PortalAuthentication(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`🔐 Phase 2: Portal authentication for pipeline ${pipeline.pipelineId}`);
+  private async executePhase2_PortalAuthentication(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `🔐 Phase 2: Portal authentication for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'authenticating';
     pipeline.progress = 25;
@@ -466,7 +532,7 @@ export class SubmissionOrchestrator {
       phase: 'authenticating',
       level: 'info',
       message: 'Starting portal authentication',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for portal authentication
@@ -478,14 +544,18 @@ export class SubmissionOrchestrator {
         portalId: pipeline.portalId,
         preflightResults: pipeline.results.preflight,
         browserOptions: pipeline.metadata.browserOptions,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['browser_session_id', 'authentication_status', 'session_data'],
+      expectedOutputs: [
+        'browser_session_id',
+        'authentication_status',
+        'session_data',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.authTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'authenticating', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'authenticating', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(authWorkItem.id);
@@ -498,8 +568,12 @@ export class SubmissionOrchestrator {
    * Phase 3: Form Population
    * Navigate and fill submission forms
    */
-  private async executePhase3_FormPopulation(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`📝 Phase 3: Form population for pipeline ${pipeline.pipelineId}`);
+  private async executePhase3_FormPopulation(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `📝 Phase 3: Form population for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'filling';
     pipeline.progress = 45;
@@ -516,7 +590,7 @@ export class SubmissionOrchestrator {
       phase: 'filling',
       level: 'info',
       message: 'Starting form population',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for form population
@@ -529,14 +603,14 @@ export class SubmissionOrchestrator {
         browserSessionId: pipeline.results.authentication?.browser_session_id,
         formMapping: pipeline.results.preflight?.form_mapping,
         authenticationData: pipeline.results.authentication,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
       expectedOutputs: ['form_data', 'populated_fields', 'validation_status'],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'filling', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'filling', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(formWorkItem.id);
@@ -549,8 +623,12 @@ export class SubmissionOrchestrator {
    * Phase 4: Document Attachment
    * Upload required documents and attachments
    */
-  private async executePhase4_DocumentAttachment(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`📎 Phase 4: Document attachment for pipeline ${pipeline.pipelineId}`);
+  private async executePhase4_DocumentAttachment(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `📎 Phase 4: Document attachment for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'uploading';
     pipeline.progress = 65;
@@ -567,7 +645,7 @@ export class SubmissionOrchestrator {
       phase: 'uploading',
       level: 'info',
       message: 'Starting document uploads',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for document uploads
@@ -580,14 +658,18 @@ export class SubmissionOrchestrator {
         browserSessionId: pipeline.results.authentication?.browser_session_id,
         documentChecklist: pipeline.results.preflight?.document_checklist,
         formData: pipeline.results.formFilling,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['uploaded_documents', 'upload_confirmations', 'attachment_status'],
+      expectedOutputs: [
+        'uploaded_documents',
+        'upload_confirmations',
+        'attachment_status',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'uploading', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'uploading', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(uploadWorkItem.id);
@@ -600,8 +682,12 @@ export class SubmissionOrchestrator {
    * Phase 5: Submission Execution
    * Execute the submission and capture confirmation
    */
-  private async executePhase5_SubmissionExecution(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`🚀 Phase 5: Submission execution for pipeline ${pipeline.pipelineId}`);
+  private async executePhase5_SubmissionExecution(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `🚀 Phase 5: Submission execution for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'submitting';
     pipeline.progress = 80;
@@ -618,7 +704,7 @@ export class SubmissionOrchestrator {
       phase: 'submitting',
       level: 'info',
       message: 'Executing submission',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for submission execution
@@ -630,14 +716,18 @@ export class SubmissionOrchestrator {
         browserSessionId: pipeline.results.authentication?.browser_session_id,
         formData: pipeline.results.formFilling,
         uploadedDocuments: pipeline.results.documentUploads,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['submission_confirmation', 'reference_number', 'submission_timestamp'],
+      expectedOutputs: [
+        'submission_confirmation',
+        'reference_number',
+        'submission_timestamp',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.submitTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'submitting', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'submitting', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(submitWorkItem.id);
@@ -650,8 +740,12 @@ export class SubmissionOrchestrator {
    * Phase 6: Receipt Verification
    * Verify submission receipt and capture reference numbers
    */
-  private async executePhase6_ReceiptVerification(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`📋 Phase 6: Receipt verification for pipeline ${pipeline.pipelineId}`);
+  private async executePhase6_ReceiptVerification(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `📋 Phase 6: Receipt verification for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'verifying';
     pipeline.progress = 95;
@@ -668,7 +762,7 @@ export class SubmissionOrchestrator {
       phase: 'verifying',
       level: 'info',
       message: 'Verifying submission receipt',
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create work item for receipt verification
@@ -679,14 +773,18 @@ export class SubmissionOrchestrator {
         submissionId: pipeline.submissionId,
         browserSessionId: pipeline.results.authentication?.browser_session_id,
         submissionConfirmation: pipeline.results.submission,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['receipt_data', 'verification_status', 'final_confirmation'],
+      expectedOutputs: [
+        'receipt_data',
+        'verification_status',
+        'final_confirmation',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.submissionId,
       createdByAgentId: 'submission-orchestrator',
-      metadata: { phase: 'verifying', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'verifying', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(verifyWorkItem.id);
@@ -698,7 +796,9 @@ export class SubmissionOrchestrator {
   /**
    * Complete the submission pipeline
    */
-  private async completeSubmissionPipeline(pipeline: SubmissionPipelineInstance): Promise<void> {
+  private async completeSubmissionPipeline(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
     console.log(`🎉 Completing submission pipeline ${pipeline.pipelineId}`);
 
     pipeline.currentPhase = 'completed';
@@ -718,15 +818,15 @@ export class SubmissionOrchestrator {
         ...pipeline.metadata,
         pipelineId: pipeline.pipelineId,
         completedAt: new Date(),
-        referenceNumber: pipeline.results.verification?.reference_number
-      }
+        referenceNumber: pipeline.results.verification?.reference_number,
+      },
     });
 
     // CRITICAL: Update proposal status to 'submitted' after receipt verification
     await storage.updateProposal(pipeline.proposalId, {
       status: 'submitted',
       submittedAt: new Date(),
-      receiptData: pipeline.results.verification?.receipt_data
+      receiptData: pipeline.results.verification?.receipt_data,
     });
 
     // Create success notification
@@ -735,7 +835,7 @@ export class SubmissionOrchestrator {
       title: 'Proposal Submitted Successfully',
       message: `Proposal has been successfully submitted to ${pipeline.metadata.portalName}. Reference: ${pipeline.results.verification?.reference_number || 'N/A'}`,
       relatedEntityType: 'submission',
-      relatedEntityId: pipeline.submissionId
+      relatedEntityId: pipeline.submissionId,
     });
 
     // Store completion in agent memory
@@ -750,11 +850,15 @@ export class SubmissionOrchestrator {
         portalName: pipeline.metadata.portalName,
         referenceNumber: pipeline.results.verification?.reference_number,
         duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
-        phases: Object.keys(pipeline.results).length
+        phases: Object.keys(pipeline.results).length,
       },
       importance: 10,
-      tags: ['completed_pipeline', 'submission_success', pipeline.metadata.portalName],
-      metadata: { success: true, submissionType: 'automated' }
+      tags: [
+        'completed_pipeline',
+        'submission_success',
+        pipeline.metadata.portalName,
+      ],
+      metadata: { success: true, submissionType: 'automated' },
     });
 
     // Create completion event
@@ -768,9 +872,9 @@ export class SubmissionOrchestrator {
       details: {
         referenceNumber: pipeline.results.verification?.reference_number,
         duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
-        phases: Object.keys(pipeline.results).length
+        phases: Object.keys(pipeline.results).length,
       },
-      agentId: 'submission-orchestrator'
+      agentId: 'submission-orchestrator',
     });
 
     // Create audit log
@@ -782,8 +886,8 @@ export class SubmissionOrchestrator {
         pipelineId: pipeline.pipelineId,
         portalName: pipeline.metadata.portalName,
         referenceNumber: pipeline.results.verification?.reference_number,
-        duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime()
-      }
+        duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
+      },
     });
 
     // Remove from active pipelines
@@ -795,7 +899,11 @@ export class SubmissionOrchestrator {
   /**
    * Handle phase completion and transition to next phase
    */
-  async handlePhaseCompletion(pipelineId: string, workItemIds: string[], nextPhase: string): Promise<void> {
+  async handlePhaseCompletion(
+    pipelineId: string,
+    workItemIds: string[],
+    nextPhase: string
+  ): Promise<void> {
     const pipeline = this.activePipelines.get(pipelineId);
     if (!pipeline) {
       console.warn(`⚠️ Pipeline not found: ${pipelineId}`);
@@ -805,19 +913,29 @@ export class SubmissionOrchestrator {
     try {
       // Check if all work items for this phase are completed
       const workItems = await Promise.all(
-        (Array.isArray(workItemIds) ? workItemIds : [workItemIds]).map(id => storage.getWorkItem(id))
+        (Array.isArray(workItemIds) ? workItemIds : [workItemIds]).map(id =>
+          storage.getWorkItem(id)
+        )
       );
 
-      const allCompleted = workItems.every(item => item?.status === 'completed');
+      const allCompleted = workItems.every(
+        item => item?.status === 'completed'
+      );
       const hasFailures = workItems.some(item => item?.status === 'failed');
 
       if (hasFailures) {
-        await this.handlePipelineFailure(pipeline, 'Work item failure in phase', workItems);
+        await this.handlePipelineFailure(
+          pipeline,
+          'Work item failure in phase',
+          workItems
+        );
         return;
       }
 
       if (!allCompleted) {
-        console.log(`⏳ Waiting for work items to complete in phase ${pipeline.currentPhase}`);
+        console.log(
+          `⏳ Waiting for work items to complete in phase ${pipeline.currentPhase}`
+        );
         return;
       }
 
@@ -841,7 +959,7 @@ export class SubmissionOrchestrator {
         level: 'info',
         message: `Phase ${pipeline.currentPhase} completed successfully`,
         details: phaseResults,
-        agentId: 'submission-orchestrator'
+        agentId: 'submission-orchestrator',
       });
 
       // Transition to next phase
@@ -867,25 +985,36 @@ export class SubmissionOrchestrator {
         default:
           console.warn(`⚠️ Unknown next phase: ${nextPhase}`);
       }
-
     } catch (error) {
-      console.error(`❌ Failed to handle phase completion for pipeline ${pipelineId}:`, error);
-      await this.handlePipelineFailure(pipeline, error instanceof Error ? error.message : 'Phase transition failed');
+      console.error(
+        `❌ Failed to handle phase completion for pipeline ${pipelineId}:`,
+        error
+      );
+      await this.handlePipelineFailure(
+        pipeline,
+        error instanceof Error ? error.message : 'Phase transition failed'
+      );
     }
   }
 
   /**
    * Handle pipeline failure with retry logic
    */
-  private async handlePipelineFailure(pipeline: SubmissionPipelineInstance, error: string, failedWorkItems?: any[]): Promise<void> {
+  private async handlePipelineFailure(
+    pipeline: SubmissionPipelineInstance,
+    error: string,
+    failedWorkItems?: any[]
+  ): Promise<void> {
     console.error(`❌ Pipeline ${pipeline.pipelineId} failed: ${error}`);
 
     pipeline.retryCount++;
 
     // Check if we should retry
     if (pipeline.retryCount <= pipeline.maxRetries && this.shouldRetry(error)) {
-      console.log(`🔄 Retrying pipeline ${pipeline.pipelineId} (attempt ${pipeline.retryCount}/${pipeline.maxRetries})`);
-      
+      console.log(
+        `🔄 Retrying pipeline ${pipeline.pipelineId} (attempt ${pipeline.retryCount}/${pipeline.maxRetries})`
+      );
+
       // Create retry event
       await storage.createSubmissionEvent({
         pipelineId: pipeline.pipelineId,
@@ -894,8 +1023,11 @@ export class SubmissionOrchestrator {
         phase: pipeline.currentPhase,
         level: 'warn',
         message: `Retrying phase ${pipeline.currentPhase} due to: ${error}`,
-        details: { retryCount: pipeline.retryCount, maxRetries: pipeline.maxRetries },
-        agentId: 'submission-orchestrator'
+        details: {
+          retryCount: pipeline.retryCount,
+          maxRetries: pipeline.maxRetries,
+        },
+        agentId: 'submission-orchestrator',
       });
 
       // Reset to current phase and retry
@@ -908,7 +1040,11 @@ export class SubmissionOrchestrator {
 
     // Permanent failure
     pipeline.status = 'failed';
-    pipeline.errorData = { error, failedWorkItems, retryCount: pipeline.retryCount };
+    pipeline.errorData = {
+      error,
+      failedWorkItems,
+      retryCount: pipeline.retryCount,
+    };
     pipeline.updatedAt = new Date();
 
     // Update database
@@ -922,8 +1058,8 @@ export class SubmissionOrchestrator {
         pipelineId: pipeline.pipelineId,
         failedAt: new Date(),
         error,
-        retryCount: pipeline.retryCount
-      }
+        retryCount: pipeline.retryCount,
+      },
     });
 
     // Create error notification
@@ -932,7 +1068,7 @@ export class SubmissionOrchestrator {
       title: 'Submission Failed',
       message: `Proposal submission failed for ${pipeline.metadata.portalName}: ${error}`,
       relatedEntityType: 'submission',
-      relatedEntityId: pipeline.submissionId
+      relatedEntityId: pipeline.submissionId,
     });
 
     // Create failure event
@@ -943,8 +1079,11 @@ export class SubmissionOrchestrator {
       phase: pipeline.currentPhase,
       level: 'error',
       message: `Pipeline failed permanently: ${error}`,
-      details: { retryCount: pipeline.retryCount, maxRetries: pipeline.maxRetries },
-      agentId: 'submission-orchestrator'
+      details: {
+        retryCount: pipeline.retryCount,
+        maxRetries: pipeline.maxRetries,
+      },
+      agentId: 'submission-orchestrator',
     });
 
     // Store failure in agent memory
@@ -958,11 +1097,15 @@ export class SubmissionOrchestrator {
         submissionId: pipeline.submissionId,
         error,
         phase: pipeline.currentPhase,
-        retryCount: pipeline.retryCount
+        retryCount: pipeline.retryCount,
       },
       importance: 8,
-      tags: ['failed_pipeline', 'submission_error', pipeline.metadata.portalName],
-      metadata: { success: false, error: true }
+      tags: [
+        'failed_pipeline',
+        'submission_error',
+        pipeline.metadata.portalName,
+      ],
+      metadata: { success: false, error: true },
     });
 
     // Create audit log
@@ -974,8 +1117,8 @@ export class SubmissionOrchestrator {
         pipelineId: pipeline.pipelineId,
         error,
         phase: pipeline.currentPhase,
-        retryCount: pipeline.retryCount
-      }
+        retryCount: pipeline.retryCount,
+      },
     });
 
     // Remove from active pipelines
@@ -987,17 +1130,21 @@ export class SubmissionOrchestrator {
   /**
    * Retry current phase
    */
-  private async retryCurrentPhase(pipeline: SubmissionPipelineInstance): Promise<void> {
-    console.log(`🔄 Retrying phase ${pipeline.currentPhase} for pipeline ${pipeline.pipelineId}`);
+  private async retryCurrentPhase(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
+    console.log(
+      `🔄 Retrying phase ${pipeline.currentPhase} for pipeline ${pipeline.pipelineId}`
+    );
 
     // Reset phase progress
     const phaseProgressMap = {
-      'preflight': 10,
-      'authenticating': 25,
-      'filling': 45,
-      'uploading': 65,
-      'submitting': 80,
-      'verifying': 95
+      preflight: 10,
+      authenticating: 25,
+      filling: 45,
+      uploading: 65,
+      submitting: 80,
+      verifying: 95,
     };
 
     pipeline.progress = phaseProgressMap[pipeline.currentPhase] || 0;
@@ -1039,19 +1186,25 @@ export class SubmissionOrchestrator {
       'rate limit',
       'server error',
       '5xx',
-      'unavailable'
+      'unavailable',
     ];
 
     const errorLower = error.toLowerCase();
-    return retryableErrors.some(retryableError => errorLower.includes(retryableError));
+    return retryableErrors.some(retryableError =>
+      errorLower.includes(retryableError)
+    );
   }
 
   /**
    * Update pipeline in database
    */
-  private async updatePipelineInDatabase(pipeline: SubmissionPipelineInstance): Promise<void> {
+  private async updatePipelineInDatabase(
+    pipeline: SubmissionPipelineInstance
+  ): Promise<void> {
     try {
-      const existingPipeline = await storage.getSubmissionPipelineBySubmission(pipeline.submissionId);
+      const existingPipeline = await storage.getSubmissionPipelineBySubmission(
+        pipeline.submissionId
+      );
       if (existingPipeline) {
         await storage.updateSubmissionPipeline(existingPipeline.id, {
           currentPhase: pipeline.currentPhase,
@@ -1065,7 +1218,8 @@ export class SubmissionOrchestrator {
           retryCount: pipeline.retryCount,
           metadata: pipeline.metadata,
           updatedAt: pipeline.updatedAt,
-          completedAt: pipeline.status === 'completed' ? pipeline.updatedAt : undefined
+          completedAt:
+            pipeline.status === 'completed' ? pipeline.updatedAt : undefined,
         });
       }
     } catch (error) {
@@ -1076,9 +1230,13 @@ export class SubmissionOrchestrator {
   /**
    * Schedule phase completion monitoring
    */
-  private schedulePhaseCompletion(pipeline: SubmissionPipelineInstance, workItemIds: string | string[], nextPhase: string): void {
+  private schedulePhaseCompletion(
+    pipeline: SubmissionPipelineInstance,
+    workItemIds: string | string[],
+    nextPhase: string
+  ): void {
     const itemIds = Array.isArray(workItemIds) ? workItemIds : [workItemIds];
-    
+
     // Start monitoring work items
     const checkInterval = setInterval(async () => {
       try {
@@ -1086,13 +1244,17 @@ export class SubmissionOrchestrator {
           itemIds.map(id => storage.getWorkItem(id))
         );
 
-        const allCompleted = workItems.every(item => 
-          item?.status === 'completed' || item?.status === 'failed'
+        const allCompleted = workItems.every(
+          item => item?.status === 'completed' || item?.status === 'failed'
         );
 
         if (allCompleted) {
           clearInterval(checkInterval);
-          await this.handlePhaseCompletion(pipeline.pipelineId, itemIds, nextPhase);
+          await this.handlePhaseCompletion(
+            pipeline.pipelineId,
+            itemIds,
+            nextPhase
+          );
         }
       } catch (error) {
         console.error('Error monitoring phase completion:', error);
@@ -1103,26 +1265,38 @@ export class SubmissionOrchestrator {
     // Set timeout for phase
     setTimeout(() => {
       clearInterval(checkInterval);
-      this.handlePipelineFailure(pipeline, `Phase ${pipeline.currentPhase} timed out`);
+      this.handlePipelineFailure(
+        pipeline,
+        `Phase ${pipeline.currentPhase} timed out`
+      );
     }, this.phaseTimeout);
   }
 
   /**
    * Calculate estimated completion time
    */
-  private calculateEstimatedCompletion(pipeline: SubmissionPipelineInstance): Date {
+  private calculateEstimatedCompletion(
+    pipeline: SubmissionPipelineInstance
+  ): Date {
     const phaseEstimates = {
-      'preflight': 5 * 60 * 1000,      // 5 minutes
-      'authenticating': 3 * 60 * 1000,  // 3 minutes
-      'filling': 10 * 60 * 1000,       // 10 minutes
-      'uploading': 8 * 60 * 1000,      // 8 minutes
-      'submitting': 5 * 60 * 1000,     // 5 minutes
-      'verifying': 3 * 60 * 1000       // 3 minutes
+      preflight: 5 * 60 * 1000, // 5 minutes
+      authenticating: 3 * 60 * 1000, // 3 minutes
+      filling: 10 * 60 * 1000, // 10 minutes
+      uploading: 8 * 60 * 1000, // 8 minutes
+      submitting: 5 * 60 * 1000, // 5 minutes
+      verifying: 3 * 60 * 1000, // 3 minutes
     };
 
-    const phases = ['preflight', 'authenticating', 'filling', 'uploading', 'submitting', 'verifying'];
+    const phases = [
+      'preflight',
+      'authenticating',
+      'filling',
+      'uploading',
+      'submitting',
+      'verifying',
+    ];
     const currentIndex = phases.indexOf(pipeline.currentPhase);
-    
+
     let remainingTime = 0;
     for (let i = currentIndex; i < phases.length; i++) {
       remainingTime += phaseEstimates[phases[i]];
@@ -1136,15 +1310,47 @@ export class SubmissionOrchestrator {
    */
   private getNextSteps(pipeline: SubmissionPipelineInstance): string[] {
     const phaseSteps = {
-      'queued': ['Validate submission requirements', 'Check portal status', 'Prepare documents'],
-      'preflight': ['Perform portal compatibility checks', 'Validate document formats', 'Map form requirements'],
-      'authenticating': ['Login to portal', 'Handle MFA if required', 'Establish session'],
-      'filling': ['Navigate to submission forms', 'Populate required fields', 'Validate form data'],
-      'uploading': ['Upload proposal documents', 'Attach required files', 'Verify uploads'],
-      'submitting': ['Review submission', 'Execute final submission', 'Capture confirmation'],
-      'verifying': ['Verify submission receipt', 'Extract reference numbers', 'Confirm status'],
-      'completed': ['Submission completed successfully'],
-      'failed': ['Review error logs', 'Determine retry strategy', 'Manual intervention may be required']
+      queued: [
+        'Validate submission requirements',
+        'Check portal status',
+        'Prepare documents',
+      ],
+      preflight: [
+        'Perform portal compatibility checks',
+        'Validate document formats',
+        'Map form requirements',
+      ],
+      authenticating: [
+        'Login to portal',
+        'Handle MFA if required',
+        'Establish session',
+      ],
+      filling: [
+        'Navigate to submission forms',
+        'Populate required fields',
+        'Validate form data',
+      ],
+      uploading: [
+        'Upload proposal documents',
+        'Attach required files',
+        'Verify uploads',
+      ],
+      submitting: [
+        'Review submission',
+        'Execute final submission',
+        'Capture confirmation',
+      ],
+      verifying: [
+        'Verify submission receipt',
+        'Extract reference numbers',
+        'Confirm status',
+      ],
+      completed: ['Submission completed successfully'],
+      failed: [
+        'Review error logs',
+        'Determine retry strategy',
+        'Manual intervention may be required',
+      ],
     };
 
     return phaseSteps[pipeline.currentPhase] || ['Processing...'];
@@ -1153,7 +1359,9 @@ export class SubmissionOrchestrator {
   /**
    * Get pipeline status
    */
-  async getPipelineStatus(pipelineId: string): Promise<SubmissionPipelineResult | null> {
+  async getPipelineStatus(
+    pipelineId: string
+  ): Promise<SubmissionPipelineResult | null> {
     const pipeline = this.activePipelines.get(pipelineId);
     if (!pipeline) {
       // Try to get from database
@@ -1170,7 +1378,7 @@ export class SubmissionOrchestrator {
         progress: dbPipeline.progress,
         status: dbPipeline.status,
         receiptData: dbPipeline.submissionReceipt,
-        error: dbPipeline.errorData?.error
+        error: dbPipeline.errorData?.error,
       };
     }
 
@@ -1184,7 +1392,7 @@ export class SubmissionOrchestrator {
       estimatedCompletion: this.calculateEstimatedCompletion(pipeline),
       receiptData: pipeline.results.verification?.receipt_data,
       nextSteps: this.getNextSteps(pipeline),
-      error: pipeline.errorData?.error
+      error: pipeline.errorData?.error,
     };
   }
 
@@ -1213,7 +1421,7 @@ export class SubmissionOrchestrator {
         phase: pipeline.currentPhase,
         level: 'warn',
         message: 'Pipeline cancelled by user',
-        agentId: 'submission-orchestrator'
+        agentId: 'submission-orchestrator',
       });
 
       // Remove from active pipelines

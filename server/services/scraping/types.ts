@@ -1,4 +1,4 @@
-import type { Portal } from "@shared/schema";
+import type { Portal } from '@shared/schema';
 
 // Core types for the scraping service architecture
 export interface ScrapingContext {
@@ -97,7 +97,11 @@ export interface AuthenticationStrategy {
 }
 
 export interface ContentExtractor {
-  extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]>;
+  extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]>;
   getPortalType(): string;
   validateContent(content: string): boolean;
 }

@@ -12,8 +12,8 @@ router.get('/workflow-metrics', async (req, res) => {
     const workflowMetrics = await workflowCoordinator.getWorkflowMetrics();
     res.json(workflowMetrics);
   } catch (error) {
-    console.error("Error fetching workflow metrics:", error);
-    res.status(500).json({ error: "Failed to fetch workflow metrics" });
+    console.error('Error fetching workflow metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch workflow metrics' });
   }
 });
 
@@ -26,7 +26,7 @@ router.get('/system-health', async (req, res) => {
       agents: await aiAgentOrchestrator.getSystemHealth(),
       workflows: await workflowCoordinator.getSystemHealth(),
       timestamp: new Date().toISOString(),
-      status: 'healthy' // This would be computed based on the above metrics
+      status: 'healthy', // This would be computed based on the above metrics
     };
 
     // Determine overall system status
@@ -39,11 +39,11 @@ router.get('/system-health', async (req, res) => {
 
     res.json(systemHealth);
   } catch (error) {
-    console.error("Error fetching system health:", error);
+    console.error('Error fetching system health:', error);
     res.status(500).json({
-      error: "Failed to fetch system health",
+      error: 'Failed to fetch system health',
       status: 'unhealthy',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });

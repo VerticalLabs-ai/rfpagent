@@ -33,7 +33,9 @@ export class AuthenticationManager {
     // Set fallback strategy
     this.fallbackStrategy = stagehandStrategy;
 
-    console.log(`🔐 Authentication manager initialized with ${this.strategies.size} strategies`);
+    console.log(
+      `🔐 Authentication manager initialized with ${this.strategies.size} strategies`
+    );
   }
 
   /**
@@ -41,17 +43,23 @@ export class AuthenticationManager {
    */
   async authenticate(context: AuthContext): Promise<AuthResult> {
     try {
-      console.log(`🔐 Starting authentication for ${context.portalType || 'unknown'} portal: ${context.portalUrl}`);
+      console.log(
+        `🔐 Starting authentication for ${context.portalType || 'unknown'} portal: ${context.portalUrl}`
+      );
 
       // Validate context
       const validation = this.validateAuthContext(context);
       if (!validation.isValid) {
-        throw new AuthenticationError(`Invalid authentication context: ${validation.errors.join(', ')}`);
+        throw new AuthenticationError(
+          `Invalid authentication context: ${validation.errors.join(', ')}`
+        );
       }
 
       // Select the best strategy for this context
       const strategy = this.selectStrategy(context);
-      console.log(`🎯 Selected authentication strategy: ${strategy.getPortalType()}`);
+      console.log(
+        `🎯 Selected authentication strategy: ${strategy.getPortalType()}`
+      );
 
       // Validate credentials with the selected strategy
       if (!strategy.validateCredentials(context)) {
@@ -62,29 +70,36 @@ export class AuthenticationManager {
       const result = await strategy.authenticate(context);
 
       if (result.success) {
-        console.log(`✅ Authentication successful using ${strategy.getPortalType()} strategy`);
+        console.log(
+          `✅ Authentication successful using ${strategy.getPortalType()} strategy`
+        );
         return result;
       }
 
       // If primary strategy failed, try fallback strategies
       console.log(`⚠️ Primary strategy failed: ${result.error}`);
       return await this.tryFallbackStrategies(context, strategy);
-
     } catch (error) {
-      console.error(`❌ Authentication failed for ${context.portalUrl}:`, error);
+      console.error(
+        `❌ Authentication failed for ${context.portalUrl}:`,
+        error
+      );
 
       if (error instanceof AuthenticationError) {
         return {
           success: false,
           sessionId: context.sessionId,
-          error: error.message
+          error: error.message,
         };
       }
 
       return {
         success: false,
         sessionId: context.sessionId,
-        error: error instanceof Error ? error.message : 'Unknown authentication error'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unknown authentication error',
       };
     }
   }
@@ -149,10 +164,14 @@ export class AuthenticationManager {
       try {
         const result = await strategy.authenticate(context);
         if (result.success) {
-          console.log(`✅ Fallback authentication successful using ${strategyName}`);
+          console.log(
+            `✅ Fallback authentication successful using ${strategyName}`
+          );
           return result;
         }
-        console.log(`⚠️ Fallback strategy ${strategyName} failed: ${result.error}`);
+        console.log(
+          `⚠️ Fallback strategy ${strategyName} failed: ${result.error}`
+        );
       } catch (error) {
         console.warn(`⚠️ Error in fallback strategy ${strategyName}:`, error);
       }
@@ -162,7 +181,7 @@ export class AuthenticationManager {
     return {
       success: false,
       sessionId: context.sessionId,
-      error: 'All authentication strategies failed'
+      error: 'All authentication strategies failed',
     };
   }
 
@@ -174,10 +193,10 @@ export class AuthenticationManager {
 
     // Define fallback order based on primary strategy
     const fallbackMap: Record<string, string[]> = {
-      'bonfire_hub': ['stagehand', 'generic_form'],
-      'generic_form': ['stagehand'],
-      'stagehand': ['generic_form'],
-      'generic': ['stagehand', 'generic_form']
+      bonfire_hub: ['stagehand', 'generic_form'],
+      generic_form: ['stagehand'],
+      stagehand: ['generic_form'],
+      generic: ['stagehand', 'generic_form'],
     };
 
     return fallbackMap[primaryType] || ['stagehand'];
@@ -194,11 +213,13 @@ export class AuthenticationManager {
       'openid',
       'microsoft',
       'google',
-      'login.gov'
+      'login.gov',
     ];
 
     const lowerUrl = url.toLowerCase();
-    return browserAuthIndicators.some(indicator => lowerUrl.includes(indicator));
+    return browserAuthIndicators.some(indicator =>
+      lowerUrl.includes(indicator)
+    );
   }
 
   /**
@@ -237,7 +258,7 @@ export class AuthenticationManager {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -285,21 +306,22 @@ export class AuthenticationManager {
       const strategy = this.selectStrategy(context);
       const result = await strategy.authenticate({
         ...context,
-        sessionId: `test_${Date.now()}`
+        sessionId: `test_${Date.now()}`,
       });
 
       return {
         success: result.success,
         strategy: strategy.getPortalType(),
         error: result.error,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     } catch (error) {
       return {
         success: false,
         strategy: 'unknown',
-        error: error instanceof Error ? error.message : 'Test authentication failed',
-        duration: Date.now() - startTime
+        error:
+          error instanceof Error ? error.message : 'Test authentication failed',
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -315,7 +337,7 @@ export class AuthenticationManager {
     return {
       totalStrategies: this.strategies.size,
       availableStrategies: Array.from(this.strategies.keys()),
-      fallbackStrategy: this.fallbackStrategy.getPortalType()
+      fallbackStrategy: this.fallbackStrategy.getPortalType(),
     };
   }
 }

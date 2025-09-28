@@ -28,7 +28,7 @@ export const errorHandler = (
     url: req.url,
     method: req.method,
     body: req.body,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   // Zod validation errors
@@ -38,23 +38,25 @@ export const errorHandler = (
       details: error.errors.map(err => ({
         field: err.path.join('.'),
         message: err.message,
-        code: err.code
-      }))
+        code: err.code,
+      })),
     });
   }
 
   // Database constraint errors
-  if (error.code === '23505') { // Unique constraint violation
+  if (error.code === '23505') {
+    // Unique constraint violation
     return res.status(409).json({
       error: 'Resource already exists',
-      details: 'A record with this identifier already exists'
+      details: 'A record with this identifier already exists',
     });
   }
 
-  if (error.code === '23503') { // Foreign key constraint violation
+  if (error.code === '23503') {
+    // Foreign key constraint violation
     return res.status(400).json({
       error: 'Invalid reference',
-      details: 'Referenced resource does not exist'
+      details: 'Referenced resource does not exist',
     });
   }
 
@@ -62,21 +64,21 @@ export const errorHandler = (
   if (error.name === 'ValidationError') {
     return res.status(400).json({
       error: 'Validation error',
-      details: error.message
+      details: error.message,
     });
   }
 
   if (error.name === 'NotFoundError') {
     return res.status(404).json({
       error: 'Resource not found',
-      details: error.message
+      details: error.message,
     });
   }
 
   if (error.name === 'AuthorizationError') {
     return res.status(403).json({
       error: 'Access denied',
-      details: error.message
+      details: error.message,
     });
   }
 
@@ -84,7 +86,7 @@ export const errorHandler = (
   if (error.name === 'UnauthorizedError') {
     return res.status(401).json({
       error: 'Authentication required',
-      details: 'Valid authentication credentials are required'
+      details: 'Valid authentication credentials are required',
     });
   }
 
@@ -93,7 +95,7 @@ export const errorHandler = (
     return res.status(429).json({
       error: 'Too many requests',
       details: 'Rate limit exceeded. Please try again later.',
-      retryAfter: error.retryAfter || 60
+      retryAfter: error.retryAfter || 60,
     });
   }
 
@@ -101,15 +103,18 @@ export const errorHandler = (
   if (error.name === 'ServiceUnavailableError') {
     return res.status(503).json({
       error: 'Service unavailable',
-      details: 'External service is temporarily unavailable'
+      details: 'External service is temporarily unavailable',
     });
   }
 
   // Default server error
   res.status(500).json({
     error: 'Internal server error',
-    details: process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred',
-    requestId: req.headers['x-request-id'] || 'unknown'
+    details:
+      process.env.NODE_ENV === 'development'
+        ? error.message
+        : 'An unexpected error occurred',
+    requestId: req.headers['x-request-id'] || 'unknown',
   });
 };
 
@@ -120,7 +125,7 @@ export const notFoundHandler = (req: Request, res: Response) => {
   res.status(404).json({
     error: 'Route not found',
     details: `The requested endpoint ${req.method} ${req.path} does not exist`,
-    availableEndpoints: '/api/system/config' // Could be dynamically generated
+    availableEndpoints: '/api/system/config', // Could be dynamically generated
   });
 };
 
@@ -133,7 +138,7 @@ export const timeoutMiddleware = (timeoutMs: number = 30000) => {
       if (!res.headersSent) {
         res.status(408).json({
           error: 'Request timeout',
-          details: `Request exceeded ${timeoutMs}ms timeout limit`
+          details: `Request exceeded ${timeoutMs}ms timeout limit`,
         });
       }
     }, timeoutMs);

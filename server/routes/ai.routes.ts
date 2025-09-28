@@ -6,7 +6,7 @@ import {
   insertResearchFindingSchema,
   type AiConversation,
   type ConversationMessage,
-  type ResearchFinding
+  type ResearchFinding,
 } from '@shared/schema';
 import { storage } from '../storage';
 import { AIService } from '../services/aiService';
@@ -24,52 +24,85 @@ const MapCompanyDataRequestSchema = z.object({
     requirements: z.object({
       businessType: z.array(z.string()).optional(),
       certifications: z.array(z.string()).optional(),
-      insurance: z.object({
-        types: z.array(z.string()),
-        minimumCoverage: z.number().optional(),
-      }).optional(),
+      insurance: z
+        .object({
+          types: z.array(z.string()),
+          minimumCoverage: z.number().optional(),
+        })
+        .optional(),
       contactRoles: z.array(z.string()).optional(),
       businessSize: z.enum(['small', 'large', 'any']).optional(),
       socioEconomicPreferences: z.array(z.string()).optional(),
       geographicRequirements: z.array(z.string()).optional(),
       experienceRequirements: z.array(z.string()).optional(),
     }),
-    complianceItems: z.array(z.object({
-      item: z.string(),
-      category: z.string(),
-      required: z.boolean(),
-      description: z.string(),
-    })),
-    riskFlags: z.array(z.object({
-      type: z.enum(['deadline', 'complexity', 'requirements', 'financial']),
-      severity: z.enum(['low', 'medium', 'high']),
-      description: z.string(),
-    })),
+    complianceItems: z.array(
+      z.object({
+        item: z.string(),
+        category: z.string(),
+        required: z.boolean(),
+        description: z.string(),
+      })
+    ),
+    riskFlags: z.array(
+      z.object({
+        type: z.enum(['deadline', 'complexity', 'requirements', 'financial']),
+        severity: z.enum(['low', 'medium', 'high']),
+        description: z.string(),
+      })
+    ),
     keyDates: z.object({
-      deadline: z.string().refine((str) => {
-        const date = new Date(str);
-        return !isNaN(date.getTime());
-      }, {
-        message: "Invalid deadline date format"
-      }).transform(str => new Date(str)),
-      prebidMeeting: z.string().refine((str) => {
-        const date = new Date(str);
-        return !isNaN(date.getTime());
-      }, {
-        message: "Invalid prebid meeting date format"
-      }).transform(str => new Date(str)).optional(),
-      questionsDeadline: z.string().refine((str) => {
-        const date = new Date(str);
-        return !isNaN(date.getTime());
-      }, {
-        message: "Invalid questions deadline date format"
-      }).transform(str => new Date(str)).optional(),
-      sampleSubmission: z.string().refine((str) => {
-        const date = new Date(str);
-        return !isNaN(date.getTime());
-      }, {
-        message: "Invalid sample submission date format"
-      }).transform(str => new Date(str)).optional(),
+      deadline: z
+        .string()
+        .refine(
+          str => {
+            const date = new Date(str);
+            return !isNaN(date.getTime());
+          },
+          {
+            message: 'Invalid deadline date format',
+          }
+        )
+        .transform(str => new Date(str)),
+      prebidMeeting: z
+        .string()
+        .refine(
+          str => {
+            const date = new Date(str);
+            return !isNaN(date.getTime());
+          },
+          {
+            message: 'Invalid prebid meeting date format',
+          }
+        )
+        .transform(str => new Date(str))
+        .optional(),
+      questionsDeadline: z
+        .string()
+        .refine(
+          str => {
+            const date = new Date(str);
+            return !isNaN(date.getTime());
+          },
+          {
+            message: 'Invalid questions deadline date format',
+          }
+        )
+        .transform(str => new Date(str))
+        .optional(),
+      sampleSubmission: z
+        .string()
+        .refine(
+          str => {
+            const date = new Date(str);
+            return !isNaN(date.getTime());
+          },
+          {
+            message: 'Invalid sample submission date format',
+          }
+        )
+        .transform(str => new Date(str))
+        .optional(),
     }),
   }),
   companyProfileId: z.string().uuid(),
@@ -78,7 +111,9 @@ const MapCompanyDataRequestSchema = z.object({
 const GenerateProposalRequestSchema = z.object({
   rfpText: z.string().min(1).max(50000),
   companyProfileId: z.string().uuid(),
-  proposalType: z.enum(['standard', 'technical', 'construction', 'professional_services']).optional(),
+  proposalType: z
+    .enum(['standard', 'technical', 'construction', 'professional_services'])
+    .optional(),
 });
 
 // AI Conversation Schemas
@@ -86,7 +121,9 @@ const ProcessQueryRequestSchema = z.object({
   query: z.string().min(1).max(10000),
   conversationId: z.string().uuid().optional(),
   userId: z.string().uuid().optional(),
-  conversationType: z.enum(['general', 'rfp_search', 'bid_crafting', 'research']).optional(),
+  conversationType: z
+    .enum(['general', 'rfp_search', 'bid_crafting', 'research'])
+    .optional(),
 });
 
 const ExecuteActionRequestSchema = z.object({
@@ -108,8 +145,8 @@ router.post('/analyze-rfp', async (req, res) => {
     const validationResult = AnalyzeRFPRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        error: "Invalid request data",
-        details: validationResult.error.issues
+        error: 'Invalid request data',
+        details: validationResult.error.issues,
       });
     }
 
@@ -117,10 +154,10 @@ router.post('/analyze-rfp', async (req, res) => {
     const analysis = await aiProposalService.analyzeRFPDocument(rfpText);
     res.json(analysis);
   } catch (error) {
-    console.error("Error analyzing RFP document:", error);
+    console.error('Error analyzing RFP document:', error);
     res.status(500).json({
-      error: "Failed to analyze RFP document",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to analyze RFP document',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -133,8 +170,8 @@ router.post('/map-company-data', async (req, res) => {
     const validationResult = MapCompanyDataRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        error: "Invalid request data",
-        details: validationResult.error.issues
+        error: 'Invalid request data',
+        details: validationResult.error.issues,
       });
     }
 
@@ -143,10 +180,11 @@ router.post('/map-company-data', async (req, res) => {
     // Get company profile and related data
     const companyProfile = await storage.getCompanyProfile(companyProfileId);
     if (!companyProfile) {
-      return res.status(404).json({ error: "Company profile not found" });
+      return res.status(404).json({ error: 'Company profile not found' });
     }
 
-    const certifications = await storage.getCompanyCertifications(companyProfileId);
+    const certifications =
+      await storage.getCompanyCertifications(companyProfileId);
     const insurance = await storage.getCompanyInsurance(companyProfileId);
     const contacts = await storage.getCompanyContacts(companyProfileId);
 
@@ -160,10 +198,10 @@ router.post('/map-company-data', async (req, res) => {
 
     res.json(companyMapping);
   } catch (error) {
-    console.error("Error mapping company data:", error);
+    console.error('Error mapping company data:', error);
     res.status(500).json({
-      error: "Failed to map company data",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to map company data',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -176,8 +214,8 @@ router.post('/generate-proposal', async (req, res) => {
     const validationResult = GenerateProposalRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        error: "Invalid request data",
-        details: validationResult.error.issues
+        error: 'Invalid request data',
+        details: validationResult.error.issues,
       });
     }
 
@@ -189,10 +227,11 @@ router.post('/generate-proposal', async (req, res) => {
     // Step 2: Get company profile and related data
     const companyProfile = await storage.getCompanyProfile(companyProfileId);
     if (!companyProfile) {
-      return res.status(404).json({ error: "Company profile not found" });
+      return res.status(404).json({ error: 'Company profile not found' });
     }
 
-    const certifications = await storage.getCompanyCertifications(companyProfileId);
+    const certifications =
+      await storage.getCompanyCertifications(companyProfileId);
     const insurance = await storage.getCompanyInsurance(companyProfileId);
     const contacts = await storage.getCompanyContacts(companyProfileId);
 
@@ -219,14 +258,14 @@ router.post('/generate-proposal', async (req, res) => {
       metadata: {
         generatedAt: new Date().toISOString(),
         proposalType: proposalType || 'standard',
-        companyProfileId
-      }
+        companyProfileId,
+      },
     });
   } catch (error) {
-    console.error("Error generating proposal:", error);
+    console.error('Error generating proposal:', error);
     res.status(500).json({
-      error: "Failed to generate proposal",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to generate proposal',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -240,22 +279,24 @@ router.get('/company-profiles', async (req, res) => {
 
     // Add analysis data for AI context
     const enrichedProfiles = await Promise.all(
-      profiles.map(async (profile) => {
-        const certifications = await storage.getCompanyCertifications(profile.id);
+      profiles.map(async profile => {
+        const certifications = await storage.getCompanyCertifications(
+          profile.id
+        );
         const insurance = await storage.getCompanyInsurance(profile.id);
         return {
           ...profile,
           certificationsCount: certifications.length,
           insuranceCount: insurance.length,
-          lastUpdated: profile.updatedAt || profile.createdAt
+          lastUpdated: profile.updatedAt || profile.createdAt,
         };
       })
     );
 
     res.json(enrichedProfiles);
   } catch (error) {
-    console.error("Error fetching company profiles for AI:", error);
-    res.status(500).json({ error: "Failed to fetch company profiles" });
+    console.error('Error fetching company profiles for AI:', error);
+    res.status(500).json({ error: 'Failed to fetch company profiles' });
   }
 });
 
@@ -268,17 +309,18 @@ router.get('/company-profiles/:id/details', async (req, res) => {
 
     const profile = await storage.getCompanyProfile(id);
     if (!profile) {
-      return res.status(404).json({ error: "Company profile not found" });
+      return res.status(404).json({ error: 'Company profile not found' });
     }
 
     // Get all related data for comprehensive AI analysis
-    const [addresses, contacts, identifiers, certifications, insurance] = await Promise.all([
-      storage.getCompanyAddresses(id),
-      storage.getCompanyContacts(id),
-      storage.getCompanyIdentifiers(id),
-      storage.getCompanyCertifications(id),
-      storage.getCompanyInsurance(id)
-    ]);
+    const [addresses, contacts, identifiers, certifications, insurance] =
+      await Promise.all([
+        storage.getCompanyAddresses(id),
+        storage.getCompanyContacts(id),
+        storage.getCompanyIdentifiers(id),
+        storage.getCompanyCertifications(id),
+        storage.getCompanyInsurance(id),
+      ]);
 
     const detailedProfile = {
       ...profile,
@@ -291,14 +333,14 @@ router.get('/company-profiles/:id/details', async (req, res) => {
         totalContacts: contacts.length,
         totalCertifications: certifications.length,
         totalInsurance: insurance.length,
-        lastUpdated: profile.updatedAt || profile.createdAt
-      }
+        lastUpdated: profile.updatedAt || profile.createdAt,
+      },
     };
 
     res.json(detailedProfile);
   } catch (error) {
-    console.error("Error fetching detailed company profile for AI:", error);
-    res.status(500).json({ error: "Failed to fetch detailed company profile" });
+    console.error('Error fetching detailed company profile for AI:', error);
+    res.status(500).json({ error: 'Failed to fetch detailed company profile' });
   }
 });
 
@@ -310,12 +352,13 @@ router.post('/chat', async (req, res) => {
     const validationResult = ProcessQueryRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        error: "Invalid request data",
-        details: validationResult.error.issues
+        error: 'Invalid request data',
+        details: validationResult.error.issues,
       });
     }
 
-    const { query, conversationId, userId, conversationType } = validationResult.data;
+    const { query, conversationId, userId, conversationType } =
+      validationResult.data;
 
     const aiService = new AIService();
     const response = await aiService.processQuery(
@@ -327,10 +370,10 @@ router.post('/chat', async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("Error processing AI chat query:", error);
+    console.error('Error processing AI chat query:', error);
     res.status(500).json({
-      error: "Failed to process query",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to process query',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -343,22 +386,26 @@ router.post('/execute-action', async (req, res) => {
     const validationResult = ExecuteActionRequestSchema.safeParse(req.body);
     if (!validationResult.success) {
       return res.status(400).json({
-        error: "Invalid request data",
-        details: validationResult.error.issues
+        error: 'Invalid request data',
+        details: validationResult.error.issues,
       });
     }
 
     const { suggestionId, conversationId, suggestion } = validationResult.data;
 
     const aiService = new AIService();
-    const result = await aiService.executeSuggestion(suggestionId, conversationId, suggestion);
+    const result = await aiService.executeSuggestion(
+      suggestionId,
+      conversationId,
+      suggestion
+    );
 
     res.json(result);
   } catch (error) {
-    console.error("Error executing AI action:", error);
+    console.error('Error executing AI action:', error);
     res.status(500).json({
-      error: "Failed to execute action",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to execute action',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -373,7 +420,7 @@ router.get('/conversations/:conversationId', async (req, res) => {
 
     const conversation = await storage.getAiConversation(conversationId);
     if (!conversation) {
-      return res.status(404).json({ error: "Conversation not found" });
+      return res.status(404).json({ error: 'Conversation not found' });
     }
 
     let result: any = conversation;
@@ -382,14 +429,14 @@ router.get('/conversations/:conversationId', async (req, res) => {
       const messages = await storage.getConversationMessages(conversationId);
       result = {
         ...conversation,
-        messages
+        messages,
       };
     }
 
     res.json(result);
   } catch (error) {
-    console.error("Error fetching AI conversation:", error);
-    res.status(500).json({ error: "Failed to fetch conversation" });
+    console.error('Error fetching AI conversation:', error);
+    res.status(500).json({ error: 'Failed to fetch conversation' });
   }
 });
 
@@ -398,7 +445,7 @@ router.get('/conversations/:conversationId', async (req, res) => {
  */
 router.get('/conversations', async (req, res) => {
   try {
-    const { limit = "20", userId } = req.query;
+    const { limit = '20', userId } = req.query;
 
     const conversations = await storage.getAllAiConversations(
       parseInt(limit as string),
@@ -407,8 +454,8 @@ router.get('/conversations', async (req, res) => {
 
     res.json(conversations);
   } catch (error) {
-    console.error("Error fetching AI conversations:", error);
-    res.status(500).json({ error: "Failed to fetch conversations" });
+    console.error('Error fetching AI conversations:', error);
+    res.status(500).json({ error: 'Failed to fetch conversations' });
   }
 });
 
@@ -422,7 +469,7 @@ router.delete('/conversations/:conversationId', async (req, res) => {
     // Check if conversation exists
     const conversation = await storage.getAiConversation(conversationId);
     if (!conversation) {
-      return res.status(404).json({ error: "Conversation not found" });
+      return res.status(404).json({ error: 'Conversation not found' });
     }
 
     // Delete associated messages first
@@ -431,10 +478,10 @@ router.delete('/conversations/:conversationId', async (req, res) => {
     // Delete the conversation
     await storage.deleteAiConversation(conversationId);
 
-    res.json({ success: true, message: "Conversation deleted successfully" });
+    res.json({ success: true, message: 'Conversation deleted successfully' });
   } catch (error) {
-    console.error("Error deleting AI conversation:", error);
-    res.status(500).json({ error: "Failed to delete conversation" });
+    console.error('Error deleting AI conversation:', error);
+    res.status(500).json({ error: 'Failed to delete conversation' });
   }
 });
 
@@ -443,7 +490,7 @@ router.delete('/conversations/:conversationId', async (req, res) => {
  */
 router.get('/research-findings', async (req, res) => {
   try {
-    const { limit = "50", category, rfpId } = req.query;
+    const { limit = '50', category, rfpId } = req.query;
 
     const findings = await storage.getResearchFindings(
       parseInt(limit as string),
@@ -453,8 +500,8 @@ router.get('/research-findings', async (req, res) => {
 
     res.json(findings);
   } catch (error) {
-    console.error("Error fetching research findings:", error);
-    res.status(500).json({ error: "Failed to fetch research findings" });
+    console.error('Error fetching research findings:', error);
+    res.status(500).json({ error: 'Failed to fetch research findings' });
   }
 });
 

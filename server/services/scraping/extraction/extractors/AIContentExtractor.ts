@@ -16,7 +16,11 @@ export class AIContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities using AI analysis
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🤖 Starting AI content extraction for ${url}`);
 
@@ -26,7 +30,10 @@ export class AIContentExtractor extends BaseContentExtractor {
       }
 
       // Use AIService to extract RFP details
-      const extractedData = await this.aiService.extractRFPDetails(content, url);
+      const extractedData = await this.aiService.extractRFPDetails(
+        content,
+        url
+      );
 
       if (!extractedData) {
         console.log(`🚫 AI service returned no data for ${url}`);
@@ -34,7 +41,10 @@ export class AIContentExtractor extends BaseContentExtractor {
       }
 
       // Convert AI service response to RFPOpportunity format
-      const opportunities = this.convertAIDataToOpportunities(extractedData, url);
+      const opportunities = this.convertAIDataToOpportunities(
+        extractedData,
+        url
+      );
 
       // Calculate confidence scores
       opportunities.forEach(opp => {
@@ -43,14 +53,15 @@ export class AIContentExtractor extends BaseContentExtractor {
 
       // Filter by minimum confidence threshold
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(`🤖 AI extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`);
+      console.log(
+        `🤖 AI extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
+      );
 
       return this.removeDuplicates(filteredOpportunities);
-
     } catch (error) {
       console.error(`❌ AI content extraction failed for ${url}:`, error);
       return [];
@@ -60,20 +71,25 @@ export class AIContentExtractor extends BaseContentExtractor {
   /**
    * Convert AI service response to RFPOpportunity array
    */
-  private convertAIDataToOpportunities(aiData: any, sourceUrl: string): RFPOpportunity[] {
+  private convertAIDataToOpportunities(
+    aiData: any,
+    sourceUrl: string
+  ): RFPOpportunity[] {
     // Handle single opportunity
     if (aiData.title && typeof aiData.title === 'string') {
-      return [{
-        title: aiData.title,
-        description: aiData.description || '',
-        agency: aiData.agency,
-        deadline: this.parseDate(aiData.deadline),
-        estimatedValue: aiData.estimatedValue,
-        url: sourceUrl,
-        link: sourceUrl,
-        category: aiData.category,
-        confidence: aiData.confidence || 0.5
-      }];
+      return [
+        {
+          title: aiData.title,
+          description: aiData.description || '',
+          agency: aiData.agency,
+          deadline: this.parseDate(aiData.deadline),
+          estimatedValue: aiData.estimatedValue,
+          url: sourceUrl,
+          link: sourceUrl,
+          category: aiData.category,
+          confidence: aiData.confidence || 0.5,
+        },
+      ];
     }
 
     // Handle array of opportunities
@@ -87,7 +103,7 @@ export class AIContentExtractor extends BaseContentExtractor {
         url: item.url || sourceUrl,
         link: item.link || item.url || sourceUrl,
         category: item.category,
-        confidence: item.confidence || 0.5
+        confidence: item.confidence || 0.5,
       }));
     }
 
@@ -102,7 +118,7 @@ export class AIContentExtractor extends BaseContentExtractor {
         url: item.url || sourceUrl,
         link: item.link || item.url || sourceUrl,
         category: item.category,
-        confidence: item.confidence || 0.5
+        confidence: item.confidence || 0.5,
       }));
     }
 
@@ -117,7 +133,7 @@ export class AIContentExtractor extends BaseContentExtractor {
         url: item.url || sourceUrl,
         link: item.link || item.url || sourceUrl,
         category: item.category,
-        confidence: item.confidence || 0.5
+        confidence: item.confidence || 0.5,
       }));
     }
 
@@ -160,7 +176,10 @@ export class AIContentExtractor extends BaseContentExtractor {
 
     // If it's HTML, ensure it has substantial content
     if (hasHtml) {
-      const textContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const textContent = content
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
       return textContent.length >= 50;
     }
 
@@ -177,7 +196,7 @@ export class AIContentExtractor extends BaseContentExtractor {
     // Additional AI-specific scoring
     if (opportunity.confidence && typeof opportunity.confidence === 'number') {
       // Weight the AI's own confidence with our structural analysis
-      score = (score * 0.6) + (opportunity.confidence * 0.4);
+      score = score * 0.6 + opportunity.confidence * 0.4;
     }
 
     // Boost score for well-structured opportunities
@@ -196,14 +215,20 @@ export class AIContentExtractor extends BaseContentExtractor {
   /**
    * Process content in chunks for large documents
    */
-  async extractFromLargeContent(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extractFromLargeContent(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     const maxChunkSize = 8000; // Characters
 
     if (content.length <= maxChunkSize) {
       return this.extract(content, url, portalContext);
     }
 
-    console.log(`📄 Processing large content (${content.length} chars) in chunks`);
+    console.log(
+      `📄 Processing large content (${content.length} chars) in chunks`
+    );
 
     const chunks = this.splitContentIntoChunks(content, maxChunkSize);
     const allOpportunities: RFPOpportunity[] = [];
@@ -212,7 +237,11 @@ export class AIContentExtractor extends BaseContentExtractor {
       console.log(`🧩 Processing chunk ${i + 1}/${chunks.length}`);
 
       try {
-        const chunkOpportunities = await this.extract(chunks[i], url, `${portalContext} (chunk ${i + 1})`);
+        const chunkOpportunities = await this.extract(
+          chunks[i],
+          url,
+          `${portalContext} (chunk ${i + 1})`
+        );
         allOpportunities.push(...chunkOpportunities);
       } catch (error) {
         console.warn(`⚠️ Failed to process chunk ${i + 1}:`, error);
@@ -231,7 +260,10 @@ export class AIContentExtractor extends BaseContentExtractor {
   /**
    * Split content into manageable chunks
    */
-  private splitContentIntoChunks(content: string, maxChunkSize: number): string[] {
+  private splitContentIntoChunks(
+    content: string,
+    maxChunkSize: number
+  ): string[] {
     const chunks: string[] = [];
     let currentChunk = '';
 

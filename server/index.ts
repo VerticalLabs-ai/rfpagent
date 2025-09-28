@@ -1,9 +1,9 @@
 import 'dotenv/config';
-import express, { type Request, Response, NextFunction } from "express";
-import { createServer } from "http";
-import { configureRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { agentRegistryService } from "./services/agentRegistryService";
+import express, { type Request, Response, NextFunction } from 'express';
+import { createServer } from 'http';
+import { configureRoutes } from './routes';
+import { setupVite, serveStatic, log } from './vite';
+import { agentRegistryService } from './services/agentRegistryService';
 
 const app = express();
 app.use(express.json());
@@ -20,16 +20,16 @@ app.use((req, res, next) => {
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
-  res.on("finish", () => {
+  res.on('finish', () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
+    if (path.startsWith('/api')) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
+        logLine = logLine.slice(0, 79) + '…';
       }
 
       log(logLine);
@@ -48,7 +48,7 @@ app.use((req, res, next) => {
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const message = err.message || 'Internal Server Error';
 
     res.status(status).json({ message });
     throw err;
@@ -57,7 +57,7 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  if (app.get('env') === 'development') {
     await setupVite(app, server);
   } else {
     serveStatic(app);
@@ -66,9 +66,12 @@ app.use((req, res, next) => {
   // Bootstrap 3-tier agentic system with default agents
   try {
     await agentRegistryService.bootstrapDefaultAgents();
-    log("🤖 3-tier agentic system initialized with default agents");
+    log('🤖 3-tier agentic system initialized with default agents');
   } catch (error) {
-    log("⚠️ Failed to bootstrap default agents:", error instanceof Error ? error.message : String(error));
+    log(
+      '⚠️ Failed to bootstrap default agents:',
+      error instanceof Error ? error.message : String(error)
+    );
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT
@@ -76,7 +79,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '3000', 10);
-  server.listen(port, "0.0.0.0", () => {
+  server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
   });
 })();

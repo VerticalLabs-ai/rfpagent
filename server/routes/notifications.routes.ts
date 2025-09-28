@@ -8,12 +8,14 @@ const router = Router();
  */
 router.get('/', async (req, res) => {
   try {
-    const { limit = "50" } = req.query;
-    const notifications = await storage.getAllNotifications(parseInt(limit as string));
+    const { limit = '50' } = req.query;
+    const notifications = await storage.getAllNotifications(
+      parseInt(limit as string)
+    );
     res.json(notifications);
   } catch (error) {
-    console.error("Error fetching notifications:", error);
-    res.status(500).json({ error: "Failed to fetch notifications" });
+    console.error('Error fetching notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
 
@@ -25,8 +27,8 @@ router.get('/unread', async (req, res) => {
     const notifications = await storage.getUnreadNotifications();
     res.json(notifications);
   } catch (error) {
-    console.error("Error fetching unread notifications:", error);
-    res.status(500).json({ error: "Failed to fetch unread notifications" });
+    console.error('Error fetching unread notifications:', error);
+    res.status(500).json({ error: 'Failed to fetch unread notifications' });
   }
 });
 
@@ -39,8 +41,8 @@ router.post('/:id/read', async (req, res) => {
     await storage.markNotificationRead(id);
     res.json({ success: true });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
-    res.status(500).json({ error: "Failed to mark notification as read" });
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
   }
 });
 
@@ -57,8 +59,8 @@ router.post('/clear-all', async (req, res) => {
     );
     res.json({ success: true, cleared: unreadNotifications.length });
   } catch (error) {
-    console.error("Error clearing all notifications:", error);
-    res.status(500).json({ error: "Failed to clear notifications" });
+    console.error('Error clearing all notifications:', error);
+    res.status(500).json({ error: 'Failed to clear notifications' });
   }
 });
 
@@ -71,8 +73,8 @@ router.put('/:id/read', async (req, res) => {
     await storage.markNotificationRead(id);
     res.json({ success: true });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
-    res.status(500).json({ error: "Failed to mark notification as read" });
+    console.error('Error marking notification as read:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
   }
 });
 

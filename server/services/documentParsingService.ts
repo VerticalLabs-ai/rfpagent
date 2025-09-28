@@ -1,7 +1,7 @@
-import mammoth from "mammoth";
-import { ObjectStorageService } from "../objectStorage";
-import { storage } from "../storage";
-import { AIService } from "./aiService";
+import mammoth from 'mammoth';
+import { ObjectStorageService } from '../objectStorage';
+import { storage } from '../storage';
+import { AIService } from './aiService';
 
 export class DocumentParsingService {
   private objectStorageService = new ObjectStorageService();
@@ -11,29 +11,31 @@ export class DocumentParsingService {
     try {
       const document = await storage.getDocument(documentId);
       if (!document) {
-        throw new Error("Document not found");
+        throw new Error('Document not found');
       }
 
       console.log(`Starting to parse document: ${document.filename}`);
 
       // Get file from object storage
-      const file = await this.objectStorageService.getObjectEntityFile(document.objectPath);
+      const file = await this.objectStorageService.getObjectEntityFile(
+        document.objectPath
+      );
       const buffer = await this.downloadFileAsBuffer(file);
 
-      let extractedText = "";
-      
+      let extractedText = '';
+
       // Parse based on file type
       switch (document.fileType.toLowerCase()) {
-        case "application/pdf":
-        case "pdf":
+        case 'application/pdf':
+        case 'pdf':
           extractedText = await this.parsePDF(buffer);
           break;
-        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        case "docx":
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        case 'docx':
           extractedText = await this.parseDocx(buffer);
           break;
-        case "text/plain":
-        case "txt":
+        case 'text/plain':
+        case 'txt':
           extractedText = buffer.toString('utf-8');
           break;
         default:
@@ -43,71 +45,74 @@ export class DocumentParsingService {
 
       // Update document with extracted text
       await storage.updateDocument(documentId, {
-        extractedText
+        extractedText,
       });
 
       // Get RFP for context
       const rfp = await storage.getRFP(document.rfpId);
       if (!rfp) {
-        throw new Error("RFP not found");
+        throw new Error('RFP not found');
       }
 
       // Use AI to analyze compliance
-      const compliance = await this.aiService.analyzeDocumentCompliance(extractedText, rfp);
+      const compliance = await this.aiService.analyzeDocumentCompliance(
+        extractedText,
+        rfp
+      );
 
       // Update RFP with compliance analysis
       await storage.updateRFP(document.rfpId, {
         requirements: compliance.requirements,
         complianceItems: compliance.mandatoryFields,
         riskFlags: compliance.riskFlags,
-        status: "parsing",
-        progress: 40
+        status: 'parsing',
+        progress: 40,
       });
 
       // Update document with parsed data
       await storage.updateDocument(documentId, {
-        parsedData: compliance
+        parsedData: compliance,
       });
 
       // Check for high-risk items and create notifications
-      const highRiskFlags = compliance.riskFlags?.filter((flag: any) => flag.type === "high") || [];
-      
+      const highRiskFlags =
+        compliance.riskFlags?.filter((flag: any) => flag.type === 'high') || [];
+
       for (const flag of highRiskFlags) {
         await storage.createNotification({
-          type: "compliance",
-          title: "High Risk Compliance Item",
+          type: 'compliance',
+          title: 'High Risk Compliance Item',
           message: `${flag.category}: ${flag.description}`,
-          relatedEntityType: "rfp",
-          relatedEntityId: document.rfpId
+          relatedEntityType: 'rfp',
+          relatedEntityId: document.rfpId,
         });
       }
 
       // Create audit log
       await storage.createAuditLog({
-        entityType: "document",
+        entityType: 'document',
         entityId: documentId,
-        action: "parsed",
+        action: 'parsed',
         details: {
           fileType: document.fileType,
           textLength: extractedText.length,
-          riskFlags: highRiskFlags.length
-        }
+          riskFlags: highRiskFlags.length,
+        },
       });
 
       console.log(`Successfully parsed document: ${document.filename}`);
-
     } catch (error) {
       console.error(`Error parsing document ${documentId}:`, error);
-      
+
       // Create notification about parsing error
       const document = await storage.getDocument(documentId);
       if (document) {
         await storage.createNotification({
-          type: "compliance",
-          title: "Document Parsing Failed",
+          type: 'compliance',
+          title: 'Document Parsing Failed',
           message: `Failed to parse ${document.filename}: ${error.message}`,
-          relatedEntityType: "document",
-          relatedEntityId: documentId
+          relatedEntityType: 'document',
+          relatedEntityId: documentId,
         });
       }
     }
@@ -134,12 +139,12 @@ export class DocumentParsingService {
 
   private async parsePDF(buffer: Buffer): Promise<string> {
     try {
-      const PDFParse = (await import("pdf-parse")).default;
+      const PDFParse = (await import('pdf-parse')).default;
       const data = await PDFParse(buffer);
       return data.text;
     } catch (error) {
-      console.error("Error parsing PDF:", error);
-      throw new Error("Failed to parse PDF document");
+      console.error('Error parsing PDF:', error);
+      throw new Error('Failed to parse PDF document');
     }
   }
 
@@ -148,8 +153,8 @@ export class DocumentParsingService {
       const result = await mammoth.extractRawText({ buffer });
       return result.value;
     } catch (error) {
-      console.error("Error parsing DOCX:", error);
-      throw new Error("Failed to parse DOCX document");
+      console.error('Error parsing DOCX:', error);
+      throw new Error('Failed to parse DOCX document');
     }
   }
 
@@ -157,19 +162,18 @@ export class DocumentParsingService {
     try {
       // This would be used for parsing web-based RFP content
       // Implementation depends on specific portal structures
-      
+
       console.log(`Parsing web content for RFP ${rfpId} from ${url}`);
-      
+
       // Create audit log
       await storage.createAuditLog({
-        entityType: "rfp",
+        entityType: 'rfp',
         entityId: rfpId,
-        action: "web_content_parsed",
-        details: { sourceUrl: url }
+        action: 'web_content_parsed',
+        details: { sourceUrl: url },
       });
-
     } catch (error) {
-      console.error("Error parsing web content:", error);
+      console.error('Error parsing web content:', error);
       throw error;
     }
   }

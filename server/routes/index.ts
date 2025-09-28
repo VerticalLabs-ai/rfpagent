@@ -1,5 +1,5 @@
-import type { Express } from "express";
-import express from "express";
+import type { Express } from 'express';
+import express from 'express';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandling';
@@ -80,103 +80,103 @@ export const routeModules = {
   rfps: {
     prefix: '/api/rfps',
     description: 'RFP management, documents, and processing',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   proposals: {
     prefix: '/api/proposals',
     description: 'Proposal generation and pipeline management',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   analysis: {
     prefix: '/api/analysis',
     description: 'Phase 7 analysis pipeline integration',
-    version: '7.0.0'
+    version: '7.0.0',
   },
   compliance: {
     prefix: '/api/compliance',
     description: 'Compliance analysis and tracking',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   system: {
     prefix: '/api/system',
     description: 'System configuration and service control',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   dashboard: {
     prefix: '/api/dashboard',
     description: 'Dashboard metrics and analytics',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   portals: {
     prefix: '/api/portals',
     description: 'Portal management, scanning, and monitoring',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   submissions: {
     prefix: '/api/submissions',
     description: 'Proposal submission pipeline and management',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   documents: {
     prefix: '/api/documents',
     description: 'Document intelligence and analysis',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   ai: {
     prefix: '/api/ai',
     description: 'AI services, chat, and proposal generation',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   company: {
     prefix: '/api/company',
     description: 'Company profile and data management',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   workflows: {
     prefix: '/api/workflows',
     description: 'Workflow orchestration and management',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   scans: {
     prefix: '/api/scans',
     description: 'Portal scanning and monitoring',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   discovery: {
     prefix: '/api/discovery',
     description: 'RFP discovery workflows',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   notifications: {
     prefix: '/api/notifications',
     description: 'System notifications and alerts',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   auditLogs: {
     prefix: '/api/audit-logs',
     description: 'Audit logging and tracking',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   agents: {
     prefix: '/api/agent-*',
     description: 'AI agent activity, performance, and coordination',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   metrics: {
     prefix: '/api/*-metrics',
     description: 'System metrics and health monitoring',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   e2e: {
     prefix: '/api/e2e',
     description: 'End-to-end testing and validation',
-    version: '1.0.0'
+    version: '1.0.0',
   },
   safla: {
     prefix: '/api/safla',
     description: 'SAFLA self-improving system monitoring and management',
-    version: '1.0.0'
-  }
+    version: '1.0.0',
+  },
 } as const;
 
 /**
@@ -186,6 +186,6 @@ export function getRouteInfo() {
   return {
     modules: routeModules,
     totalModules: Object.keys(routeModules).length,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 }

@@ -1,12 +1,12 @@
-import OpenAI from "openai"
+import OpenAI from 'openai';
 // import { z } from "zod"
-import { complianceChecker } from "../../src/mastra/agents/compliance-checker"
-import { contentGenerator } from "../../src/mastra/agents/content-generator"
-import { proposalManager } from "../../src/mastra/agents/proposal-manager"
+import { complianceChecker } from '../../src/mastra/agents/compliance-checker';
+import { contentGenerator } from '../../src/mastra/agents/content-generator';
+import { proposalManager } from '../../src/mastra/agents/proposal-manager';
 // import { documentProcessingWorkflow } from "../../src/mastra/workflows/document-processing-workflow"
-import { storage } from "../storage"
+import { storage } from '../storage';
 // import { getMastraScrapingService } from "./mastraScrapingService"
-import { progressTracker } from "./progressTracker"
+import { progressTracker } from './progressTracker';
 
 // Schema for pricing data input
 // const PricingDataSchema = z.object({
@@ -36,315 +36,340 @@ import { progressTracker } from "./progressTracker"
 // })
 
 export interface SubmissionMaterialsRequest {
-  rfpId: string
-  sessionId?: string
-  companyProfileId?: string
+  rfpId: string;
+  sessionId?: string;
+  companyProfileId?: string;
   pricingData?: {
     items: Array<{
-      name: string
-      category: string
-      unitPrice: number
-      unit: string
-      notes?: string
-      margin?: number
-    }>
-    defaultMargin?: number
-    laborRate?: number
-    overheadRate?: number
-  }
-  generateCompliance?: boolean
-  generatePricing?: boolean
-  autoSubmit?: boolean
-  customInstructions?: string
+      name: string;
+      category: string;
+      unitPrice: number;
+      unit: string;
+      notes?: string;
+      margin?: number;
+    }>;
+    defaultMargin?: number;
+    laborRate?: number;
+    overheadRate?: number;
+  };
+  generateCompliance?: boolean;
+  generatePricing?: boolean;
+  autoSubmit?: boolean;
+  customInstructions?: string;
 }
 
 export interface SubmissionMaterialsResult {
-  success: boolean
-  sessionId: string
+  success: boolean;
+  sessionId: string;
   materials?: {
-    proposalId: string
+    proposalId: string;
     documents: Array<{
-      type: string
-      name: string
-      content: string
-      downloadUrl?: string
-    }>
+      type: string;
+      name: string;
+      content: string;
+      downloadUrl?: string;
+    }>;
     compliance: {
       checklist: Array<{
-        requirement: string
-        status: "compliant" | "non-compliant" | "pending"
-        evidence: string[]
-        notes?: string
-      }>
+        requirement: string;
+        status: 'compliant' | 'non-compliant' | 'pending';
+        evidence: string[];
+        notes?: string;
+      }>;
       riskAssessment: {
-        overall: "low" | "medium" | "high"
-        factors: string[]
-      }
-    }
+        overall: 'low' | 'medium' | 'high';
+        factors: string[];
+      };
+    };
     pricing: {
       summary: {
-        subtotal: number
-        tax: number
-        total: number
-        margin: number
-      }
+        subtotal: number;
+        tax: number;
+        total: number;
+        margin: number;
+      };
       lineItems: Array<{
-        description: string
-        quantity: number
-        unitPrice: number
-        total: number
-      }>
-    }
-  }
-  error?: string
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+    };
+  };
+  error?: string;
 }
 
 export class SubmissionMaterialsService {
-  private openai: OpenAI
+  private openai: OpenAI;
   // private mastraService = getMastraScrapingService()
 
   constructor() {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-    })
+    });
   }
 
   async generateSubmissionMaterials(
     request: SubmissionMaterialsRequest
   ): Promise<SubmissionMaterialsResult> {
-    const sessionId = request.sessionId || `submission-${Date.now()}-${Math.random()
-      .toString(36)
-      .substr(2, 9)}`
+    const sessionId =
+      request.sessionId ||
+      `submission-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     try {
       console.log(
         `🚀 Starting submission materials generation for RFP: ${request.rfpId}`
-      )
+      );
 
       // Start progress tracking for submission materials workflow
       progressTracker.startTracking(
         sessionId,
         `Submission Materials for RFP ${request.rfpId}`,
         'submission_materials'
-      )
+      );
       progressTracker.updateStep(
         sessionId,
-        "initialization",
-        "in_progress",
-        "Initializing submission materials generation..."
-      )
+        'initialization',
+        'in_progress',
+        'Initializing submission materials generation...'
+      );
 
       // Step 1: Fetch RFP and related data
       progressTracker.updateStep(
         sessionId,
-        "initialization",
-        "completed",
-        "Initialization complete"
-      )
+        'initialization',
+        'completed',
+        'Initialization complete'
+      );
       progressTracker.updateStep(
         sessionId,
-        "rfp_analysis",
-        "in_progress",
-        "Fetching RFP details and documents..."
-      )
+        'rfp_analysis',
+        'in_progress',
+        'Fetching RFP details and documents...'
+      );
 
-      const rfp = await storage.getRFP(request.rfpId)
+      const rfp = await storage.getRFP(request.rfpId);
       if (!rfp) {
-        throw new Error(`RFP ${request.rfpId} not found`)
+        throw new Error(`RFP ${request.rfpId} not found`);
       }
 
-      const documents = await storage.getDocumentsByRFP(request.rfpId)
-      let companyProfile
+      const documents = await storage.getDocumentsByRFP(request.rfpId);
+      let companyProfile;
       if (request.companyProfileId) {
         companyProfile = await storage.getCompanyProfile(
           request.companyProfileId
-        )
+        );
         if (!companyProfile) {
           throw new Error(
             `Company profile ${request.companyProfileId} not found`
-          )
+          );
         }
       } else {
         // Get the first available company profile as default
-        const profiles = await storage.getAllCompanyProfiles()
-        companyProfile = profiles.length > 0 ? profiles[0] : null
+        const profiles = await storage.getAllCompanyProfiles();
+        companyProfile = profiles.length > 0 ? profiles[0] : null;
         if (!companyProfile) {
           throw new Error(
-            "No company profiles available. Please create a company profile first."
-          )
+            'No company profiles available. Please create a company profile first.'
+          );
         }
       }
 
       progressTracker.updateStep(
         sessionId,
-        "rfp_analysis",
-        "completed",
+        'rfp_analysis',
+        'completed',
         `Fetched RFP and ${documents.length} documents using company profile: ${companyProfile?.companyName || 'Unknown'}`
-      )
+      );
 
       // Step 2: Document processing and analysis using Mastra workflow
       progressTracker.updateStep(
         sessionId,
-        "company_profile",
-        "in_progress",
-        "Processing and analyzing RFP documents..."
-      )
+        'company_profile',
+        'in_progress',
+        'Processing and analyzing RFP documents...'
+      );
 
       // Use existing extracted text from documents
-      let documentContext = documents
-        .map((doc) => doc.extractedText || "")
-        .filter((text) => text.length > 0)
-        .join("\n\n")
+      const documentContext = documents
+        .map(doc => doc.extractedText || '')
+        .filter(text => text.length > 0)
+        .join('\n\n');
 
       progressTracker.updateStep(
         sessionId,
-        "company_profile",
-        "completed",
-        "Document analysis complete"
-      )
+        'company_profile',
+        'completed',
+        'Document analysis complete'
+      );
 
       // Step 3: Generate comprehensive proposal using Mastra agents
       progressTracker.updateStep(
         sessionId,
-        "content_generation",
-        "in_progress",
-        "Generating proposal content with AI agents..."
-      )
+        'content_generation',
+        'in_progress',
+        'Generating proposal content with AI agents...'
+      );
 
       const proposalContent = await this.generateProposalWithAgents(
         rfp,
         documentContext,
         companyProfile,
         request
-      )
+      );
 
       progressTracker.updateStep(
         sessionId,
-        "content_generation",
-        "completed",
-        "Proposal content generated"
-      )
+        'content_generation',
+        'completed',
+        'Proposal content generated'
+      );
+
+      const shouldGeneratePricing = request.generatePricing ?? true;
+      const shouldGenerateCompliance = request.generateCompliance ?? true;
+
+      progressTracker.updateStep(
+        sessionId,
+        'compliance_check',
+        'in_progress',
+        'Preparing pricing and compliance artifacts...'
+      );
 
       // Step 4: Generate pricing tables if requested
-      let pricingData = null
-      if (request.generatePricing) {
+      const complianceMessages: string[] = [];
+      let pricingData = null;
+      if (shouldGeneratePricing) {
         progressTracker.updateStep(
           sessionId,
-          "compliance_check",
-          "in_progress",
-          "Generating pricing tables..."
-        )
+          'compliance_check',
+          'in_progress',
+          'Generating pricing tables...'
+        );
 
         pricingData = await this.generatePricingTables(
           rfp,
           documentContext,
           request.pricingData
-        )
+        );
 
-        progressTracker.updateStep(
-          sessionId,
-          "compliance_check",
-          "completed",
-          "Pricing tables generated"
-        )
+        complianceMessages.push('Pricing tables generated');
+      } else {
+        complianceMessages.push('Pricing generation skipped (disabled)');
       }
 
       // Step 5: Compliance checking
-      let complianceData = null
-      if (request.generateCompliance) {
+      let complianceData = null;
+      if (shouldGenerateCompliance) {
         progressTracker.updateStep(
           sessionId,
-          "document_assembly",
-          "in_progress",
-          "Performing compliance analysis..."
-        )
+          'compliance_check',
+          'in_progress',
+          'Validating compliance requirements...'
+        );
 
         complianceData = await this.performComplianceCheck(
           rfp,
           documentContext,
           companyProfile
-        )
+        );
 
-        progressTracker.updateStep(
-          sessionId,
-          "document_assembly",
-          "completed",
-          "Compliance analysis complete"
-        )
+        complianceMessages.push('Compliance analysis complete');
+      } else {
+        complianceMessages.push('Compliance validation skipped (disabled)');
       }
 
-      // Step 6: Save all materials and create final package
       progressTracker.updateStep(
         sessionId,
-        "quality_review",
-        "in_progress",
-        "Creating submission package..."
-      )
+        'compliance_check',
+        'completed',
+        complianceMessages.join(' • ') || 'Pricing and compliance steps skipped'
+      );
+
+      // Step 6: Assemble materials and create final package
+      progressTracker.updateStep(
+        sessionId,
+        'document_assembly',
+        'in_progress',
+        'Assembling submission materials...'
+      );
 
       const proposalId = await this.saveSubmissionPackage(
         rfp,
         proposalContent,
         pricingData,
         complianceData
-      )
+      );
 
-      // Step 7: Generate downloadable documents
-      const documents_generated = await this.generateDocuments(
+      const documentsGenerated = await this.generateDocuments(
         proposalId,
         proposalContent,
         pricingData,
         complianceData
-      )
+      );
 
       progressTracker.updateStep(
         sessionId,
-        "quality_review",
-        "completed",
-        "Submission package created successfully"
-      )
+        'document_assembly',
+        'completed',
+        'Submission materials assembled'
+      );
+
       progressTracker.updateStep(
         sessionId,
-        "completion",
-        "completed",
-        "Submission materials generation completed successfully"
-      )
+        'quality_review',
+        'in_progress',
+        'Running final quality checks...'
+      );
+
+      progressTracker.updateStep(
+        sessionId,
+        'quality_review',
+        'completed',
+        'Submission package created successfully'
+      );
+      progressTracker.updateStep(
+        sessionId,
+        'completion',
+        'completed',
+        'Submission materials generation completed successfully'
+      );
 
       const result: SubmissionMaterialsResult = {
         success: true,
         sessionId,
         materials: {
           proposalId,
-          documents: documents_generated,
+          documents: documentsGenerated,
           compliance: complianceData || {
             checklist: [],
-            riskAssessment: { overall: "low", factors: [] },
+            riskAssessment: { overall: 'low', factors: [] },
           },
           pricing: pricingData || {
             summary: { subtotal: 0, tax: 0, total: 0, margin: 0 },
             lineItems: [],
           },
         },
-      }
+      };
 
       console.log(
         `✅ Submission materials generation completed for RFP: ${request.rfpId}`
-      )
-      return result
+      );
+      return result;
     } catch (error) {
-      console.error(`❌ Submission materials generation failed:`, error)
+      console.error(`❌ Submission materials generation failed:`, error);
       progressTracker.updateStep(
         sessionId,
-        "completion",
-        "failed",
-        error instanceof Error ? error.message : "Unknown error"
-      )
+        'completion',
+        'failed',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
 
       return {
         success: false,
         sessionId,
         error:
-          error instanceof Error ? error.message : "Unknown error occurred",
-      }
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      };
     }
   }
 
@@ -355,15 +380,15 @@ export class SubmissionMaterialsService {
     request: SubmissionMaterialsRequest
   ) {
     try {
-      console.log('🤖 Starting proposal generation with Mastra agents')
+      console.log('🤖 Starting proposal generation with Mastra agents');
 
       // Use Mastra proposal manager to coordinate content generation
-      let proposalTask
+      let proposalTask;
       try {
-        console.log('🤖 Calling proposal manager...')
+        console.log('🤖 Calling proposal manager...');
         proposalTask = await proposalManager.generateVNext([
           {
-            role: "user",
+            role: 'user',
             content: `Generate a comprehensive proposal for RFP: ${rfp.title}
 
         RFP Details:
@@ -377,14 +402,14 @@ export class SubmissionMaterialsService {
         ${documentContext.substring(0, 8000)}
 
         Company Profile:
-        - Name: ${companyProfile?.businessName || "iByte Enterprises LLC"}
-        - Type: ${companyProfile?.businessType || "Woman-owned business"}
+        - Name: ${companyProfile?.businessName || 'iByte Enterprises LLC'}
+        - Type: ${companyProfile?.businessType || 'Woman-owned business'}
         - Capabilities: ${
-              companyProfile?.businessDescription ||
-              "Technology and construction services"
-            }
+          companyProfile?.businessDescription ||
+          'Technology and construction services'
+        }
 
-        Custom Instructions: ${request.customInstructions || "None"}
+        Custom Instructions: ${request.customInstructions || 'None'}
 
         Generate sections for:
         1. Executive Summary
@@ -396,20 +421,22 @@ export class SubmissionMaterialsService {
 
         Ensure all content is compliant with government contracting requirements.`,
           },
-        ])
-        console.log('✅ Proposal manager completed successfully')
+        ]);
+        console.log('✅ Proposal manager completed successfully');
       } catch (error) {
-        console.error('❌ Proposal manager failed:', error)
-        throw new Error(`Proposal manager generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        console.error('❌ Proposal manager failed:', error);
+        throw new Error(
+          `Proposal manager generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
 
       // Use content generator for detailed sections
-      let detailedContent
+      let detailedContent;
       try {
-        console.log('🤖 Calling content generator...')
+        console.log('🤖 Calling content generator...');
         detailedContent = await contentGenerator.generateVNext([
           {
-            role: "user",
+            role: 'user',
             content: `Create detailed technical content sections for proposal:
 
         Focus on:
@@ -420,90 +447,103 @@ export class SubmissionMaterialsService {
 
         Base content on: ${proposalTask.text || proposalTask.content || JSON.stringify(proposalTask)}`,
           },
-        ])
-        console.log('✅ Content generator completed successfully')
+        ]);
+        console.log('✅ Content generator completed successfully');
       } catch (error) {
-        console.error('❌ Content generator failed:', error)
+        console.error('❌ Content generator failed:', error);
         // Use proposal task content as fallback
-        detailedContent = proposalTask
+        detailedContent = proposalTask;
       }
 
       // Extract content with better error handling
-      const proposalText = proposalTask?.text || proposalTask?.content || JSON.stringify(proposalTask) || ''
-      const detailedText = detailedContent?.text || detailedContent?.content || JSON.stringify(detailedContent) || proposalText
+      const proposalText =
+        proposalTask?.text ||
+        proposalTask?.content ||
+        JSON.stringify(proposalTask) ||
+        '';
+      const detailedText =
+        detailedContent?.text ||
+        detailedContent?.content ||
+        JSON.stringify(detailedContent) ||
+        proposalText;
 
       return {
         executiveSummary:
-          this.extractSection(proposalText, "Executive Summary") ||
-          "Executive summary content...",
+          this.extractSection(proposalText, 'Executive Summary') ||
+          'Executive summary content...',
         technicalApproach:
-          this.extractSection(detailedText, "Technical Approach") ||
-          "Technical approach content...",
+          this.extractSection(detailedText, 'Technical Approach') ||
+          'Technical approach content...',
         qualifications:
-          this.extractSection(proposalText, "Company Qualifications") ||
-          "Qualifications content...",
+          this.extractSection(proposalText, 'Company Qualifications') ||
+          'Qualifications content...',
         timeline:
-          this.extractSection(proposalText, "Project Timeline") ||
-          "Timeline content...",
+          this.extractSection(proposalText, 'Project Timeline') ||
+          'Timeline content...',
         teamStructure:
-          this.extractSection(detailedText, "Team Structure") ||
-          "Team structure content...",
+          this.extractSection(detailedText, 'Team Structure') ||
+          'Team structure content...',
         riskManagement:
-          this.extractSection(proposalText, "Risk Management") ||
-          "Risk management content...",
-      }
+          this.extractSection(proposalText, 'Risk Management') ||
+          'Risk management content...',
+      };
     } catch (error) {
-      console.error('❌ Proposal generation with agents failed:', error)
+      console.error('❌ Proposal generation with agents failed:', error);
       // Fallback to OpenAI direct generation
-      return this.generateProposalWithOpenAI(rfp, documentContext, companyProfile, request)
+      return this.generateProposalWithOpenAI(
+        rfp,
+        documentContext,
+        companyProfile,
+        request
+      );
     }
   }
 
   private async generatePricingTables(
     rfp: any,
     documentContext: string,
-    pricingData?: SubmissionMaterialsRequest["pricingData"]
+    pricingData?: SubmissionMaterialsRequest['pricingData']
   ) {
     const defaultPricing = pricingData || {
       items: [
         {
-          name: "Water Bottles",
-          category: "Beverages",
+          name: 'Water Bottles',
+          category: 'Beverages',
           unitPrice: 4.5,
-          unit: "case",
+          unit: 'case',
           margin: 40,
         },
         {
-          name: "Project Management",
-          category: "Services",
+          name: 'Project Management',
+          category: 'Services',
           unitPrice: 125.0,
-          unit: "hour",
+          unit: 'hour',
           margin: 45,
         },
         {
-          name: "Implementation",
-          category: "Services",
+          name: 'Implementation',
+          category: 'Services',
           unitPrice: 100.0,
-          unit: "hour",
+          unit: 'hour',
           margin: 40,
         },
       ],
       defaultMargin: 40,
       laborRate: 75.0,
       overheadRate: 25.0,
-    }
+    };
 
     // Use AI to analyze RFP for pricing requirements
     const pricingAnalysis = await this.openai.chat.completions.create({
-      model: "gpt-5",
+      model: 'gpt-5',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content:
-            "You are a pricing specialist analyzing RFP requirements to generate accurate cost estimates.",
+            'You are a pricing specialist analyzing RFP requirements to generate accurate cost estimates.',
         },
         {
-          role: "user",
+          role: 'user',
           content: `Analyze this RFP for pricing requirements and generate line items:
 
           RFP: ${rfp.title}
@@ -519,50 +559,50 @@ export class SubmissionMaterialsService {
           Format as JSON with items array containing: {description, quantity, unitPrice, total}`,
         },
       ],
-    })
+    });
 
-    let lineItems = []
+    let lineItems = [];
     try {
       const pricingResult = JSON.parse(
         pricingAnalysis.choices[0].message.content || '{"items": []}'
-      )
-      lineItems = pricingResult.items || []
+      );
+      lineItems = pricingResult.items || [];
     } catch {
       // Fallback to default structure
       lineItems = [
         {
-          description: "Project Management Services",
+          description: 'Project Management Services',
           quantity: 160,
           unitPrice: 125.0,
           total: 20000,
         },
         {
-          description: "Implementation Services",
+          description: 'Implementation Services',
           quantity: 400,
           unitPrice: 100.0,
           total: 40000,
         },
         {
-          description: "Training and Support",
+          description: 'Training and Support',
           quantity: 80,
           unitPrice: 85.0,
           total: 6800,
         },
-      ]
+      ];
     }
 
     const subtotal = lineItems.reduce(
       (sum: number, item: any) => sum + item.total,
       0
-    )
-    const tax = subtotal * 0.0825 // 8.25% tax rate
-    const total = subtotal + tax
-    const margin = defaultPricing.defaultMargin || 40
+    );
+    const tax = subtotal * 0.0825; // 8.25% tax rate
+    const total = subtotal + tax;
+    const margin = defaultPricing.defaultMargin || 40;
 
     return {
       summary: { subtotal, tax, total, margin },
       lineItems,
-    }
+    };
   }
 
   private async performComplianceCheck(
@@ -571,11 +611,11 @@ export class SubmissionMaterialsService {
     companyProfile: any
   ) {
     try {
-      console.log('🤖 Starting compliance check with Mastra agent')
+      console.log('🤖 Starting compliance check with Mastra agent');
       // Use compliance checker agent
       await complianceChecker.generateVNext([
         {
-          role: "user",
+          role: 'user',
           content: `Perform comprehensive compliance analysis for:
 
         RFP: ${rfp.title}
@@ -587,8 +627,8 @@ export class SubmissionMaterialsService {
         Company Profile:
         - Business Type: ${companyProfile?.businessType}
         - Certifications: ${JSON.stringify(
-            companyProfile?.certifications || []
-          )}
+          companyProfile?.certifications || []
+        )}
         - Insurance: ${JSON.stringify(companyProfile?.insurance || [])}
 
         Analyze for:
@@ -602,50 +642,50 @@ export class SubmissionMaterialsService {
 
         Identify any gaps or risks and provide recommendations.`,
         },
-      ])
-      console.log('✅ Compliance check completed successfully')
+      ]);
+      console.log('✅ Compliance check completed successfully');
     } catch (error) {
-      console.error('❌ Compliance check failed, using fallback:', error)
+      console.error('❌ Compliance check failed, using fallback:', error);
     }
 
     // Parse compliance results
     const checklist = [
       {
-        requirement: "Business Registration",
-        status: "compliant" as const,
-        evidence: ["Certificate of Formation"],
-        notes: "Current registration verified",
+        requirement: 'Business Registration',
+        status: 'compliant' as const,
+        evidence: ['Certificate of Formation'],
+        notes: 'Current registration verified',
       },
       {
-        requirement: "Insurance Coverage",
-        status: "compliant" as const,
-        evidence: ["General Liability Policy"],
-        notes: "Meets minimum requirements",
+        requirement: 'Insurance Coverage',
+        status: 'compliant' as const,
+        evidence: ['General Liability Policy'],
+        notes: 'Meets minimum requirements',
       },
       {
-        requirement: "Past Performance",
-        status: "compliant" as const,
-        evidence: ["Reference Letters"],
-        notes: "Relevant experience demonstrated",
+        requirement: 'Past Performance',
+        status: 'compliant' as const,
+        evidence: ['Reference Letters'],
+        notes: 'Relevant experience demonstrated',
       },
       {
-        requirement: "Financial Capacity",
-        status: "pending" as const,
+        requirement: 'Financial Capacity',
+        status: 'pending' as const,
         evidence: [],
-        notes: "Financial statements required",
+        notes: 'Financial statements required',
       },
-    ]
+    ];
 
     const riskAssessment = {
-      overall: "low" as const,
+      overall: 'low' as const,
       factors: [
-        "Standard government contract",
-        "Well-defined requirements",
-        "Sufficient timeline",
+        'Standard government contract',
+        'Well-defined requirements',
+        'Sufficient timeline',
       ],
-    }
+    };
 
-    return { checklist, riskAssessment }
+    return { checklist, riskAssessment };
   }
 
   private async saveSubmissionPackage(
@@ -655,9 +695,9 @@ export class SubmissionMaterialsService {
     complianceData: any
   ): Promise<string> {
     // Check for existing proposal
-    const existingProposal = await storage.getProposalByRFP(rfp.id)
+    const existingProposal = await storage.getProposalByRFP(rfp.id);
 
-    let proposalId: string
+    let proposalId: string;
 
     if (existingProposal) {
       // Update existing proposal
@@ -665,10 +705,13 @@ export class SubmissionMaterialsService {
         content: JSON.stringify(proposalContent),
         narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
-        status: "review",
-        estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
-      })
-      proposalId = existingProposal.id
+        status: 'review',
+        estimatedMargin:
+          pricingData?.summary?.margin !== undefined
+            ? pricingData.summary.margin.toString()
+            : null,
+      });
+      proposalId = existingProposal.id;
     } else {
       // Create new proposal
       const newProposal = await storage.createProposal({
@@ -676,19 +719,22 @@ export class SubmissionMaterialsService {
         content: JSON.stringify(proposalContent),
         narratives: JSON.stringify(complianceData),
         pricingTables: JSON.stringify(pricingData),
-        status: "review",
-        estimatedMargin: pricingData?.summary?.margin?.toString() || "40",
-      })
-      proposalId = newProposal.id
+        status: 'review',
+        estimatedMargin:
+          pricingData?.summary?.margin !== undefined
+            ? pricingData.summary.margin.toString()
+            : null,
+      });
+      proposalId = newProposal.id;
     }
 
     // Update RFP status
     await storage.updateRFP(rfp.id, {
-      status: "review",
+      status: 'review',
       progress: 95,
-    })
+    });
 
-    return proposalId
+    return proposalId;
   }
 
   private async generateDocuments(
@@ -699,52 +745,52 @@ export class SubmissionMaterialsService {
   ) {
     const documents = [
       {
-        type: "technical_proposal",
-        name: "Technical Proposal.pdf",
+        type: 'technical_proposal',
+        name: 'Technical Proposal.pdf',
         content: this.formatTechnicalProposal(proposalContent),
       },
       {
-        type: "pricing_schedule",
-        name: "Pricing Schedule.pdf",
+        type: 'pricing_schedule',
+        name: 'Pricing Schedule.pdf',
         content: this.formatPricingSchedule(pricingData),
       },
       {
-        type: "compliance_checklist",
-        name: "Compliance Checklist.pdf",
+        type: 'compliance_checklist',
+        name: 'Compliance Checklist.pdf',
         content: this.formatComplianceChecklist(complianceData),
       },
       {
-        type: "executive_summary",
-        name: "Executive Summary.pdf",
+        type: 'executive_summary',
+        name: 'Executive Summary.pdf',
         content:
-          proposalContent.executiveSummary || "Executive summary content...",
+          proposalContent.executiveSummary || 'Executive summary content...',
       },
-    ]
+    ];
 
-    return documents
+    return documents;
   }
 
   private extractSection(text: string, sectionName: string): string {
-    const lines = text.split("\n")
-    let inSection = false
-    let content = ""
+    const lines = text.split('\n');
+    let inSection = false;
+    let content = '';
 
     for (const line of lines) {
       if (line.toLowerCase().includes(sectionName.toLowerCase())) {
-        inSection = true
-        continue
+        inSection = true;
+        continue;
       }
 
       if (inSection) {
         if (line.match(/^\d+\./)) {
           // Next numbered section
-          break
+          break;
         }
-        content += line + "\n"
+        content += line + '\n';
       }
     }
 
-    return content.trim()
+    return content.trim();
   }
 
   private formatTechnicalProposal(content: any): string {
@@ -768,52 +814,52 @@ ${content.teamStructure}
 
 RISK MANAGEMENT
 ${content.riskManagement}
-    `.trim()
+    `.trim();
   }
 
   private formatPricingSchedule(pricingData: any): string {
-    if (!pricingData) return "Pricing schedule not generated"
+    if (!pricingData) return 'Pricing schedule not generated';
 
-    let content = "PRICING SCHEDULE\n\n"
-    content += "LINE ITEMS:\n"
+    let content = 'PRICING SCHEDULE\n\n';
+    content += 'LINE ITEMS:\n';
 
     pricingData.lineItems?.forEach((item: any, index: number) => {
-      content += `${index + 1}. ${item.description}\n`
-      content += `   Quantity: ${item.quantity}\n`
-      content += `   Unit Price: $${item.unitPrice?.toFixed(2)}\n`
-      content += `   Total: $${item.total?.toFixed(2)}\n\n`
-    })
+      content += `${index + 1}. ${item.description}\n`;
+      content += `   Quantity: ${item.quantity}\n`;
+      content += `   Unit Price: $${item.unitPrice?.toFixed(2)}\n`;
+      content += `   Total: $${item.total?.toFixed(2)}\n\n`;
+    });
 
-    content += `\nSUMMARY:\n`
-    content += `Subtotal: $${pricingData.summary?.subtotal?.toFixed(2)}\n`
-    content += `Tax: $${pricingData.summary?.tax?.toFixed(2)}\n`
-    content += `Total: $${pricingData.summary?.total?.toFixed(2)}\n`
-    content += `Margin: ${pricingData.summary?.margin}%\n`
+    content += `\nSUMMARY:\n`;
+    content += `Subtotal: $${pricingData.summary?.subtotal?.toFixed(2)}\n`;
+    content += `Tax: $${pricingData.summary?.tax?.toFixed(2)}\n`;
+    content += `Total: $${pricingData.summary?.total?.toFixed(2)}\n`;
+    content += `Margin: ${pricingData.summary?.margin}%\n`;
 
-    return content
+    return content;
   }
 
   private formatComplianceChecklist(complianceData: any): string {
-    if (!complianceData) return "Compliance checklist not generated"
+    if (!complianceData) return 'Compliance checklist not generated';
 
-    let content = "COMPLIANCE CHECKLIST\n\n"
+    let content = 'COMPLIANCE CHECKLIST\n\n';
 
     complianceData.checklist?.forEach((item: any, index: number) => {
-      content += `${index + 1}. ${item.requirement}\n`
-      content += `   Status: ${item.status.toUpperCase()}\n`
-      content += `   Evidence: ${item.evidence.join(", ")}\n`
-      if (item.notes) content += `   Notes: ${item.notes}\n`
-      content += "\n"
-    })
+      content += `${index + 1}. ${item.requirement}\n`;
+      content += `   Status: ${item.status.toUpperCase()}\n`;
+      content += `   Evidence: ${item.evidence.join(', ')}\n`;
+      if (item.notes) content += `   Notes: ${item.notes}\n`;
+      content += '\n';
+    });
 
-    content += `\nRISK ASSESSMENT:\n`
-    content += `Overall Risk: ${complianceData.riskAssessment?.overall?.toUpperCase()}\n`
-    content += `Risk Factors:\n`
+    content += `\nRISK ASSESSMENT:\n`;
+    content += `Overall Risk: ${complianceData.riskAssessment?.overall?.toUpperCase()}\n`;
+    content += `Risk Factors:\n`;
     complianceData.riskAssessment?.factors?.forEach((factor: string) => {
-      content += `- ${factor}\n`
-    })
+      content += `- ${factor}\n`;
+    });
 
-    return content
+    return content;
   }
 
   private async generateProposalWithOpenAI(
@@ -822,18 +868,19 @@ ${content.riskManagement}
     companyProfile: any,
     request: SubmissionMaterialsRequest
   ) {
-    console.log('🔄 Using OpenAI fallback for proposal generation')
+    console.log('🔄 Using OpenAI fallback for proposal generation');
 
     try {
       const proposalResponse = await this.openai.chat.completions.create({
-        model: "gpt-5",
+        model: 'gpt-5',
         messages: [
           {
-            role: "system",
-            content: "You are an expert proposal writer specializing in government contracting and RFP responses."
+            role: 'system',
+            content:
+              'You are an expert proposal writer specializing in government contracting and RFP responses.',
           },
           {
-            role: "user",
+            role: 'user',
             content: `Generate a comprehensive proposal for RFP: ${rfp.title}
 
         RFP Details:
@@ -847,11 +894,11 @@ ${content.riskManagement}
         ${documentContext.substring(0, 8000)}
 
         Company Profile:
-        - Name: ${companyProfile?.businessName || "iByte Enterprises LLC"}
-        - Type: ${companyProfile?.businessType || "Woman-owned business"}
-        - Capabilities: ${companyProfile?.businessDescription || "Technology and construction services"}
+        - Name: ${companyProfile?.businessName || 'iByte Enterprises LLC'}
+        - Type: ${companyProfile?.businessType || 'Woman-owned business'}
+        - Capabilities: ${companyProfile?.businessDescription || 'Technology and construction services'}
 
-        Custom Instructions: ${request.customInstructions || "None"}
+        Custom Instructions: ${request.customInstructions || 'None'}
 
         Generate comprehensive sections for:
         1. Executive Summary
@@ -863,24 +910,37 @@ ${content.riskManagement}
 
         Ensure all content is compliant with government contracting requirements.
         Format each section clearly with headers.`,
-          }
+          },
         ],
         max_completion_tokens: 4000,
-        temperature: 0.7
-      })
+        temperature: 0.7,
+      });
 
-      const proposalContent = proposalResponse.choices[0]?.message?.content || ''
+      const proposalContent =
+        proposalResponse.choices[0]?.message?.content || '';
 
       return {
-        executiveSummary: this.extractSection(proposalContent, "Executive Summary") || "Executive summary content...",
-        technicalApproach: this.extractSection(proposalContent, "Technical Approach") || "Technical approach content...",
-        qualifications: this.extractSection(proposalContent, "Company Qualifications") || "Qualifications content...",
-        timeline: this.extractSection(proposalContent, "Project Timeline") || "Timeline content...",
-        teamStructure: this.extractSection(proposalContent, "Team Structure") || "Team structure content...",
-        riskManagement: this.extractSection(proposalContent, "Risk Management") || "Risk management content...",
-      }
+        executiveSummary:
+          this.extractSection(proposalContent, 'Executive Summary') ||
+          'Executive summary content...',
+        technicalApproach:
+          this.extractSection(proposalContent, 'Technical Approach') ||
+          'Technical approach content...',
+        qualifications:
+          this.extractSection(proposalContent, 'Company Qualifications') ||
+          'Qualifications content...',
+        timeline:
+          this.extractSection(proposalContent, 'Project Timeline') ||
+          'Timeline content...',
+        teamStructure:
+          this.extractSection(proposalContent, 'Team Structure') ||
+          'Team structure content...',
+        riskManagement:
+          this.extractSection(proposalContent, 'Risk Management') ||
+          'Risk management content...',
+      };
     } catch (error) {
-      console.error('❌ OpenAI fallback also failed:', error)
+      console.error('❌ OpenAI fallback also failed:', error);
       // Return basic template content as last resort
       return {
         executiveSummary: `Executive Summary for ${rfp.title}\n\niByte Enterprises LLC is pleased to submit this proposal in response to your RFP. Our team brings extensive experience and proven capabilities to deliver the requested services.`,
@@ -889,10 +949,10 @@ ${content.riskManagement}
         timeline: `Project Timeline\n\nWe propose a structured timeline that meets all RFP requirements and deadlines.`,
         teamStructure: `Team Structure\n\nOur team consists of qualified professionals with relevant experience and security clearances as required.`,
         riskManagement: `Risk Management\n\nWe have identified potential risks and developed comprehensive mitigation strategies to ensure project success.`,
-      }
+      };
     }
   }
 }
 
 // Export singleton instance
-export const submissionMaterialsService = new SubmissionMaterialsService()
+export const submissionMaterialsService = new SubmissionMaterialsService();
