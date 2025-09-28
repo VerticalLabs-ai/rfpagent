@@ -3,9 +3,9 @@ import type {
   CompanyContact,
   CompanyInsurance,
   CompanyProfile,
-} from "@shared/schema"
-import OpenAI from "openai"
-import { z } from "zod"
+} from '@shared/schema';
+import OpenAI from 'openai';
+import { z } from 'zod';
 
 // Zod schemas for AI service validation
 const RFPAnalysisResultSchema = z.object({
@@ -19,7 +19,7 @@ const RFPAnalysisResultSchema = z.object({
       })
       .optional(),
     contactRoles: z.array(z.string()).optional(),
-    businessSize: z.enum(["small", "large", "any"]).optional(),
+    businessSize: z.enum(['small', 'large', 'any']).optional(),
     socioEconomicPreferences: z.array(z.string()).optional(),
     geographicRequirements: z.array(z.string()).optional(),
     experienceRequirements: z.array(z.string()).optional(),
@@ -34,30 +34,30 @@ const RFPAnalysisResultSchema = z.object({
   ),
   riskFlags: z.array(
     z.object({
-      type: z.enum(["deadline", "complexity", "requirements", "financial"]),
-      severity: z.enum(["low", "medium", "high"]),
+      type: z.enum(['deadline', 'complexity', 'requirements', 'financial']),
+      severity: z.enum(['low', 'medium', 'high']),
       description: z.string(),
     })
   ),
   keyDates: z.object({
-    deadline: z.string().transform((str) => new Date(str)),
+    deadline: z.string().transform(str => new Date(str)),
     prebidMeeting: z
       .string()
       .nullable()
-      .transform((str) => (str ? new Date(str) : null))
+      .transform(str => (str ? new Date(str) : null))
       .optional(),
     questionsDeadline: z
       .string()
       .nullable()
-      .transform((str) => (str ? new Date(str) : null))
+      .transform(str => (str ? new Date(str) : null))
       .optional(),
     sampleSubmission: z
       .string()
       .nullable()
-      .transform((str) => (str ? new Date(str) : null))
+      .transform(str => (str ? new Date(str) : null))
       .optional(),
   }),
-})
+});
 
 const GeneratedProposalContentSchema = z.object({
   executiveSummary: z.string(),
@@ -74,102 +74,102 @@ const GeneratedProposalContentSchema = z.object({
     })
   ),
   attachmentRecommendations: z.array(z.string()),
-})
+});
 
 // Types for AI-powered proposal generation
 export interface RFPAnalysisResult {
   requirements: {
-    businessType?: string[]
-    certifications?: string[]
+    businessType?: string[];
+    certifications?: string[];
     insurance?: {
-      types: string[]
-      minimumCoverage?: number
-    }
-    contactRoles?: string[]
-    businessSize?: "small" | "large" | "any"
-    socioEconomicPreferences?: string[]
-    geographicRequirements?: string[]
-    experienceRequirements?: string[]
-  }
+      types: string[];
+      minimumCoverage?: number;
+    };
+    contactRoles?: string[];
+    businessSize?: 'small' | 'large' | 'any';
+    socioEconomicPreferences?: string[];
+    geographicRequirements?: string[];
+    experienceRequirements?: string[];
+  };
   complianceItems: {
-    item: string
-    category: string
-    required: boolean
-    description: string
-  }[]
+    item: string;
+    category: string;
+    required: boolean;
+    description: string;
+  }[];
   riskFlags: {
-    type: "deadline" | "complexity" | "requirements" | "financial"
-    severity: "low" | "medium" | "high"
-    description: string
-  }[]
+    type: 'deadline' | 'complexity' | 'requirements' | 'financial';
+    severity: 'low' | 'medium' | 'high';
+    description: string;
+  }[];
   keyDates: {
-    deadline: Date
-    prebidMeeting?: Date | null
-    questionsDeadline?: Date | null
-    sampleSubmission?: Date | null
-  }
+    deadline: Date;
+    prebidMeeting?: Date | null;
+    questionsDeadline?: Date | null;
+    sampleSubmission?: Date | null;
+  };
 }
 
 export interface CompanyDataMapping {
-  profile: CompanyProfile
-  relevantCertifications: CompanyCertification[]
-  applicableInsurance: CompanyInsurance[]
+  profile: CompanyProfile;
+  relevantCertifications: CompanyCertification[];
+  applicableInsurance: CompanyInsurance[];
   assignedContacts: {
-    role: string
-    contact: CompanyContact
-    reason: string
-  }[]
+    role: string;
+    contact: CompanyContact;
+    reason: string;
+  }[];
   businessClassifications: {
-    naics: string[]
-    nigp: string[]
-    categories: string[]
-  }
+    naics: string[];
+    nigp: string[];
+    categories: string[];
+  };
   socioEconomicQualifications: {
-    smallBusiness: boolean
-    womanOwned: boolean
-    minorityOwned: boolean
-    veteranOwned: boolean
-    hubZone: boolean
-  }
+    smallBusiness: boolean;
+    womanOwned: boolean;
+    minorityOwned: boolean;
+    veteranOwned: boolean;
+    hubZone: boolean;
+  };
 }
 
 export interface ProposalGenerationRequest {
-  rfpId: string
-  rfpText: string
-  companyProfileId: string
+  rfpId: string;
+  rfpText: string;
+  companyProfileId: string;
   proposalType?:
-    | "standard"
-    | "technical"
-    | "construction"
-    | "professional_services"
+    | 'standard'
+    | 'technical'
+    | 'construction'
+    | 'professional_services';
 }
 
 export interface GeneratedProposalContent {
-  executiveSummary: string
-  companyOverview: string
-  qualifications: string
-  approach: string
-  timeline: string
+  executiveSummary: string;
+  companyOverview: string;
+  qualifications: string;
+  approach: string;
+  timeline: string;
   pricing?: {
-    breakdown: any[]
-    total: number
-  }
-  certificationNarratives: string[]
+    breakdown: any[];
+    total: number;
+  };
+  certificationNarratives: string[];
   complianceMatrix: {
-    requirement: string
-    response: string
-    evidence: string[]
-  }[]
-  attachmentRecommendations: string[]
+    requirement: string;
+    response: string;
+    evidence: string[];
+  }[];
+  attachmentRecommendations: string[];
 }
 
 export class AIProposalService {
-  private openaiClient: any
+  private openaiClient: any;
 
   constructor() {
     this.openaiClient = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
-    })
+    });
   }
 
   /**
@@ -179,8 +179,8 @@ export class AIProposalService {
     // Validate input length (limit to ~50k chars to avoid token limits)
     if (rfpText.length > 50000) {
       throw new Error(
-        "RFP text too long. Please provide a summary or key sections only."
-      )
+        'RFP text too long. Please provide a summary or key sections only.'
+      );
     }
 
     const prompt = `Analyze this RFP document and extract key information for automated proposal generation:
@@ -225,52 +225,52 @@ Return a JSON object with the following structure:
   }
 }
 
-Focus on information relevant to iByte Enterprises LLC, a construction/technology company that is woman-owned with certifications (WBENC, HUB, DBE, MBE, WBE).`
+Focus on information relevant to iByte Enterprises LLC, a construction/technology company that is woman-owned with certifications (WBENC, HUB, DBE, MBE, WBE).`;
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: "gpt-5",
+        model: 'gpt-5',
         messages: [
           {
-            role: "system",
+            role: 'system',
             content:
-              "You are an expert RFP analyst that extracts structured requirements from procurement documents. Return only valid JSON that matches the requested schema exactly.",
+              'You are an expert RFP analyst that extracts structured requirements from procurement documents. Return only valid JSON that matches the requested schema exactly.',
           },
           {
-            role: "user",
+            role: 'user',
             content: prompt,
           },
         ],
         temperature: 0.3,
         max_completion_tokens: 3000,
-        response_format: { type: "json_object" },
-      })
+        response_format: { type: 'json_object' },
+      });
 
-      const analysisText = response.choices[0]?.message?.content
+      const analysisText = response.choices[0]?.message?.content;
       if (!analysisText) {
-        throw new Error("No analysis received from OpenAI")
+        throw new Error('No analysis received from OpenAI');
       }
 
       // Parse and validate with Zod
-      const rawAnalysis = JSON.parse(analysisText)
-      const validatedAnalysis = RFPAnalysisResultSchema.safeParse(rawAnalysis)
+      const rawAnalysis = JSON.parse(analysisText);
+      const validatedAnalysis = RFPAnalysisResultSchema.safeParse(rawAnalysis);
 
       if (!validatedAnalysis.success) {
         console.error(
-          "Invalid analysis format from OpenAI:",
+          'Invalid analysis format from OpenAI:',
           validatedAnalysis.error
-        )
-        throw new Error("Invalid analysis format from AI service")
+        );
+        throw new Error('Invalid analysis format from AI service');
       }
 
-      return validatedAnalysis.data
+      return validatedAnalysis.data;
     } catch (error) {
-      console.error("Error analyzing RFP document:", error)
+      console.error('Error analyzing RFP document:', error);
       throw new Error(
         `Failed to analyze RFP: ${
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : 'Unknown error'
         }`
-      )
+      );
     }
   }
 
@@ -288,44 +288,44 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
     const relevantCertifications = this.selectRelevantCertifications(
       analysis,
       certifications
-    )
+    );
 
     // AI-powered insurance matching
     const applicableInsurance = this.matchInsuranceRequirements(
       analysis,
       insurance
-    )
+    );
 
     // AI-powered contact assignment
-    const assignedContacts = this.assignContactRoles(analysis, contacts)
+    const assignedContacts = this.assignContactRoles(analysis, contacts);
 
     // Extract business classifications
     const businessClassifications = {
       naics: companyProfile.naicsPrimary ? [companyProfile.naicsPrimary] : [],
       nigp: companyProfile.nigpCodes
-        ? companyProfile.nigpCodes.split(",").map((code) => code.trim())
+        ? companyProfile.nigpCodes.split(',').map(code => code.trim())
         : [],
       categories: companyProfile.primaryBusinessCategory
         ? [companyProfile.primaryBusinessCategory]
         : [],
-    }
+    };
 
     // Determine socio-economic qualifications
     const socioEconomicQualifications = {
       smallBusiness: true, // iByte is a small business
       womanOwned: relevantCertifications.some(
-        (cert) =>
-          cert.certificationType.includes("WBENC") ||
-          cert.certificationType.includes("WBE")
+        cert =>
+          cert.certificationType.includes('WBENC') ||
+          cert.certificationType.includes('WBE')
       ),
-      minorityOwned: relevantCertifications.some((cert) =>
-        cert.certificationType.includes("MBE")
+      minorityOwned: relevantCertifications.some(cert =>
+        cert.certificationType.includes('MBE')
       ),
       veteranOwned: false, // Not applicable for iByte
-      hubZone: relevantCertifications.some((cert) =>
-        cert.certificationType.includes("HUB")
+      hubZone: relevantCertifications.some(cert =>
+        cert.certificationType.includes('HUB')
       ),
-    }
+    };
 
     return {
       profile: companyProfile,
@@ -334,7 +334,7 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
       assignedContacts,
       businessClassifications,
       socioEconomicQualifications,
-    }
+    };
   }
 
   /**
@@ -345,90 +345,101 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
     companyMapping: CompanyDataMapping,
     rfpText: string
   ): Promise<GeneratedProposalContent> {
-    const companyInfo = this.formatCompanyInformation(companyMapping)
+    const companyInfo = this.formatCompanyInformation(companyMapping);
 
-    const prompt = `Generate a comprehensive proposal response using this company information and return it as a JSON object:
+    const prompt = `You are writing a professional proposal for iByte Enterprises LLC in response to the following RFP. Write detailed, specific content for each section based on the RFP requirements and company information provided.
 
+COMPANY INFORMATION:
 ${companyInfo}
 
-For this RFP:
+RFP DETAILS:
 ${rfpText}
 
-Requirements Analysis:
+REQUIREMENTS ANALYSIS:
 ${JSON.stringify(analysis.requirements, null, 2)}
+
+INSTRUCTIONS:
+1. Write detailed, specific content for each section - do NOT use placeholder text or generic statements
+2. Reference specific RFP requirements and explain how iByte meets them
+3. Include concrete examples of iByte's experience and capabilities
+4. Use professional, persuasive language appropriate for government contracting
+5. Ensure all content is substantial and informative
 
 Return a JSON object with the following structure:
 {
-  "executiveSummary": "2-3 paragraphs highlighting key qualifications and why iByte is the best choice",
-  "companyOverview": "Detailed company overview emphasizing relevant experience and certifications",
-  "qualifications": "Detailed capability statements and relevant experience",
-  "approach": "High-level project methodology and implementation approach",
-  "timeline": "General project phases and timeline considerations",
-  "certificationNarratives": ["Narrative for each relevant certification explaining its value"],
+  "executiveSummary": "[Write 2-3 detailed paragraphs explaining why iByte is uniquely qualified for this RFP, highlighting specific certifications, experience, and competitive advantages]",
+  "companyOverview": "[Write a comprehensive overview of iByte's business, including years of experience, key capabilities, certifications, and relevant project history]",
+  "qualifications": "[Detail iByte's specific qualifications, certifications, past performance, and technical capabilities relevant to this RFP]",
+  "approach": "[Describe iByte's specific methodology and approach for completing this project, including phases, deliverables, and quality assurance]",
+  "timeline": "[Provide a realistic project timeline with specific phases, milestones, and deliverables based on the RFP requirements]",
+  "certificationNarratives": ["[Array of detailed explanations for each relevant certification and its value to the government]"],
   "complianceMatrix": [
     {
-      "requirement": "Specific RFP requirement",
-      "response": "How iByte meets this requirement",
-      "evidence": ["Supporting documents or certifications"]
+      "requirement": "[Specific requirement from the RFP]",
+      "response": "[Detailed explanation of how iByte meets this requirement]",
+      "evidence": ["[Specific documents or certifications that support compliance]"]
     }
   ],
-  "attachmentRecommendations": ["List of documents to attach to proposal"]
+  "attachmentRecommendations": ["[List of specific documents iByte should attach to support the proposal]"]
 }
 
-Use iByte Enterprises LLC's actual information:
+COMPANY FACTS TO INCLUDE:
+- iByte Enterprises LLC is a woman-owned small business (WOSB)
 - DUNS: 118328036
-- Federal Tax ID: [Available in company records - not transmitted to AI]
-- WBENC Certification (woman-owned business)
-- HUB, DBE, MBE, WBE certifications
-- Construction and technology expertise
-- Valorie Rodriguez as owner/president
-- Address: 11324 Four Points Dr Bldg II Ste 100, Austin, TX 78726`
+- WBENC, HUB, DBE, MBE, WBE certified
+- Expertise in construction and technology services
+- Owner/President: Valorie Rodriguez
+- Address: 11324 Four Points Dr Bldg II Ste 100, Austin, TX 78726
+- Focus on government contracting and compliance
+- Strong track record in technology modernization and infrastructure projects
+
+IMPORTANT: Generate actual detailed content, not placeholder text. Each section should be substantial and specific to this RFP and iByte's capabilities.`;
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: "gpt-5",
+        model: 'gpt-5',
         messages: [
           {
-            role: "system",
+            role: 'system',
             content:
-              "You are an expert proposal writer for government contracting. Generate professional, compliant proposal content that highlights company qualifications and addresses RFP requirements directly. Return only valid JSON that matches the requested schema.",
+              "You are an expert proposal writer for government contracting. Generate detailed, professional proposal content that highlights company qualifications and addresses RFP requirements directly. NEVER use placeholder text like 'content...', 'approach content...', or generic templates. Write specific, substantive content for each section. Return only valid JSON that matches the requested schema.",
           },
           {
-            role: "user",
+            role: 'user',
             content: prompt,
           },
         ],
         temperature: 0.4,
         max_completion_tokens: 4000,
-        response_format: { type: "json_object" },
-      })
+        response_format: { type: 'json_object' },
+      });
 
-      const contentText = response.choices[0]?.message?.content
+      const contentText = response.choices[0]?.message?.content;
       if (!contentText) {
-        throw new Error("No content generated from OpenAI")
+        throw new Error('No content generated from OpenAI');
       }
 
       // Parse and validate with Zod
-      const rawContent = JSON.parse(contentText)
+      const rawContent = JSON.parse(contentText);
       const validatedContent =
-        GeneratedProposalContentSchema.safeParse(rawContent)
+        GeneratedProposalContentSchema.safeParse(rawContent);
 
       if (!validatedContent.success) {
         console.error(
-          "Invalid proposal content format from OpenAI:",
+          'Invalid proposal content format from OpenAI:',
           validatedContent.error
-        )
-        throw new Error("Invalid proposal content format from AI service")
+        );
+        throw new Error('Invalid proposal content format from AI service');
       }
 
-      return validatedContent.data
+      return validatedContent.data;
     } catch (error) {
-      console.error("Error generating proposal content:", error)
+      console.error('Error generating proposal content:', error);
       throw new Error(
         `Failed to generate proposal: ${
-          error instanceof Error ? error.message : "Unknown error"
+          error instanceof Error ? error.message : 'Unknown error'
         }`
-      )
+      );
     }
   }
 
@@ -437,85 +448,84 @@ Use iByte Enterprises LLC's actual information:
     analysis: RFPAnalysisResult,
     certifications: CompanyCertification[]
   ): CompanyCertification[] {
-    const requiredCerts = analysis.requirements.certifications || []
+    const requiredCerts = analysis.requirements.certifications || [];
     const socioEconomicPrefs =
-      analysis.requirements.socioEconomicPreferences || []
+      analysis.requirements.socioEconomicPreferences || [];
 
-    return certifications.filter((cert) => {
+    return certifications.filter(cert => {
       // Check for direct certification matches
-      const directMatch = requiredCerts.some((req) =>
+      const directMatch = requiredCerts.some(req =>
         cert.certificationType.toLowerCase().includes(req.toLowerCase())
-      )
+      );
 
       // Check for socio-economic preference matches
-      const socioEconomicMatch = socioEconomicPrefs.some((pref) => {
-        const prefLower = pref.toLowerCase()
+      const socioEconomicMatch = socioEconomicPrefs.some(pref => {
+        const prefLower = pref.toLowerCase();
         return (
-          (prefLower.includes("woman") &&
-            cert.certificationType.includes("WBENC")) ||
-          (prefLower.includes("minority") &&
-            cert.certificationType.includes("MBE")) ||
-          (prefLower.includes("disadvantaged") &&
-            cert.certificationType.includes("DBE")) ||
-          (prefLower.includes("hub") && cert.certificationType.includes("HUB"))
-        )
-      })
+          (prefLower.includes('woman') &&
+            cert.certificationType.includes('WBENC')) ||
+          (prefLower.includes('minority') &&
+            cert.certificationType.includes('MBE')) ||
+          (prefLower.includes('disadvantaged') &&
+            cert.certificationType.includes('DBE')) ||
+          (prefLower.includes('hub') && cert.certificationType.includes('HUB'))
+        );
+      });
 
-      return directMatch || socioEconomicMatch || cert.status === "active"
-    })
+      return directMatch || socioEconomicMatch || cert.status === 'active';
+    });
   }
 
   private matchInsuranceRequirements(
     analysis: RFPAnalysisResult,
     insurance: CompanyInsurance[]
   ): CompanyInsurance[] {
-    const requiredTypes = analysis.requirements.insurance?.types || []
+    const requiredTypes = analysis.requirements.insurance?.types || [];
 
     if (requiredTypes.length === 0) {
-      return insurance.filter((ins) => ins.isActive)
+      return insurance.filter(ins => ins.isActive);
     }
 
-    return insurance.filter((ins) => {
-      const typeMatch = requiredTypes.some((req) =>
+    return insurance.filter(ins => {
+      const typeMatch = requiredTypes.some(req =>
         ins.insuranceType.toLowerCase().includes(req.toLowerCase())
-      )
-      return typeMatch && ins.isActive
-    })
+      );
+      return typeMatch && ins.isActive;
+    });
   }
 
   private assignContactRoles(
     analysis: RFPAnalysisResult,
     contacts: CompanyContact[]
   ) {
-    const requiredRoles = analysis.requirements.contactRoles || []
-    const assignments = []
+    const assignments = [];
 
     // Auto-assign primary contact
-    const primaryContact = contacts.find((c) => c.contactType === "primary")
+    const primaryContact = contacts.find(c => c.contactType === 'primary');
     if (primaryContact) {
       assignments.push({
-        role: "Primary Contact",
+        role: 'Primary Contact',
         contact: primaryContact,
-        reason: "Designated primary contact for all communications",
-      })
+        reason: 'Designated primary contact for all communications',
+      });
     }
 
     // Auto-assign owner for certifications
-    const owner = contacts.find((c) => c.contactType === "owner")
+    const owner = contacts.find(c => c.contactType === 'owner');
     if (owner) {
       assignments.push({
-        role: "Business Owner",
+        role: 'Business Owner',
         contact: owner,
         reason:
-          "Company owner for woman-owned business certification verification",
-      })
+          'Company owner for woman-owned business certification verification',
+      });
     }
 
     // Assign decision makers based on required roles
     const decisionMakers = contacts.filter(
-      (c) => c.contactType === "decision_maker"
-    )
-    decisionMakers.forEach((dm) => {
+      c => c.contactType === 'decision_maker'
+    );
+    decisionMakers.forEach(dm => {
       if (
         dm.decisionAreas &&
         Array.isArray(dm.decisionAreas) &&
@@ -526,77 +536,75 @@ Use iByte Enterprises LLC's actual information:
             role: this.mapDecisionAreaToRole(area),
             contact: dm,
             reason: `Decision maker for ${area} responsibilities`,
-          })
-        })
+          });
+        });
       }
-    })
+    });
 
-    return assignments
+    return assignments;
   }
 
   private mapDecisionAreaToRole(area: string): string {
     const roleMap: Record<string, string> = {
-      financial_contracts: "Financial Officer",
-      bids_proposals: "Proposal Manager",
-      technical_engineering: "Technical Lead",
-      operations_logistics: "Operations Manager",
-      human_resources: "HR Manager",
-      legal_compliance: "Compliance Officer",
-      marketing_business_dev: "Business Development Manager",
-      executive_strategic: "Executive Contact",
-    }
+      financial_contracts: 'Financial Officer',
+      bids_proposals: 'Proposal Manager',
+      technical_engineering: 'Technical Lead',
+      operations_logistics: 'Operations Manager',
+      human_resources: 'HR Manager',
+      legal_compliance: 'Compliance Officer',
+      marketing_business_dev: 'Business Development Manager',
+      executive_strategic: 'Executive Contact',
+    };
 
-    return roleMap[area] || area
+    return roleMap[area] || area;
   }
 
   private formatCompanyInformation(mapping: CompanyDataMapping): string {
     return `
 COMPANY PROFILE:
 Name: ${mapping.profile.companyName}
-DBA: ${mapping.profile.dba || "N/A"}
-Business Type: ${mapping.profile.primaryBusinessCategory || "Not specified"}
-NAICS: ${mapping.businessClassifications.naics.join(", ") || "Not specified"}
+DBA: ${mapping.profile.dba || 'N/A'}
+Business Type: ${mapping.profile.primaryBusinessCategory || 'Not specified'}
+NAICS: ${mapping.businessClassifications.naics.join(', ') || 'Not specified'}
 NIGP Codes: ${
-      mapping.businessClassifications.nigp.join(", ") || "Not specified"
+      mapping.businessClassifications.nigp.join(', ') || 'Not specified'
     }
-Website: ${mapping.profile.website || "Not provided"}
+Website: ${mapping.profile.website || 'Not provided'}
 
 CERTIFICATIONS:
 ${mapping.relevantCertifications
   .map(
-    (cert) =>
+    cert =>
       `- ${cert.certificationType}: ${cert.certificationNumber} (Expires: ${cert.expirationDate})`
   )
-  .join("\n")}
+  .join('\n')}
 
 SOCIO-ECONOMIC QUALIFICATIONS:
 - Small Business: ${
-      mapping.socioEconomicQualifications.smallBusiness ? "Yes" : "No"
+      mapping.socioEconomicQualifications.smallBusiness ? 'Yes' : 'No'
     }
-- Woman-Owned: ${mapping.socioEconomicQualifications.womanOwned ? "Yes" : "No"}
+- Woman-Owned: ${mapping.socioEconomicQualifications.womanOwned ? 'Yes' : 'No'}
 - Minority-Owned: ${
-      mapping.socioEconomicQualifications.minorityOwned ? "Yes" : "No"
+      mapping.socioEconomicQualifications.minorityOwned ? 'Yes' : 'No'
     }
-- HUBZone: ${mapping.socioEconomicQualifications.hubZone ? "Yes" : "No"}
+- HUBZone: ${mapping.socioEconomicQualifications.hubZone ? 'Yes' : 'No'}
 
 ASSIGNED CONTACTS:
 ${mapping.assignedContacts
   .map(
-    (assignment) =>
+    assignment =>
       `- ${assignment.role}: ${assignment.contact.name} (${assignment.contact.email})`
   )
-  .join("\n")}
+  .join('\n')}
 
 INSURANCE COVERAGE:
 ${mapping.applicableInsurance
-  .map(
-    (ins) => `- ${ins.insuranceType}: $${ins.coverageAmount} (${ins.carrier})`
-  )
-  .join("\n")}
-    `
+  .map(ins => `- ${ins.insuranceType}: $${ins.coverageAmount} (${ins.carrier})`)
+  .join('\n')}
+    `;
   }
 
   // Removed parseGeneratedContent method - content is now directly validated and returned from OpenAI JSON response
 }
 
-export const aiProposalService = new AIProposalService()
+export const aiProposalService = new AIProposalService();
