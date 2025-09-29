@@ -8,6 +8,22 @@ _Last updated: 2025-09-28_
 - Generic helpers reference `table._.columns` and cast to `Record<string, AnyPgColumn>` which fails under the latest Drizzle types (see `tsc` errors). Needs refactor to the newer `table["$inferSelect"]` helpers or per-table repositories.
 - ✅ Updated helper methods resolve columns through typed lookups and remove the unsafe `Record<string, AnyPgColumn>` casts so Drizzle infers the correct result shapes.
 - ✅ Primary key inference now taps the internal Drizzle column symbol, defaulting to the concrete `id` column and requiring an explicit override for symbol-less tables.
+- ✅ Repository utilities now coerce select/update/delete builders through typed adapters so callers receive `InferSelectModel` payloads without leaking `unknown`.
+
+## server/repositories/PortalRepository
+- ✅ Portal listing, statistics, and scan summary helpers now return typed payloads instead of `unknown`, with raw SQL adapters normalising numeric fields.
+- ✅ Bulk status updates leverage Drizzle's `inArray` helper rather than relying on `rowCount` from `executeRaw` responses.
+- ⚠️ Portal credential fetchers still depend on raw JSON columns (`selectors`, `filters`) that need dedicated interfaces once type-check is enforced end-to-end.
+
+## server/repositories/RFPRepository
+- ✅ Search, statistics, and category/agency helpers coerce raw SQL results into typed records and filter out nullish values safely.
+- ✅ Bulk updates now rely on Drizzle updates with explicit `updatedAt` handling, eliminating assumptions about raw `rowCount` metadata.
+- ⚠️ Workflow-oriented helpers (deadline notifications, analysis queues) still return `RFP[]` without portal joins; evaluate typed DTOs when downstream consumers are refactored.
+
+## server/repositories/RepositoryManager.ts
+- ✅ Singleton initialisation uses definite assignment assertions and typed Drizzle counts instead of `any` payloads.
+- ✅ Transaction helper now delegates directly to caller callbacks, avoiding mismatched Drizzle transaction signatures until multi-repo transactions are implemented.
+- ⚠️ Adapter methods still need to funnel proposal/submission repositories once those classes are ported from the legacy storage layer.
 
 ## server/storage.ts
 - Touches nearly every table: `users`, `portals`, `rfps`, `proposals`, `documents`, `submissions`, `submission_pipelines`, `submission_events`, `submission_status_history`, `work_items`, `agent_registry`, `agent_sessions`, `pipeline_orchestration`, `dead_letter_queue`, `phase_state_transitions`, `system_health`, `pipeline_metrics`, `workflow_dependencies`, etc.

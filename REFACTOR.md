@@ -24,6 +24,8 @@
   - [x] Update `shared/schema.ts` (and migrations) accordingly. _Added `portals.updatedAt`, `proposals.proposalData`, `proposals.estimatedCost`._
   - [x] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
 - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
+  - [x] Tightened repository layer contracts (`PortalRepository`, `RFPRepository`, `UserRepository`) to return typed Drizzle rows and sanitized raw SQL helpers; normalized repository manager stats to avoid `any` casts.
+  - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
    - [x] Hardened `BaseRepository` around Drizzle's `drizzle:Columns` symbol so primary keys and column lookups stay type-safe without `Record<string, unknown>` casts; captured regression tests for the new behavior.
    - [x] Typed submission pipeline phases, metadata, and error payloads in the orchestrator/storage layer to retire `any` usage.
    - [x] Synced proposal persistence with submission receipts by adding typed `receiptData`/`submittedAt` fields and lifecycle schema support for pipeline completion metadata.

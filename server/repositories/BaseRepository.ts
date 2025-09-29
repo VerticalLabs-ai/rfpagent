@@ -1,5 +1,9 @@
 import { db } from '../db';
-import { AnyPgTable, AnyPgColumn } from 'drizzle-orm/pg-core';
+import {
+  AnyPgTable,
+  AnyPgColumn,
+  PgTableWithColumns,
+} from 'drizzle-orm/pg-core';
 import {
   asc,
   desc,
@@ -14,7 +18,10 @@ import {
 const DRIZZLE_COLUMNS = Symbol.for('drizzle:Columns');
 const DRIZZLE_NAME = Symbol.for('drizzle:Name');
 
-type TableColumns<TTable extends AnyPgTable> = TTable['_']['columns'];
+type TableColumns<TTable extends AnyPgTable> =
+  TTable extends PgTableWithColumns<infer TColumns>
+    ? { [K in keyof TColumns]: TColumns[K] extends AnyPgColumn ? TColumns[K] : never }
+    : TTable['_']['columns'];
 type ColumnName<TTable extends AnyPgTable> = Extract<
   keyof TableColumns<TTable>,
   string
@@ -89,8 +96,8 @@ export function createPaginatedResult<T>(
  */
 export abstract class BaseRepository<
   TTable extends AnyPgTable,
-  TSelect extends InferSelectModel<TTable> = InferSelectModel<TTable>,
-  TInsert extends InferInsertModel<TTable> = InferInsertModel<TTable>,
+  TSelect extends Record<string, unknown> = InferSelectModel<TTable>,
+  TInsert extends Record<string, unknown> = InferInsertModel<TTable>,
 > {
   protected readonly primaryKey: PrimaryKeyColumn<TTable>;
 
@@ -113,7 +120,9 @@ export abstract class BaseRepository<
   }
 
   private getTableColumns(): TableColumns<TTable> {
-    return (this.table as TableWithColumns<TTable>)[DRIZZLE_COLUMNS];
+    return (this.table as TableWithColumns<TTable>)[
+      DRIZZLE_COLUMNS
+    ] as TableColumns<TTable>;
   }
 
   private getTableName(): string {
@@ -122,7 +131,10 @@ export abstract class BaseRepository<
   }
 
   private getColumnByName(column: string): AnyPgColumn | undefined {
-    const columns = this.getTableColumns() as Record<string, AnyPgColumn | undefined>;
+    const columns = this.getTableColumns() as unknown as Record<
+      string,
+      AnyPgColumn | undefined
+    >;
     return columns[column];
   }
 
@@ -141,9 +153,10 @@ export abstract class BaseRepository<
    * Find entity by ID
    */
   async findById(id: string | number): Promise<TSelect | undefined> {
+    const table = this.table as unknown as AnyPgTable;
     const [result] = await db
       .select()
-      .from(this.table)
+      .from(table)
       .where(eq(this.primaryKey, id))
       .limit(1);
     return (result as TSelect | undefined) ?? undefined;
@@ -153,7 +166,8 @@ export abstract class BaseRepository<
    * Find all entities with optional pagination, ordering, and filters
    */
   async findAll(options?: FindAllOptions<TTable>): Promise<TSelect[]> {
-    let query = db.select().from(this.table);
+    const table = this.table as unknown as AnyPgTable;
+    let query = db.select().from(table) as any;
 
     if (options?.where) {
       query = query.where(options.where);
@@ -176,7 +190,7 @@ export abstract class BaseRepository<
       query = query.offset(options.offset);
     }
 
-    const results = await query;
+    const results = (await query) as unknown[];
     return results as TSelect[];
   }
 
@@ -198,16 +212,18 @@ export abstract class BaseRepository<
    * Create new entity
    */
   async create(data: TInsert): Promise<TSelect> {
-    const [result] = await db.insert(this.table).values(data).returning();
-    return result as TSelect;
+    const table = this.table as unknown as AnyPgTable;
+    const [result] = await db.insert(table).values(data).returning();
+    return result as unknown as TSelect;
   }
 
   /**
    * Create multiple entities
    */
   async createMany(data: TInsert[]): Promise<TSelect[]> {
-    const created = await db.insert(this.table).values(data).returning();
-    return created as TSelect[];
+    const table = this.table as unknown as AnyPgTable;
+    const created = await db.insert(table).values(data).returning();
+    return created as unknown as TSelect[];
   }
 
   /**
@@ -217,8 +233,9 @@ export abstract class BaseRepository<
     id: string | number,
     updates: Partial<TInsert>
   ): Promise<TSelect | undefined> {
+    const table = this.table as unknown as AnyPgTable;
     const [result] = await db
-      .update(this.table)
+      .update(table)
       .set(updates)
       .where(eq(this.primaryKey, id))
       .returning();
@@ -229,8 +246,9 @@ export abstract class BaseRepository<
    * Delete entity by ID
    */
   async delete(id: string | number): Promise<boolean> {
-    const result = await db.delete(this.table).where(eq(this.primaryKey, id));
-    return Number(result.rowCount ?? 0) > 0;
+    const table = this.table as unknown as AnyPgTable;
+    const result = await db.delete(table).where(eq(this.primaryKey, id));
+    return Number((result as { rowCount?: number | null }).rowCount ?? 0) > 0;
   }
 
   /**
@@ -248,8 +266,9 @@ export abstract class BaseRepository<
       [deletedAtColumn.name]: new Date(),
     } as Record<string, Date>;
 
+    const table = this.table as unknown as AnyPgTable;
     const [result] = await db
-      .update(this.table)
+      .update(table)
       .set(updatePayload as unknown as Partial<TInsert>)
       .where(eq(this.primaryKey, id))
       .returning();
@@ -260,9 +279,10 @@ export abstract class BaseRepository<
    * Check if entity exists
    */
   async exists(id: string | number): Promise<boolean> {
+    const table = this.table as unknown as AnyPgTable;
     const [result] = await db
       .select({ id: this.primaryKey })
-      .from(this.table)
+      .from(table)
       .where(eq(this.primaryKey, id))
       .limit(1);
     return !!result;
@@ -272,14 +292,15 @@ export abstract class BaseRepository<
    * Count total entities, optionally with conditions
    */
   async count(where?: SQL<unknown>): Promise<number> {
-    let query = db.select({ count: count() }).from(this.table);
+    const table = this.table as unknown as AnyPgTable;
+    let query = db.select({ count: count() }).from(table) as any;
 
     if (where) {
       query = query.where(where);
     }
 
-    const [{ count: total }] = await query;
-    return Number(total);
+    const [{ count: total }] = (await query) as Array<{ count: number | string }>;
+    return Number(total ?? 0);
   }
 
   /**
@@ -290,9 +311,10 @@ export abstract class BaseRepository<
     value: unknown
   ): Promise<TSelect[]> {
     const tableColumn = this.resolveColumn(column as string);
+    const table = this.table as unknown as AnyPgTable;
     const results = await db
       .select()
-      .from(this.table)
+      .from(table)
       .where(eq(tableColumn, value));
     return results as TSelect[];
   }
@@ -305,9 +327,10 @@ export abstract class BaseRepository<
     value: unknown
   ): Promise<TSelect | undefined> {
     const tableColumn = this.resolveColumn(column as string);
+    const table = this.table as unknown as AnyPgTable;
     const [result] = await db
       .select()
-      .from(this.table)
+      .from(table)
       .where(eq(tableColumn, value))
       .limit(1);
     return (result as TSelect | undefined) || undefined;
@@ -316,11 +339,8 @@ export abstract class BaseRepository<
   /**
    * Execute raw SQL query
    */
-  protected async executeRaw<T = unknown>(
-    query: string,
-    params?: unknown[]
-  ): Promise<T[]> {
-    const result = await db.execute(sql.raw(query, params));
+  protected async executeRaw<T = unknown>(query: SQL): Promise<T[]> {
+    const result = await db.execute(query);
     if (Array.isArray(result)) {
       return result as T[];
     }
@@ -338,6 +358,8 @@ export abstract class BaseRepository<
    * Begin transaction
    */
   async transaction<T>(callback: (tx: typeof db) => Promise<T>): Promise<T> {
-    return await db.transaction(callback);
+    return await (db.transaction as unknown as (
+      cb: (tx: typeof db) => Promise<T>
+    ) => Promise<T>)(callback);
   }
 }
