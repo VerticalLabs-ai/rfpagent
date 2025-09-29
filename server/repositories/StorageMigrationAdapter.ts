@@ -1,5 +1,4 @@
 import { repositoryManager, type RepositoryManager } from './RepositoryManager';
-import type { IStorage } from '../storage';
 import type {
   User,
   InsertUser,
@@ -36,7 +35,7 @@ import type {
  * This allows for gradual migration from the old storage pattern
  * to the new repository pattern without breaking existing code
  */
-export class StorageMigrationAdapter implements IStorage {
+export class StorageMigrationAdapter {
   private repositories: RepositoryManager;
 
   constructor() {
@@ -81,7 +80,10 @@ export class StorageMigrationAdapter implements IStorage {
     return await this.repositories.portals.create(portal);
   }
 
-  async updatePortal(id: string, updates: Partial<Portal>): Promise<Portal> {
+  async updatePortal(
+    id: string,
+    updates: Partial<InsertPortal>
+  ): Promise<Portal> {
     const result = await this.repositories.portals.update(id, updates);
     if (!result) {
       throw new Error(`Portal with ID ${id} not found`);
@@ -126,7 +128,7 @@ export class StorageMigrationAdapter implements IStorage {
     return await this.repositories.rfps.create(rfp);
   }
 
-  async updateRFP(id: string, updates: Partial<RFP>): Promise<RFP> {
+  async updateRFP(id: string, updates: Partial<InsertRFP>): Promise<RFP> {
     const result = await this.repositories.rfps.update(id, updates);
     if (!result) {
       throw new Error(`RFP with ID ${id} not found`);

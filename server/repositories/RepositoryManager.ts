@@ -1,6 +1,9 @@
 import { UserRepository } from './UserRepository';
 import { PortalRepository } from './PortalRepository';
 import { RFPRepository } from './RFPRepository';
+import { db } from '../db';
+import { users } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
 
 // Additional repositories (to be created)
 import type {
@@ -34,9 +37,9 @@ export class RepositoryManager {
   private static instance: RepositoryManager;
 
   // Core repositories
-  private _userRepository: UserRepository;
-  private _portalRepository: PortalRepository;
-  private _rfpRepository: RFPRepository;
+  private _userRepository!: UserRepository;
+  private _portalRepository!: PortalRepository;
+  private _rfpRepository!: RFPRepository;
 
   // Additional repositories (to be implemented)
   // private _proposalRepository: ProposalRepository;
@@ -171,14 +174,15 @@ export class RepositoryManager {
       this._rfpRepository.getRFPStats(),
     ]);
 
-    const activeUsers = await this._userRepository.count({
-      isActive: true,
-    } as any);
+    const [{ count: activeUsers }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.isActive, true));
 
     return {
       users: {
         total: userStats,
-        active: activeUsers,
+        active: Number(activeUsers ?? 0),
       },
       portals: {
         total: portalStats.total,
@@ -199,12 +203,7 @@ export class RepositoryManager {
   ): Promise<T> {
     // For now, use the base repository transaction from one of the repositories
     // In a more advanced implementation, this would coordinate transactions across all repositories
-    return await this._userRepository.transaction(async tx => {
-      // Create a temporary repository manager with transaction-aware repositories
-      // This is a simplified implementation - in production, you'd want to pass the transaction
-      // context to all repositories
-      return await callback(this);
-    });
+    return await callback(this);
   }
 
   /**

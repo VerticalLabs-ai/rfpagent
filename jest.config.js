@@ -9,7 +9,8 @@ export default {
   ],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true
+      useESM: true,
+      diagnostics: false
     }]
   },
   collectCoverageFrom: [
@@ -21,9 +22,10 @@ export default {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^@/(.*)$': '<rootDir>/server/$1'
+    '^@/(.*)$': '<rootDir>/client/src/$1',
+    '^nanoid$': '<rootDir>/tests/__mocks__/nanoid.ts'
   },
   testTimeout: 30000
 };

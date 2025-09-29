@@ -1,6 +1,7 @@
 import { BaseRepository } from './BaseRepository';
 import { users, type User, type InsertUser } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { db } from '../db';
 
 /**
  * User repository for user-specific database operations
@@ -18,30 +19,40 @@ export class UserRepository extends BaseRepository<
    * Find user by username
    */
   async findByUsername(username: string): Promise<User | undefined> {
-    return await this.findOneBy('username', username);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    return user ?? undefined;
   }
 
   /**
    * Find user by email
    */
   async findByEmail(email: string): Promise<User | undefined> {
-    return await this.findOneBy('email', email);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user ?? undefined;
   }
 
   /**
    * Check if username is available
    */
   async isUsernameAvailable(username: string): Promise<boolean> {
-    const user = await this.findByUsername(username);
-    return !user;
+    const existing = await this.findByUsername(username);
+    return !existing;
   }
 
   /**
    * Check if email is available
    */
   async isEmailAvailable(email: string): Promise<boolean> {
-    const user = await this.findByEmail(email);
-    return !user;
+    const existing = await this.findByEmail(email);
+    return !existing;
   }
 
   /**
@@ -76,7 +87,10 @@ export class UserRepository extends BaseRepository<
    * Get active users
    */
   async getActiveUsers(): Promise<User[]> {
-    return await this.findBy('isActive', true);
+    return await db
+      .select()
+      .from(users)
+      .where(eq(users.isActive, true));
   }
 
   /**

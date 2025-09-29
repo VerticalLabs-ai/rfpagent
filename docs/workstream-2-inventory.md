@@ -6,6 +6,24 @@ _Last updated: 2025-09-28_
 - Depends on each table exporting an `id` primary key column; optional `primaryKey` override exists but default assumes `table.id`.
 - `softDelete` branch requires a `deletedAt` column to exist; current schema tables do not uniformly provide it.
 - Generic helpers reference `table._.columns` and cast to `Record<string, AnyPgColumn>` which fails under the latest Drizzle types (see `tsc` errors). Needs refactor to the newer `table["$inferSelect"]` helpers or per-table repositories.
+- ✅ Updated helper methods resolve columns through typed lookups and remove the unsafe `Record<string, AnyPgColumn>` casts so Drizzle infers the correct result shapes.
+- ✅ Primary key inference now taps the internal Drizzle column symbol, defaulting to the concrete `id` column and requiring an explicit override for symbol-less tables.
+- ✅ Repository utilities now coerce select/update/delete builders through typed adapters so callers receive `InferSelectModel` payloads without leaking `unknown`.
+
+## server/repositories/PortalRepository
+- ✅ Portal listing, statistics, and scan summary helpers now return typed payloads instead of `unknown`, with raw SQL adapters normalising numeric fields.
+- ✅ Bulk status updates leverage Drizzle's `inArray` helper rather than relying on `rowCount` from `executeRaw` responses.
+- ⚠️ Portal credential fetchers still depend on raw JSON columns (`selectors`, `filters`) that need dedicated interfaces once type-check is enforced end-to-end.
+
+## server/repositories/RFPRepository
+- ✅ Search, statistics, and category/agency helpers coerce raw SQL results into typed records and filter out nullish values safely.
+- ✅ Bulk updates now rely on Drizzle updates with explicit `updatedAt` handling, eliminating assumptions about raw `rowCount` metadata.
+- ⚠️ Workflow-oriented helpers (deadline notifications, analysis queues) still return `RFP[]` without portal joins; evaluate typed DTOs when downstream consumers are refactored.
+
+## server/repositories/RepositoryManager.ts
+- ✅ Singleton initialisation uses definite assignment assertions and typed Drizzle counts instead of `any` payloads.
+- ✅ Transaction helper now delegates directly to caller callbacks, avoiding mismatched Drizzle transaction signatures until multi-repo transactions are implemented.
+- ⚠️ Adapter methods still need to funnel proposal/submission repositories once those classes are ported from the legacy storage layer.
 
 ## server/storage.ts
 - Touches nearly every table: `users`, `portals`, `rfps`, `proposals`, `documents`, `submissions`, `submission_pipelines`, `submission_events`, `submission_status_history`, `work_items`, `agent_registry`, `agent_sessions`, `pipeline_orchestration`, `dead_letter_queue`, `phase_state_transitions`, `system_health`, `pipeline_metrics`, `workflow_dependencies`, etc.
@@ -13,7 +31,9 @@ _Last updated: 2025-09-28_
   - ✅ Notification inserts now use `isRead` (previously `priority`/`read`).
   - ⚠️ Public portal getters exclude credentials (`PublicPortal`); downstream services should stay typed to `PublicPortal` when they do not need secrets.
   - ✅ Added `getSubmissionsByDateRange` and optional `limit` support for `getSubmissionEventsBySubmission`.
-  - ⚠️ JSON columns (`metadata`, `submissionData`, `proposalData`) are still untyped across services.
+  - ⚠️ JSON columns (e.g., portal metadata, proposalData) still rely on loose typing; submission lifecycle data handled below.
+  - ✅ Public portal selectors now return `type`, `isActive`, and `monitoringEnabled` to match the expanded schema contract.
+  - ✅ Detailed RFP joins now shape `portal` responses as `PublicPortal` via the shared API contract, avoiding accidental credential exposure.
 
 ## server/services/submissionService.ts
 - Consumes: `submissions`, `proposals`, `portals`, `submission_pipelines`, `submission_events`, `submission_status_history`, `notifications`, `audit_logs`, `agent_memory`.
@@ -22,7 +42,17 @@ _Last updated: 2025-09-28_
   - ✅ Service now treats portal lookups as `PublicPortal` when only public fields are needed.
   - ✅ Notification payloads updated to use `isRead`.
   - ✅ Cleanup + metrics rely on the new `getSubmissionsByDateRange` helper.
-  - ⚠️ `submissionData`/`metadata` remain loosely typed; consider exporting structured interfaces for pipeline state.
+  - ✅ Lifecycle metadata now typed via `SubmissionLifecycleData`; submission status updates merge JSON payloads instead of overwriting with `any`.
+  - ✅ Auto-submit failure paths no longer attempt to write non-existent columns (`error`, `submitToPortal`); data captured inside `submissionData`.
+  - ⚠️ Additional pipeline metadata (attachments, browser session traits) still needs dedicated interfaces to eliminate residual `unknown` usage.
+
+## server/services/submissionOrchestrator.ts
+- Coordinates submission pipelines across work item phases and stores results/metadata for downstream services.
+- ✅ Pipeline phase/status unions now exported from the shared schema with corresponding API helpers (`isSubmissionPhase`, `getResultKeyForPhase`).
+- ✅ Orchestrator and storage conversions coerce JSON payloads into typed `SubmissionPipelineMetadata`, `SubmissionPipelineResults`, and structured error data.
+- ✅ Submission pipeline result contract now advertises typed phase/status unions and optional receipt metadata for client consumers.
+- ✅ Successful completions persist normalized receipt data across submissions/proposals and include structured lifecycle metadata (`completedAt`, `referenceNumber`, `retryCount`).
+- ⚠️ Phase execution routines still rely on large `WorkItem` blobs; follow-up typing needed once Stagehand task schemas are defined.
 
 ## server/services/workflowCoordinator.ts
 - Interacts primarily with `work_items`, `agent_registry`, `agent_sessions`, `submission_pipelines`, `submission_events`, plus higher-level services.
@@ -36,8 +66,13 @@ _Last updated: 2025-09-28_
 - Writes `submission_events` records with `details` blobs (screenshots, URLs). Schema supports JSON, but agreed contracts should be defined.
 - Emits audit/memory records referencing metadata fields absent from the shared types.
 
+## server/services/enhancedProposalService.ts
+- Auto-submission workflow now requires configured `portalId` and persists lifecycle metadata through `submissionData`.
+- Remaining work: coordinate proposal/submission linking without implicit `submissionId` column on `proposals`.
+
 ## Next Steps
 - Decide whether to extend `shared/schema.ts` or introduce domain-specific contract modules for submission pipeline payloads (`SubmissionPipelineRequest`, `WorkItemSubmissionInputs`, etc.).
 - Update `storage.ts` + consumers to align notification fields and portal credential access.
 - Backfill tests around `getSubmissionsByDateRange` and the submission metrics pipeline.
 - Refine `BaseRepository` to the new Drizzle generics or migrate callers fully to specialized repositories.
+- Capture follow-up repository fixes once additional `@ts-nocheck` files are removed (e.g., workflow coordinator payload typing).

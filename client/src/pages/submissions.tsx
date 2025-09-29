@@ -10,13 +10,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { getStatusBadgeVariant, getStatusBadgeClassName, getStatusLabel, getStatusIcon } from "@/lib/badge-utils";
+import {
+  SUBMISSION_PROGRESS_STATUSES,
+  type RfpDetail,
+  type SubmissionStatusFilter,
+} from "../types/api";
+import {
+  filterSubmissionRfps,
+  getSubmissionReadyRfps,
+} from "../utils/submissionFilters";
+
+const statusFilterOptions: SubmissionStatusFilter[] = [
+  "all",
+  ...SUBMISSION_PROGRESS_STATUSES,
+];
 
 export default function Submissions() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<SubmissionStatusFilter>("all");
   const { toast } = useToast();
 
-  const { data: rfps, isLoading } = useQuery({
+  const { data: rfps = [], isLoading } = useQuery<RfpDetail[]>({
     queryKey: ["/api/rfps", "detailed"],
   });
 
@@ -40,16 +54,13 @@ export default function Submissions() {
     },
   });
 
-  const submissionReadyRfps = rfps?.filter((item: any) => 
-    item.rfp.status === "approved" || item.rfp.status === "submitted"
-  ) || [];
+  const submissionReadyRfps = getSubmissionReadyRfps(rfps);
 
-  const filteredRfps = submissionReadyRfps.filter((item: any) => {
-    const matchesSearch = item.rfp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.rfp.agency.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || item.rfp.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredRfps = filterSubmissionRfps(
+    submissionReadyRfps,
+    searchQuery,
+    statusFilter,
+  );
 
   if (isLoading) {
     return (
@@ -99,25 +110,34 @@ export default function Submissions() {
           <i className="fas fa-search absolute left-3 top-3 text-muted-foreground text-xs"></i>
         </div>
         
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) =>
+            setStatusFilter(value as SubmissionStatusFilter)
+          }
+        >
           <SelectTrigger className="w-48" data-testid="status-filter">
             <SelectValue placeholder="Filter by status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="approved">Ready to Submit</SelectItem>
-            <SelectItem value="submitted">Submitted</SelectItem>
+            {statusFilterOptions.map((option) => (
+              <SelectItem key={option} value={option}>
+                {option === "all" ? "All Statuses" : getStatusLabel(option)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       {/* Submissions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRfps.map((item: any) => (
-          <SubmissionCard 
-            key={item.rfp.id} 
-            item={item} 
-            onSubmit={() => item.proposal && submitProposalMutation.mutate(item.proposal.id)}
+        {filteredRfps.map((item) => (
+          <SubmissionCard
+            key={item.rfp.id}
+            item={item}
+            onSubmit={() =>
+              item.proposal && submitProposalMutation.mutate(item.proposal.id)
+            }
             submitting={submitProposalMutation.isPending}
           />
         ))}
@@ -140,7 +160,13 @@ export default function Submissions() {
   );
 }
 
-function SubmissionCard({ item, onSubmit, submitting }: any) {
+interface SubmissionCardProps {
+  item: RfpDetail;
+  onSubmit: () => void;
+  submitting: boolean;
+}
+
+function SubmissionCard({ item, onSubmit, submitting }: SubmissionCardProps) {
   const isSubmitted = item.rfp.status === "submitted";
   const canSubmit = item.rfp.status === "approved" && item.proposal;
 
@@ -253,7 +279,44 @@ function SubmissionCard({ item, onSubmit, submitting }: any) {
   );
 }
 
-function SubmissionDetailsModal({ item }: any) {
+interface SubmissionDetailsModalProps {
+  item: RfpDetail;
+}
+
+interface PricingSummary {
+  totalPrice?: number;
+}
+
+interface RiskFlag {
+  type?: string;
+  category?: string;
+  description?: string;
+}
+
+function hasTotalPrice(pricingTables: unknown): pricingTables is PricingSummary {
+  return (
+    typeof pricingTables === "object" &&
+    pricingTables !== null &&
+    "totalPrice" in pricingTables
+  );
+}
+
+function isRiskFlag(value: unknown): value is RiskFlag {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    ("type" in value || "category" in value || "description" in value)
+  );
+}
+
+function SubmissionDetailsModal({ item }: SubmissionDetailsModalProps) {
+  const totalPrice = hasTotalPrice(item.proposal?.pricingTables)
+    ? item.proposal?.pricingTables.totalPrice ?? null
+    : null;
+  const riskFlags = Array.isArray(item.rfp.riskFlags)
+    ? item.rfp.riskFlags.filter(isRiskFlag)
+    : [];
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -299,7 +362,9 @@ function SubmissionDetailsModal({ item }: any) {
             <div>
               <label className="font-medium text-muted-foreground">Total Price:</label>
               <p className="mt-1" data-testid="modal-proposal-price">
-                ${item.proposal.pricingTables?.totalPrice?.toLocaleString() || "Not set"}
+                {typeof totalPrice === "number"
+                  ? `$${totalPrice.toLocaleString()}`
+                  : "Not set"}
               </p>
             </div>
             <div>
@@ -312,13 +377,13 @@ function SubmissionDetailsModal({ item }: any) {
         </div>
       )}
 
-      {item.rfp.riskFlags && item.rfp.riskFlags.length > 0 && (
+      {riskFlags.length > 0 && (
         <div className="border-t pt-4">
           <h4 className="font-medium mb-2">Compliance Notes</h4>
           <div className="space-y-2">
-            {item.rfp.riskFlags.slice(0, 3).map((flag: any, index: number) => (
-              <div 
-                key={index} 
+            {riskFlags.slice(0, 3).map((flag, index) => (
+              <div
+                key={index}
                 className={`p-2 rounded text-xs ${
                   flag.type === "high" ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300" :
                   flag.type === "medium" ? "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300" :

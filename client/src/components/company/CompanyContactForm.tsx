@@ -1,14 +1,28 @@
-import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCompanyContactSchema } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CompanyContact, CompanyContactFormData, DECISION_AREAS } from "./types";
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertCompanyContactSchema } from '@shared/schema';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { CompanyContact, CompanyContactFormData, DECISION_AREAS } from './types';
 
 interface CompanyContactFormProps {
   contact?: CompanyContact;
@@ -47,31 +61,31 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
 
   const createMutation = useMutation({
     mutationFn: (data: CompanyContactFormData) =>
-      apiRequest("POST", `/api/company/profiles/${companyProfileId}/contacts`, data),
+      apiRequest('POST', `/api/company/profiles/${companyProfileId}/contacts`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
-      toast({ title: "Contact created successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', companyProfileId, 'contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', 'all-contacts'] });
+      toast({ title: 'Contact created successfully' });
       onSuccess();
     },
     onError: () => {
-      toast({ title: "Failed to create contact", variant: "destructive" });
+      toast({ title: 'Failed to create contact', variant: 'destructive' });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: CompanyContactFormData) =>
-      apiRequest("PUT", `/api/company-contacts/${contact!.id}`, data),
+      apiRequest('PUT', `/api/company/contacts/${contact!.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
-      toast({ title: "Contact updated successfully" });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', companyProfileId, 'contacts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', 'all-contacts'] });
+      toast({ title: 'Contact updated successfully' });
       onSuccess();
     },
     onError: () => {
-      toast({ title: "Failed to update contact", variant: "destructive" });
+      toast({ title: 'Failed to update contact', variant: 'destructive' });
     },
   });
 

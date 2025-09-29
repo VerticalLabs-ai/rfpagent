@@ -5,6 +5,10 @@ import { agentMemoryService } from './agentMemoryService';
 import { agentRegistryService } from './agentRegistryService';
 import type {
   Submission,
+  SubmissionEvent,
+  SubmissionLifecycleData,
+  SubmissionReceiptData,
+  SubmissionStatusValue,
   Proposal,
   PublicPortal,
   RFP,
@@ -35,14 +39,14 @@ export interface SubmissionOptions {
 
 export interface SubmissionStatus {
   submissionId: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
+  status: SubmissionStatusValue;
   currentPhase: string;
   progress: number;
   pipelineId?: string;
   estimatedCompletion?: Date;
   error?: string;
   nextSteps?: string[];
-  events?: any[];
+  events?: SubmissionEvent[];
 }
 
 export interface SubmissionResult {
@@ -50,9 +54,32 @@ export interface SubmissionResult {
   submissionId?: string;
   pipelineId?: string;
   referenceNumber?: string;
-  receiptData?: any;
+  receiptData?: SubmissionReceiptData | null;
   error?: string;
   retryable?: boolean;
+}
+
+type ActiveSubmissionStatus = SubmissionStatusValue | 'initiating';
+
+interface ActiveSubmissionContext {
+  sessionId: string;
+  startedAt: Date;
+  status: ActiveSubmissionStatus;
+  pipelineId?: string;
+  currentPhase?: string;
+}
+
+interface SubmissionMetrics {
+  totalSubmissions: number;
+  successfulSubmissions: number;
+  failedSubmissions: number;
+  pendingSubmissions: number;
+  cancelledSubmissions: number;
+  successRate: number;
+  averageCompletionTime: number;
+  mostActivePortals: Record<string, number>;
+  commonFailureReasons: Record<string, number>;
+  error?: string;
 }
 
 /**
@@ -72,7 +99,7 @@ export interface SubmissionResult {
  */
 export class SubmissionService {
   private objectStorageService = new ObjectStorageService();
-  private activeSubmissions: Map<string, any> = new Map();
+  private activeSubmissions: Map<string, ActiveSubmissionContext> = new Map();
 
   constructor() {
     this.initializeSubmissionService();
@@ -113,18 +140,16 @@ export class SubmissionService {
   /**
    * Sanitize options to remove sensitive credentials before logging
    */
-  private sanitizeOptionsForLogging(options: SubmissionOptions): any {
-    const sanitized = { ...options };
+  private sanitizeOptionsForLogging(
+    options: SubmissionOptions
+  ): Omit<SubmissionOptions, 'portalCredentials'> {
+    const { portalCredentials: _portalCredentials, ...rest } = options;
+    const sanitized: Omit<SubmissionOptions, 'portalCredentials'> = {
+      ...rest,
+    };
 
-    // Remove sensitive credential fields
-    if (sanitized.portalCredentials) {
-      delete sanitized.portalCredentials;
-    }
-
-    // Remove any other sensitive metadata
     if (sanitized.metadata) {
       const cleanMetadata = { ...sanitized.metadata };
-      // Remove any potential credentials in metadata
       delete cleanMetadata.username;
       delete cleanMetadata.password;
       delete cleanMetadata.credentials;
@@ -210,12 +235,12 @@ export class SubmissionService {
       // Update submission status to in_progress when pipeline starts
       await storage.updateSubmission(submissionId, {
         status: 'in_progress',
-        submissionData: {
+        submissionData: this.mergeSubmissionData(submission.submissionData, {
           sessionId,
-          initiatedAt: new Date(),
+          initiatedAt: new Date().toISOString(),
           portalName: portal.name,
           automatedSubmission: true,
-        },
+        }),
       });
 
       // Create initial notification
@@ -244,7 +269,7 @@ export class SubmissionService {
           timeout: options.browserOptions?.timeout || 300000,
         },
         metadata: {
-          submissionInitiatedAt: new Date(),
+          submissionInitiatedAt: new Date().toISOString(),
           portalName: portal.name,
           rfpTitle: readinessCheck.rfp?.title,
           ...options.metadata,
@@ -268,7 +293,7 @@ export class SubmissionService {
           submissionId,
           sessionId,
           pipelineRequest: sanitizedPipelineRequest,
-          initiatedAt: new Date(),
+          initiatedAt: new Date().toISOString(),
         },
         importance: 9,
         tags: ['submission_request', 'active_submission', portal.name],
@@ -306,6 +331,16 @@ export class SubmissionService {
         currentPhase: pipelineResult.currentPhase,
       });
 
+      if (pipelineResult.pipelineId) {
+        const refreshedSubmission = await storage.getSubmission(submissionId);
+        await storage.updateSubmission(submissionId, {
+          submissionData: this.mergeSubmissionData(
+            refreshedSubmission?.submissionData ?? null,
+            { pipelineId: pipelineResult.pipelineId }
+          ),
+        });
+      }
+
       console.log(
         `✅ Submission pipeline initiated successfully: ${pipelineResult.pipelineId}`
       );
@@ -322,16 +357,18 @@ export class SubmissionService {
       this.activeSubmissions.delete(submissionId);
 
       // Handle submission failure
+      const failureMessage =
+        error instanceof Error ? error.message : 'Submission failed';
       await this.handleSubmissionFailure(
         submissionId,
         options.sessionId,
-        error.message
+        failureMessage
       );
 
       return {
         success: false,
         submissionId,
-        error: error instanceof Error ? error.message : 'Submission failed',
+        error: failureMessage,
         retryable: this.isRetryableError(error),
       };
     }
@@ -351,7 +388,7 @@ export class SubmissionService {
 
       // Get pipeline status if available
       let pipelineStatus = null;
-      const submissionData = submission.submissionData as any;
+      const submissionData = submission.submissionData;
       if (submissionData?.pipelineId) {
         pipelineStatus = await submissionOrchestrator.getPipelineStatus(
           submissionData.pipelineId
@@ -366,16 +403,16 @@ export class SubmissionService {
 
       return {
         submissionId,
-        status: submission.status as any,
+        status: submission.status,
         currentPhase:
           pipelineStatus?.currentPhase ||
           activeSubmission?.currentPhase ||
           'unknown',
-        progress: pipelineStatus?.progress || 0,
+        progress: pipelineStatus?.progress ?? 0,
         pipelineId: pipelineStatus?.pipelineId || submissionData?.pipelineId,
         estimatedCompletion: pipelineStatus?.estimatedCompletion,
         error: pipelineStatus?.error || submissionData?.error,
-        nextSteps: pipelineStatus?.nextSteps || [],
+        nextSteps: pipelineStatus?.nextSteps || submissionData?.nextSteps || [],
         events,
       };
     } catch (error) {
@@ -400,7 +437,7 @@ export class SubmissionService {
       }
 
       // Cancel pipeline if active
-      const submissionData = submission.submissionData as any;
+      const submissionData = submission.submissionData;
       let pipelineCancelled = false;
       if (submissionData?.pipelineId) {
         pipelineCancelled = await submissionOrchestrator.cancelPipeline(
@@ -411,11 +448,10 @@ export class SubmissionService {
       // Update submission status
       await storage.updateSubmission(submissionId, {
         status: 'cancelled',
-        submissionData: {
-          ...submissionData,
-          cancelledAt: new Date(),
+        submissionData: this.mergeSubmissionData(submissionData, {
+          cancelledAt: new Date().toISOString(),
           pipelineCancelled,
-        },
+        }),
       });
 
       // Clean up active submission tracking
@@ -477,11 +513,10 @@ export class SubmissionService {
       // Update submission status for retry
       await storage.updateSubmission(submissionId, {
         status: 'pending',
-        submissionData: {
-          ...(submission.submissionData as any),
-          retryInitiatedAt: new Date(),
+        submissionData: this.mergeSubmissionData(submission.submissionData, {
+          retryInitiatedAt: new Date().toISOString(),
           previousStatus: submission.status,
-        },
+        }),
       });
 
       // Create retry audit log
@@ -517,7 +552,9 @@ export class SubmissionService {
   /**
    * Get all active submissions
    */
-  getActiveSubmissions(): any[] {
+  getActiveSubmissions(): Array<
+    { submissionId: string } & ActiveSubmissionContext
+  > {
     return Array.from(this.activeSubmissions.entries()).map(
       ([submissionId, data]) => ({
         submissionId,
@@ -531,7 +568,7 @@ export class SubmissionService {
    */
   async getSubmissionMetrics(
     timeframe: 'day' | 'week' | 'month' = 'week'
-  ): Promise<any> {
+  ): Promise<SubmissionMetrics> {
     try {
       const endDate = new Date();
       const startDate = new Date();
@@ -554,7 +591,7 @@ export class SubmissionService {
         endDate
       );
 
-      const metrics = {
+      const metrics: SubmissionMetrics = {
         totalSubmissions: submissions.length,
         successfulSubmissions: submissions.filter(s => s.status === 'completed')
           .length,
@@ -583,12 +620,14 @@ export class SubmissionService {
       );
       if (completedSubmissions.length > 0) {
         const totalTime = completedSubmissions.reduce((sum, s) => {
-          const submissionData = s.submissionData as any;
-          if (submissionData?.initiatedAt && s.submittedAt) {
+          const submissionData = s.submissionData;
+          const initiatedAt = submissionData?.initiatedAt
+            ? new Date(submissionData.initiatedAt)
+            : null;
+          if (initiatedAt && s.submittedAt) {
             return (
               sum +
-              (s.submittedAt.getTime() -
-                new Date(submissionData.initiatedAt).getTime())
+              (s.submittedAt.getTime() - initiatedAt.getTime())
             );
           }
           return sum;
@@ -613,8 +652,12 @@ export class SubmissionService {
         successfulSubmissions: 0,
         failedSubmissions: 0,
         pendingSubmissions: 0,
+        cancelledSubmissions: 0,
         successRate: 0,
-        error: error.message,
+        averageCompletionTime: 0,
+        mostActivePortals: {},
+        commonFailureReasons: {},
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -626,7 +669,7 @@ export class SubmissionService {
     submission: Submission,
     proposal: Proposal,
     portal: PublicPortal
-  ): Promise<{ ready: boolean; reason?: string; rfp?: any }> {
+  ): Promise<{ ready: boolean; reason?: string; rfp?: RFP }> {
     try {
       // Check if proposal is completed
       if (proposal.status !== 'completed') {
@@ -656,7 +699,9 @@ export class SubmissionService {
 
       return { ready: true, rfp };
     } catch (error) {
-      return { ready: false, reason: `Validation failed: ${error.message}` };
+      const message =
+        error instanceof Error ? error.message : 'Unknown validation error';
+      return { ready: false, reason: `Validation failed: ${message}` };
     }
   }
 
@@ -669,14 +714,18 @@ export class SubmissionService {
     error?: string
   ): Promise<void> {
     try {
+      const existingSubmission = await storage.getSubmission(submissionId);
       // Update submission status
       await storage.updateSubmission(submissionId, {
         status: 'failed',
-        submissionData: {
-          failedAt: new Date(),
-          error,
-          sessionId,
-        },
+        submissionData: this.mergeSubmissionData(
+          existingSubmission?.submissionData ?? null,
+          {
+            failedAt: new Date().toISOString(),
+            error,
+            sessionId,
+          }
+        ),
       });
 
       // Create failure notification
@@ -714,7 +763,7 @@ export class SubmissionService {
   private async getSubmissionEvents(
     submissionId: string,
     limit: number = 10
-  ): Promise<any[]> {
+  ): Promise<SubmissionEvent[]> {
     try {
       // Try to get events from submission_events table
       return await storage.getSubmissionEventsBySubmission(submissionId, limit);
@@ -727,7 +776,7 @@ export class SubmissionService {
   /**
    * Check if error is retryable
    */
-  private isRetryableError(error: any): boolean {
+  private isRetryableError(error: unknown): boolean {
     const retryableErrors = [
       'timeout',
       'network',
@@ -741,10 +790,25 @@ export class SubmissionService {
       'form_validation_error',
     ];
 
-    const errorMessage = error?.message?.toLowerCase() || '';
+    const errorMessage =
+      typeof error === 'string'
+        ? error.toLowerCase()
+        : error instanceof Error
+        ? error.message.toLowerCase()
+        : '';
     return retryableErrors.some(retryableError =>
       errorMessage.includes(retryableError)
     );
+  }
+
+  private mergeSubmissionData(
+    current: SubmissionLifecycleData | null,
+    updates: SubmissionLifecycleData
+  ): SubmissionLifecycleData {
+    return {
+      ...(current ?? {}),
+      ...updates,
+    };
   }
 
   /**

@@ -5,7 +5,7 @@ import {
   createPaginatedResult,
 } from './BaseRepository';
 import { portals, type Portal, type InsertPortal } from '@shared/schema';
-import { eq, and, or, sql } from 'drizzle-orm';
+import { eq, and, or, sql, inArray } from 'drizzle-orm';
 import { db } from '../db';
 
 export interface PortalFilter extends BaseFilter {
@@ -145,15 +145,12 @@ export class PortalRepository extends BaseRepository<
   ): Promise<Portal[]> {
     const threshold = new Date(Date.now() - hoursThreshold * 60 * 60 * 1000);
 
-    return await this.executeRaw(
-      `
+    return await this.executeRaw<Portal>(sql`
       SELECT * FROM portals
       WHERE status = 'active'
-      AND (last_scanned IS NULL OR last_scanned < $1)
+      AND (last_scanned IS NULL OR last_scanned < ${threshold})
       ORDER BY last_scanned ASC NULLS FIRST
-      `,
-      [threshold]
-    );
+    `);
   }
 
   /**
@@ -168,25 +165,36 @@ export class PortalRepository extends BaseRepository<
   }> {
     const recent = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
 
-    const [stats] = await this.executeRaw(
-      `
+    const [stats] = await this.executeRaw<{
+      total: string | number | null;
+      active: string | number | null;
+      inactive: string | number | null;
+      require_login: string | number | null;
+      recently_scanned: string | number | null;
+    }>(sql`
       SELECT
         COUNT(*) as total,
         COUNT(CASE WHEN status = 'active' THEN 1 END) as active,
         COUNT(CASE WHEN status = 'inactive' THEN 1 END) as inactive,
         COUNT(CASE WHEN login_required = true THEN 1 END) as require_login,
-        COUNT(CASE WHEN last_scanned > $1 THEN 1 END) as recently_scanned
+        COUNT(CASE WHEN last_scanned > ${recent} THEN 1 END) as recently_scanned
       FROM portals
-    `,
-      [recent]
-    );
+    `);
+
+    const normalized = stats ?? {
+      total: 0,
+      active: 0,
+      inactive: 0,
+      require_login: 0,
+      recently_scanned: 0,
+    };
 
     return {
-      total: Number(stats.total),
-      active: Number(stats.active),
-      inactive: Number(stats.inactive),
-      requireLogin: Number(stats.require_login),
-      recentlyScanned: Number(stats.recently_scanned),
+      total: Number(normalized.total ?? 0),
+      active: Number(normalized.active ?? 0),
+      inactive: Number(normalized.inactive ?? 0),
+      requireLogin: Number(normalized.require_login ?? 0),
+      recentlyScanned: Number(normalized.recently_scanned ?? 0),
     };
   }
 
@@ -194,22 +202,20 @@ export class PortalRepository extends BaseRepository<
    * Search portals by name or URL
    */
   async searchPortals(query: string, limit: number = 50): Promise<Portal[]> {
-    return await this.executeRaw(
-      `
+    const pattern = `%${query}%`;
+    return await this.executeRaw<Portal>(sql`
       SELECT
         id, name, url, status, login_required,
         last_scanned, created_at, updated_at
       FROM portals
       WHERE (
-        name ILIKE $1
-        OR url ILIKE $1
+        name ILIKE ${pattern}
+        OR url ILIKE ${pattern}
       )
       AND status = 'active'
       ORDER BY name
-      LIMIT $2
-      `,
-      [`%${query}%`, limit]
-    );
+      LIMIT ${limit}
+    `);
   }
 
   /**
@@ -221,16 +227,12 @@ export class PortalRepository extends BaseRepository<
   ): Promise<number> {
     if (ids.length === 0) return 0;
 
-    const result = await this.executeRaw(
-      `
-      UPDATE portals
-      SET status = $1, updated_at = NOW()
-      WHERE id = ANY($2)
-      `,
-      [status, ids]
-    );
+    const result = await db
+      .update(portals)
+      .set({ status, updatedAt: sql`NOW()` })
+      .where(inArray(portals.id, ids));
 
-    return result.rowCount || 0;
+    return Number(result.rowCount ?? 0);
   }
 
   /**
@@ -246,10 +248,15 @@ export class PortalRepository extends BaseRepository<
     lastScan: Date | null;
     averageInterval: number | null;
   }> {
-    const [summary] = await this.executeRaw(
-      `
+    const [summary] = await this.executeRaw<{
+      portal_id: string;
+      total_scans: string | number | null;
+      successful_scans: string | number | null;
+      last_scan: Date | null;
+      average_interval_seconds: string | number | null;
+    }>(sql`
       SELECT
-        $1 as portal_id,
+        ${portalId} as portal_id,
         COUNT(*) as total_scans,
         COUNT(CASE WHEN success = true THEN 1 END) as successful_scans,
         MAX(created_at) as last_scan,
@@ -259,16 +266,24 @@ export class PortalRepository extends BaseRepository<
           END
         )) as average_interval_seconds
       FROM scans
-      WHERE portal_id = $1
-      AND created_at >= NOW() - INTERVAL '$2 days'
-      `,
-      [portalId, days]
-    );
+      WHERE portal_id = ${portalId}
+      AND created_at >= NOW() - INTERVAL '${days} days'
+    `);
+
+    if (!summary) {
+      return {
+        portalId,
+        totalScans: 0,
+        successfulScans: 0,
+        lastScan: null,
+        averageInterval: null,
+      };
+    }
 
     return {
       portalId: summary.portal_id,
-      totalScans: Number(summary.total_scans),
-      successfulScans: Number(summary.successful_scans),
+      totalScans: Number(summary.total_scans ?? 0),
+      successfulScans: Number(summary.successful_scans ?? 0),
       lastScan: summary.last_scan,
       averageInterval: summary.average_interval_seconds
         ? Number(summary.average_interval_seconds)

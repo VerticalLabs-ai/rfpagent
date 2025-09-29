@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { storage } from '../storage';
 import { aiAgentOrchestrator } from '../services/aiAgentOrchestrator';
+import { agentMonitoringService } from '../services/agentMonitoringService';
 import { mastraWorkflowEngine } from '../services/mastraWorkflowEngine';
 import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
 import { workflowCoordinator } from '../services/workflowCoordinator';
@@ -27,7 +28,7 @@ router.get('/suspended', async (req, res) => {
  */
 router.get('/state', async (req, res) => {
   try {
-    const workflowState = await workflowCoordinator.getGlobalWorkflowState();
+    const workflowState = await agentMonitoringService.getWorkflowOverview();
     res.json(workflowState);
   } catch (error) {
     console.error('Error fetching workflow state:', error);
@@ -40,7 +41,7 @@ router.get('/state', async (req, res) => {
  */
 router.get('/phase-stats', async (req, res) => {
   try {
-    const phaseStats = await workflowCoordinator.getPhaseStatistics();
+    const phaseStats = await agentMonitoringService.getPhaseStatistics();
     res.json(phaseStats);
   } catch (error) {
     console.error('Error fetching phase statistics:', error);

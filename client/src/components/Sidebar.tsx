@@ -1,27 +1,13 @@
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-
-interface DashboardMetrics {
-  newRfpsToday?: number;
-  pendingReview?: number;
-  submittedToday?: number;
-}
-
-const fetchDashboardMetrics = async (): Promise<DashboardMetrics> => {
-  const response = await fetch('/api/dashboard/metrics');
-  if (!response.ok) {
-    throw new Error('Failed to fetch dashboard metrics');
-  }
-  return response.json();
-};
+import type { DashboardMetrics } from '@/types/api';
 
 export default function Sidebar() {
   const [location] = useLocation();
 
   const { data: metrics } = useQuery<DashboardMetrics>({
     queryKey: ['/api/dashboard/metrics'],
-    queryFn: fetchDashboardMetrics,
   });
 
   const navigationItems = [
