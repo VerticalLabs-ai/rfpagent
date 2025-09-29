@@ -42,6 +42,7 @@
    - [x] Add unit tests for the shape conversions (e.g., transforming `transitionMetrics`).
    - **Company Profiles / Portal Settings / Proposals / Submissions / Scan History / Workflow Management**
      - [ ] For each page, repeat the pattern: capture API payload -> define interface -> update fetch + component -> add targeted tests.
+       - [x] Company Profiles: shared API contracts, typed queries, and analytics helpers plus Jest coverage.
        - [x] Submissions: shared RFP detail contract, sanitized portal join, typed filters with unit coverage.
      - [ ] Break into separate PRs to keep code review manageable.
 

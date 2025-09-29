@@ -18,3 +18,9 @@ export type {
   SubmissionStatusFilter,
 } from '@shared/api/rfps';
 export { SUBMISSION_PROGRESS_STATUSES } from '@shared/api/rfps';
+export type {
+  CompanyCertificationRecord,
+  CompanyContactRecord,
+  CompanyInsuranceRecord,
+  CompanyProfileSummary,
+} from '@shared/api/company';

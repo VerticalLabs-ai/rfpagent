@@ -24,7 +24,7 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^@/(.*)$': '<rootDir>/server/$1',
+    '^@/(.*)$': '<rootDir>/client/src/$1',
     '^nanoid$': '<rootDir>/tests/__mocks__/nanoid.ts'
   },
   testTimeout: 30000

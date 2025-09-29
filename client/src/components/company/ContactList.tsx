@@ -1,14 +1,22 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { Plus, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ContactCard } from "./ContactCard";
-import { CompanyContactForm } from "./CompanyContactForm";
-import type { CompanyContact } from "./types";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Plus, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import { ContactCard } from './ContactCard';
+import { CompanyContactForm } from './CompanyContactForm';
+import type { CompanyContact, NormalizedCompanyContact } from './types';
+import { normalizeCompanyContact } from '@/utils/companyProfiles';
 
 interface ContactListProps {
   companyProfileId: string;
@@ -17,38 +25,40 @@ interface ContactListProps {
 export function ContactList({ companyProfileId }: ContactListProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<CompanyContact | undefined>();
+  const [editingContact, setEditingContact] = useState<NormalizedCompanyContact | undefined>();
   const { toast } = useToast();
 
-  const { data: contacts = [], isLoading } = useQuery({
-    queryKey: ["/api/company/profiles", companyProfileId, "contacts"],
+  const { data: contacts = [], isLoading } = useQuery<NormalizedCompanyContact[]>({
+    queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
     queryFn: async () => {
-      const response = await apiRequest("GET", `/api/company/profiles/${companyProfileId}/contacts`);
-      const data = await response.json();
-      return Array.isArray(data) ? data : [];
-    }
+      const response = await apiRequest('GET', `/api/company/profiles/${companyProfileId}/contacts`);
+      const data = (await response.json()) as CompanyContact[];
+      return data.map(normalizeCompanyContact);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (contactId: string) =>
-      apiRequest("DELETE", `/api/company-contacts/${contactId}`),
+      apiRequest('DELETE', `/api/company/contacts/${contactId}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
-      toast({ title: "Contact deleted successfully" });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', 'all-contacts'] });
+      toast({ title: 'Contact deleted successfully' });
     },
     onError: () => {
-      toast({ title: "Failed to delete contact", variant: "destructive" });
+      toast({ title: 'Failed to delete contact', variant: 'destructive' });
     },
   });
 
-  const handleEdit = (contact: CompanyContact) => {
+  const handleEdit = (contact: NormalizedCompanyContact) => {
     setEditingContact(contact);
     setEditDialogOpen(true);
   };
 
   const handleDelete = (contactId: string) => {
-    if (confirm("Are you sure you want to delete this contact?")) {
+    if (confirm('Are you sure you want to delete this contact?')) {
       deleteMutation.mutate(contactId);
     }
   };
@@ -117,7 +127,7 @@ export function ContactList({ companyProfileId }: ContactListProps) {
         </Card>
       ) : (
         <div className="grid gap-4" data-testid="contact-list">
-          {contacts.map((contact: CompanyContact) => (
+          {contacts.map(contact => (
             <ContactCard
               key={contact.id}
               contact={contact}
