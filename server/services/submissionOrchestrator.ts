@@ -19,6 +19,8 @@ import type {
   SubmissionPhase,
   SubmissionPhaseResult,
   SubmissionVerificationResult,
+  SubmissionLifecycleData,
+  SubmissionReceiptData,
   WorkItem,
   AgentSession,
 } from '@shared/schema';
@@ -805,24 +807,31 @@ export class SubmissionOrchestrator {
     // Update database
     await this.updatePipelineInDatabase(pipeline);
 
+    const verificationResult = pipeline.results.verification;
+    const receiptData: SubmissionReceiptData | null =
+      verificationResult?.receipt_data ?? null;
+    const referenceNumber =
+      verificationResult?.reference_number ?? undefined;
+    const lifecycleUpdate: SubmissionLifecycleData = {
+      ...(pipeline.metadata ?? {}),
+      pipelineId: pipeline.pipelineId,
+      completedAt: new Date(),
+      ...(referenceNumber ? { referenceNumber } : {}),
+    };
+
     // Update submission with final status and receipt data
     await storage.updateSubmission(pipeline.submissionId, {
       status: 'submitted',
       submittedAt: new Date(),
-      receiptData: pipeline.results.verification?.receipt_data,
-      submissionData: {
-        ...pipeline.metadata,
-        pipelineId: pipeline.pipelineId,
-        completedAt: new Date(),
-        referenceNumber: pipeline.results.verification?.reference_number,
-      },
+      receiptData,
+      submissionData: lifecycleUpdate,
     });
 
     // CRITICAL: Update proposal status to 'submitted' after receipt verification
     await storage.updateProposal(pipeline.proposalId, {
       status: 'submitted',
       submittedAt: new Date(),
-      receiptData: pipeline.results.verification?.receipt_data,
+      receiptData,
     });
 
     // Create success notification

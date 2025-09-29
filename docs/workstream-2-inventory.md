@@ -35,6 +35,7 @@ _Last updated: 2025-09-28_
 - ✅ Pipeline phase/status unions now exported from the shared schema with corresponding API helpers (`isSubmissionPhase`, `getResultKeyForPhase`).
 - ✅ Orchestrator and storage conversions coerce JSON payloads into typed `SubmissionPipelineMetadata`, `SubmissionPipelineResults`, and structured error data.
 - ✅ Submission pipeline result contract now advertises typed phase/status unions and optional receipt metadata for client consumers.
+- ✅ Successful completions persist normalized receipt data across submissions/proposals and include structured lifecycle metadata (`completedAt`, `referenceNumber`, `retryCount`).
 - ⚠️ Phase execution routines still rely on large `WorkItem` blobs; follow-up typing needed once Stagehand task schemas are defined.
 
 ## server/services/workflowCoordinator.ts

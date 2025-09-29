@@ -889,3 +889,11 @@ export async function scrapeWithAuthenticatedSession(
     throw new Error(`Authenticated scraping failed: ${error.message}`);
   }
 }
+
+export const stagehandTools = {
+  performWebAction,
+  performWebObservation,
+  performWebExtraction,
+  performBrowserAuthentication,
+  scrapeWithAuthenticatedSession,
+};

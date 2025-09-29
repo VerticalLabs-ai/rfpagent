@@ -79,6 +79,7 @@ import {
   type Portal,
   type PublicPortal,
   type Proposal,
+  type ProposalRow,
   type ResearchFinding,
   type RFP,
   type Scan,
@@ -133,6 +134,11 @@ const toSubmissionPipeline = (
   submissionReceipt:
     (row.submissionReceipt as SubmissionVerificationResult | null) ?? null,
   errorData: (row.errorData as SubmissionPipelineErrorData | null) ?? null,
+});
+
+const toProposal = (row: ProposalRow): Proposal => ({
+  ...row,
+  receiptData: (row.receiptData as SubmissionReceiptData | null) ?? null,
 });
 
 type WorkflowStateRow = typeof workflowState.$inferSelect;
@@ -914,7 +920,7 @@ export class DatabaseStorage implements IStorage {
     return rows.map(({ rfp, portal, proposal }) => ({
       rfp,
       portal: portal ?? null,
-      proposal: proposal ?? null,
+      proposal: proposal ? toProposal(proposal) : null,
     }));
   }
 
@@ -1020,7 +1026,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(proposals)
       .where(eq(proposals.id, id));
-    return proposal || undefined;
+    return proposal ? toProposal(proposal) : undefined;
   }
 
   async getProposalByRFP(rfpId: string): Promise<Proposal | undefined> {
@@ -1028,7 +1034,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(proposals)
       .where(eq(proposals.rfpId, rfpId));
-    return proposal || undefined;
+    return proposal ? toProposal(proposal) : undefined;
   }
 
   async createProposal(proposal: InsertProposal): Promise<Proposal> {
@@ -1036,7 +1042,7 @@ export class DatabaseStorage implements IStorage {
       .insert(proposals)
       .values(proposal)
       .returning();
-    return newProposal;
+    return toProposal(newProposal);
   }
 
   async updateProposal(
@@ -1048,7 +1054,7 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(proposals.id, id))
       .returning();
-    return updatedProposal;
+    return toProposal(updatedProposal);
   }
 
   async deleteProposal(id: string): Promise<void> {
