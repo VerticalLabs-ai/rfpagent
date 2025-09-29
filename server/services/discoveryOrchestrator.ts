@@ -25,6 +25,8 @@ export interface DiscoveryWorkflowRequest {
     deepExtraction?: boolean;
     realTimeNotifications?: boolean;
     maxRetries?: number;
+    searchCriteria?: unknown;
+    maxRfps?: number;
   };
 }
 

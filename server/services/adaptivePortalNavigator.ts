@@ -862,8 +862,8 @@ export class AdaptivePortalNavigator {
   }
 
   private applyTimingAdaptation(
-    _strategy: PortalNavigationStrategy,
-    _adaptation: any
+    strategy: PortalNavigationStrategy,
+    adaptation: any
   ): void {
     if (adaptation.adjustments) {
       Object.assign(strategy.timingPatterns, adaptation.adjustments);

@@ -7,7 +7,10 @@ import { proposalGenerationOrchestrator } from '../services/proposalGenerationOr
 import { workflowCoordinator } from '../services/workflowCoordinator';
 import { agentRegistryService } from '../services/agentRegistryService';
 import { analysisOrchestrator } from '../services/analysisOrchestrator';
-import { discoveryOrchestrator } from '../services/discoveryOrchestrator';
+import {
+  discoveryOrchestrator,
+  type DiscoveryWorkflowRequest,
+} from '../services/discoveryOrchestrator';
 
 const router = Router();
 
@@ -83,6 +86,7 @@ router.post('/document-processing/execute', async (req, res) => {
       analysisType = 'standard',
       priority = 5,
       deadline,
+      options = {},
     } = req.body;
 
     if (!rfpId) {
@@ -130,6 +134,7 @@ router.post('/rfp-discovery/execute', async (req, res) => {
       workflowId,
       priority = 5,
       deadline,
+      options = {},
     } = req.body;
 
     if (!portalIds || !Array.isArray(portalIds)) {
@@ -142,16 +147,22 @@ router.post('/rfp-discovery/execute', async (req, res) => {
       `🔍 Starting RFP discovery workflow for portals: ${portalIds.join(', ')}`
     );
 
+    const discoveryOptions: DiscoveryWorkflowRequest['options'] = {
+      fullScan: options?.fullScan,
+      deepExtraction: options?.deepExtraction,
+      realTimeNotifications: options?.realTimeNotifications,
+      maxRetries: options?.maxRetries,
+      searchCriteria,
+      maxRfps,
+    };
+
     const result = await discoveryOrchestrator.createDiscoveryWorkflow({
       portalIds,
       sessionId: sessionId || `discovery-${Date.now()}`,
       workflowId,
       priority,
       deadline: deadline ? new Date(deadline) : undefined,
-      options: {
-        searchCriteria,
-        maxRfps,
-      },
+      options: discoveryOptions,
     });
 
     res.json({

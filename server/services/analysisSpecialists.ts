@@ -6,6 +6,21 @@ import { agentMemoryService } from './agentMemoryService';
 import { ObjectStorageService } from '../objectStorage';
 import type { Document, RFP, WorkItem } from '@shared/schema';
 
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const getWorkItemInputs = (workItem: WorkItem): Record<string, unknown> => {
+  if (workItem.inputs && typeof workItem.inputs === 'object') {
+    return workItem.inputs as Record<string, unknown>;
+  }
+  return {};
+};
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+
 /**
  * Analysis Specialists for the 3-Tier RFP Automation System
  *
@@ -72,11 +87,18 @@ export class DocumentProcessorSpecialist {
     workItem: WorkItem
   ): Promise<SpecialistTaskResult> {
     try {
+      const inputs = getWorkItemInputs(workItem);
+      const documentId = asString(inputs.documentId);
+      const rfpId = asString(inputs.rfpId);
+
+      if (!documentId) {
+        throw new Error('Work item missing documentId');
+      }
+
       console.log(
-        `📄 Document processor validating document: ${workItem.inputs.documentId}`
+        `📄 Document processor validating document: ${documentId}`
       );
 
-      const documentId = workItem.inputs.documentId;
       const document = await storage.getDocument(documentId);
 
       if (!document) {
@@ -103,15 +125,15 @@ export class DocumentProcessorSpecialist {
         content: {
           documentId,
           filename: document.filename,
-          validation,
-          processedAt: new Date(),
-        },
-        importance: validation.isValid ? 7 : 9, // Higher importance for invalid docs
-        metadata: {
-          workItemId: workItem.id,
-          rfpId: workItem.inputs.rfpId,
-        },
-      });
+        validation,
+        processedAt: new Date(),
+      },
+      importance: validation.isValid ? 7 : 9, // Higher importance for invalid docs
+      metadata: {
+        workItemId: workItem.id,
+        rfpId,
+      },
+    });
 
       if (!validation.isValid) {
         return {
@@ -135,7 +157,7 @@ export class DocumentProcessorSpecialist {
       console.error(`❌ Document validation failed:`, error);
       return {
         success: false,
-        error: error.message,
+        error: toErrorMessage(error),
         metadata: { workItemId: workItem.id },
       };
     }
@@ -148,13 +170,19 @@ export class DocumentProcessorSpecialist {
     workItem: WorkItem
   ): Promise<SpecialistTaskResult> {
     try {
-      console.log(
-        `📝 Document processor extracting text: ${workItem.inputs.documentId}`
-      );
+      const inputs = getWorkItemInputs(workItem);
+      const documentId = asString(inputs.documentId);
+      const extractionMethod = asString(inputs.extractionMethod) || 'auto';
+      const qualityLevel = asString(inputs.qualityLevel) || 'high';
+      const rfpId = asString(inputs.rfpId);
 
-      const documentId = workItem.inputs.documentId;
-      const extractionMethod = workItem.inputs.extractionMethod || 'auto';
-      const qualityLevel = workItem.inputs.qualityLevel || 'high';
+      if (!documentId) {
+        throw new Error('Work item missing documentId');
+      }
+
+      console.log(
+        `📝 Document processor extracting text: ${documentId}`
+      );
 
       // Use existing document parsing service
       await this.documentParsingService.parseDocument(documentId);
@@ -199,7 +227,7 @@ export class DocumentProcessorSpecialist {
         importance: extractionResult.quality === 'high' ? 8 : 6,
         metadata: {
           workItemId: workItem.id,
-          rfpId: workItem.inputs.rfpId,
+          rfpId,
         },
       });
 
@@ -226,7 +254,7 @@ export class DocumentProcessorSpecialist {
       console.error(`❌ Text extraction failed:`, error);
       return {
         success: false,
-        error: error.message,
+        error: toErrorMessage(error),
         metadata: { workItemId: workItem.id },
       };
     }
@@ -270,9 +298,8 @@ export class DocumentProcessorSpecialist {
       let readableContent = true;
 
       if (file) {
-        // Get file stats if available
-        const stats = file.stat ? await file.stat() : null;
-        fileSize = stats?.size || 0;
+        const [metadata] = await file.getMetadata();
+        fileSize = metadata?.size ? Number(metadata.size) : 0;
 
         // Check if file is too large (>50MB)
         if (fileSize > 50000000) {
@@ -307,12 +334,12 @@ export class DocumentProcessorSpecialist {
         fileSize: 0,
         fileType: document.fileType,
         readableContent: false,
-        issues: [`Validation error: ${error.message}`],
+        issues: [`Validation error: ${toErrorMessage(error)}`],
         metadata: {
           documentId: document.id,
           filename: document.filename,
           validatedAt: new Date(),
-          error: error.message,
+          error: toErrorMessage(error),
         },
       };
     }
@@ -385,17 +412,20 @@ export class RequirementsExtractorSpecialist {
     workItem: WorkItem
   ): Promise<SpecialistTaskResult> {
     try {
-      console.log(
-        `📋 Requirements extractor parsing document: ${workItem.inputs.documentId}`
-      );
+      const inputs = getWorkItemInputs(workItem);
+      const documentId = asString(inputs.documentId);
+      const rfpId = asString(inputs.rfpId);
+      const extractionFocus = Array.isArray(inputs.extractionFocus)
+        ? (inputs.extractionFocus as string[])
+        : ['mandatory', 'optional', 'evaluation_criteria'];
 
-      const documentId = workItem.inputs.documentId;
-      const rfpId = workItem.inputs.rfpId;
-      const extractionFocus = workItem.inputs.extractionFocus || [
-        'mandatory',
-        'optional',
-        'evaluation_criteria',
-      ];
+      if (!documentId || !rfpId) {
+        throw new Error('Work item missing documentId or rfpId');
+      }
+
+      console.log(
+        `📋 Requirements extractor parsing document: ${documentId}`
+      );
 
       const document = await storage.getDocument(documentId);
       const rfp = await storage.getRFP(rfpId);
@@ -459,7 +489,7 @@ export class RequirementsExtractorSpecialist {
       console.error(`❌ Requirement parsing failed:`, error);
       return {
         success: false,
-        error: error.message,
+        error: toErrorMessage(error),
         metadata: { workItemId: workItem.id },
       };
     }
@@ -536,16 +566,20 @@ export class ComplianceCheckerSpecialist {
     workItem: WorkItem
   ): Promise<SpecialistTaskResult> {
     try {
-      console.log(
-        `✅ Compliance checker analyzing RFP: ${workItem.inputs.rfpId}`
-      );
+      const inputs = getWorkItemInputs(workItem);
+      const rfpId = asString(inputs.rfpId);
+      const documentIds = Array.isArray(inputs.documentIds)
+        ? (inputs.documentIds as string[])
+        : [];
+      const analysisScope = Array.isArray(inputs.analysisScope)
+        ? (inputs.analysisScope as string[])
+        : ['compliance_checklist', 'risk_flags'];
 
-      const rfpId = workItem.inputs.rfpId;
-      const documentIds = workItem.inputs.documentIds || [];
-      const analysisScope = workItem.inputs.analysisScope || [
-        'compliance_checklist',
-        'risk_flags',
-      ];
+      if (!rfpId) {
+        throw new Error('Work item missing rfpId');
+      }
+
+      console.log(`✅ Compliance checker analyzing RFP: ${rfpId}`);
 
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
@@ -609,7 +643,7 @@ export class ComplianceCheckerSpecialist {
       console.error(`❌ Compliance analysis failed:`, error);
       return {
         success: false,
-        error: error.message,
+        error: toErrorMessage(error),
         metadata: { workItemId: workItem.id },
       };
     }

@@ -27,12 +27,13 @@ export interface AnalysisWorkflowResult {
 
 export interface WorkItemSequence {
   id: string;
+  sequenceId: string;
   name: string;
   taskType: string;
   dependencies: string[];
   assignedAgent?: string;
-  inputs: any;
-  metadata: any;
+  inputs: Record<string, unknown>;
+  metadata: Record<string, unknown>;
 }
 
 /**
@@ -395,6 +396,7 @@ export class AnalysisOrchestrator {
     // Phase 1: Document Download & Validation (parallel for all documents)
     const documentValidationTasks = documents.map(doc => ({
       id: `doc-validate-${doc.id}`,
+      sequenceId: `doc-validate-${doc.id}`,
       name: `Validate Document: ${doc.filename}`,
       taskType: 'document_validation',
       dependencies: [],
@@ -412,6 +414,7 @@ export class AnalysisOrchestrator {
         parallel: true,
         priority,
         deadline,
+        sequenceId: `doc-validate-${doc.id}`,
       },
     }));
 
@@ -420,6 +423,7 @@ export class AnalysisOrchestrator {
     // Phase 2: OCR/Text Extraction (depends on validation)
     const textExtractionTasks = documents.map(doc => ({
       id: `text-extract-${doc.id}`,
+      sequenceId: `text-extract-${doc.id}`,
       name: `Extract Text: ${doc.filename}`,
       taskType: 'text_extraction',
       dependencies: [`doc-validate-${doc.id}`],
@@ -436,6 +440,7 @@ export class AnalysisOrchestrator {
         parallel: true,
         priority,
         deadline,
+        sequenceId: `text-extract-${doc.id}`,
       },
     }));
 
@@ -444,6 +449,7 @@ export class AnalysisOrchestrator {
     // Phase 3: Requirement Parsing (depends on text extraction)
     const requirementTasks = documents.map(doc => ({
       id: `req-parse-${doc.id}`,
+      sequenceId: `req-parse-${doc.id}`,
       name: `Parse Requirements: ${doc.filename}`,
       taskType: 'requirement_parsing',
       dependencies: [`text-extract-${doc.id}`],
@@ -465,6 +471,7 @@ export class AnalysisOrchestrator {
         parallel: true,
         priority,
         deadline,
+        sequenceId: `req-parse-${doc.id}`,
       },
     }));
 
@@ -473,6 +480,7 @@ export class AnalysisOrchestrator {
     // Phase 4: Compliance Analysis (depends on requirement parsing)
     const complianceTask = {
       id: `compliance-analysis-${rfpId}`,
+      sequenceId: `compliance-analysis-${rfpId}`,
       name: `Compliance Analysis: Complete RFP`,
       taskType: 'compliance_analysis',
       dependencies: requirementTasks.map(task => task.id),
@@ -494,6 +502,7 @@ export class AnalysisOrchestrator {
         parallel: false,
         priority: priority + 1, // Higher priority for final phase
         deadline,
+        sequenceId: `compliance-analysis-${rfpId}`,
       },
     };
 
@@ -520,13 +529,22 @@ export class AnalysisOrchestrator {
 
     for (const task of initialTasks) {
       try {
+        const taskInputs = task.inputs as Record<string, unknown>;
+        const taskMetadata = task.metadata as Record<string, unknown>;
+        const priorityValue = (taskMetadata.priority as number | undefined) ?? 5;
+        const deadlineValue =
+          taskMetadata.deadline instanceof Date
+            ? (taskMetadata.deadline as Date)
+            : undefined;
+        const contextRef = taskInputs.rfpId as string | undefined;
+
         const workItem = await workflowCoordinator.createWorkItem({
           sessionId,
           taskType: task.taskType,
           inputs: task.inputs,
-          priority: task.metadata.priority,
-          deadline: task.metadata.deadline,
-          contextRef: task.inputs.rfpId,
+          priority: priorityValue,
+          deadline: deadlineValue,
+          contextRef,
           workflowId: workflowId,
           createdByAgentId: 'analysis-orchestrator',
           metadata: {
@@ -540,11 +558,10 @@ export class AnalysisOrchestrator {
           `✅ Created work item ${workItem.id} for task: ${task.name}`
         );
 
-        // Assign to specific agent if specified
-        if (task.assignedAgent) {
-          await workflowCoordinator.assignWorkItemToAgent(
-            workItem.id,
-            task.assignedAgent
+        const assignment = await workflowCoordinator.assignWorkItem(workItem.id);
+        if (!assignment.success) {
+          console.warn(
+            `⚠️ Work item ${workItem.id} pending assignment: ${assignment.error}`
           );
         }
       } catch (error) {
@@ -579,7 +596,13 @@ export class AnalysisOrchestrator {
       this.updateWorkflowProgress(workflowId, workItem);
 
       // Find and submit dependent tasks
-      const completedSequenceId = workItem.metadata?.sequenceId;
+      const workItemMetadata = (workItem.metadata || {}) as Record<
+        string,
+        unknown
+      >;
+      const completedSequenceId = workItemMetadata.sequenceId as
+        | string
+        | undefined;
       if (!completedSequenceId) return;
 
       const dependentTasks = workSequence.filter(task =>
@@ -596,13 +619,29 @@ export class AnalysisOrchestrator {
         if (allDependenciesCompleted) {
           console.log(`📤 Submitting dependent task: ${dependentTask.name}`);
 
+          const dependentInputs = dependentTask.inputs as Record<
+            string,
+            unknown
+          >;
+          const dependentMetadata = dependentTask.metadata as Record<
+            string,
+            unknown
+          >;
+          const dependentPriority =
+            (dependentMetadata.priority as number | undefined) ?? 5;
+          const dependentDeadline =
+            dependentMetadata.deadline instanceof Date
+              ? (dependentMetadata.deadline as Date)
+              : undefined;
+          const dependentContextRef = dependentInputs.rfpId as string | undefined;
+
           const newWorkItem = await workflowCoordinator.createWorkItem({
             sessionId: workItem.sessionId,
             taskType: dependentTask.taskType,
             inputs: dependentTask.inputs,
-            priority: dependentTask.metadata.priority,
-            deadline: dependentTask.metadata.deadline,
-            contextRef: dependentTask.inputs.rfpId,
+            priority: dependentPriority,
+            deadline: dependentDeadline,
+            contextRef: dependentContextRef,
             workflowId: workflowId,
             createdByAgentId: 'analysis-orchestrator',
             metadata: {
@@ -613,10 +652,12 @@ export class AnalysisOrchestrator {
           });
 
           // Assign to specific agent if specified
-          if (dependentTask.assignedAgent) {
-            await workflowCoordinator.assignWorkItemToAgent(
-              newWorkItem.id,
-              dependentTask.assignedAgent
+          const dependAssignment = await workflowCoordinator.assignWorkItem(
+            newWorkItem.id
+          );
+          if (!dependAssignment.success) {
+            console.warn(
+              `⚠️ Dependent work item ${newWorkItem.id} pending assignment: ${dependAssignment.error}`
             );
           }
         }
@@ -645,8 +686,9 @@ export class AnalysisOrchestrator {
     );
 
     const completedSequenceIds = workflowItems
-      .map(item => item.metadata?.sequenceId)
-      .filter(id => id);
+      .map(item => (item.metadata || {}) as Record<string, unknown>)
+      .map(metadata => metadata.sequenceId as string | undefined)
+      .filter((id): id is string => typeof id === 'string');
 
     return dependencies.every(dep => completedSequenceIds.includes(dep));
   }
@@ -694,12 +736,13 @@ export class AnalysisOrchestrator {
     const allCompleted = await Promise.all(
       workSequence.map(async task => {
         const allWorkItems = await storage.getWorkItemsByStatus('completed');
-        return allWorkItems.some(
-          item =>
-            item.workflowId === workflowId &&
-            item.metadata?.sequenceId === task.id &&
-            item.status === 'completed'
-        );
+        return allWorkItems.some(item => {
+          if (item.workflowId !== workflowId || item.status !== 'completed') {
+            return false;
+          }
+          const metadata = (item.metadata || {}) as Record<string, unknown>;
+          return metadata.sequenceId === task.id;
+        });
       })
     );
 

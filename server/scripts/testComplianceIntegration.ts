@@ -16,6 +16,9 @@ import { complianceIntegrationService } from '../services/complianceIntegrationS
 import { storage } from '../storage';
 import { aiService } from '../services/aiService';
 
+const toErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 interface TestResult {
   name: string;
   success: boolean;
@@ -113,7 +116,7 @@ class ComplianceIntegrationTester {
         'Data Structure Validation',
         false,
         'Failed to test data structures',
-        error.message
+        toErrorMessage(error)
       );
     }
   }
@@ -173,7 +176,7 @@ class ComplianceIntegrationTester {
             `AI Analysis - ${testCase.name}`,
             false,
             'AI analysis failed',
-            error.message
+            toErrorMessage(error)
           );
         }
       }
@@ -182,7 +185,7 @@ class ComplianceIntegrationTester {
         'AI Service Testing',
         false,
         'Failed to test AI service',
-        error.message
+        toErrorMessage(error)
       );
     }
   }
@@ -239,7 +242,7 @@ class ComplianceIntegrationTester {
         'Compliance Service Testing',
         false,
         'Failed to test compliance service',
-        error.message
+        toErrorMessage(error)
       );
     }
   }
@@ -300,7 +303,7 @@ class ComplianceIntegrationTester {
         'Database Query Test',
         false,
         'Failed to query database',
-        error.message
+        toErrorMessage(error)
       );
     }
   }
@@ -361,7 +364,7 @@ class ComplianceIntegrationTester {
         'Batch Processing Test',
         false,
         'Failed to test batch processing',
-        error.message
+        toErrorMessage(error)
       );
     }
   }

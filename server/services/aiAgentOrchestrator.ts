@@ -1112,7 +1112,7 @@ Return only the JSON object, no other text.
       // Store memory about user preferences
       await agentMemoryService.storeMemory({
         agentId: 'rfp-discovery-specialist',
-        memoryType: 'user_interaction',
+        memoryType: 'episodic',
         contextKey: `conversation_${conversation.id}`,
         title: `User Query: ${intent.type}`,
         content: {
@@ -1138,7 +1138,7 @@ Return only the JSON object, no other text.
       if (intent.type === 'rfp_search' && context?.searchCriteria) {
         await agentMemoryService.storeMemory({
           agentId: 'market-research-analyst',
-          memoryType: 'search_pattern',
+          memoryType: 'semantic',
           contextKey: `search_criteria_${Date.now()}`,
           title: `Search Pattern: ${
             context.searchCriteria.category || 'General'

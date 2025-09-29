@@ -42,7 +42,6 @@ export class AgentRegistryService {
       tools: agentData.tools || [],
       maxConcurrency: agentData.maxConcurrency || 1,
       status: 'active',
-      lastHeartbeat: new Date(),
       version: '1.0.0',
       configuration: agentData.configuration,
       parentAgentId: agentData.parentAgentId,
