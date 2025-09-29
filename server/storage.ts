@@ -102,7 +102,7 @@ import {
   type User,
   type WorkItem,
 } from '@shared/schema';
-import { and, asc, count, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, lte, or, sql, type SQL } from 'drizzle-orm';
 import { db } from './db';
 import type { DashboardMetrics } from '@shared/api/dashboard';
 import type { RfpDetail } from '@shared/api/rfps';
@@ -394,9 +394,9 @@ export interface IStorage {
   // Research Findings
   getResearchFinding(id: string): Promise<ResearchFinding | undefined>;
   getResearchFindings(
-    conversationId?: string,
+    limit: number,
     type?: string,
-    limit?: number
+    rfpId?: string
   ): Promise<ResearchFinding[]>;
   createResearchFinding(
     finding: InsertResearchFinding
@@ -2146,16 +2146,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getResearchFindings(
-    conversationId?: string,
+    limit: number = 50,
     type?: string,
-    limit: number = 50
+    rfpId?: string
   ): Promise<ResearchFinding[]> {
-    const conditions = [];
-    if (conversationId) {
-      conditions.push(eq(researchFindings.conversationId, conversationId));
-    }
+    const conditions = [] as Array<SQL<unknown>>;
+
     if (type) {
       conditions.push(eq(researchFindings.type, type));
+    }
+
+    if (rfpId) {
+      conditions.push(eq(researchFindings.relatedRfpId, rfpId));
     }
 
     const baseQuery = db.select().from(researchFindings);

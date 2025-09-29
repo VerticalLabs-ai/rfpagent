@@ -12,11 +12,8 @@ export { PortalRepository, type PortalFilter } from './PortalRepository';
 export { RFPRepository, type RFPFilter } from './RFPRepository';
 
 // Repository manager
-export {
-  RepositoryManager,
-  repositoryManager,
-  repositories,
-} from './RepositoryManager';
+export { RepositoryManager, repositoryManager } from './RepositoryManager';
+export { repositories } from './RepositoryManager';
 
 // Re-export for convenience
-export default repositories;
+export { repositories as default } from './RepositoryManager';

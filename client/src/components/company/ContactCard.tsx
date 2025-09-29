@@ -1,13 +1,13 @@
-import { UserCheck, Shield, Users, Mail, Phone, Edit, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { CompanyContact } from "./types";
-import { DECISION_AREAS } from "./types";
+import { UserCheck, Shield, Users, Mail, Phone, Edit, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import type { NormalizedCompanyContact } from './types';
+import { DECISION_AREAS } from './types';
 
 interface ContactCardProps {
-  contact: CompanyContact;
-  onEdit: (contact: CompanyContact) => void;
+  contact: NormalizedCompanyContact;
+  onEdit: (contact: NormalizedCompanyContact) => void;
   onDelete: (contactId: string) => void;
 }
 

@@ -1,6 +1,17 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
 
+declare module 'express-serve-static-core' {
+  interface Request {
+    rateLimit?: {
+      limit: number;
+      current: number;
+      remaining: number;
+      resetTime?: Date;
+    };
+  }
+}
+
 /**
  * Rate limiting middleware configurations
  */
@@ -17,12 +28,18 @@ export const rateLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   handler: (req: Request, res: Response) => {
+    const retryAfterSeconds = req.rateLimit?.resetTime
+      ? Math.max(
+          0,
+          Math.ceil(
+            (req.rateLimit.resetTime.getTime() - Date.now()) / 1000
+          )
+        )
+      : 900;
     res.status(429).json({
       error: 'Too many requests',
       details: 'Rate limit exceeded. Please try again later.',
-      retryAfter:
-        Math.ceil(req.rateLimit?.resetTime?.getTime() - Date.now()) / 1000 ||
-        900,
+      retryAfter: retryAfterSeconds,
     });
   },
 });

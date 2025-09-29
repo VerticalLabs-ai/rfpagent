@@ -54,7 +54,7 @@ export default function AgentMonitoring() {
 
   const { data: agentRegistry, isLoading: registryLoading } = useQuery({
     queryKey: ['/api/agent-registry'],
-    queryFn: () => fetchJson<AgentRegistryData>('/api/agent-registry'),
+    queryFn: () => fetchJson<AgentRegistrySummary>('/api/agent-registry'),
     refetchInterval: 3000,
   });
 

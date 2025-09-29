@@ -1,10 +1,59 @@
-import { createTool } from '@mastra/core/tools';
+import { createTool, type ToolExecutionContext } from '@mastra/core/tools';
+import { RuntimeContext } from '@mastra/core/runtime-context';
 import { z } from 'zod';
 import {
   stagehandActTool,
   stagehandExtractTool,
   stagehandAuthTool,
 } from '../../../../src/mastra/tools';
+
+const opportunitySchema = z.object({
+  title: z.string(),
+  description: z.string().optional(),
+  agency: z.string().optional(),
+  deadline: z.string().optional(),
+  estimatedValue: z.string().optional(),
+  url: z.string().optional(),
+  category: z.string().optional(),
+  confidence: z.number().min(0).max(1).default(0.5),
+});
+
+type Opportunity = z.infer<typeof opportunitySchema>;
+
+const stagehandExtractionDataSchema = z.object({
+  opportunities: z.array(opportunitySchema),
+});
+
+const authExecutionResultSchema = z.object({
+  success: z.boolean().optional(),
+  sessionId: z.string().optional(),
+  message: z.string().optional(),
+  cookies: z.string().optional(),
+  authToken: z.string().optional(),
+});
+
+const navigationExecutionResultSchema = z.object({
+  success: z.boolean().optional(),
+  message: z.string().optional(),
+  currentUrl: z.string().optional(),
+  actionedAt: z.string().optional(),
+});
+
+function withRuntimeContext<TSchema extends z.ZodSchema | undefined>(
+  schema: TSchema,
+  data: TSchema extends z.ZodSchema ? z.infer<TSchema> : Record<string, never>
+): ToolExecutionContext<TSchema> {
+  const parsedContext = schema
+    ? (schema.parse(data) as z.infer<Exclude<TSchema, undefined>>)
+    : (data as Record<string, never>);
+
+  return {
+    context: parsedContext as TSchema extends z.ZodSchema
+      ? z.infer<TSchema>
+      : Record<string, never>,
+    runtimeContext: new RuntimeContext(),
+  } as ToolExecutionContext<TSchema>;
+}
 
 /**
  * Factory for creating standardized tools for the scraping service
@@ -18,61 +67,51 @@ export class ToolFactory {
       id: 'rfp-extraction-tool',
       description: 'Extract RFP opportunities from web content',
       inputSchema: z.object({
-        content: z.string().describe('HTML content to extract from'),
+        content: z.string().describe('HTML content retrieved by the crawler'),
         portalType: z.string().describe('Type of portal being scraped'),
-        searchFilter: z.string().optional().describe('Optional search filter'),
+        searchFilter: z.string().optional().describe('Optional search filter to bias extraction'),
       }),
       outputSchema: z.object({
-        opportunities: z.array(
-          z.object({
-            title: z.string(),
-            description: z.string().optional(),
-            agency: z.string().optional(),
-            deadline: z.string().optional(),
-            estimatedValue: z.string().optional(),
-            url: z.string().optional(),
-            category: z.string().optional(),
-            confidence: z.number().min(0).max(1).default(0.5),
-          })
-        ),
+        opportunities: z.array(opportunitySchema),
         totalFound: z.number(),
         extractedAt: z.string(),
       }),
-      execute: async ({ content, portalType, searchFilter }) => {
-        // Delegate to the existing stagehand extraction tool
-        return await stagehandExtractTool.execute({
-          context: {
-            instruction: searchFilter
-              ? `find and extract RFP opportunities related to "${searchFilter}" including titles, deadlines, agencies, descriptions, and links`
-              : 'extract all RFP opportunities, procurement notices, and solicitations with their complete details',
-            schema: {
-              opportunities: z.array(
-                z.object({
-                  title: z.string().describe('RFP title or opportunity name'),
-                  description: z
-                    .string()
-                    .optional()
-                    .describe('Description or summary'),
-                  agency: z.string().optional().describe('Issuing agency'),
-                  deadline: z
-                    .string()
-                    .optional()
-                    .describe('Submission deadline'),
-                  estimatedValue: z
-                    .string()
-                    .optional()
-                    .describe('Contract value'),
-                  url: z
-                    .string()
-                    .optional()
-                    .describe('Direct URL to opportunity'),
-                  category: z.string().optional().describe('Category or type'),
-                  confidence: z.number().min(0).max(1).default(0.5),
-                })
-              ),
-            },
-          },
-        });
+      execute: async ({ context }) => {
+        const { portalType, searchFilter } = context;
+
+        const instruction = searchFilter
+          ? `Extract RFP opportunities related to "${searchFilter}" including titles, deadlines, agencies, descriptions, and links.`
+          : `Extract all RFP opportunities, procurement notices, and solicitations relevant to the ${portalType} portal.`;
+
+        const { execute, inputSchema } = stagehandExtractTool;
+        if (typeof execute !== 'function' || !inputSchema) {
+          throw new Error('Stagehand extraction tool is not initialized');
+        }
+
+        const extraction = await execute(
+          withRuntimeContext(inputSchema, {
+            instruction,
+            schema: stagehandExtractionDataSchema.shape,
+          })
+        );
+
+        const parsedData = stagehandExtractionDataSchema.safeParse(
+          (extraction as { data?: unknown }).data
+        );
+
+        const opportunities: Opportunity[] = parsedData.success
+          ? parsedData.data.opportunities
+          : [];
+
+        const extractedAt =
+          (extraction as { extractedAt?: string }).extractedAt ??
+          new Date().toISOString();
+
+        return {
+          opportunities,
+          totalFound: opportunities.length,
+          extractedAt,
+        };
       },
     });
   }
@@ -98,23 +137,47 @@ export class ToolFactory {
         cookies: z.string().optional(),
         authToken: z.string().optional(),
       }),
-      execute: async ({
-        loginUrl,
-        username,
-        password,
-        portalType,
-        sessionId,
-      }) => {
-        return await stagehandAuthTool.execute({
-          context: {
-            loginUrl,
-            username,
-            password,
-            targetUrl: loginUrl,
-            sessionId: sessionId || 'default',
-            portalType,
-          },
-        });
+      execute: async ({ context }) => {
+        const { loginUrl, username, password, portalType, sessionId } = context;
+
+        try {
+          const { execute, inputSchema } = stagehandAuthTool;
+          if (typeof execute !== 'function' || !inputSchema) {
+            throw new Error('Stagehand authentication tool is not initialized');
+          }
+
+          const result = await execute(
+            withRuntimeContext(inputSchema, {
+              loginUrl,
+              username,
+              password,
+              targetUrl: loginUrl,
+              sessionId: sessionId ?? 'default',
+              portalType,
+            })
+          );
+
+          const parsed = authExecutionResultSchema.parse(result);
+
+          return {
+            success: parsed.success ?? true,
+            sessionId: parsed.sessionId ?? sessionId,
+            message: parsed.message,
+            cookies: parsed.cookies,
+            authToken: parsed.authToken,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            sessionId,
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Portal authentication failed',
+            cookies: undefined,
+            authToken: undefined,
+          };
+        }
       },
     });
   }
@@ -136,14 +199,43 @@ export class ToolFactory {
         result: z.any().optional(),
         message: z.string().optional(),
       }),
-      execute: async ({ action, target, sessionId }) => {
-        return await stagehandActTool.execute({
-          context: {
-            action,
-            target,
-            sessionId: sessionId || 'default',
-          },
-        });
+      execute: async ({ context }) => {
+        const { action, target, sessionId } = context;
+
+        try {
+          const { execute, inputSchema } = stagehandActTool;
+          if (typeof execute !== 'function' || !inputSchema) {
+            throw new Error('Stagehand navigation tool is not initialized');
+          }
+
+          const result = await execute(
+            withRuntimeContext(inputSchema, {
+              action,
+              url: target,
+              sessionId: sessionId ?? 'default',
+            })
+          );
+
+          const parsed = navigationExecutionResultSchema.parse(result);
+
+          return {
+            success: parsed.success ?? true,
+            result: {
+              currentUrl: parsed.currentUrl,
+              actionedAt: parsed.actionedAt,
+            },
+            message: parsed.message,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            result: undefined,
+            message:
+              error instanceof Error
+                ? error.message
+                : 'Portal navigation failed',
+          };
+        }
       },
     });
   }
@@ -167,7 +259,8 @@ export class ToolFactory {
         mimeType: z.string().optional(),
         error: z.string().optional(),
       }),
-      execute: async ({ url, filename, sessionId }) => {
+      execute: async ({ context }) => {
+        const { url, filename } = context;
         try {
           // This would integrate with the actual download service
           // For now, return a placeholder implementation
@@ -207,7 +300,8 @@ export class ToolFactory {
         issues: z.array(z.string()),
         suggestions: z.array(z.string()),
       }),
-      execute: async ({ content, portalType, minOpportunities }) => {
+      execute: async ({ context }) => {
+        const { content, portalType, minOpportunities = 1 } = context;
         const issues: string[] = [];
         const suggestions: string[] = [];
         let score = 1.0;
@@ -227,7 +321,13 @@ export class ToolFactory {
 
         // Portal-specific validation
         if (portalType === 'bonfire_hub' && Array.isArray(content)) {
-          const hasDeadlines = content.some((opp: any) => opp.deadline);
+          const hasDeadlines = content.some(item => {
+            if (item && typeof item === 'object') {
+              const candidate = item as { deadline?: unknown };
+              return typeof candidate.deadline === 'string' && candidate.deadline.length > 0;
+            }
+            return false;
+          });
           if (!hasDeadlines) {
             suggestions.push(
               'Consider extracting deadline information for Bonfire opportunities'

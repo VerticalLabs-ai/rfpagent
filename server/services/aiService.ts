@@ -1,4 +1,8 @@
-import type { RFP } from '@shared/schema';
+import type {
+  RFP,
+  AiConversation,
+  ConversationMessage,
+} from '@shared/schema';
 import OpenAI from 'openai';
 import { storage } from '../storage';
 
@@ -16,6 +20,238 @@ if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
 export class AIService {
   private checkApiKeyAvailable(): boolean {
     return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
+  }
+
+  private readonly defaultAssistantPrompt =
+    'You are a helpful procurement analyst assisting with RFP research and bid preparation. Respond concisely in markdown.';
+
+  private toOpenAIRole(role: string): 'assistant' | 'system' | 'user' {
+    switch (role) {
+      case 'assistant':
+      case 'system':
+        return role;
+      default:
+        return 'user';
+    }
+  }
+
+  private async buildConversationMessages(
+    conversationId: string
+  ): Promise<ConversationMessage[]> {
+    return await storage.getConversationMessages(conversationId);
+  }
+
+  private async generateAssistantReply(options: {
+    conversation: AiConversation;
+    history: ConversationMessage[];
+    latestUserMessage: string;
+  }): Promise<string> {
+    const { conversation, history, latestUserMessage } = options;
+
+    if (!this.checkApiKeyAvailable()) {
+      return this.generateFallbackReply(latestUserMessage, conversation.type);
+    }
+
+    try {
+      const messages = [
+        { role: 'system' as const, content: this.defaultAssistantPrompt },
+        ...history.map(message => ({
+          role: this.toOpenAIRole(message.role),
+          content: message.content,
+        })),
+        { role: 'user' as const, content: latestUserMessage },
+      ];
+
+      const completion = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages,
+        temperature: 0.4,
+      });
+
+      const content = completion.choices[0]?.message?.content;
+      if (content) {
+        return content.trim();
+      }
+    } catch (error) {
+      console.error('AIService.generateAssistantReply error:', error);
+    }
+
+    return this.generateFallbackReply(latestUserMessage, conversation.type);
+  }
+
+  private generateFallbackReply(query: string, conversationType: string): string {
+    const normalizedQuery = query.trim();
+    const followUp =
+      normalizedQuery.length > 0
+        ? `I captured your request about "${normalizedQuery.slice(0, 80)}".`
+        : 'I captured your request.';
+
+    const contextHint = (() => {
+      switch (conversationType) {
+        case 'rfp_search':
+          return 'I will look for relevant opportunities and highlight key deadlines.';
+        case 'bid_crafting':
+          return 'I will summarize requirements and key differentiators for your bid.';
+        case 'research':
+          return 'I will gather supporting insights to strengthen your response.';
+        default:
+          return 'I will prepare the next set of actions to move this forward.';
+      }
+    })();
+
+    return `${followUp}\n\n${contextHint}`;
+  }
+
+  async processQuery(
+    query: string,
+    conversationId?: string,
+    userId?: string,
+    conversationType: 'general' | 'rfp_search' | 'bid_crafting' | 'research' = 'general'
+  ): Promise<{
+    conversationId: string;
+    message: string;
+    messageType: 'text' | 'analysis' | 'follow_up' | 'rfp_results' | 'search_results';
+    data?: unknown;
+    followUpQuestions?: string[];
+    actionSuggestions?: Array<{
+      id: string;
+      label: string;
+      action: 'workflow' | 'agent' | 'tool' | 'navigation';
+      priority: 'high' | 'medium' | 'low';
+      estimatedTime: string;
+      description: string;
+      icon: string;
+      payload?: Record<string, unknown>;
+    }>;
+  }> {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) {
+      throw new Error('Query must not be empty');
+    }
+
+    let conversation: AiConversation | undefined;
+
+    if (conversationId) {
+      conversation = await storage.getAiConversation(conversationId);
+    }
+
+    if (!conversation) {
+      conversation = await storage.createAiConversation({
+        title: trimmedQuery.slice(0, 120),
+        type: conversationType,
+        userId: userId ?? null,
+        status: 'active',
+        context: null,
+        metadata: null,
+      });
+    } else if (conversation.type !== conversationType) {
+      conversation = await storage.updateAiConversation(conversation.id, {
+        type: conversationType,
+      });
+    }
+
+    await storage.createConversationMessage({
+      conversationId: conversation.id,
+      role: 'user',
+      content: trimmedQuery,
+      messageType: 'text',
+      metadata: null,
+      relatedEntityId: null,
+      relatedEntityType: null,
+    });
+
+    const history = await this.buildConversationMessages(conversation.id);
+    const assistantReply = await this.generateAssistantReply({
+      conversation,
+      history,
+      latestUserMessage: trimmedQuery,
+    });
+
+    const assistantMessage = await storage.createConversationMessage({
+      conversationId: conversation.id,
+      role: 'assistant',
+      content: assistantReply,
+      messageType: 'text',
+      metadata: null,
+      relatedEntityId: null,
+      relatedEntityType: null,
+    });
+
+    const followUpQuestions = this.suggestFollowUps(trimmedQuery, conversation.type);
+
+    return {
+      conversationId: conversation.id,
+      message: assistantMessage.content,
+      messageType: assistantMessage.messageType as
+        | 'text'
+        | 'analysis'
+        | 'follow_up'
+        | 'rfp_results'
+        | 'search_results',
+      followUpQuestions,
+      actionSuggestions: this.buildActionSuggestions(conversation.type, trimmedQuery),
+    };
+  }
+
+  private suggestFollowUps(
+    query: string,
+    conversationType: string
+  ): string[] {
+    const suggestions = new Set<string>();
+
+    if (conversationType === 'rfp_search') {
+      suggestions.add('Do you want me to filter by deadline or agency?');
+      suggestions.add('Should I surface similar opportunities from the past quarter?');
+    }
+
+    if (conversationType === 'bid_crafting') {
+      suggestions.add('Would you like a compliance checklist draft?');
+      suggestions.add('Should I prepare pricing assumptions for review?');
+    }
+
+    if (suggestions.size === 0) {
+      suggestions.add('Would you like me to summarize the key next steps?');
+    }
+
+    return Array.from(suggestions);
+  }
+
+  private buildActionSuggestions(
+    conversationType: string,
+    query: string
+  ) {
+    const baseId = `${Date.now()}`;
+
+    switch (conversationType) {
+      case 'rfp_search':
+        return [
+          {
+            id: `${baseId}-search`,
+            label: 'Launch RFP discovery workflow',
+            action: 'workflow' as const,
+            priority: 'medium' as const,
+            estimatedTime: '2-3 minutes',
+            description: 'Run the discovery specialist to capture fresh opportunities related to your query.',
+            icon: 'Search',
+            payload: { query },
+          },
+        ];
+      case 'bid_crafting':
+        return [
+          {
+            id: `${baseId}-compliance`,
+            label: 'Generate compliance checklist draft',
+            action: 'agent' as const,
+            priority: 'high' as const,
+            estimatedTime: '4-5 minutes',
+            description: 'Compile required forms, signatures, and supporting documentation.',
+            icon: 'CheckSquare',
+            payload: { query },
+          },
+        ];
+      default:
+        return [];
+    }
   }
 
   async analyzeDocumentCompliance(
@@ -384,6 +620,51 @@ Content: ${scrapedContent}
       console.error('Error generating content:', error);
       throw new Error('Failed to generate content');
     }
+  }
+
+  async executeSuggestion(
+    suggestionId: string,
+    conversationId: string,
+    suggestion: {
+      id: string;
+      label: string;
+      action: string;
+      parameters?: Record<string, unknown>;
+    }
+  ): Promise<{
+    success: boolean;
+    message: string;
+    result?: Record<string, unknown>;
+  }> {
+    const conversation = await storage.getAiConversation(conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    const actionSummary = `Executed suggestion "${suggestion.label}" (${suggestion.action}).`;
+
+    await storage.createConversationMessage({
+      conversationId,
+      role: 'assistant',
+      content: `${actionSummary}\n\nReference ID: ${suggestionId}`,
+      messageType: 'follow_up',
+      metadata: {
+        suggestion,
+        suggestionId,
+      },
+      relatedEntityId: null,
+      relatedEntityType: null,
+    });
+
+    return {
+      success: true,
+      message: actionSummary,
+      result: {
+        suggestionId,
+        action: suggestion.action,
+        parameters: suggestion.parameters ?? {},
+      },
+    };
   }
 }
 

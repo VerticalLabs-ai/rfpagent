@@ -8,8 +8,11 @@ import { scanManager } from '../services/scan-manager';
 
 const router = Router();
 
-const portalMonitoringService = new PortalMonitoringService();
-const portalSchedulerService = new PortalSchedulerService();
+const portalMonitoringService = new PortalMonitoringService(storage);
+const portalSchedulerService = new PortalSchedulerService(
+  storage,
+  portalMonitoringService
+);
 
 // Portal Monitoring Validation Schema
 const PortalMonitoringConfigSchema = z.object({

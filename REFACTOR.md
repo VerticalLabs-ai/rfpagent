@@ -26,10 +26,9 @@
 - [x] Refactor `BaseRepository` generics so `TTable`, `TSelect`, and `TInsert` resolve to concrete types. Add helper utilities if necessary.
 - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
   - [x] Tightened repository layer contracts (`PortalRepository`, `RFPRepository`, `UserRepository`) to return typed Drizzle rows and sanitized raw SQL helpers; normalized repository manager stats to avoid `any` casts.
-  - [ ] Re-run type-check, fix resulting storage/service errors (explicit interfaces for `metadata`, `proposalData`, etc.).
   - [x] Hardened `BaseRepository` around Drizzle's `drizzle:Columns` symbol so primary keys and column lookups stay type-safe without `Record<string, unknown>` casts; captured regression tests for the new behavior.
-  - [x] Typed submission pipeline phases, metadata, and error payloads in the orchestrator/storage layer to retire `any` usage.
   - [x] Synced proposal persistence with submission receipts by adding typed `receiptData`/`submittedAt` fields and lifecycle schema support for pipeline completion metadata.
+  - [ ] Clear the remaining route/service errors enumerated in **Current Type-Check Blockers** below and re-run `pnpm type-check` until green.
 
 3. **Front-end Data Contracts**
    - **Dashboard & Sidebar**
@@ -54,8 +53,17 @@
      - [ ] Replace broad `any` usage with discriminated unions or dedicated interfaces (e.g., `WorkflowStatusCounts`).
    - **Submission Specialists**
      - [ ] Introduce types for `WorkItem.inputs`, `DocumentChecklist`, etc. to eliminate `unknown` errors.
+   - [ ] Ensure `submissionSpecialists` and `submissionService` agree on work item payloads.
 
-- [ ] Ensure `submissionSpecialists` and `submissionService` agree on work item payloads.
+- **Type-check blocker backlog (2024-04-04)**
+  - [ ] Restore or refactor AI routes: missing `AIService.processQuery`, `executeSuggestion`, conversation helpers, and typed numeric/string params (`server/routes/ai.routes.ts`).
+  - [ ] Bring compliance middleware/routes in line with the current `ComplianceIntegrationService` surface (`server/routes/compliance.routes.ts`, `server/routes/middleware/validation.ts`).
+  - [ ] Update discovery workflow responses to the new typed payload (`server/routes/discovery.routes.ts`).
+  - [ ] Patch auth, rate limiting, and validation middleware types (`server/routes/middleware/*.ts`).
+  - [ ] Align portal/system/proposal routes with the new repository/orchestrator constructors and field names (`server/routes/portals.routes.ts`, `server/routes/system.routes.ts`, `server/routes/proposals.routes.ts`).
+  - [ ] Normalize workflow/submission routes to the updated Mastra engine surface and string conversions (`server/routes/workflows.routes.ts`, `server/routes/submissions.routes.ts`).
+  - [ ] Finish scraping orchestrator migration: ensure stagehand tool invocations always include runtime context and typed results (`server/services/scraping/*.ts`).
+  - [ ] Replace legacy storage calls in self-improving learning and submission materials services (`server/services/selfImprovingLearningService.ts`, `server/services/submissionMaterialsService.ts`).
 
 5. **Testing & Validation**
 

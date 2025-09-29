@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PortalSchedulerService } from '../services/portal-scheduler-service';
+import { PortalMonitoringService } from '../services/portal-monitoring-service';
 import { workflowCoordinator } from '../services/workflowCoordinator';
 import { storage } from '../storage';
 
@@ -13,7 +14,11 @@ const serviceRuntimeState = {
   dlqMonitor: false,
 };
 
-const portalSchedulerService = new PortalSchedulerService();
+const portalMonitoringService = new PortalMonitoringService(storage);
+const portalSchedulerService = new PortalSchedulerService(
+  storage,
+  portalMonitoringService
+);
 
 /**
  * Get system configuration

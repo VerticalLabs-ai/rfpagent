@@ -1,17 +1,22 @@
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { CheckCircle, Clock, AlertCircle, Play, X, Bot, User } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
+import { CheckCircle, Clock, AlertCircle, Play, X, Bot, User } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const fetchJson = async <T,>(url: string): Promise<T> => {
+  const response = await apiRequest('GET', url);
+  return (await response.json()) as T;
+};
 
 interface SuspendedWorkflow {
   id: string;
@@ -20,17 +25,31 @@ interface SuspendedWorkflow {
   currentPhase: string;
   status: string;
   progress: number;
-  context: any;
+  context: Record<string, unknown> | null;
   suspensionReason: string;
-  suspensionData: any;
+  suspensionData: Record<string, unknown> | null;
   resumeInstructions: string;
   createdAt: string;
   updatedAt: string;
 }
 
+interface HumanInputData {
+  searchCriteria?: string;
+  selectedRfps?: string[];
+  requirements?: string;
+  changes?: string;
+  customInput?: string;
+  [key: string]: unknown;
+}
+
 interface HumanInputForm {
   action: string;
-  data: Record<string, any>;
+  data: HumanInputData;
+}
+
+interface ResumeWorkflowInput {
+  workflowId: string;
+  humanInput: HumanInputForm;
 }
 
 export default function WorkflowManagement() {
@@ -40,33 +59,33 @@ export default function WorkflowManagement() {
   const queryClient = useQueryClient();
 
   // Query for suspended workflows
-  const { data: suspendedWorkflows = [], isLoading, refetch } = useQuery({
+  const { data: suspendedWorkflows = [], isLoading, refetch } = useQuery<SuspendedWorkflow[]>({
     queryKey: ['/api/workflows/suspended'],
-    refetchInterval: 5000 // Auto-refresh every 5 seconds
+    queryFn: () => fetchJson<SuspendedWorkflow[]>('/api/workflows/suspended'),
+    refetchInterval: 5000, // Auto-refresh every 5 seconds
   });
 
   // Resume workflow mutation
   const resumeWorkflowMutation = useMutation({
-    mutationFn: async ({ workflowId, humanInput: input }: { workflowId: string; humanInput: any }) => {
-      return apiRequest(`/api/workflows/${workflowId}/resume`, {
-        method: 'POST',
-        body: JSON.stringify({ humanInput: input })
+    mutationFn: async ({ workflowId, humanInput: input }: ResumeWorkflowInput) => {
+      return apiRequest('POST', `/api/workflows/${workflowId}/resume`, {
+        humanInput: input,
       });
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_, variables) => {
       toast({
-        title: "Workflow Resumed",
+        title: 'Workflow Resumed',
         description: `Workflow ${variables.workflowId} has been resumed successfully`,
       });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows/suspended'] });
       setSelectedWorkflow(null);
       setHumanInput({ action: '', data: {} });
     },
     onError: (error) => {
       toast({
-        title: "Resume Failed",
-        description: error instanceof Error ? error.message : "Failed to resume workflow",
-        variant: "destructive",
+        title: 'Resume Failed',
+        description: error instanceof Error ? error.message : 'Failed to resume workflow',
+        variant: 'destructive',
       });
     }
   });
@@ -74,23 +93,21 @@ export default function WorkflowManagement() {
   // Cancel workflow mutation
   const cancelWorkflowMutation = useMutation({
     mutationFn: async (workflowId: string) => {
-      return apiRequest(`/api/workflows/${workflowId}/cancel`, {
-        method: 'POST'
-      });
+      return apiRequest('POST', `/api/workflows/${workflowId}/cancel`);
     },
-    onSuccess: (data, workflowId) => {
+    onSuccess: (_, workflowId) => {
       toast({
-        title: "Workflow Cancelled",
+        title: 'Workflow Cancelled',
         description: `Workflow ${workflowId} has been cancelled`,
       });
-      refetch();
+      queryClient.invalidateQueries({ queryKey: ['/api/workflows/suspended'] });
       setSelectedWorkflow(null);
     },
     onError: (error) => {
       toast({
-        title: "Cancel Failed",
-        description: error instanceof Error ? error.message : "Failed to cancel workflow",
-        variant: "destructive",
+        title: 'Cancel Failed',
+        description: error instanceof Error ? error.message : 'Failed to cancel workflow',
+        variant: 'destructive',
       });
     }
   });

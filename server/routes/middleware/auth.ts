@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 /**
  * Authentication middleware
@@ -48,19 +48,34 @@ export const authenticateJWT = (
       throw new Error('JWT_SECRET not configured');
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload | string;
+    const payload = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+
+    if (
+      typeof payload.id !== 'string' ||
+      typeof payload.email !== 'string' ||
+      typeof payload.role !== 'string'
+    ) {
+      throw new Error('Invalid token payload');
+    }
+
     req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      permissions: decoded.permissions || [],
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      permissions: Array.isArray(payload.permissions)
+        ? (payload.permissions as string[])
+        : [],
     };
 
     next();
   } catch (error) {
     return res.status(403).json({
       error: 'Invalid token',
-      details: 'The provided token is invalid or expired',
+      details:
+        error instanceof Error
+          ? error.message
+          : 'The provided token is invalid or expired',
     });
   }
 };
@@ -86,16 +101,29 @@ export const optionalJWT = (
       return next(); // Continue without authentication if not configured
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload | string;
+    const payload = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+
+    if (
+      typeof payload.id !== 'string' ||
+      typeof payload.email !== 'string' ||
+      typeof payload.role !== 'string'
+    ) {
+      throw new Error('Invalid token payload');
+    }
+
     req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      permissions: decoded.permissions || [],
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      permissions: Array.isArray(payload.permissions)
+        ? (payload.permissions as string[])
+        : [],
     };
   } catch (error) {
     // Invalid token, but continue without authentication
-    console.warn('Invalid JWT token provided:', error.message);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn('Invalid JWT token provided:', message);
   }
 
   next();

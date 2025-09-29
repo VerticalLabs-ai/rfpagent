@@ -1,6 +1,6 @@
 import { BaseRepository } from './BaseRepository';
 import { users, type User, type InsertUser } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 
 /**
@@ -97,19 +97,17 @@ export class UserRepository extends BaseRepository<
    * Search users by name or username
    */
   async searchUsers(query: string): Promise<User[]> {
-    return await this.executeRaw(
-      `
+    const pattern = `%${query}%`;
+    return await this.executeRaw<User>(sql`
       SELECT * FROM users
       WHERE (
-        username ILIKE $1
-        OR email ILIKE $1
-        OR (first_name || ' ' || last_name) ILIKE $1
+        username ILIKE ${pattern}
+        OR email ILIKE ${pattern}
+        OR (first_name || ' ' || last_name) ILIKE ${pattern}
       )
       AND is_active = true
       ORDER BY username
       LIMIT 50
-      `,
-      [`%${query}%`]
-    );
+    `);
   }
 }

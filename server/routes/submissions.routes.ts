@@ -449,8 +449,8 @@ router.get('/pipeline/workflows', async (req, res) => {
       data: {
         workflows: paginatedSubmissions,
         total: filteredSubmissions.length,
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
+        limit,
+        offset,
       },
     });
   } catch (error) {

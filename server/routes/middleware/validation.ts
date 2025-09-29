@@ -1,5 +1,20 @@
 import type { Request, Response, NextFunction } from 'express';
-import { z, type ZodSchema } from 'zod';
+import { z, type ZodSchema, type ZodObject } from 'zod';
+
+type UploadedFile = {
+  originalname?: string;
+  size: number;
+  [key: string]: unknown;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      file?: UploadedFile;
+      files?: UploadedFile[] | Record<string, UploadedFile[]>;
+    }
+  }
+}
 
 /**
  * Request validation middleware factory
@@ -91,8 +106,13 @@ export const commonSchemas = {
 /**
  * Combine multiple validation schemas
  */
-export const combineSchemas = (...schemas: ZodSchema[]) => {
-  return schemas.reduce((acc, schema) => acc.merge(schema), z.object({}));
+export const combineSchemas = (
+  ...schemas: Array<ZodObject<any>>
+) => {
+  return schemas.reduce<ZodObject<any>>(
+    (acc, schema) => acc.merge(schema),
+    z.object({})
+  );
 };
 
 /**
@@ -110,8 +130,24 @@ export const validateFileUpload = (
       });
     }
 
-    const file =
-      req.file || (Array.isArray(req.files) ? req.files[0] : req.files);
+    const file = (() => {
+      if (req.file) {
+        return req.file;
+      }
+
+      if (Array.isArray(req.files)) {
+        return req.files[0];
+      }
+
+      if (req.files && typeof req.files === 'object') {
+        const firstEntry = Object.values(req.files)[0];
+        if (Array.isArray(firstEntry)) {
+          return firstEntry[0];
+        }
+      }
+
+      return undefined;
+    })();
 
     if (!file) {
       return res.status(400).json({
@@ -121,7 +157,10 @@ export const validateFileUpload = (
     }
 
     // Check file type
-    const fileExtension = file.originalname?.split('.').pop()?.toLowerCase();
+    const fileExtension = file.originalname
+      ?.split('.')
+      .pop()
+      ?.toLowerCase();
     if (fileExtension && !allowedTypes.includes(fileExtension)) {
       return res.status(400).json({
         error: 'Invalid file type',

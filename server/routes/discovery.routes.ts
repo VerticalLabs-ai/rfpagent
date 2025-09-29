@@ -56,11 +56,11 @@ router.post('/workflow', async (req, res) => {
     });
 
     res.json({
-      success: true,
+      success: workflowResult.success,
       workflowId: workflowResult.workflowId,
-      sequences: workflowResult.sequences.length,
-      workItems: workflowResult.workItems.length,
-      assignedAgents: workflowResult.assignedAgents.length,
+      createdWorkItems: workflowResult.createdWorkItems.length,
+      assignedAgents: workflowResult.assignedAgents.map(agent => agent.agentId),
+      estimatedCompletion: workflowResult.estimatedCompletion ?? null,
       message: `Discovery workflow created successfully for ${portalIds.length} portals`,
     });
   } catch (error) {

@@ -6,6 +6,8 @@ import { mastraWorkflowEngine } from '../services/mastraWorkflowEngine';
 import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
 import { workflowCoordinator } from '../services/workflowCoordinator';
 import { agentRegistryService } from '../services/agentRegistryService';
+import { analysisOrchestrator } from '../services/analysisOrchestrator';
+import { discoveryOrchestrator } from '../services/discoveryOrchestrator';
 
 const router = Router();
 
@@ -14,8 +16,9 @@ const router = Router();
  */
 router.get('/suspended', async (req, res) => {
   try {
-    const suspendedWorkflows =
-      await mastraWorkflowEngine.getSuspendedWorkflows();
+    const suspendedWorkflows = mastraWorkflowEngine
+      .getAllActiveWorkflows()
+      .filter(workflow => workflow.status === 'suspended');
     res.json(suspendedWorkflows);
   } catch (error) {
     console.error('Error fetching suspended workflows:', error);
@@ -55,7 +58,8 @@ router.get('/phase-stats', async (req, res) => {
 router.get('/:workflowId/status', async (req, res) => {
   try {
     const { workflowId } = req.params;
-    const status = await mastraWorkflowEngine.getWorkflowStatus(workflowId);
+    const status =
+      mastraWorkflowEngine.getWorkflowPhaseState(workflowId) || null;
 
     if (!status) {
       return res.status(404).json({ error: 'Workflow not found' });
@@ -73,28 +77,36 @@ router.get('/:workflowId/status', async (req, res) => {
  */
 router.post('/document-processing/execute', async (req, res) => {
   try {
-    const { rfpId, documentIds, analysisType = 'standard' } = req.body;
+    const {
+      rfpId,
+      companyProfileId,
+      analysisType = 'standard',
+      priority = 5,
+      deadline,
+    } = req.body;
 
-    if (!rfpId || !documentIds || !Array.isArray(documentIds)) {
-      return res.status(400).json({
-        error: 'rfpId and documentIds array are required',
-      });
+    if (!rfpId) {
+      return res.status(400).json({ error: 'rfpId is required' });
     }
 
     console.log(`🔄 Starting document processing workflow for RFP: ${rfpId}`);
 
-    const workflowResult =
-      await mastraWorkflowEngine.executeDocumentProcessingWorkflow({
-        rfpId,
-        documentIds,
-        analysisType,
-        priority: 5,
-      });
+    const sessionId = `analysis_${rfpId}_${Date.now()}`;
+    const workflowResult = await analysisOrchestrator.executeAnalysisWorkflow({
+      rfpId,
+      sessionId,
+      companyProfileId,
+      priority,
+      deadline: deadline ? new Date(deadline) : undefined,
+    });
 
     res.json({
-      success: true,
-      workflowId: workflowResult.workflowId,
-      message: 'Document processing workflow started successfully',
+      ...workflowResult,
+      analysisType,
+      sessionId,
+      message: workflowResult.success
+        ? 'Document processing workflow started successfully'
+        : workflowResult.error || 'Failed to start document processing workflow',
     });
   } catch (error) {
     console.error('Error executing document processing workflow:', error);
@@ -110,7 +122,15 @@ router.post('/document-processing/execute', async (req, res) => {
  */
 router.post('/rfp-discovery/execute', async (req, res) => {
   try {
-    const { portalIds, searchCriteria, maxRfps = 50 } = req.body;
+    const {
+      portalIds,
+      searchCriteria,
+      maxRfps = 50,
+      sessionId,
+      workflowId,
+      priority = 5,
+      deadline,
+    } = req.body;
 
     if (!portalIds || !Array.isArray(portalIds)) {
       return res.status(400).json({
@@ -122,17 +142,23 @@ router.post('/rfp-discovery/execute', async (req, res) => {
       `🔍 Starting RFP discovery workflow for portals: ${portalIds.join(', ')}`
     );
 
-    const workflowResult =
-      await mastraWorkflowEngine.executeRfpDiscoveryWorkflow({
-        portalIds,
+    const result = await discoveryOrchestrator.createDiscoveryWorkflow({
+      portalIds,
+      sessionId: sessionId || `discovery-${Date.now()}`,
+      workflowId,
+      priority,
+      deadline: deadline ? new Date(deadline) : undefined,
+      options: {
         searchCriteria,
         maxRfps,
-        priority: 5,
-      });
+      },
+    });
 
     res.json({
-      success: true,
-      workflowId: workflowResult.workflowId,
+      success: result.success,
+      workflowId: result.workflowId,
+      createdWorkItems: result.createdWorkItems.length,
+      assignedAgents: result.assignedAgents.map(agent => agent.agentId),
       message: 'RFP discovery workflow started successfully',
     });
   } catch (error) {
@@ -159,19 +185,26 @@ router.post('/proposal-generation/execute', async (req, res) => {
 
     console.log(`📝 Starting proposal generation workflow for RFP: ${rfpId}`);
 
-    const workflowResult =
-      await proposalGenerationOrchestrator.generateProposal({
+    const pipelineResult =
+      await proposalGenerationOrchestrator.createProposalGenerationPipeline({
         rfpId,
         companyProfileId,
         proposalType,
-        priority: 5,
       });
+
+    if (!pipelineResult.success) {
+      return res.status(500).json({
+        success: false,
+        error:
+          pipelineResult.error || 'Failed to start proposal generation pipeline',
+      });
+    }
 
     res.json({
       success: true,
-      workflowId: workflowResult.workflowId,
-      proposalId: workflowResult.proposalId,
-      message: 'Proposal generation workflow started successfully',
+      pipelineId: pipelineResult.pipelineId,
+      message: 'Proposal generation pipeline started successfully',
+      metadata: pipelineResult,
     });
   } catch (error) {
     console.error('Error executing proposal generation workflow:', error);
@@ -188,13 +221,15 @@ router.post('/proposal-generation/execute', async (req, res) => {
 router.get('/:workflowId', async (req, res) => {
   try {
     const { workflowId } = req.params;
-    const workflow = await mastraWorkflowEngine.getWorkflowDetails(workflowId);
+    const workflowDetails =
+      mastraWorkflowEngine.getWorkflowPhaseState(workflowId) ||
+      (await analysisOrchestrator.getWorkflowStatus(workflowId));
 
-    if (!workflow) {
+    if (!workflowDetails) {
       return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    res.json(workflow);
+    res.json(workflowDetails);
   } catch (error) {
     console.error('Error fetching workflow details:', error);
     res.status(500).json({ error: 'Failed to fetch workflow details' });
@@ -209,15 +244,16 @@ router.post('/:workflowId/suspend', async (req, res) => {
     const { workflowId } = req.params;
     const { reason } = req.body;
 
-    const result = await mastraWorkflowEngine.suspendWorkflow(
+    const result = await mastraWorkflowEngine.pauseWorkflow(
       workflowId,
+      'api_gateway',
       reason
     );
 
-    if (!result) {
+    if (!result.success) {
       return res
         .status(404)
-        .json({ error: 'Workflow not found or cannot be suspended' });
+        .json({ error: result.error || 'Workflow not found or cannot be suspended' });
     }
 
     res.json({
@@ -241,13 +277,14 @@ router.post('/:workflowId/resume', async (req, res) => {
 
     const result = await mastraWorkflowEngine.resumeWorkflow(
       workflowId,
-      resumeData
+      'api_gateway',
+      resumeData?.reason
     );
 
-    if (!result) {
+    if (!result.success) {
       return res
         .status(404)
-        .json({ error: 'Workflow not found or cannot be resumed' });
+        .json({ error: result.error || 'Workflow not found or cannot be resumed' });
     }
 
     res.json({
@@ -271,13 +308,14 @@ router.post('/:workflowId/cancel', async (req, res) => {
 
     const result = await mastraWorkflowEngine.cancelWorkflow(
       workflowId,
+      'api_gateway',
       reason
     );
 
-    if (!result) {
+    if (!result.success) {
       return res
         .status(404)
-        .json({ error: 'Workflow not found or cannot be cancelled' });
+        .json({ error: result.error || 'Workflow not found or cannot be cancelled' });
     }
 
     res.json({
@@ -297,7 +335,10 @@ router.post('/:workflowId/cancel', async (req, res) => {
 router.get('/state/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    const workflowState = await workflowCoordinator.getRfpWorkflowState(rfpId);
+    const activeWorkflows = workflowCoordinator.getActiveWorkflows();
+    const workflowState = activeWorkflows.find(
+      workflow => workflow.data?.rfpId === rfpId
+    );
 
     if (!workflowState) {
       return res
@@ -324,23 +365,26 @@ router.post('/:workflowId/transition', async (req, res) => {
       return res.status(400).json({ error: 'targetPhase is required' });
     }
 
-    const result = await workflowCoordinator.transitionWorkflow(
+    const transitionResult = await mastraWorkflowEngine.transitionWorkflowPhase(
       workflowId,
       targetPhase,
+      'api_gateway',
+      'manual',
+      undefined,
       transitionData
     );
 
-    if (!result.success) {
+    if (!transitionResult.success) {
       return res.status(400).json({
         error: 'Failed to transition workflow',
-        details: result.error,
+        details: transitionResult.error,
       });
     }
 
     res.json({
       success: true,
       workflowId,
-      currentPhase: result.currentPhase,
+      state: transitionResult.state,
       message: 'Workflow transitioned successfully',
     });
   } catch (error) {

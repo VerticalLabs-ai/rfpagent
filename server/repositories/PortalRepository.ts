@@ -5,7 +5,7 @@ import {
   createPaginatedResult,
 } from './BaseRepository';
 import { portals, type Portal, type InsertPortal } from '@shared/schema';
-import { eq, and, or, sql, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, inArray, type SQL } from 'drizzle-orm';
 import { db } from '../db';
 
 export interface PortalFilter extends BaseFilter {
@@ -32,20 +32,7 @@ export class PortalRepository extends BaseRepository<
   async findAllPortals(
     filter?: PortalFilter
   ): Promise<RepositoryResult<Portal>> {
-    let query = db
-      .select({
-        id: portals.id,
-        name: portals.name,
-        url: portals.url,
-        status: portals.status,
-        loginRequired: portals.loginRequired,
-        lastScanned: portals.lastScanned,
-        createdAt: portals.createdAt,
-        // Exclude credentials from public list
-      })
-      .from(portals);
-
-    const conditions = [];
+    const conditions: SQL<unknown>[] = [];
 
     if (filter?.status) {
       conditions.push(eq(portals.status, filter.status));
@@ -56,37 +43,30 @@ export class PortalRepository extends BaseRepository<
     }
 
     if (filter?.search) {
-      conditions.push(
-        or(
-          sql`${portals.name} ILIKE ${`%${filter.search}%`}`,
-          sql`${portals.url} ILIKE ${`%${filter.search}%`}`
-        )
+      const pattern = `%${filter.search}%`;
+      const searchCondition = or(
+        sql`${portals.name} ILIKE ${pattern}`,
+        sql`${portals.url} ILIKE ${pattern}`
       );
-    }
-
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-
-    if (filter?.orderBy) {
-      const column = portals[filter.orderBy as keyof typeof portals];
-      if (column) {
-        query = query.orderBy(
-          filter.direction === 'desc' ? sql`${column} DESC` : sql`${column} ASC`
-        ) as any;
+      if (searchCondition) {
+        conditions.push(searchCondition);
       }
     }
 
-    let data: Portal[];
-    if (filter?.limit) {
-      data = await query.limit(filter.limit).offset(filter?.offset || 0);
-    } else {
-      data = await query;
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const total = await this.count(
-      conditions.length > 0 ? and(...conditions) : undefined
-    );
+    const orderBy = filter?.orderBy ?? 'createdAt';
+    const direction = filter?.direction ?? 'desc';
+
+    const data = await this.findAll({
+      ...(whereClause ? { where: whereClause } : {}),
+      orderBy,
+      direction,
+      limit: filter?.limit,
+      offset: filter?.offset,
+    });
+
+    const total = whereClause ? await this.count(whereClause) : await this.count();
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;

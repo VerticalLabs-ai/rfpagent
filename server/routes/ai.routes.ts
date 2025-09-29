@@ -361,11 +361,17 @@ router.post('/chat', async (req, res) => {
       validationResult.data;
 
     const aiService = new AIService();
+    const normalizedType = (conversationType ?? 'general') as
+      | 'general'
+      | 'rfp_search'
+      | 'bid_crafting'
+      | 'research';
+
     const response = await aiService.processQuery(
       query,
       conversationId,
       userId,
-      conversationType || 'general'
+      normalizedType
     );
 
     res.json(response);
@@ -447,9 +453,10 @@ router.get('/conversations', async (req, res) => {
   try {
     const { limit = '20', userId } = req.query;
 
-    const conversations = await storage.getAllAiConversations(
-      parseInt(limit as string),
-      userId as string
+    const limitValue = Number.parseInt(limit as string, 10);
+    const conversations = await storage.getAiConversations(
+      (userId as string | undefined) || undefined,
+      Number.isNaN(limitValue) ? 50 : limitValue
     );
 
     res.json(conversations);
@@ -472,10 +479,6 @@ router.delete('/conversations/:conversationId', async (req, res) => {
       return res.status(404).json({ error: 'Conversation not found' });
     }
 
-    // Delete associated messages first
-    await storage.deleteConversationMessages(conversationId);
-
-    // Delete the conversation
     await storage.deleteAiConversation(conversationId);
 
     res.json({ success: true, message: 'Conversation deleted successfully' });
@@ -492,10 +495,11 @@ router.get('/research-findings', async (req, res) => {
   try {
     const { limit = '50', category, rfpId } = req.query;
 
+    const limitValue = Number.parseInt(limit as string, 10);
     const findings = await storage.getResearchFindings(
-      parseInt(limit as string),
-      category as string,
-      rfpId as string
+      Number.isNaN(limitValue) ? 50 : limitValue,
+      (category as string | undefined) || undefined,
+      (rfpId as string | undefined) || undefined
     );
 
     res.json(findings);

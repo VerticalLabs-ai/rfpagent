@@ -217,7 +217,7 @@ export class RepositoryManager {
   /**
    * Graceful shutdown
    */
-  async shutdown(): void {
+  async shutdown(): Promise<void> {
     console.log('🛑 Repository Manager shutting down...');
     this.clearCaches();
     console.log('✅ Repository Manager shutdown complete');
@@ -233,7 +233,16 @@ export const repositoryManager = RepositoryManager.getInstance();
  * Backward compatibility - provide the same interface as the old storage
  * This allows gradual migration from the old storage pattern
  */
-export const repositories = {
+export interface RepositoryFacade {
+  users: UserRepository;
+  portals: PortalRepository;
+  rfps: RFPRepository;
+  healthCheck: () => ReturnType<RepositoryManager['healthCheck']>;
+  getStats: () => ReturnType<RepositoryManager['getStats']>;
+  executeTransaction: <T>(callback: (repos: RepositoryFacade) => Promise<T>) => Promise<T>;
+}
+
+export const repositories: RepositoryFacade = {
   users: repositoryManager.users,
   portals: repositoryManager.portals,
   rfps: repositoryManager.rfps,
@@ -243,7 +252,7 @@ export const repositories = {
   getStats: () => repositoryManager.getStats(),
 
   // Transaction support
-  executeTransaction: <T>(
-    callback: (repos: typeof repositories) => Promise<T>
+  executeTransaction: async <T>(
+    callback: (repos: RepositoryFacade) => Promise<T>
   ) => repositoryManager.executeTransaction(() => callback(repositories)),
 };

@@ -39,6 +39,47 @@ export class ComplianceIntegrationService {
   private processingQueue = new Set<string>();
 
   /**
+   * Summary of compliance coverage and queue state
+   */
+  async getComplianceStatus(): Promise<{
+    totalRfps: number;
+    analyzedRfps: number;
+    pendingRfps: number;
+    queueSize: number;
+    currentlyProcessing: string[];
+    lastUpdated: string;
+  }> {
+    const { rfps, total } = await storage.getAllRFPs();
+
+    const analyzed = rfps.filter(rfp => {
+      const requirements = Array.isArray(rfp.requirements)
+        ? rfp.requirements
+        : [];
+      const complianceItems = Array.isArray(rfp.complianceItems)
+        ? rfp.complianceItems
+        : [];
+      const riskFlags = Array.isArray(rfp.riskFlags) ? rfp.riskFlags : [];
+
+      return (
+        requirements.length > 0 &&
+        complianceItems.length > 0 &&
+        riskFlags.length > 0
+      );
+    }).length;
+
+    const pending = Math.max(total - analyzed, 0);
+
+    return {
+      totalRfps: total,
+      analyzedRfps: analyzed,
+      pendingRfps: pending,
+      queueSize: this.processingQueue.size,
+      currentlyProcessing: Array.from(this.processingQueue),
+      lastUpdated: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Automatically trigger compliance analysis for a newly discovered RFP
    */
   async triggerComplianceAnalysisForDiscoveredRFP(
@@ -206,6 +247,25 @@ export class ComplianceIntegrationService {
       console.error('❌ Batch processing failed:', error);
       throw error;
     }
+  }
+
+  async processRfpCompliance(
+    rfpId: string,
+    options?: { force?: boolean }
+  ): Promise<ComplianceAnalysisResult> {
+    if (options?.force) {
+      await storage.updateRFP(rfpId, {
+        requirements: null,
+        complianceItems: null,
+        riskFlags: null,
+      });
+    }
+
+    return this.triggerComplianceAnalysisForDiscoveredRFP(rfpId);
+  }
+
+  async batchProcessCompliance(limit: number = 10) {
+    return this.batchProcessUnprocessedRFPs(limit);
   }
 
   /**
@@ -440,7 +500,7 @@ export class ComplianceIntegrationService {
   /**
    * Format compliance data to match UI expectations
    */
-  private formatComplianceData(rfp: RFP) {
+  formatComplianceData(rfp: RFP) {
     return {
       requirements: (rfp.requirements as any[]) || [],
       complianceItems: (rfp.complianceItems as any[]) || [],

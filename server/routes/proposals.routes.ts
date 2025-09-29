@@ -1,7 +1,6 @@
 import express from 'express';
 import { storage } from '../storage';
 import { insertProposalSchema } from '@shared/schema';
-import { aiProposalService } from '../services/ai-proposal-service';
 import { enhancedProposalService } from '../services/enhancedProposalService';
 import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
 import { submissionMaterialsService } from '../services/submissionMaterialsService';
@@ -106,6 +105,7 @@ router.post(
       companyProfileId,
       priority = 5,
       parallelExecution = true,
+      options = {},
     } = req.body;
 
     if (!rfpIds || !Array.isArray(rfpIds) || rfpIds.length === 0) {
@@ -120,26 +120,28 @@ router.post(
       });
     }
 
-    const pipelineId = `pipeline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const pipelineResults = await Promise.all(
+      rfpIds.map((rfpId: string) =>
+        proposalGenerationOrchestrator.createProposalGenerationPipeline({
+          rfpId,
+          companyProfileId,
+          generatePricing: options?.generatePricing ?? true,
+          generateCompliance: options?.generateCompliance ?? true,
+          proposalType: options?.proposalType,
+          qualityThreshold: options?.qualityThreshold,
+          autoSubmit: options?.autoSubmit ?? false,
+        })
+      )
+    );
 
-    // Start pipeline generation
-    proposalGenerationOrchestrator
-      .startPipeline({
-        pipelineId,
-        rfpIds,
-        companyProfileId,
-        priority,
-        parallelExecution,
-      })
-      .catch(error => {
-        console.error('Pipeline generation failed:', error);
-      });
+    const successfulPipelines = pipelineResults.filter(result => result.success);
 
     res.json({
-      success: true,
-      pipelineId,
+      success: successfulPipelines.length === pipelineResults.length,
+      pipelines: pipelineResults,
       rfpCount: rfpIds.length,
-      message: 'Proposal pipeline started',
+      parallelExecution,
+      message: `Started ${successfulPipelines.length} of ${pipelineResults.length} proposal pipelines`,
     });
   })
 );
@@ -160,24 +162,28 @@ router.post(
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
-    // Start AI proposal generation
-    const sessionId = `proposal_gen_${proposalId}_${Date.now()}`;
+    const pipelineResult = await proposalGenerationOrchestrator.createProposalGenerationPipeline({
+      rfpId: proposal.rfpId,
+      companyProfileId,
+      proposalType: options?.proposalType,
+      qualityThreshold: options?.qualityThreshold,
+      autoSubmit: options?.autoSubmit ?? false,
+      generatePricing: options?.generatePricing ?? true,
+      generateCompliance: options?.generateCompliance ?? true,
+    });
 
-    aiProposalService
-      .generateProposal({
-        proposalId,
-        companyProfileId,
-        sessionId,
-        options,
-      })
-      .catch(error => {
-        console.error('Proposal generation failed:', error);
+    if (!pipelineResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: pipelineResult.error ?? 'Failed to start proposal pipeline',
       });
+    }
 
     res.json({
       success: true,
-      sessionId,
-      message: 'Proposal generation started',
+      pipelineId: pipelineResult.pipelineId,
+      message: 'Proposal generation pipeline started',
+      metadata: pipelineResult,
     });
   })
 );
@@ -218,11 +224,19 @@ router.post(
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
+    const approvalMetadata = {
+      ...(proposal.proposalData ?? {}),
+      approval: {
+        approvedBy: approvedBy ?? 'unknown',
+        notes: notes ?? null,
+        approvedAt: new Date().toISOString(),
+      },
+    };
+
     const updatedProposal = await storage.updateProposal(proposalId, {
       status: 'approved',
-      approvedBy,
-      approvedAt: new Date(),
-      approvalNotes: notes,
+      proposalData: approvalMetadata,
+      updatedAt: new Date(),
     });
 
     res.json({

@@ -5,7 +5,7 @@ import {
   createPaginatedResult,
 } from './BaseRepository';
 import { rfps, portals, type RFP, type InsertRFP } from '@shared/schema';
-import { eq, and, or, sql, desc, asc, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, sql, desc, gte, lte, inArray, type SQL } from 'drizzle-orm';
 import { db } from '../db';
 
 export interface RFPFilter extends BaseFilter {
@@ -31,9 +31,7 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
    * Get all RFPs with optional filtering and pagination
    */
   async findAllRFPs(filter?: RFPFilter): Promise<RepositoryResult<RFP>> {
-    let query = db.select().from(rfps) as any;
-
-    const conditions = [];
+    const conditions: SQL<unknown>[] = [];
 
     if (filter?.status) {
       conditions.push(eq(rfps.status, filter.status));
@@ -44,13 +42,15 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
     }
 
     if (filter?.search) {
-      conditions.push(
-        or(
-          sql`${rfps.title} ILIKE ${`%${filter.search}%`}`,
-          sql`${rfps.description} ILIKE ${`%${filter.search}%`}`,
-          sql`${rfps.agency} ILIKE ${`%${filter.search}%`}`
-        )
+      const pattern = `%${filter.search}%`;
+      const searchCondition = or(
+        sql`${rfps.title} ILIKE ${pattern}`,
+        sql`${rfps.description} ILIKE ${pattern}`,
+        sql`${rfps.agency} ILIKE ${pattern}`
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     if (filter?.startDate) {
@@ -62,35 +62,32 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
     }
 
     if (filter?.category) {
-      conditions.push(sql`${rfps.category} ILIKE ${`%${filter.category}%`}`);
+      const pattern = `%${filter.category}%`;
+      conditions.push(sql`${rfps.category} ILIKE ${pattern}`);
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
+    if (filter?.minValue !== undefined) {
+      conditions.push(gte(rfps.estimatedValue, filter.minValue.toString()));
     }
 
-    if (filter?.orderBy) {
-      const column = rfps[filter.orderBy as keyof typeof rfps];
-      if (column) {
-        query = query.orderBy(
-          filter.direction === 'desc' ? desc(column) : asc(column)
-        ) as any;
-      }
-    } else {
-      // Default ordering
-      query = query.orderBy(desc(rfps.createdAt)) as any;
+    if (filter?.maxValue !== undefined) {
+      conditions.push(lte(rfps.estimatedValue, filter.maxValue.toString()));
     }
 
-    let data: RFP[];
-    if (filter?.limit) {
-      data = await query.limit(filter.limit).offset(filter?.offset || 0);
-    } else {
-      data = await query;
-    }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const total = await this.count(
-      conditions.length > 0 ? and(...conditions) : undefined
-    );
+    const orderBy = filter?.orderBy ?? 'createdAt';
+    const direction = filter?.direction ?? 'desc';
+
+    const data = await this.findAll({
+      ...(whereClause ? { where: whereClause } : {}),
+      orderBy,
+      direction,
+      limit: filter?.limit,
+      offset: filter?.offset,
+    });
+
+    const total = whereClause ? await this.count(whereClause) : await this.count();
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;
@@ -149,13 +146,15 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
     }
 
     if (filter?.search) {
-      conditions.push(
-        or(
-          sql`${rfps.title} ILIKE ${`%${filter.search}%`}`,
-          sql`${rfps.description} ILIKE ${`%${filter.search}%`}`,
-          sql`${rfps.agency} ILIKE ${`%${filter.search}%`}`
-        )
+      const pattern = `%${filter.search}%`;
+      const searchCondition = or(
+        sql`${rfps.title} ILIKE ${pattern}`,
+        sql`${rfps.description} ILIKE ${pattern}`,
+        sql`${rfps.agency} ILIKE ${pattern}`
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     if (conditions.length > 0) {

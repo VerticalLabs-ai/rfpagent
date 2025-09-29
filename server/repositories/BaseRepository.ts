@@ -26,8 +26,6 @@ type ColumnName<TTable extends AnyPgTable> = Extract<
   keyof TableColumns<TTable>,
   string
 >;
-type PrimaryKeyColumn<TTable extends AnyPgTable> =
-  TableColumns<TTable>[ColumnName<TTable>];
 type TableWithColumns<TTable extends AnyPgTable> = TTable & {
   [DRIZZLE_COLUMNS]: TableColumns<TTable>;
 };
@@ -99,16 +97,13 @@ export abstract class BaseRepository<
   TSelect extends Record<string, unknown> = InferSelectModel<TTable>,
   TInsert extends Record<string, unknown> = InferInsertModel<TTable>,
 > {
-  protected readonly primaryKey: PrimaryKeyColumn<TTable>;
+  protected readonly primaryKey: AnyPgColumn;
 
   protected constructor(
     protected table: TTable,
-    primaryKey?: PrimaryKeyColumn<TTable>
+    primaryKey?: AnyPgColumn
   ) {
-    const columns = this.getTableColumns();
-    const inferredPrimaryKey = columns.id as PrimaryKeyColumn<TTable> | undefined;
-
-    const resolvedPrimaryKey = primaryKey ?? inferredPrimaryKey;
+    const resolvedPrimaryKey = primaryKey ?? this.getColumnByName('id');
 
     if (!resolvedPrimaryKey) {
       throw new Error(
@@ -231,7 +226,7 @@ export abstract class BaseRepository<
    */
   async update(
     id: string | number,
-    updates: Partial<TInsert>
+    updates: Partial<TInsert> & Partial<TSelect>
   ): Promise<TSelect | undefined> {
     const table = this.table as unknown as AnyPgTable;
     const [result] = await db
@@ -269,7 +264,7 @@ export abstract class BaseRepository<
     const table = this.table as unknown as AnyPgTable;
     const [result] = await db
       .update(table)
-      .set(updatePayload as unknown as Partial<TInsert>)
+      .set(updatePayload as unknown as Partial<TInsert> & Partial<TSelect>)
       .where(eq(this.primaryKey, id))
       .returning();
     return (result as TSelect | undefined) ?? undefined;
