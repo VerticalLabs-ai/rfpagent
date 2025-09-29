@@ -6,17 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Core Commands
 
-- `npm run dev` - Start development server (frontend + backend)
-- `npm run build` - Build frontend with Vite and bundle backend with esbuild
-- `npm start` - Run production server
-- `npm run check` - Run TypeScript type checking
-- `npm run db:push` - Push database schema changes with Drizzle
+- `pnpm dev` - Start development server (frontend + backend)
+- `pnpm build` - Build frontend with Vite and bundle backend with esbuild
+- `pnpm start` - Run production server
+- `pnpm check` - Run TypeScript type checking
+- `pnpm db:push` - Push database schema changes with Drizzle
 
 ### Development Workflow
 
 - Backend server runs on `tsx server/index.ts` in development
 - Frontend uses Vite dev server with React 18
-- Database migrations are handled via Drizzle Kit with `npm run db:push`
+- Database migrations are handled via Drizzle Kit with `pnpm db:push`
 
 ## Architecture Overview
 

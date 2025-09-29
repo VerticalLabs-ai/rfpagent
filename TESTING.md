@@ -9,7 +9,7 @@ This document describes how to test the proposal generation functionality withou
 The fastest way to verify everything is working:
 
 ```bash
-npm run test-agents
+pnpmtest-agents
 ```
 
 This tests:
@@ -24,9 +24,9 @@ This tests:
 ### 2. Unit Tests (Jest)
 
 ```bash
-npm test
+pnpm test
 # or for watch mode:
-npm run test:watch
+pnpmtest:watch
 ```
 
 Comprehensive unit tests for the SubmissionMaterialsService with mocked dependencies.
@@ -35,13 +35,13 @@ Comprehensive unit tests for the SubmissionMaterialsService with mocked dependen
 
 ```bash
 # Test with mock data (no database required)
-npm run test-proposal
+pnpmtest-proposal
 
 # Test with real database data
-npm run test-proposal-real
+pnpmtest-proposal-real
 
 # Test OpenAI fallback mechanism
-npm run test-proposal-fallback
+pnpmtest-proposal-fallback
 ```
 
 ## Test Scripts Overview
@@ -147,7 +147,7 @@ Error: DATABASE_URL must be set
 ```
 
 - Only affects full integration tests
-- Use `npm run test-agents` for quick testing
+- Use `pnpmtest-agents` for quick testing
 - Set DATABASE_URL in .env for full tests
 
 ### Debug Mode
@@ -164,13 +164,13 @@ Recommended test pipeline:
 
 ```bash
 # 1. Quick validation (30s)
-npm run test-agents
+pnpmtest-agents
 
 # 2. Unit tests (10s)
-npm test
+pnpm test
 
 # 3. Full integration (if database available)
-npm run test-proposal
+pnpmtest-proposal
 ```
 
 ## Adding New Tests

@@ -8,11 +8,11 @@
 - Jest suites reside in `tests/` with helpers in `tests/setup.ts`; refer to `docs/` for refactoring notes and compliance protocols.
 
 ## Build, Test & Development Commands
-- `npm run dev` launches the API via `tsx server/index.ts` (frontend served by the same Express instance).
-- `npm run build` compiles the Vite client and bundles the server to `dist/`; follow with `npm run start` for production simulation.
-- `npm run db:push` applies Drizzle schema changes; always run after editing `shared/schema.ts`.
-- `npm run lint`, `npm run format:check`, and `npm run type-check` guard stylistic and type correctness; chain them with `npm run quality` before PRs.
-- Agent validation helpers include `npm run test-agents`, `npm run test-proposal`, and `npm run batch-compliance` for end-to-end flows.
+- `pnpmdev` launches the API via `tsx server/index.ts` (frontend served by the same Express instance).
+- `pnpmbuild` compiles the Vite client and bundles the server to `dist/`; follow with `pnpmstart` for production simulation.
+- `pnpmdb:push` applies Drizzle schema changes; always run after editing `shared/schema.ts`.
+- `pnpmlint`, `pnpmformat:check`, and `pnpmtype-check` guard stylistic and type correctness; chain them with `pnpmquality` before PRs.
+- Agent validation helpers include `pnpmtest-agents`, `pnpmtest-proposal`, and `pnpmbatch-compliance` for end-to-end flows.
 
 ## Coding Style & Naming Conventions
 - TypeScript everywhere; keep modules ES `module` compatible. Prettier enforces two-space indentation and single quotes; do not hand-format.
@@ -22,7 +22,7 @@
 
 ## Testing Guidelines
 - Prefer `*.test.ts` or `*.spec.ts` inside `tests/`; mirror folder structure of the code under test.
-- Run unit suites with `npm test`; use `npm run test:watch` while iterating and `npm run test:coverage` before merging.
+- Run unit suites with `pnpm test`; use `pnpmtest:watch` while iterating and `pnpmtest:coverage` before merging.
 - Integration checks for compliance pipelines live in `server/scripts/`; accompany changes with mock datasets under `attached_assets/` when possible.
 
 ## Commit & Pull Request Guidelines
