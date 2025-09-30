@@ -18,10 +18,15 @@ jobs:
               with:
                   node-version: "18"
 
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
             - name: Install Dependencies
               run: |
                   npm install -g claude-flow@alpha
-                  npm ci # Install project dependencies for analysis
+                  pnpm install --frozen-lockfile # Install project dependencies for analysis
 
             - name: Run Security Analysis
               env:
