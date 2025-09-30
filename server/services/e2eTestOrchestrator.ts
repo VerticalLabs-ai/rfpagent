@@ -338,6 +338,9 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `E2E Test Portal ${testId}`,
         url: scenario.testData.portalUrl || 'https://test-portal.example.com',
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
@@ -508,7 +511,7 @@ export class E2ETestOrchestrator {
             requirements: documentData.parsedData.requirements,
             complianceItems: ['FISMA', 'Section 508', 'NIST'],
             riskFlags:
-              documentData.analysisResults.risk_level === 'high'
+              documentData.parsedData.analysisResults.risk_level === 'high'
                 ? ['high_risk']
                 : [],
           });
@@ -616,7 +619,7 @@ export class E2ETestOrchestrator {
         });
 
         // Test 2: Quality Assessment
-        const qualityScore = proposal?.content?.qualityScore || 0;
+        const qualityScore = (proposal?.content as any)?.qualityScore || 0;
         if (proposal && qualityScore >= 0.8) {
           validations.push({
             name: 'Proposal Quality Assessment',
@@ -1040,6 +1043,9 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `Test Portal CRUD ${testId}`,
         url: `https://test-crud-${testId}.example.com`,
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
@@ -1069,7 +1075,7 @@ export class E2ETestOrchestrator {
         portalId: createdPortal.id,
         sourceUrl: `https://test-rfp-${testId}.example.com`,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        estimatedValue: 100000,
+        estimatedValue: '100000',
         status: 'discovered' as const,
         requirements: ['Test requirement'],
         complianceItems: ['Test compliance'],
@@ -1187,6 +1193,9 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `Transaction Test Portal ${testId}`,
         url: `https://transaction-test-${testId}.example.com`,
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
@@ -1206,7 +1215,7 @@ export class E2ETestOrchestrator {
         portalId: portal.id,
         sourceUrl: `https://transaction-rfp-${testId}.example.com`,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        estimatedValue: 100000,
+        estimatedValue: '100000',
         status: 'discovered' as const,
         requirements: ['Transaction test'],
         complianceItems: ['Test compliance'],
@@ -1325,10 +1334,14 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `Concurrent Test Portal ${testId}`,
         url: `https://concurrent-test-${testId}.example.com`,
-        type: 'government' as const,
-        credentials: { username: 'test', password: 'test' },
-        scanFrequency: 'daily' as const,
+        type: 'test',
         isActive: true,
+        monitoringEnabled: true,
+        loginRequired: true,
+        username: 'test',
+        password: 'test',
+        scanFrequency: 24,
+        status: 'active' as const,
       };
 
       // Create multiple concurrent operations

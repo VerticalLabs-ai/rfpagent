@@ -449,7 +449,7 @@ export class SubmissionMaterialsService {
         - Showcasing technical expertise
         - Emphasizing compliance with all requirements
 
-        Base content on: ${proposalTask.text || proposalTask.content || JSON.stringify(proposalTask)}`,
+        Base content on: ${proposalTask?.text ?? JSON.stringify(proposalTask ?? {})}`,
           },
         ]);
         console.log('✅ Content generator completed successfully');
@@ -461,14 +461,10 @@ export class SubmissionMaterialsService {
 
       // Extract content with better error handling
       const proposalText =
-        proposalTask?.text ||
-        proposalTask?.content ||
-        JSON.stringify(proposalTask) ||
-        '';
+        proposalTask?.text ?? JSON.stringify(proposalTask ?? {}) ?? '';
       const detailedText =
-        detailedContent?.text ||
-        detailedContent?.content ||
-        JSON.stringify(detailedContent) ||
+        detailedContent?.text ??
+        JSON.stringify(detailedContent ?? {}) ??
         proposalText;
 
       return {
@@ -711,7 +707,8 @@ export class SubmissionMaterialsService {
       companyProfile
     );
 
-    const estimatedCostValue = pricingData?.summary?.total ?? pricingData?.summary?.subtotal ?? null;
+    const estimatedCostValue =
+      pricingData?.summary?.total ?? pricingData?.summary?.subtotal ?? null;
 
     if (existingProposal) {
       // Update existing proposal
@@ -810,27 +807,19 @@ export class SubmissionMaterialsService {
       contactName: primaryContact?.name || '',
       contactEmail: primaryContact?.email || '',
       contactPhone:
-        primaryContact?.mobilePhone ||
-        primaryContact?.officePhone ||
-        '',
+        primaryContact?.mobilePhone || primaryContact?.officePhone || '',
       totalCost: pricingSummary.total ?? pricingSummary.subtotal ?? null,
       duration: proposalContent?.timeline || '',
       startDate:
-        rfp.requirements?.startDate ||
-        rfp.requirements?.requiredDate ||
-        '',
+        rfp.requirements?.startDate || rfp.requirements?.requiredDate || '',
       technicalApproach:
         proposalContent?.technicalApproach ||
         proposalContent?.technical_approach ||
         '',
       methodology:
-        proposalContent?.approach ||
-        proposalContent?.methodology ||
-        '',
+        proposalContent?.approach || proposalContent?.methodology || '',
       deliverables:
-        proposalContent?.deliverables ||
-        proposalContent?.teamStructure ||
-        '',
+        proposalContent?.deliverables || proposalContent?.teamStructure || '',
       certifications,
       insurance,
       experience:

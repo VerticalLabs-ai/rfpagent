@@ -501,6 +501,9 @@ If any field cannot be determined, use null or empty values.`;
     await storage.createPortal({
       name: `${portalName} (Manual)`,
       url: 'https://manual-entry.local',
+      type: 'manual',
+      isActive: true,
+      monitoringEnabled: false,
       loginRequired: false,
       status: 'active',
       scanFrequency: 24,

@@ -1,6 +1,10 @@
 import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 import { AuthContext, AuthResult } from '../../types';
 import { stagehandAuthTool } from '../../../../../src/mastra/tools';
+import {
+  executeStagehandTool,
+  StagehandAuthResultSchema,
+} from '../../utils/stagehand';
 
 /**
  * Stagehand-based authentication strategy
@@ -23,22 +27,34 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
         `🌐 Starting Stagehand browser authentication for: ${context.portalUrl}`
       );
 
-      const authResult = await stagehandAuthTool.execute({
-        context: {
+      if (!context.username || !context.password) {
+        return {
+          success: false,
+          sessionId: context.sessionId,
+          error: 'Missing credentials for Stagehand authentication',
+        };
+      }
+
+      const sessionId = String(context.sessionId ?? `stagehand-${Date.now()}`);
+
+      const authResult = await executeStagehandTool(
+        stagehandAuthTool,
+        {
           loginUrl: context.portalUrl,
           username: context.username,
           password: context.password,
           targetUrl: context.portalUrl,
-          sessionId: context.sessionId,
+          sessionId,
           portalType: context.portalType || 'generic',
         },
-      });
+        StagehandAuthResultSchema
+      );
 
       if (authResult.success) {
         console.log(`✅ Stagehand authentication successful`);
         return {
           success: true,
-          sessionId: context.sessionId,
+          sessionId,
           cookies: authResult.cookies,
           authToken: authResult.authToken,
         };
@@ -48,7 +64,7 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
         );
         return {
           success: false,
-          sessionId: context.sessionId,
+          sessionId,
           error: authResult.message || 'Stagehand authentication failed',
         };
       }
@@ -204,21 +220,32 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
     config: any
   ): Promise<AuthResult> {
     try {
-      const authResult = await stagehandAuthTool.execute({
-        context: {
+      if (!context.username || !context.password) {
+        return {
+          success: false,
+          sessionId: context.sessionId,
+          error: 'Missing credentials for Stagehand authentication',
+        };
+      }
+
+      const sessionId = String(context.sessionId ?? `stagehand-${Date.now()}`);
+
+      const authResult = await executeStagehandTool(
+        stagehandAuthTool,
+        {
           loginUrl: context.portalUrl,
           username: context.username,
           password: context.password,
           targetUrl: context.portalUrl,
-          sessionId: context.sessionId,
+          sessionId,
           portalType: context.portalType || 'generic',
-          config, // Pass configuration to Stagehand
         },
-      });
+        StagehandAuthResultSchema
+      );
 
       return {
-        success: authResult.success,
-        sessionId: context.sessionId,
+        success: !!authResult.success,
+        sessionId,
         cookies: authResult.cookies,
         authToken: authResult.authToken,
         error: authResult.success ? undefined : authResult.message,

@@ -1,10 +1,10 @@
-import cron from 'node-cron';
+import * as cron from 'node-cron';
 import {
   PortalMonitoringService,
   PortalScanResult,
 } from './portal-monitoring-service';
 import { IStorage } from '../storage';
-import { Portal } from '@shared/schema';
+import { Portal, PublicPortal } from '@shared/schema';
 
 export interface ScheduledJob {
   portalId: string;
@@ -55,7 +55,7 @@ export class PortalSchedulerService {
   /**
    * Schedule monitoring for a specific portal based on its scan frequency
    */
-  async schedulePortalMonitoring(portal: Portal): Promise<void> {
+  async schedulePortalMonitoring(portal: PublicPortal): Promise<void> {
     try {
       // Remove existing job if it exists
       if (this.jobs.has(portal.id)) {
@@ -76,8 +76,6 @@ export class PortalSchedulerService {
           await this.executePortalScan(portal.id, portal.name);
         },
         {
-          scheduled: true,
-          name: `portal-monitor-${portal.id}`,
           timezone: 'America/Chicago', // iByte is in Texas
         }
       );
@@ -240,8 +238,6 @@ export class PortalSchedulerService {
         }
       },
       {
-        scheduled: true,
-        name: 'global-portal-scan',
         timezone: 'America/Chicago',
       }
     );
@@ -273,9 +269,7 @@ export class PortalSchedulerService {
    */
   private getNextRun(cronExpression: string): Date | undefined {
     try {
-      const task = cron.schedule(cronExpression, () => {}, {
-        scheduled: false,
-      });
+      const task = cron.schedule(cronExpression, () => {}, {});
       // This is a simplified approach - in production you'd use a proper cron parser
       return new Date(Date.now() + 60 * 60 * 1000); // Approximate next hour
     } catch (error) {

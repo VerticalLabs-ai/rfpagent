@@ -567,7 +567,9 @@ export class RetryBackoffDlqService {
       };
 
       // Create new work item
-      const newWorkItem = await storage.createWorkItem(reprocessedWorkItem);
+      const newWorkItem = await storage.createWorkItem(
+        reprocessedWorkItem as any
+      );
 
       // Update DLQ entry
       await storage.updateDeadLetterQueueEntry(dlqEntryId, {

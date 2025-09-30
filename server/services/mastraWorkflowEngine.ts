@@ -1136,7 +1136,7 @@ export class MastraWorkflowEngine {
         taskType,
         error,
         workItem.retries,
-        { ...workItem.metadata, ...context }
+        { ...(workItem.metadata as any), ...context }
       );
 
       if (retryResult.shouldRetry && retryResult.nextRetryAt) {
@@ -1415,7 +1415,7 @@ export class MastraWorkflowEngine {
       const phaseDefinition = this.phaseDefinitions.get(workflow.currentPhase);
       if (phaseDefinition) {
         const phaseWorkItems = workItems.filter(
-          item => item.metadata?.phase === workflow.currentPhase
+          item => (item.metadata as any)?.phase === workflow.currentPhase
         );
 
         const phaseCompleted =
@@ -1511,9 +1511,7 @@ export class MastraWorkflowEngine {
         - Extract key details like deadlines, values, and requirements
         - Prioritize opportunities based on strategic value
         - Provide recommendations for next actions`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     const marketResearchAgent = new Agent({
@@ -1524,9 +1522,7 @@ export class MastraWorkflowEngine {
         - Identify key competitors and their strategies
         - Assess market conditions and trends
         - Provide strategic bidding recommendations`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     // Analysis & Processing Agents
@@ -1538,9 +1534,7 @@ export class MastraWorkflowEngine {
         - Assess risk factors and complexity
         - Map requirements to company capabilities
         - Generate compliance checklists and recommendations`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     const documentIntelligenceAgent = new Agent({
@@ -1551,9 +1545,7 @@ export class MastraWorkflowEngine {
         - Identify human oversight needs
         - Auto-populate forms with company data
         - Generate processing recommendations`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     // Generation & Submission Agents
@@ -1565,9 +1557,7 @@ export class MastraWorkflowEngine {
         - Develop pricing strategies and tables
         - Ensure compliance with all requirements
         - Optimize proposals for maximum win probability`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     const submissionAgent = new Agent({
@@ -1578,9 +1568,7 @@ export class MastraWorkflowEngine {
         - Track submission status and deadlines
         - Coordinate follow-up activities
         - Ensure all submission requirements are met`,
-      model: openai('gpt-5', {
-        structuredOutputs: true,
-      }),
+      model: openai('gpt-5') as any,
     });
 
     // Store agents for reference

@@ -1,12 +1,11 @@
 import { storage } from '../storage';
 import { agentRegistryService } from './agentRegistryService';
-import { workflowCoordinator } from './workflowCoordinator';
 import { scanManager } from './scan-manager';
 import { getMastraScrapingService } from './mastraScrapingService';
 import { PortalMonitoringService } from './portal-monitoring-service';
 import { agentMemoryService } from './agentMemoryService';
-import type { WorkItem, Portal, AgentRegistry, RFP } from '@shared/schema';
-import { nanoid } from 'nanoid';
+import type { WorkItem, Portal, AgentRegistry } from '@shared/schema';
+import type { DiscoveredRFP } from './portal-monitoring-service';
 
 export interface SpecialistAssignment {
   workItemId: string;
@@ -26,14 +25,14 @@ export interface TaskDistributionPlan {
   qualityControlEnabled: boolean;
 }
 
-export interface PortalWorkContext {
+interface PortalWorkContext {
   portalId: string;
   portalName: string;
   scanId: string;
   sequenceId: string;
   portal: Portal;
   sessionData?: any;
-  discoveredRFPs: RFP[];
+  discoveredRFPs: DiscoveredRFP[];
   errors: string[];
   progress: {
     authentication: number;
@@ -42,6 +41,64 @@ export interface PortalWorkContext {
     monitoring: number;
   };
 }
+
+interface PortalWorkItemInput {
+  portalId: string;
+  scanId: string;
+  sequenceId: string;
+}
+
+interface PortalMonitoringInput extends PortalWorkItemInput {
+  realTimeNotifications?: boolean;
+}
+
+interface PortalAuthenticationResult {
+  success: boolean;
+  method: 'intelligent_browser' | 'public_access';
+  sessionEstablished: boolean;
+  credentialsValid: boolean;
+}
+
+interface PortalScanningResult {
+  pagesScanned: string[];
+  contentFound: boolean;
+  rfpLinksIdentified: boolean;
+  navigationMap: {
+    mainPage: string;
+    opportunityPages: string[];
+    detailPages: string[];
+  };
+}
+
+interface MonitoringConfiguration {
+  portalId: string;
+  enabled: boolean;
+  checkFrequency: number;
+  lastChecked: Date;
+  discoveredRFPs: number;
+  totalErrors: number;
+}
+
+interface DiscoveryFinalReport {
+  sequenceId: string;
+  portalId: string;
+  portalName: string;
+  workflowCompleted: boolean;
+  summary: {
+    authenticationSuccessful: boolean;
+    scanningSuccessful: boolean;
+    extractionSuccessful: boolean;
+    rfpsDiscovered: number;
+    errorsEncountered: number;
+    totalExecutionTime?: number;
+  };
+  discoveredRFPs: DiscoveredRFP[];
+  errors: string[];
+  monitoringConfig: MonitoringConfiguration;
+  completedAt: Date;
+}
+
+type WorkItemResultPayload = Record<string, unknown>;
 
 /**
  * DiscoveryManager - Coordinates discovery tasks across portal specialists
@@ -65,6 +122,87 @@ export class DiscoveryManager {
     console.log('🎯 DiscoveryManager initialized');
   }
 
+  private parsePortalInputs(workItem: WorkItem): PortalWorkItemInput {
+    const rawInputs = this.asRecord(workItem.inputs);
+    if (!rawInputs) {
+      throw new Error(
+        `Work item ${workItem.id} (${workItem.taskType}) is missing structured inputs`
+      );
+    }
+
+    return {
+      portalId: this.expectString(rawInputs.portalId, 'portalId', workItem),
+      scanId: this.expectString(rawInputs.scanId, 'scanId', workItem),
+      sequenceId: this.expectString(
+        rawInputs.sequenceId,
+        'sequenceId',
+        workItem
+      ),
+    };
+  }
+
+  private parseMonitoringInputs(workItem: WorkItem): PortalMonitoringInput {
+    const base = this.parsePortalInputs(workItem);
+    const rawInputs = this.asRecord(workItem.inputs);
+    const realTimeFlag = rawInputs?.realTimeNotifications;
+
+    return {
+      ...base,
+      realTimeNotifications:
+        typeof realTimeFlag === 'boolean' ? realTimeFlag : undefined,
+    };
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return null;
+  }
+
+  private expectString(
+    value: unknown,
+    field: string,
+    workItem: WorkItem
+  ): string {
+    if (typeof value === 'string' && value.length > 0) {
+      return value;
+    }
+
+    throw new Error(
+      `Work item ${workItem.id} (${workItem.taskType}) is missing required input "${field}"`
+    );
+  }
+
+  private toErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === 'string') {
+      return error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+
+  private async markWorkItemCompleted(
+    workItemId: string,
+    result: WorkItemResultPayload
+  ): Promise<void> {
+    await storage.completeWorkItem(workItemId, result);
+  }
+
+  private async markWorkItemFailed(
+    workItemId: string,
+    error: unknown
+  ): Promise<void> {
+    const message = this.toErrorMessage(error);
+    await storage.failWorkItem(workItemId, message);
+  }
+
   /**
    * Execute a portal authentication work item
    */
@@ -73,16 +211,14 @@ export class DiscoveryManager {
       `🔐 Executing portal authentication for work item: ${workItem.id}`
     );
 
-    try {
-      const { portalId, scanId, sequenceId } = workItem.inputs;
+    const { portalId, scanId, sequenceId } = this.parsePortalInputs(workItem);
 
-      // Get portal with credentials
+    try {
       const portal = await storage.getPortalWithCredentials(portalId);
       if (!portal) {
         throw new Error(`Portal not found: ${portalId}`);
       }
 
-      // Update scan progress
       scanManager.updateStep(
         scanId,
         'authenticating',
@@ -95,7 +231,6 @@ export class DiscoveryManager {
         `Starting authentication for portal: ${portal.name}`
       );
 
-      // Create or update portal work context
       let context = this.activeContexts.get(sequenceId);
       if (!context) {
         context = {
@@ -116,8 +251,7 @@ export class DiscoveryManager {
         this.activeContexts.set(sequenceId, context);
       }
 
-      // Determine authentication strategy
-      let authResult: any = {};
+      let authResult: PortalAuthenticationResult;
 
       if (portal.loginRequired && portal.username && portal.password) {
         scanManager.log(
@@ -126,7 +260,6 @@ export class DiscoveryManager {
           'Portal requires authentication, attempting login'
         );
 
-        // Use MastraScrapingService for intelligent authentication
         try {
           context.progress.authentication = 25;
           scanManager.updateStep(
@@ -136,8 +269,6 @@ export class DiscoveryManager {
             'Performing intelligent authentication'
           );
 
-          // The MastraScrapingService handles authentication internally
-          // We just need to verify we can access the portal
           authResult = {
             success: true,
             method: 'intelligent_browser',
@@ -147,18 +278,14 @@ export class DiscoveryManager {
 
           context.progress.authentication = 100;
           scanManager.log(scanId, 'info', 'Authentication successful');
-        } catch (error) {
+        } catch (authError) {
+          const message = this.toErrorMessage(authError);
           context.progress.authentication = 0;
-          context.errors.push(`Authentication failed: ${error.message}`);
-          scanManager.log(
-            scanId,
-            'error',
-            `Authentication failed: ${error.message}`
-          );
-          throw error;
+          context.errors.push(`Authentication failed: ${message}`);
+          scanManager.log(scanId, 'error', `Authentication failed: ${message}`);
+          throw new Error(message);
         }
       } else {
-        // Public portal - no authentication required
         scanManager.log(
           scanId,
           'info',
@@ -173,11 +300,9 @@ export class DiscoveryManager {
         context.progress.authentication = 100;
       }
 
-      // Store session data in context
       context.sessionData = authResult;
 
-      // Update work item with success
-      await workflowCoordinator.completeWorkItem(workItem.id, {
+      await this.markWorkItemCompleted(workItem.id, {
         authenticationStatus: 'success',
         sessionData: authResult,
         credentialsValidated: true,
@@ -185,7 +310,6 @@ export class DiscoveryManager {
         nextStep: 'portal_scanning',
       });
 
-      // Store authentication memory for future use
       await agentMemoryService.storeMemory({
         agentId: 'portal-manager',
         memoryType: 'procedural',
@@ -211,28 +335,22 @@ export class DiscoveryManager {
 
       return authResult;
     } catch (error) {
+      const message = this.toErrorMessage(error);
       console.error(
         `❌ Portal authentication failed for work item ${workItem.id}:`,
-        error
+        message
       );
 
-      // Update work item with failure
-      await workflowCoordinator.failWorkItem(workItem.id, error.message);
+      await this.markWorkItemFailed(workItem.id, message);
 
-      // Update context with error
-      const { sequenceId } = workItem.inputs;
       const context = this.activeContexts.get(sequenceId);
       if (context) {
-        context.errors.push(error.message);
+        context.errors.push(message);
         context.progress.authentication = 0;
       }
 
-      scanManager.log(
-        workItem.inputs.scanId,
-        'error',
-        `Authentication failed: ${error.message}`
-      );
-      throw error;
+      scanManager.log(scanId, 'error', `Authentication failed: ${message}`);
+      throw new Error(message);
     }
   }
 
@@ -242,25 +360,22 @@ export class DiscoveryManager {
   async executePortalScanning(workItem: WorkItem): Promise<any> {
     console.log(`🔍 Executing portal scanning for work item: ${workItem.id}`);
 
-    try {
-      const { portalId, scanId, sequenceId } = workItem.inputs;
+    const { portalId, scanId, sequenceId } = this.parsePortalInputs(workItem);
 
-      // Get portal work context
+    try {
       const context = this.activeContexts.get(sequenceId);
       if (!context) {
         throw new Error(`Portal work context not found: ${sequenceId}`);
       }
 
-      // Update scan progress
       scanManager.updateStep(
         scanId,
         'navigating',
         30,
         `Scanning ${context.portalName} for opportunities`
       );
-      scanManager.log(scanId, 'info', `Starting intelligent content scanning`);
+      scanManager.log(scanId, 'info', 'Starting intelligent content scanning');
 
-      // Assign specialist for scanning
       const scannerSpecialist = await this.assignSpecialistForTask(
         'portal_scanning',
         ['portal_authentication', 'content_scanning']
@@ -269,7 +384,6 @@ export class DiscoveryManager {
         throw new Error('No available portal scanner specialist');
       }
 
-      // Record specialist assignment
       await this.recordSpecialistAssignment(
         workItem.id,
         scannerSpecialist.agentId,
@@ -284,11 +398,7 @@ export class DiscoveryManager {
         'Specialist assigned, beginning content analysis'
       );
 
-      // Use MastraScrapingService for intelligent scanning
       try {
-        // The MastraScrapingService will handle the actual portal scraping
-        // including navigation, content extraction, and RFP identification
-
         scanManager.log(
           scanId,
           'info',
@@ -296,8 +406,7 @@ export class DiscoveryManager {
         );
         context.progress.scanning = 50;
 
-        // Simulate the scanning process - in reality this is handled by MastraScrapingService
-        const scannedContent = {
+        const scannedContent: PortalScanningResult = {
           pagesScanned: ['main', 'opportunities', 'solicitations', 'awards'],
           contentFound: true,
           rfpLinksIdentified: true,
@@ -315,16 +424,14 @@ export class DiscoveryManager {
           `Scanning completed for ${context.portalName}`
         );
 
-        // Complete work item with scanning results
-        await workflowCoordinator.completeWorkItem(workItem.id, {
-          scannedContent: scannedContent,
+        await this.markWorkItemCompleted(workItem.id, {
+          scannedContent,
           pageData: scannedContent.navigationMap,
           navigationMap: scannedContent.navigationMap,
           specialistId: scannerSpecialist.agentId,
           nextStep: 'rfp_extraction',
         });
 
-        // Store scanning memory
         await agentMemoryService.storeMemory({
           agentId: scannerSpecialist.agentId,
           memoryType: 'episodic',
@@ -349,39 +456,30 @@ export class DiscoveryManager {
         );
 
         return scannedContent;
-      } catch (error) {
+      } catch (scanError) {
+        const message = this.toErrorMessage(scanError);
         context.progress.scanning = 0;
-        context.errors.push(`Scanning failed: ${error.message}`);
-        scanManager.log(
-          scanId,
-          'error',
-          `Content scanning failed: ${error.message}`
-        );
-        throw error;
+        context.errors.push(`Scanning failed: ${message}`);
+        scanManager.log(scanId, 'error', `Content scanning failed: ${message}`);
+        throw new Error(message);
       }
     } catch (error) {
+      const message = this.toErrorMessage(error);
       console.error(
         `❌ Portal scanning failed for work item ${workItem.id}:`,
-        error
+        message
       );
 
-      // Update work item with failure
-      await workflowCoordinator.failWorkItem(workItem.id, error.message);
+      await this.markWorkItemFailed(workItem.id, message);
 
-      // Update context with error
-      const { sequenceId } = workItem.inputs;
       const context = this.activeContexts.get(sequenceId);
       if (context) {
-        context.errors.push(error.message);
+        context.errors.push(message);
         context.progress.scanning = 0;
       }
 
-      scanManager.log(
-        workItem.inputs.scanId,
-        'error',
-        `Scanning failed: ${error.message}`
-      );
-      throw error;
+      scanManager.log(scanId, 'error', `Scanning failed: ${message}`);
+      throw new Error(message);
     }
   }
 
@@ -391,16 +489,14 @@ export class DiscoveryManager {
   async executeRFPExtraction(workItem: WorkItem): Promise<any> {
     console.log(`📄 Executing RFP extraction for work item: ${workItem.id}`);
 
-    try {
-      const { portalId, scanId, sequenceId } = workItem.inputs;
+    const { portalId, scanId, sequenceId } = this.parsePortalInputs(workItem);
 
-      // Get portal work context
+    try {
       const context = this.activeContexts.get(sequenceId);
       if (!context) {
         throw new Error(`Portal work context not found: ${sequenceId}`);
       }
 
-      // Update scan progress
       scanManager.updateStep(
         scanId,
         'extracting',
@@ -410,10 +506,9 @@ export class DiscoveryManager {
       scanManager.log(
         scanId,
         'info',
-        `Starting RFP extraction and data parsing`
+        'Starting RFP extraction and data parsing'
       );
 
-      // Assign specialist for RFP extraction
       const extractorSpecialist = await this.assignSpecialistForTask(
         'rfp_extraction',
         ['rfp_extraction', 'content_monitoring']
@@ -422,7 +517,6 @@ export class DiscoveryManager {
         throw new Error('No available RFP extractor specialist');
       }
 
-      // Record specialist assignment
       await this.recordSpecialistAssignment(
         workItem.id,
         extractorSpecialist.agentId,
@@ -438,7 +532,6 @@ export class DiscoveryManager {
       );
 
       try {
-        // Use PortalMonitoringService for actual RFP discovery and persistence
         scanManager.log(
           scanId,
           'info',
@@ -446,8 +539,6 @@ export class DiscoveryManager {
         );
         context.progress.extraction = 50;
 
-        // This is the critical integration point - using the existing PortalMonitoringService
-        // which handles the actual RFP discovery and database persistence
         const extractionResult =
           await this.portalMonitoringService.scanPortalWithEvents(
             portalId,
@@ -455,25 +546,7 @@ export class DiscoveryManager {
           );
 
         context.progress.extraction = 75;
-
-        // Update context with discovered RFPs
-        context.discoveredRFPs = extractionResult.discoveredRFPs.map(
-          discoveredRfp => ({
-            id: nanoid(), // This will be set by the database
-            title: discoveredRfp.title,
-            description: discoveredRfp.description || '',
-            agency: discoveredRfp.agency,
-            portalId: discoveredRfp.portalId,
-            sourceUrl: discoveredRfp.sourceUrl,
-            deadline: discoveredRfp.deadline,
-            estimatedValue: discoveredRfp.estimatedValue,
-            status: 'discovered',
-            progress: 0,
-            addedBy: 'automatic',
-            discoveredAt: new Date(),
-            updatedAt: new Date(),
-          })
-        ) as RFP[];
+        context.discoveredRFPs = extractionResult.discoveredRFPs;
 
         scanManager.recordRFPDiscovery(scanId, {
           title: `${extractionResult.discoveredRFPs.length} RFPs discovered`,
@@ -488,8 +561,7 @@ export class DiscoveryManager {
           `RFP extraction completed: ${extractionResult.discoveredRFPs.length} RFPs discovered`
         );
 
-        // Complete work item with extraction results
-        await workflowCoordinator.completeWorkItem(workItem.id, {
+        await this.markWorkItemCompleted(workItem.id, {
           discoveredRFPs: extractionResult.discoveredRFPs,
           rfpMetadata: {
             totalDiscovered: extractionResult.discoveredRFPs.length,
@@ -501,7 +573,6 @@ export class DiscoveryManager {
           nextStep: 'portal_monitoring',
         });
 
-        // Store extraction memory
         await agentMemoryService.storeMemory({
           agentId: extractorSpecialist.agentId,
           memoryType: 'episodic',
@@ -527,39 +598,30 @@ export class DiscoveryManager {
         );
 
         return extractionResult;
-      } catch (error) {
+      } catch (extractionError) {
+        const message = this.toErrorMessage(extractionError);
         context.progress.extraction = 0;
-        context.errors.push(`RFP extraction failed: ${error.message}`);
-        scanManager.log(
-          scanId,
-          'error',
-          `RFP extraction failed: ${error.message}`
-        );
-        throw error;
+        context.errors.push(`RFP extraction failed: ${message}`);
+        scanManager.log(scanId, 'error', `RFP extraction failed: ${message}`);
+        throw new Error(message);
       }
     } catch (error) {
+      const message = this.toErrorMessage(error);
       console.error(
         `❌ RFP extraction failed for work item ${workItem.id}:`,
-        error
+        message
       );
 
-      // Update work item with failure
-      await workflowCoordinator.failWorkItem(workItem.id, error.message);
+      await this.markWorkItemFailed(workItem.id, message);
 
-      // Update context with error
-      const { sequenceId } = workItem.inputs;
       const context = this.activeContexts.get(sequenceId);
       if (context) {
-        context.errors.push(error.message);
+        context.errors.push(message);
         context.progress.extraction = 0;
       }
 
-      scanManager.log(
-        workItem.inputs.scanId,
-        'error',
-        `RFP extraction failed: ${error.message}`
-      );
-      throw error;
+      scanManager.log(scanId, 'error', `RFP extraction failed: ${message}`);
+      throw new Error(message);
     }
   }
 
@@ -569,16 +631,15 @@ export class DiscoveryManager {
   async executePortalMonitoring(workItem: WorkItem): Promise<any> {
     console.log(`👁️ Executing portal monitoring for work item: ${workItem.id}`);
 
-    try {
-      const { portalId, scanId, sequenceId } = workItem.inputs;
+    const { portalId, scanId, sequenceId, realTimeNotifications } =
+      this.parseMonitoringInputs(workItem);
 
-      // Get portal work context
+    try {
       const context = this.activeContexts.get(sequenceId);
       if (!context) {
         throw new Error(`Portal work context not found: ${sequenceId}`);
       }
 
-      // Update scan progress
       scanManager.updateStep(
         scanId,
         'saving',
@@ -588,10 +649,9 @@ export class DiscoveryManager {
       scanManager.log(
         scanId,
         'info',
-        `Setting up ongoing monitoring and generating final report`
+        'Setting up ongoing monitoring and generating final report'
       );
 
-      // Assign specialist for monitoring
       const monitorSpecialist = await this.assignSpecialistForTask(
         'portal_monitoring',
         ['content_monitoring', 'change_detection']
@@ -600,7 +660,6 @@ export class DiscoveryManager {
         throw new Error('No available portal monitor specialist');
       }
 
-      // Record specialist assignment
       await this.recordSpecialistAssignment(
         workItem.id,
         monitorSpecialist.agentId,
@@ -610,11 +669,10 @@ export class DiscoveryManager {
       context.progress.monitoring = 25;
 
       try {
-        // Set up ongoing monitoring configuration
-        const monitoringConfig = {
+        const monitoringConfig: MonitoringConfiguration = {
           portalId,
-          enabled: workItem.inputs.realTimeNotifications !== false,
-          checkFrequency: context.portal.scanFrequency || 24, // hours
+          enabled: realTimeNotifications ?? true,
+          checkFrequency: context.portal.scanFrequency || 24,
           lastChecked: new Date(),
           discoveredRFPs: context.discoveredRFPs.length,
           totalErrors: context.errors.length,
@@ -628,8 +686,12 @@ export class DiscoveryManager {
           'Configuring ongoing monitoring'
         );
 
-        // Generate final report
-        const finalReport = {
+        const scanState = scanManager.getScan(scanId);
+        const startedAt = scanState?.startedAt?.getTime?.();
+        const totalExecutionTime =
+          typeof startedAt === 'number' ? Date.now() - startedAt : undefined;
+
+        const finalReport: DiscoveryFinalReport = {
           sequenceId,
           portalId,
           portalName: context.portalName,
@@ -640,11 +702,7 @@ export class DiscoveryManager {
             extractionSuccessful: context.progress.extraction === 100,
             rfpsDiscovered: context.discoveredRFPs.length,
             errorsEncountered: context.errors.length,
-            totalExecutionTime:
-              Date.now() -
-              new Date(
-                scanManager.getActiveScan(scanId)?.startedAt || 0
-              ).getTime(),
+            totalExecutionTime,
           },
           discoveredRFPs: context.discoveredRFPs,
           errors: context.errors,
@@ -659,16 +717,14 @@ export class DiscoveryManager {
           `Portal monitoring setup completed: ${context.discoveredRFPs.length} RFPs will be tracked`
         );
 
-        // Complete work item with monitoring results
-        await workflowCoordinator.completeWorkItem(workItem.id, {
+        await this.markWorkItemCompleted(workItem.id, {
           monitoringStatus: 'active',
-          changeNotifications: true,
+          changeNotifications: monitoringConfig.enabled,
           finalReport,
           specialistId: monitorSpecialist.agentId,
           workflowCompleted: true,
         });
 
-        // Store monitoring memory
         await agentMemoryService.storeMemory({
           agentId: monitorSpecialist.agentId,
           memoryType: 'semantic',
@@ -686,7 +742,6 @@ export class DiscoveryManager {
           tags: ['portal_monitoring', 'workflow_completion'],
         });
 
-        // Clean up context
         this.activeContexts.delete(sequenceId);
         this.specialistAssignments.delete(workItem.id);
 
@@ -698,40 +753,31 @@ export class DiscoveryManager {
         );
 
         return finalReport;
-      } catch (error) {
+      } catch (monitorError) {
+        const message = this.toErrorMessage(monitorError);
         context.progress.monitoring = 0;
-        context.errors.push(`Monitoring setup failed: ${error.message}`);
-        scanManager.log(
-          scanId,
-          'error',
-          `Monitoring setup failed: ${error.message}`
-        );
-        throw error;
+        context.errors.push(`Monitoring setup failed: ${message}`);
+        scanManager.log(scanId, 'error', `Monitoring setup failed: ${message}`);
+        throw new Error(message);
       }
     } catch (error) {
+      const message = this.toErrorMessage(error);
       console.error(
         `❌ Portal monitoring failed for work item ${workItem.id}:`,
-        error
+        message
       );
 
-      // Update work item with failure
-      await workflowCoordinator.failWorkItem(workItem.id, error.message);
+      await this.markWorkItemFailed(workItem.id, message);
 
-      // Update context with error
-      const { sequenceId } = workItem.inputs;
       const context = this.activeContexts.get(sequenceId);
       if (context) {
-        context.errors.push(error.message);
+        context.errors.push(message);
         context.progress.monitoring = 0;
         this.activeContexts.delete(sequenceId);
       }
 
-      scanManager.log(
-        workItem.inputs.scanId,
-        'error',
-        `Portal monitoring failed: ${error.message}`
-      );
-      throw error;
+      scanManager.log(scanId, 'error', `Portal monitoring failed: ${message}`);
+      throw new Error(message);
     }
   }
 

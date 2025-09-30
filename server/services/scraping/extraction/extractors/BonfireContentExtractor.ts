@@ -130,9 +130,9 @@ export class BonfireContentExtractor extends BaseContentExtractor {
           opportunities.push({
             title,
             description,
-            deadline: this.parseDate(deadline),
+            deadline: this.parseDate(deadline || ''),
             agency,
-            url: this.validateAndFixSourceUrl(link, baseUrl),
+            url: this.validateAndFixSourceUrl(link, baseUrl) || '',
             link: this.validateAndFixSourceUrl(link, baseUrl),
             category: this.inferCategory(title),
             confidence: 0.7,

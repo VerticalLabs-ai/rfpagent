@@ -720,7 +720,9 @@ export class PersistentMemoryEngine {
         recentMemories: [],
         relevantKnowledge: [],
         sessionPatterns: [],
-        contextMetadata: { error: error.message },
+        contextMetadata: {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        },
       };
     }
   }
@@ -837,7 +839,7 @@ export class PersistentMemoryEngine {
   }
 
   private getConsolidationRules(type: string): any[] {
-    const rules = {
+    const rules: Record<string, any[]> = {
       nightly: [
         { rule: 'merge_similar_memories', threshold: 0.8 },
         { rule: 'extract_patterns', minFrequency: 2 },
@@ -1152,7 +1154,7 @@ export class PersistentMemoryEngine {
 
   // Additional helper methods for pattern analysis and knowledge management
   private findCommonTags(memories: any[]): string[] {
-    const tagCounts = {};
+    const tagCounts: Record<string, number> = {};
     for (const memory of memories) {
       for (const tag of memory.tags || []) {
         tagCounts[tag] = (tagCounts[tag] || 0) + 1;
@@ -1169,7 +1171,7 @@ export class PersistentMemoryEngine {
     const contexts = memories.map(m => m.metadata || {});
     if (contexts.length === 0) return {};
 
-    const commonContext = {};
+    const commonContext: Record<string, any> = {};
     const firstContext = contexts[0];
 
     for (const key of Object.keys(firstContext)) {
@@ -1202,7 +1204,7 @@ export class PersistentMemoryEngine {
       contents.every(content => content.hasOwnProperty(key))
     );
 
-    const common = {};
+    const common: Record<string, any> = {};
     for (const key of commonKeys) {
       const values = contents.map(content => content[key]);
       const uniqueValues = [...new Set(values)];
@@ -1222,7 +1224,15 @@ export class PersistentMemoryEngine {
     const memoryTypes = memories.map(m => m.memoryType);
     const dominantType = this.findMostFrequent(memoryTypes);
 
-    return dominantType || 'semantic';
+    const validTypes: ('episodic' | 'semantic' | 'procedural' | 'working')[] = [
+      'episodic',
+      'semantic',
+      'procedural',
+      'working',
+    ];
+    return validTypes.includes(dominantType as any)
+      ? (dominantType as any)
+      : 'semantic';
   }
 
   private findMostFrequent(items: string[]): string {
@@ -1341,7 +1351,7 @@ export class PersistentMemoryEngine {
 
   private extractCommonFactors(memories: any[]): any {
     // Extract factors common to memories with same outcome
-    const factors = {};
+    const factors: Record<string, Record<string, number>> = {};
 
     for (const memory of memories) {
       const content = memory.content || {};
@@ -1354,9 +1364,11 @@ export class PersistentMemoryEngine {
     }
 
     // Filter for factors present in majority of memories
-    const commonFactors = {};
+    const commonFactors: Record<string, any> = {};
     for (const [factor, values] of Object.entries(factors)) {
-      for (const [value, count] of Object.entries(values)) {
+      for (const [value, count] of Object.entries(
+        values as Record<string, number>
+      )) {
         if ((count as number) >= Math.ceil(memories.length * 0.6)) {
           commonFactors[factor] = value;
         }
@@ -1490,7 +1502,10 @@ export class PersistentMemoryEngine {
   private mapKnowledgeToNodeType(
     knowledgeType: string
   ): 'concept' | 'strategy' | 'pattern' | 'outcome' | 'context' {
-    const mapping = {
+    const mapping: Record<
+      string,
+      'concept' | 'strategy' | 'pattern' | 'outcome' | 'context'
+    > = {
       rfp_pattern: 'pattern',
       compliance_rule: 'concept',
       market_insight: 'concept',
@@ -1498,7 +1513,7 @@ export class PersistentMemoryEngine {
       strategy: 'strategy',
     };
 
-    return mapping[knowledgeType as keyof typeof mapping] || 'concept';
+    return mapping[knowledgeType] || 'concept';
   }
 
   private analyzeRelationship(knowledge1: any, knowledge2: any): any {

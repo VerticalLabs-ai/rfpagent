@@ -205,7 +205,7 @@ export class AustinFinanceDocumentScraper {
     } finally {
       // Clean up browser session to prevent resource leaks
       try {
-        await sessionManager.cleanup(this.sessionId);
+        await sessionManager.closeSession(this.sessionId);
         console.log(`🧹 Cleaned up session: ${this.sessionId}`);
       } catch (cleanupError) {
         console.warn('⚠️ Session cleanup warning:', cleanupError);
@@ -239,24 +239,11 @@ export class AustinFinanceDocumentScraper {
 
       // Upload to object storage
       const contentType = this.getContentType(filename);
-      const uploadUrl = await this.objectStorage.getUploadUrl(objectPath, {
-        'Content-Type': contentType,
+      await this.objectStorage.uploadPrivateObject({
+        objectPath,
+        data: buffer,
+        contentType,
       });
-
-      // Upload the file with matching headers
-      const response = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: buffer,
-        headers: {
-          'Content-Type': contentType,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(
-          `Upload failed: ${response.status} ${response.statusText}`
-        );
-      }
 
       console.log(`💾 Saved document to object storage: ${objectPath}`);
       return objectPath;

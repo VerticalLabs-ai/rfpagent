@@ -102,6 +102,11 @@ export class DocumentParsingService {
 
       console.log(`Successfully parsed document: ${document.filename}`);
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : String(error ?? 'Unknown error');
+
       console.error(`Error parsing document ${documentId}:`, error);
 
       // Create notification about parsing error
@@ -110,7 +115,7 @@ export class DocumentParsingService {
         await storage.createNotification({
           type: 'compliance',
           title: 'Document Parsing Failed',
-          message: `Failed to parse ${document.filename}: ${error.message}`,
+          message: `Failed to parse ${document.filename}: ${message}`,
           relatedEntityType: 'document',
           relatedEntityId: documentId,
         });

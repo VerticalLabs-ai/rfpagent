@@ -2,7 +2,6 @@ import { storage } from '../storage';
 import { agentRegistryService } from './agentRegistryService';
 import { workflowCoordinator } from './workflowCoordinator';
 import { scanManager } from './scan-manager';
-import { PortalMonitoringService } from './portal-monitoring-service';
 import { agentMemoryService } from './agentMemoryService';
 import type {
   Portal,
@@ -54,6 +53,17 @@ export interface WorkItemSequence {
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
 }
 
+interface WorkItemMetadataShape {
+  sequenceId?: string;
+  scanId?: string;
+  previousStep?: string;
+  nextStep?: string;
+  finalStep?: boolean;
+  step?: number;
+}
+
+type WorkItemResultPayload = Record<string, unknown>;
+
 /**
  * DiscoveryOrchestrator - Orchestrates complete portal discovery workflows
  *
@@ -66,10 +76,44 @@ export interface WorkItemSequence {
  */
 export class DiscoveryOrchestrator {
   private activeWorkflows = new Map<string, WorkItemSequence[]>();
-  private portalMonitoring = new PortalMonitoringService(storage);
-
   constructor() {
     this.initializeDiscoveryAgents();
+  }
+
+  private asRecord(value: unknown): Record<string, unknown> | null {
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return null;
+  }
+
+  private parseWorkItemMetadata(workItem: WorkItem): WorkItemMetadataShape {
+    const raw = this.asRecord(workItem.metadata);
+    return raw ?? {};
+  }
+
+  private toErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === 'string') {
+      return error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+
+  private addAssignedAgent(
+    assignedAgents: AgentRegistry[],
+    agent?: AgentRegistry | null
+  ): void {
+    if (!agent) return;
+    if (!assignedAgents.some(existing => existing.agentId === agent.agentId)) {
+      assignedAgents.push(agent);
+    }
   }
 
   /**
@@ -268,21 +312,19 @@ export class DiscoveryOrchestrator {
       // Store workflow sequences
       this.activeWorkflows.set(workflowId, sequences);
 
-      // Assign work items to available agents
-      const portalManager = await agentRegistryService.findAgentsByCapability(
-        ['portal_coordination'],
-        'manager'
-      );
-      if (portalManager.length > 0) {
-        assignedAgents.push(portalManager[0]);
+      // Prime authentication tasks by requesting coordinator assignment
+      for (const sequence of sequences) {
+        const assignment = await workflowCoordinator.assignWorkItem(
+          sequence.workItems.authentication.id
+        );
 
-        // Assign initial authentication tasks to portal manager
-        for (const sequence of sequences) {
-          await workflowCoordinator.assignWorkItem(
-            sequence.workItems.authentication.id,
-            portalManager[0].agentId
+        if (!assignment.success) {
+          console.warn(
+            `Failed to assign authentication work item ${sequence.workItems.authentication.id}: ${assignment.error}`
           );
         }
+
+        this.addAssignedAgent(assignedAgents, assignment.assignedAgent);
       }
 
       // Store workflow memory
@@ -321,14 +363,15 @@ export class DiscoveryOrchestrator {
         ),
       };
     } catch (error) {
-      console.error('❌ Failed to create discovery workflow:', error);
+      const message = this.toErrorMessage(error);
+      console.error('❌ Failed to create discovery workflow:', message);
       return {
         success: false,
         workflowId: request.workflowId || 'failed',
         sessionId: request.sessionId,
         createdWorkItems: [],
         assignedAgents: [],
-        error: error.message,
+        error: message,
       };
     }
   }
@@ -443,7 +486,7 @@ export class DiscoveryOrchestrator {
         portalName: params.portalName,
         scanId: scanId,
         sequenceId: sequenceId,
-        realTimeNotifications: params.options?.realTimeNotifications || true,
+        realTimeNotifications: params.options?.realTimeNotifications ?? true,
         dependsOn: extractionWorkItem.id,
       },
       expectedOutputs: [
@@ -486,82 +529,102 @@ export class DiscoveryOrchestrator {
    */
   async executeNextWorkflowStep(
     workItemId: string,
-    result: any
+    result: WorkItemResultPayload
   ): Promise<void> {
     console.log(`🔄 Executing next workflow step for work item: ${workItemId}`);
 
     try {
       const workItem = await storage.getWorkItem(workItemId);
-      if (!workItem || !workItem.metadata?.sequenceId) {
-        console.warn('Work item not found or missing sequence metadata');
+      if (!workItem) {
+        console.warn('Work item not found when executing next workflow step');
         return;
       }
 
-      const sequences = this.activeWorkflows.get(workItem.workflowId);
+      const workflowId = workItem.workflowId ?? undefined;
+      if (!workflowId) {
+        console.warn('Work item is missing workflowId metadata');
+        return;
+      }
+
+      const metadata = this.parseWorkItemMetadata(workItem);
+      if (!metadata.sequenceId) {
+        console.warn('Work item metadata missing sequenceId');
+        return;
+      }
+
+      const sequences = this.activeWorkflows.get(workflowId);
       if (!sequences) {
-        console.warn(`No active workflow found for: ${workItem.workflowId}`);
+        console.warn(`No active workflow found for: ${workflowId}`);
         return;
       }
 
       const sequence = sequences.find(
-        s => s.sequenceId === workItem.metadata.sequenceId
+        s => s.sequenceId === metadata.sequenceId
       );
       if (!sequence) {
-        console.warn(`Sequence not found: ${workItem.metadata.sequenceId}`);
+        console.warn(`Sequence not found: ${metadata.sequenceId}`);
         return;
       }
 
       // Determine next work item based on completed step
       let nextWorkItem: WorkItem | null = null;
+      const scanId = sequence.scanId;
 
       if (workItem.taskType === 'portal_authentication') {
         nextWorkItem = sequence.workItems.scanning;
-        scanManager.updateStep(
-          sequence.scanId,
-          'authenticated',
-          25,
-          'Portal authentication completed'
-        );
+        if (scanId) {
+          scanManager.updateStep(
+            scanId,
+            'authenticated',
+            25,
+            'Portal authentication completed'
+          );
+        }
+        sequence.status = 'in_progress';
       } else if (workItem.taskType === 'portal_scanning') {
         nextWorkItem = sequence.workItems.extraction;
-        scanManager.updateStep(
-          sequence.scanId,
-          'extracting',
-          50,
-          'Portal scanning completed, extracting RFPs'
-        );
+        if (scanId) {
+          scanManager.updateStep(
+            scanId,
+            'extracting',
+            50,
+            'Portal scanning completed, extracting RFPs'
+          );
+        }
       } else if (workItem.taskType === 'rfp_extraction') {
         nextWorkItem = sequence.workItems.monitoring;
-        scanManager.updateStep(
-          sequence.scanId,
-          'parsing',
-          75,
-          'RFP extraction completed, starting monitoring'
-        );
+        if (scanId) {
+          scanManager.updateStep(
+            scanId,
+            'parsing',
+            75,
+            'RFP extraction completed, starting monitoring'
+          );
+        }
       } else if (workItem.taskType === 'portal_monitoring') {
         // Final step - complete the workflow
         sequence.status = 'completed';
-        scanManager.completeScan(sequence.scanId, true);
+        if (scanId) {
+          scanManager.completeScan(scanId, true);
+        }
         await this.completeWorkflowSequence(sequence, result);
         return;
       }
 
       if (nextWorkItem) {
-        // Assign next work item to an appropriate agent
-        const portalManager =
-          await agentRegistryService.getAgent('portal-manager');
-        if (portalManager) {
-          await workflowCoordinator.assignWorkItem(
-            nextWorkItem.id,
-            portalManager.agentId
-          );
-          console.log(
-            `📋 Assigned next work item ${nextWorkItem.id} to ${portalManager.agentId}`
+        const assignment = await workflowCoordinator.assignWorkItem(
+          nextWorkItem.id
+        );
+
+        if (!assignment.success) {
+          console.warn(
+            `Failed to assign work item ${nextWorkItem.id}: ${assignment.error}`
           );
         }
       }
     } catch (error) {
-      console.error('❌ Failed to execute next workflow step:', error);
+      const message = this.toErrorMessage(error);
+      console.error('❌ Failed to execute next workflow step:', message);
     }
   }
 
@@ -570,11 +633,15 @@ export class DiscoveryOrchestrator {
    */
   private async completeWorkflowSequence(
     sequence: WorkItemSequence,
-    finalResult: any
+    finalResult: WorkItemResultPayload
   ): Promise<void> {
     console.log(`✅ Completing workflow sequence: ${sequence.sequenceId}`);
 
     try {
+      const discoveredRFPs = Array.isArray(finalResult.discoveredRFPs)
+        ? (finalResult.discoveredRFPs as unknown[])
+        : [];
+
       // Update agent memory with workflow completion
       await agentMemoryService.storeMemory({
         agentId: 'discovery-orchestrator',
@@ -587,7 +654,7 @@ export class DiscoveryOrchestrator {
           portalName: sequence.portalName,
           completedAt: new Date(),
           finalResult,
-          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0,
+          rfpsDiscovered: discoveredRFPs.length,
         },
         importance: 7,
         tags: ['workflow_completion', 'portal_discovery'],
@@ -602,7 +669,7 @@ export class DiscoveryOrchestrator {
           portalId: sequence.portalId,
           portalName: sequence.portalName,
           workItems: Object.keys(sequence.workItems).length,
-          rfpsDiscovered: finalResult?.discoveredRFPs?.length || 0,
+          rfpsDiscovered: discoveredRFPs.length,
         },
       });
 
@@ -610,7 +677,7 @@ export class DiscoveryOrchestrator {
       await storage.createNotification({
         type: 'discovery',
         title: 'Portal Discovery Completed',
-        message: `Discovery workflow completed for ${sequence.portalName}. Found ${finalResult?.discoveredRFPs?.length || 0} RFPs.`,
+        message: `Discovery workflow completed for ${sequence.portalName}. Found ${discoveredRFPs.length} RFPs.`,
         relatedEntityType: 'portal',
         relatedEntityId: sequence.portalId,
       });
@@ -619,7 +686,8 @@ export class DiscoveryOrchestrator {
         `🎉 Workflow sequence ${sequence.sequenceId} completed successfully`
       );
     } catch (error) {
-      console.error('❌ Failed to complete workflow sequence:', error);
+      const message = this.toErrorMessage(error);
+      console.error('❌ Failed to complete workflow sequence:', message);
     }
   }
 
@@ -684,7 +752,8 @@ export class DiscoveryOrchestrator {
       console.log(`❌ Cancelled workflow: ${workflowId}`);
       return true;
     } catch (error) {
-      console.error('❌ Failed to cancel workflow:', error);
+      const message = this.toErrorMessage(error);
+      console.error('❌ Failed to cancel workflow:', message);
       return false;
     }
   }

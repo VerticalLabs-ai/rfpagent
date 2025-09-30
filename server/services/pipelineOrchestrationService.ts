@@ -73,7 +73,7 @@ export class PipelineOrchestrationService {
   private resourceAllocations: Map<string, ResourceAllocation> = new Map();
   private workloadBalancer: Map<string, WorkloadBalance> = new Map();
   private priorityQueue: Map<number, string[]> = new Map(); // priority level -> workflow IDs
-  private globalResourceConstraints: ResourceConstraints;
+  private globalResourceConstraints!: ResourceConstraints;
 
   constructor() {
     this.initializeGlobalResourceConstraints();
@@ -770,7 +770,7 @@ export class PipelineOrchestrationService {
           // Max 2 items per redistribution
           const targetAgent = underutilizedAgents.find(agent =>
             agent.capabilities.some(cap =>
-              item.metadata?.requiredCapabilities?.includes(cap)
+              (item.metadata as any)?.requiredCapabilities?.includes(cap)
             )
           );
 

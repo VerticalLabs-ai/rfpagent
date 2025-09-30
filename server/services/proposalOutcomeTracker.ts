@@ -266,8 +266,8 @@ export class ProposalOutcomeTracker {
             competitorInfo.totalBidders || 1
           ),
           priceVariance: this.calculatePriceVariance(
-            rfp.estimatedValue,
-            competitorInfo.winningAmount
+            rfp.estimatedValue ? parseFloat(rfp.estimatedValue) : 0,
+            competitorInfo.winningAmount || 0
           ),
           strategicImportance: this.assessStrategicImportance(rfp),
         },
@@ -358,7 +358,11 @@ export class ProposalOutcomeTracker {
       return analysis;
     } catch (error) {
       console.error('❌ Failed to get competitive insights:', error);
-      return { agency, hasData: false, error: error.message };
+      return {
+        agency,
+        hasData: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -529,13 +533,22 @@ export class ProposalOutcomeTracker {
 
   private async analyzeMarketConditions(rfpId: string): Promise<any> {
     const rfp = await storage.getRFP(rfpId);
+    if (!rfp) {
+      return {
+        agencyHistory: 0,
+        averageCompetition: 0,
+        marketTrends: [],
+        seasonality: 'unknown',
+      };
+    }
+
     const historicalBids = await storage.getHistoricalBidsByAgency(rfp.agency);
 
     return {
       agencyHistory: historicalBids.length,
       averageCompetition: this.calculateAverageCompetition(historicalBids),
       marketTrends: this.analyzeMarketTrends(historicalBids),
-      seasonality: this.analyzeSeasonality(rfp.deadline),
+      seasonality: this.analyzeSeasonality(rfp.deadline || new Date()),
     };
   }
 
@@ -628,15 +641,18 @@ export class ProposalOutcomeTracker {
   }
 
   private analyzePerformanceByAgency(outcomes: ProposalOutcome[]): any {
-    const agencyGroups = outcomes.reduce((groups, outcome) => {
-      // Get agency from RFP data (would need to fetch RFP)
-      const agency = 'unknown'; // Placeholder
-      if (!groups[agency]) groups[agency] = [];
-      groups[agency].push(outcome);
-      return groups;
-    }, {});
+    const agencyGroups = outcomes.reduce(
+      (groups: Record<string, ProposalOutcome[]>, outcome) => {
+        // Get agency from RFP data (would need to fetch RFP)
+        const agency = 'unknown'; // Placeholder
+        if (!groups[agency]) groups[agency] = [];
+        groups[agency].push(outcome);
+        return groups;
+      },
+      {}
+    );
 
-    const analysis = {};
+    const analysis: Record<string, any> = {};
     for (const [agency, agencyOutcomes] of Object.entries(agencyGroups)) {
       analysis[agency] = {
         totalProposals: (agencyOutcomes as ProposalOutcome[]).length,
@@ -662,7 +678,7 @@ export class ProposalOutcomeTracker {
     );
 
     // Calculate monthly win rates
-    const monthlyData = {};
+    const monthlyData: Record<string, { total: number; wins: number }> = {};
     for (const outcome of sortedOutcomes) {
       const month = outcome.timestamp.toISOString().substring(0, 7); // YYYY-MM
       if (!monthlyData[month]) monthlyData[month] = { total: 0, wins: 0 };
@@ -696,7 +712,7 @@ export class ProposalOutcomeTracker {
     // Analyze feedback patterns
     const feedbackPatterns = lostProposals
       .map(o => o.outcomeDetails.feedback || o.outcomeDetails.rejectionReason)
-      .filter(Boolean);
+      .filter((f): f is string => typeof f === 'string');
 
     if (feedbackPatterns.some(f => f.toLowerCase().includes('price'))) {
       areas.push('Pricing strategy may need adjustment');
@@ -764,7 +780,7 @@ export class ProposalOutcomeTracker {
 
   private calculateAgencyWinRate(competitionData: any[]): number {
     const ourWins = competitionData.filter(data =>
-      data.bidders.some(bidder => bidder.isUs && bidder.isWinner)
+      data.bidders.some((bidder: any) => bidder.isUs && bidder.isWinner)
     ).length;
 
     return competitionData.length > 0 ? ourWins / competitionData.length : 0;
@@ -809,7 +825,9 @@ export class ProposalOutcomeTracker {
 
   private identifyCommonCompetitors(competitionData: any[]): string[] {
     const competitors = competitionData
-      .flatMap(data => data.bidders.filter(b => !b.isUs).map(b => b.name))
+      .flatMap(data =>
+        data.bidders.filter((b: any) => !b.isUs).map((b: any) => b.name)
+      )
       .filter(Boolean);
 
     const counts = competitors.reduce((acc, competitor) => {
@@ -936,7 +954,10 @@ export class ProposalOutcomeTracker {
         confidence: 0.7,
       });
 
-      if (outcome.outcomeDetails.evaluationCriteria?.price < 70) {
+      if (
+        outcome.outcomeDetails.evaluationCriteria?.price &&
+        outcome.outcomeDetails.evaluationCriteria.price < 70
+      ) {
         adaptations.push({
           type: 'pricing_adjustment',
           area: 'pricing_strategy',

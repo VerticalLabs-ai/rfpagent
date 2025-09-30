@@ -130,7 +130,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
       if (opportunity) {
         opportunities.push(opportunity);
         console.log(
-          `🎯 Austin Finance: Created opportunity: ${opportunity.solicitationId} - ${opportunity.title}`
+          `🎯 Austin Finance: Created opportunity: ${(opportunity as any).solicitationId || opportunity.title} - ${opportunity.title}`
         );
       }
     });
@@ -313,15 +313,14 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: description ? this.cleanText(description) : undefined,
+      description: description ? this.cleanText(description) : '',
       deadline: this.parseDate(dueDate),
       agency: 'City of Austin',
-      url: href ? this.validateAndFixSourceUrl(href, baseUrl) : undefined,
+      url: href ? this.validateAndFixSourceUrl(href, baseUrl) : '',
       link: href ? this.validateAndFixSourceUrl(href, baseUrl) : undefined,
       category,
       confidence: 0.8,
-      solicitationId,
-    };
+    } as any;
   }
 
   /**

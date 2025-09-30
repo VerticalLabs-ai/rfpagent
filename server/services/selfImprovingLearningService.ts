@@ -241,11 +241,9 @@ export class SelfImprovingLearningService {
     try {
       // Get the RFP and proposal details
       const rfp = await storage.getRFP(outcome.rfpId);
-      const proposals = await storage.getProposalsByRFP(outcome.rfpId);
+      const proposal = await storage.getProposalByRFP(outcome.rfpId);
 
-      if (!rfp || proposals.length === 0) return;
-
-      const proposal = proposals[0]; // Most recent proposal
+      if (!rfp || !proposal) return;
 
       // Extract strategy patterns
       const strategy = this.extractProposalStrategy(rfp, proposal, outcome);
@@ -1494,7 +1492,7 @@ export class SelfImprovingLearningService {
       objects.every(obj => obj.hasOwnProperty(key))
     );
 
-    const common = {};
+    const common: Record<string, any> = {};
     for (const key of commonKeys) {
       const values = objects.map(obj => obj[key]);
       const uniqueValues = [...new Set(values)];

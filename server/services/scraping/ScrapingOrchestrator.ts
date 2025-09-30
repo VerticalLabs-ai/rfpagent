@@ -6,10 +6,12 @@ import {
   ScrapingError,
 } from './types';
 import { ContentProcessingManager } from './extraction/ContentProcessingManager';
+import { stagehandExtractTool } from '../../../src/mastra/tools';
 import {
-  stagehandExtractTool,
-  stagehandAuthTool,
-} from '../../../src/mastra/tools';
+  executeStagehandTool,
+  StagehandExtractionResultSchema,
+  StagehandOpportunitySchema,
+} from './utils/stagehand';
 import { z } from 'zod';
 
 /**
@@ -268,9 +270,20 @@ export class ScrapingOrchestrator {
         id: 'temp',
         name: context.portalType,
         url: context.url,
+        type: context.portalType,
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: context.loginRequired || false,
+        username: context.credentials?.username || null,
+        password: context.credentials?.password || null,
         status: 'active' as const,
+        scanFrequency: 24,
+        maxRfpsPerScan: 50,
+        selectors: null,
+        filters: null,
         lastScanned: null,
+        lastError: null,
+        errorCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -392,41 +405,48 @@ export class ScrapingOrchestrator {
     );
 
     // Extract content using Stagehand directly
-    const extractionResult = await stagehandExtractTool.execute({
-      context: {
+    const extractionResult = await executeStagehandTool(
+      stagehandExtractTool,
+      {
         instruction,
         sessionId,
         schema: {
-          opportunities: z.array(
-            z.object({
-              title: z.string().describe('RFP title or opportunity name'),
-              description: z
-                .string()
-                .optional()
-                .describe('Description or summary'),
-              agency: z.string().optional().describe('Issuing agency'),
-              deadline: z.string().optional().describe('Submission deadline'),
-              estimatedValue: z.string().optional().describe('Contract value'),
-              url: z.string().optional().describe('Direct URL to opportunity'),
-              link: z.string().optional().describe('Link to opportunity'),
-              category: z.string().optional().describe('Category or type'),
-              confidence: z.number().min(0).max(1).default(0.5),
-            })
-          ),
+          opportunities: z.array(StagehandOpportunitySchema),
         },
       },
-    });
+      StagehandExtractionResultSchema
+    );
 
-    if (!extractionResult.success) {
+    if (extractionResult.error) {
       throw new ScrapingError(
-        `Content extraction failed: ${extractionResult.message || 'Unknown error'}`,
+        `Content extraction failed: ${extractionResult.error || extractionResult.message || 'Unknown error'}`,
         'EXTRACTION_ERROR',
         context.portalType,
         sessionId
       );
     }
 
-    const opportunities = extractionResult.data?.opportunities || [];
+    const rawOpportunities =
+      extractionResult.opportunities ??
+      extractionResult.data?.opportunities ??
+      [];
+
+    const opportunities: RFPOpportunity[] = rawOpportunities.map(raw => {
+      const parsed = StagehandOpportunitySchema.parse(raw);
+      return {
+        title: parsed.title ?? 'Untitled opportunity',
+        description:
+          parsed.description ??
+          'Description not provided by automated extraction.',
+        agency: parsed.agency ?? undefined,
+        deadline: parsed.deadline ?? undefined,
+        estimatedValue: parsed.estimatedValue ?? undefined,
+        url: parsed.url ?? parsed.link ?? undefined,
+        link: parsed.link ?? parsed.url ?? undefined,
+        category: parsed.category ?? undefined,
+        confidence: parsed.confidence ?? undefined,
+      };
+    });
     console.log(
       `📄 Fallback extraction yielded ${opportunities.length} opportunities`
     );
@@ -448,10 +468,13 @@ export class ScrapingOrchestrator {
     // Use content validation tool
     const validationTool = toolFactory.createContentValidationTool();
     const validationResult = await validationTool.execute({
-      content: opportunities,
-      portalType: context.portalType,
-      minOpportunities: 1,
-    });
+      context: {
+        content: opportunities,
+        portalType: context.portalType,
+        minOpportunities: 1,
+      },
+      runtimeContext: {} as any,
+    } as any);
 
     if (!validationResult.isValid) {
       console.warn(`⚠️ Content validation issues:`, validationResult.issues);

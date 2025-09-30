@@ -471,10 +471,10 @@ export class JSONContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: description ? this.cleanText(description) : undefined,
+      description: description ? this.cleanText(description) : '',
       agency: agency ? this.cleanText(agency) : undefined,
-      deadline: this.parseDate(deadline),
-      url: this.validateAndFixSourceUrl(opportunityUrl, url),
+      deadline: this.parseDate(deadline || ''),
+      url: this.validateAndFixSourceUrl(opportunityUrl, url) || '',
       link: this.validateAndFixSourceUrl(opportunityUrl, url),
       category: category
         ? this.cleanText(category)
@@ -504,14 +504,12 @@ export class JSONContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: obj.description
-        ? this.cleanText(obj.description)
-        : undefined,
+      description: obj.description ? this.cleanText(obj.description) : '',
       agency: obj.organization
         ? this.cleanText(obj.organization.name || obj.organization)
         : undefined,
-      deadline: this.parseDate(obj.endDate || obj.deadline),
-      url: this.validateAndFixSourceUrl(obj.url, url),
+      deadline: this.parseDate(obj.endDate || obj.deadline || ''),
+      url: this.validateAndFixSourceUrl(obj.url, url) || '',
       link: this.validateAndFixSourceUrl(obj.url, url),
       category: obj.category ? this.cleanText(obj.category) : undefined,
       confidence: 0.8, // JSON-LD is highly structured

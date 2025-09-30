@@ -105,19 +105,15 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       if (title && (link || solicitationNumber)) {
         opportunities.push({
           title: this.cleanText(title),
-          description: description ? this.cleanText(description) : undefined,
+          description: description ? this.cleanText(description) : '',
           agency: agency ? this.cleanText(agency) : undefined,
           deadline: this.parseDate(deadline),
-          url: link,
+          url: link || '',
           link: link,
           category: this.inferCategoryFromSAM(title, solicitationNumber),
           estimatedValue: this.extractEstimatedValue($row),
           confidence: 0.8,
-          // SAM.gov specific fields
-          solicitationNumber,
-          setAside,
-          naicsCode,
-        });
+        } as any);
         console.log(`✅ SAM.gov search result found: ${title}`);
       }
     });
@@ -157,16 +153,14 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       if (title) {
         opportunities.push({
           title: this.cleanText(title),
-          description: description ? this.cleanText(description) : undefined,
+          description: description ? this.cleanText(description) : '',
           agency: agency ? this.cleanText(agency) : undefined,
           deadline: this.parseDate(deadline),
-          url: baseUrl,
+          url: baseUrl || '',
           link: baseUrl,
           category: this.inferCategoryFromSAM(title, solicitationNumber),
           confidence: 0.9,
-          solicitationNumber,
-          pointOfContact,
-        });
+        } as any);
         console.log(`✅ SAM.gov detail page found: ${title}`);
       }
     }

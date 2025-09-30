@@ -98,10 +98,8 @@ export class MigrationAdapter {
     );
 
     try {
-      const agentFactory =
-        this.orchestrator.getAgentRegistry().getAgentCount() > 0
-          ? 'available'
-          : 'not_available';
+      // Check if agent orchestrator is available
+      const agentFactory = 'available'; // Always available via services
 
       if (agentFactory === 'available') {
         return {

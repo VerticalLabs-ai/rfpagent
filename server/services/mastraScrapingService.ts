@@ -19,6 +19,12 @@ import {
 } from '../../src/mastra/tools';
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 import { performBrowserAuthentication } from './stagehandTools'; // Add missing import
+import {
+  executeStagehandTool,
+  StagehandActionResultSchema,
+  StagehandAuthResultSchema,
+  StagehandExtractionResultSchema,
+} from './scraping/utils/stagehand';
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -83,16 +89,18 @@ export class MastraScrapingService {
       if (loginRequired && credentials?.username && credentials?.password) {
         console.log(`🔐 Authentication required for portal: ${portalType}`);
 
-        const authResult = await stagehandAuthTool.execute({
-          context: {
-            loginUrl: url,
-            username: credentials.username,
-            password: credentials.password,
-            targetUrl: url,
-            sessionId,
-            portalType,
+        const authResult = await executeStagehandTool(
+          stagehandAuthTool,
+          {
+            loginUrl: String(url),
+            username: String(credentials.username),
+            password: String(credentials.password),
+            targetUrl: String(url),
+            sessionId: String(sessionId),
+            portalType: typeof portalType === 'string' ? portalType : 'generic',
           },
-        });
+          StagehandAuthResultSchema
+        );
 
         if (!authResult.success) {
           throw new Error(
@@ -104,12 +112,13 @@ export class MastraScrapingService {
       }
 
       // Extract RFP opportunities using Browserbase
-      const extractionResult = await stagehandExtractTool.execute({
-        context: {
+      const extractionResult = await executeStagehandTool(
+        stagehandExtractTool,
+        {
           instruction: searchFilter
             ? `find and extract RFP opportunities related to "${searchFilter}" including titles, deadlines, agencies, descriptions, and links`
             : 'extract all RFP opportunities, procurement notices, and solicitations with their complete details',
-          sessionId,
+          sessionId: String(sessionId),
           schema: {
             opportunities: z
               .array(
@@ -141,9 +150,13 @@ export class MastraScrapingService {
               .describe('Array of extracted RFP opportunities'),
           },
         },
-      });
+        StagehandExtractionResultSchema
+      );
 
-      const opportunities = extractionResult.data?.opportunities || [];
+      const opportunities =
+        extractionResult.opportunities ??
+        extractionResult.data?.opportunities ??
+        [];
       console.log(
         `🎯 Extracted ${opportunities.length} opportunities from ${url}`
       );
@@ -185,22 +198,24 @@ export class MastraScrapingService {
         } portal`
       );
 
-      const authResult = await stagehandAuthTool.execute({
-        context: {
-          loginUrl: portalUrl,
-          username,
-          password,
-          targetUrl: portalUrl,
-          sessionId,
-          portalType,
+      const authResult = await executeStagehandTool(
+        stagehandAuthTool,
+        {
+          loginUrl: String(portalUrl),
+          username: String(username),
+          password: String(password),
+          targetUrl: String(portalUrl),
+          sessionId: String(sessionId ?? 'default'),
+          portalType: typeof portalType === 'string' ? portalType : 'generic',
         },
-      });
+        StagehandAuthResultSchema
+      );
 
       if (authResult.success) {
         console.log(`✅ Browserbase authentication successful`);
         return {
           success: true,
-          sessionId,
+          sessionId: authResult.sessionId ?? String(sessionId ?? 'default'),
           message: 'Portal authentication completed successfully',
           authenticatedAt: new Date().toISOString(),
         };
@@ -225,31 +240,36 @@ export class MastraScrapingService {
       console.log(`🌐 Scraping content from ${url} using Browserbase`);
 
       // Navigate to the page using official Browserbase tools
-      await stagehandActTool.execute({
-        context: {
-          url,
+      await executeStagehandTool(
+        stagehandActTool,
+        {
+          url: String(url),
           action:
             'navigate to the page and wait for all content including JavaScript to load completely',
-          sessionId,
+          sessionId: String(sessionId),
         },
-      });
+        StagehandActionResultSchema
+      );
 
       // Wait for dynamic content to load
-      await stagehandActTool.execute({
-        context: {
+      await executeStagehandTool(
+        stagehandActTool,
+        {
           action:
             'wait for any dynamic content, tables, or RFP listings to finish loading',
-          sessionId,
+          sessionId: String(sessionId),
         },
-      });
+        StagehandActionResultSchema
+      );
 
       // Extract the page content using Browserbase with intelligent RFP detection
-      const extractionResult = await stagehandExtractTool.execute({
-        context: {
+      const extractionResult = await executeStagehandTool(
+        stagehandExtractTool,
+        {
           instruction:
             instruction ||
             'extract all page content including RFP listings, procurement opportunities, and solicitation notices with their titles, deadlines, agencies, and descriptions',
-          sessionId,
+          sessionId: String(sessionId),
           schema: {
             fullContent: z.string().describe('Complete page HTML content'),
             pageTitle: z.string().describe('Page title'),
@@ -287,20 +307,29 @@ export class MastraScrapingService {
               .describe('Extracted RFP opportunities if found on page'),
           },
         },
-      });
+        StagehandExtractionResultSchema
+      );
 
-      const { data } = extractionResult;
+      const extractedData =
+        extractionResult.data ??
+        ({
+          opportunities: extractionResult.opportunities ?? [],
+          pageTitle: extractionResult.pageTitle,
+          fullContent: undefined,
+        } as z.infer<typeof StagehandExtractionResultSchema>['data']);
+      const opportunities = extractedData?.opportunities ?? [];
+
       console.log(
         `✅ Successfully extracted content using Browserbase - Found ${
-          data.opportunities?.length || 0
+          opportunities.length
         } opportunities`
       );
 
       // Return the full content for further processing, but also log the structured data
-      if (data.opportunities && data.opportunities.length > 0) {
+      if (opportunities.length > 0) {
         console.log(
           `🎯 Structured opportunities extracted:`,
-          data.opportunities.map(opp => ({
+          opportunities.map(opp => ({
             title: opp.title,
             deadline: opp.deadline,
             agency: opp.agency,
@@ -308,7 +337,13 @@ export class MastraScrapingService {
         );
       }
 
-      return data.fullContent || JSON.stringify(data);
+      return (
+        extractedData?.fullContent ||
+        JSON.stringify({
+          ...extractedData,
+          opportunities,
+        })
+      );
     } catch (error) {
       console.error(
         `❌ Browserbase scraping failed for ${url}:`,
@@ -564,12 +599,21 @@ export class MastraScrapingService {
 
   async scrapeAllPortals(): Promise<void> {
     try {
-      const portals = await storage.getAllPortals();
+      const publicPortals = await storage.getAllPortals();
 
       // Process portals in parallel with controlled concurrency
-      const activePortals = portals.filter(
+      const activePublicPortals = publicPortals.filter(
         portal => portal.status === 'active'
       );
+
+      // Fetch portals with credentials
+      const portalsWithCredentials = await Promise.all(
+        activePublicPortals.map(p => storage.getPortalWithCredentials(p.id))
+      );
+      const activePortals = portalsWithCredentials.filter(
+        (p): p is Portal => p !== undefined
+      );
+
       const results = await Promise.allSettled(
         activePortals.map(portal => this.scrapePortal(portal))
       );
@@ -634,12 +678,12 @@ export class MastraScrapingService {
           // Use Austin Finance document scraper (already imported)
           const austinResult =
             await austinFinanceDocumentScraper.scrapeRFPDocuments(
-              existingRfpId,
+              existingRfpId || '',
               url
             );
 
-          if (austinResult && austinResult.documents) {
-            documentsCount = austinResult.documents.length;
+          if (austinResult && Array.isArray(austinResult)) {
+            documentsCount = austinResult.length;
             console.log(
               `✅ Austin Finance scraper captured ${documentsCount} documents`
             );
@@ -731,6 +775,10 @@ export class MastraScrapingService {
 
         // Update the existing RFP with fresh data - preserve original title/agency if new data is generic
         const existingRfp = await storage.getRFP(existingRfpId);
+        if (!existingRfp) {
+          throw new Error(`RFP ${existingRfpId} not found`);
+        }
+
         const shouldPreserveTitle =
           !opportunity.title ||
           opportunity.title === 'Re-scraped RFP' ||

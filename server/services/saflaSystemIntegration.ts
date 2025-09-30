@@ -164,6 +164,7 @@ export class SAFLASystemIntegration {
           const demoRfp = await storage.createRFP({
             title: 'Demo RFP for Learning System',
             agency: 'Demo Agency',
+            sourceUrl: 'https://demo.example.com',
             description: 'Demonstration RFP for SAFLA learning system',
             status: 'active',
           });

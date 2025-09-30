@@ -62,6 +62,25 @@ export class ObjectStorageService {
     return paths;
   }
 
+  async uploadPrivateObject({
+    objectPath,
+    data,
+    contentType,
+  }: {
+    objectPath: string;
+    data: Buffer | Uint8Array;
+    contentType?: string;
+  }): Promise<void> {
+    const { bucketName, objectName } = parseObjectPath(objectPath);
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(objectName);
+    await file.save(data, {
+      contentType,
+      resumable: false,
+      validation: false,
+    });
+  }
+
   // Gets the private object directory.
   getPrivateObjectDir(): string {
     const dir = process.env.PRIVATE_OBJECT_DIR || '';

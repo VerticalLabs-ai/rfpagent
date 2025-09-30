@@ -286,7 +286,7 @@ export class FederalRfpSearchService {
         location: criteria.location || 'Various Locations',
         confidence: 0.9,
       }))
-      .filter(result => result.estimatedValue > 0);
+      .filter((result: any) => result.estimatedValue > 0);
   }
 
   private parseSAMResults(

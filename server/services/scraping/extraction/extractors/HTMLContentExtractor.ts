@@ -124,7 +124,7 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     $('table').each((_, table) => {
       const $table = $(table);
-      const headers = this.extractTableHeaders($table);
+      const headers = this.extractTableHeaders($table, $);
 
       $table.find('tbody tr, tr').each((index, row) => {
         if (index === 0 && headers.length > 0) return; // Skip header row
@@ -136,7 +136,8 @@ export class HTMLContentExtractor extends BaseContentExtractor {
           const opportunity = this.extractOpportunityFromTableRow(
             $row,
             headers,
-            baseUrl
+            baseUrl,
+            $
           );
           if (opportunity) {
             opportunities.push(opportunity);
@@ -278,7 +279,8 @@ export class HTMLContentExtractor extends BaseContentExtractor {
    * Extract table headers for better column mapping
    */
   private extractTableHeaders(
-    $table: cheerio.Cheerio<cheerio.Element>
+    $table: cheerio.Cheerio<cheerio.Element>,
+    $: cheerio.CheerioAPI
   ): string[] {
     const headers: string[] = [];
 
@@ -298,7 +300,8 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   private extractOpportunityFromTableRow(
     $row: cheerio.Cheerio<cheerio.Element>,
     headers: string[],
-    baseUrl: string
+    baseUrl: string,
+    $: cheerio.CheerioAPI
   ): RFPOpportunity | null {
     const cells = $row.find('td, th');
     const rowText = this.cleanText($row.text());
@@ -378,10 +381,10 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title,
-      description: description || undefined,
+      description: description || '',
       agency: agency || undefined,
       deadline: this.parseDate(deadline),
-      url: this.validateAndFixSourceUrl(link, baseUrl),
+      url: this.validateAndFixSourceUrl(link, baseUrl) || '',
       link: this.validateAndFixSourceUrl(link, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
       confidence: 0.5,
@@ -438,10 +441,10 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: description ? this.cleanText(description) : undefined,
+      description: description ? this.cleanText(description) : '',
       agency: agency || undefined,
       deadline: this.parseDate(deadline),
-      url: this.validateAndFixSourceUrl(link, baseUrl),
+      url: this.validateAndFixSourceUrl(link, baseUrl) || '',
       link: this.validateAndFixSourceUrl(link, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
       confidence: source === 'semantic' ? 0.7 : source === 'class' ? 0.6 : 0.5,
@@ -473,8 +476,8 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title,
-      description: description !== title ? description : undefined,
-      url: this.validateAndFixSourceUrl(href, baseUrl),
+      description: description !== title ? description : '',
+      url: this.validateAndFixSourceUrl(href, baseUrl) || '',
       link: this.validateAndFixSourceUrl(href, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
       confidence: 0.4,

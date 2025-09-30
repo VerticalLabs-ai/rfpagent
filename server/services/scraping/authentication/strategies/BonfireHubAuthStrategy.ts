@@ -3,6 +3,10 @@ import { AuthContext, AuthResult } from '../../types';
 import { stagehandAuthTool } from '../../../../../src/mastra/tools';
 import { request } from 'undici';
 import * as cheerio from 'cheerio';
+import {
+  executeStagehandTool,
+  StagehandAuthResultSchema,
+} from '../../utils/stagehand';
 
 /**
  * Bonfire Hub authentication strategy
@@ -57,37 +61,48 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
    * Try Stagehand authentication tool
    */
   private async tryStagehandAuth(context: AuthContext): Promise<AuthResult> {
+    const sessionId = String(context.sessionId ?? `stagehand-${Date.now()}`);
     try {
-      const authResult = await stagehandAuthTool.execute({
-        context: {
+      if (!context.username || !context.password) {
+        return {
+          success: false,
+          sessionId,
+          error: 'Missing credentials for Stagehand authentication',
+        };
+      }
+
+      const authResult = await executeStagehandTool(
+        stagehandAuthTool,
+        {
           loginUrl: context.portalUrl,
           username: context.username,
           password: context.password,
           targetUrl: context.portalUrl,
-          sessionId: context.sessionId,
+          sessionId,
           portalType: this.portalType,
         },
-      });
+        StagehandAuthResultSchema
+      );
 
       if (authResult.success) {
         console.log(`✅ Stagehand authentication successful for Bonfire Hub`);
         return {
           success: true,
-          sessionId: context.sessionId,
+          sessionId,
           cookies: authResult.cookies,
           authToken: authResult.authToken,
         };
       } else {
         return {
           success: false,
-          sessionId: context.sessionId,
+          sessionId,
           error: authResult.message || 'Stagehand authentication failed',
         };
       }
     } catch (error) {
       return {
         success: false,
-        sessionId: context.sessionId,
+        sessionId,
         error:
           error instanceof Error
             ? error.message
@@ -196,8 +211,12 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           `🔄 Step 4: Following redirects to complete authentication`
         );
 
-        const location = loginSubmitResponse.headers.location;
-        if (!location) {
+        const locationHeader = Array.isArray(
+          loginSubmitResponse.headers.location
+        )
+          ? loginSubmitResponse.headers.location[0]
+          : loginSubmitResponse.headers.location;
+        if (!locationHeader) {
           throw new Error('No location header in redirect response');
         }
 
@@ -208,7 +227,10 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           loginCookies
         );
 
-        const finalResponse = await this.getWithRedirects(location, allCookies);
+        const finalResponse = await this.getWithRedirects(
+          locationHeader,
+          allCookies
+        );
 
         // Check if we're authenticated (should be on vendor.bonfirehub.com)
         if (
@@ -328,17 +350,19 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
 
       // Check for redirect
       if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
-        const location = response.headers.location;
-        if (!location) {
+        const locationHeader = Array.isArray(response.headers.location)
+          ? response.headers.location[0]
+          : response.headers.location;
+        if (!locationHeader) {
           throw new Error(
             `Redirect response without location header: ${response.statusCode}`
           );
         }
 
         // Handle relative URLs
-        currentUrl = location.startsWith('http')
-          ? location
-          : new URL(location, currentUrl).toString();
+        currentUrl = locationHeader.startsWith('http')
+          ? locationHeader
+          : new URL(locationHeader, currentUrl).toString();
         redirectCount++;
       } else {
         // No more redirects

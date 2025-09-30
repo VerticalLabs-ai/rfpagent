@@ -279,7 +279,8 @@ export class ProposalQualityEvaluator {
 
       // Record learning outcome
       if (this.learningEnabled) {
-        await this.recordEvaluationLearning(evaluation, features);
+        // TODO: Implement recordEvaluationLearning method
+        // await this.recordEvaluationLearning(evaluation, features);
       }
 
       console.log(
@@ -832,11 +833,11 @@ export class ProposalQualityEvaluator {
     componentScores: any,
     features: any
   ): QualityFeedback {
-    const strengths = [];
-    const weaknesses = [];
-    const criticalIssues = [];
-    const quickWins = [];
-    const strategicRecommendations = [];
+    const strengths: string[] = [];
+    const weaknesses: string[] = [];
+    const criticalIssues: string[] = [];
+    const quickWins: string[] = [];
+    const strategicRecommendations: string[] = [];
 
     // Analyze each component
     for (const [component, score] of Object.entries(componentScores)) {
@@ -1100,7 +1101,7 @@ export class ProposalQualityEvaluator {
   private extractNarrativeQuality(proposal: any): any {
     const narratives = proposal.narratives || [];
     const totalLength = narratives.reduce(
-      (sum, n) => sum + (n?.length || 0),
+      (sum: number, n: any) => sum + (n?.length || 0),
       0
     );
 
@@ -1333,7 +1334,7 @@ export class ProposalQualityEvaluator {
     score: number
   ): Promise<number> {
     // Get benchmark score for component
-    const benchmarks = {
+    const benchmarks: Record<string, number> = {
       content: 70,
       compliance: 75,
       technical: 68,
@@ -1468,13 +1469,13 @@ export class ProposalQualityEvaluator {
 
     return sentences
       .filter(
-        sentence =>
+        (sentence: any) =>
           sentence.toLowerCase().includes('must') ||
           sentence.toLowerCase().includes('shall') ||
           sentence.toLowerCase().includes('required')
       )
-      .map(sentence => sentence.trim())
-      .filter(sentence => sentence.length > 10);
+      .map((sentence: any) => sentence.trim())
+      .filter((sentence: any) => sentence.length > 10);
   }
 
   private assessRequirementsCoverageRate(
@@ -1695,7 +1696,7 @@ export class ProposalQualityEvaluator {
     // Extract price from pricing tables or content
     const pricingTables = proposal.pricingTables || [];
     if (pricingTables.length > 0) {
-      const totalPrice = pricingTables.reduce((sum, table) => {
+      const totalPrice = pricingTables.reduce((sum: number, table: any) => {
         return sum + (table.total || 0);
       }, 0);
       return totalPrice;

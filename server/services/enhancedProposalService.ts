@@ -187,7 +187,9 @@ export class EnhancedProposalService {
 
         const portal = await storage.getPortal(rfp.portalId);
         if (!portal) {
-          throw new Error(`Portal not found for auto submission: ${rfp.portalId}`);
+          throw new Error(
+            `Portal not found for auto submission: ${rfp.portalId}`
+          );
         }
 
         const deadlineIso = rfp.deadline
@@ -583,7 +585,7 @@ export class EnhancedProposalService {
         };
         proposalContent = await this.aiProposalService.generateProposalContent(
           aiAnalysis,
-          defaultMapping,
+          defaultMapping as any,
           rfpText
         );
       }

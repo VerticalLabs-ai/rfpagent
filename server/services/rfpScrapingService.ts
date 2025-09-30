@@ -286,7 +286,7 @@ export class RFPScrapingService {
             try {
               const documentPath = await this.downloadRFPDocument(
                 rfpId,
-                doc.url,
+                doc.url || '',
                 doc.name,
                 doc.type || 'pdf'
               );

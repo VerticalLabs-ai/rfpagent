@@ -9,7 +9,7 @@ import { AuthContext, AuthResult, AuthenticationError } from '../types';
  */
 export class AuthenticationManager {
   private strategies: Map<string, AuthenticationStrategy> = new Map();
-  private fallbackStrategy: AuthenticationStrategy;
+  private fallbackStrategy!: AuthenticationStrategy;
 
   constructor() {
     this.initializeStrategies();
