@@ -1526,34 +1526,15 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             html = sessionResult.html || '';
           }
         } else {
-          // Fall back to HTTP only for non-authenticated portals
-          const response = await request(url, {
-            method: 'GET',
-            headers: {
-              'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-              Accept:
-                'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-              'Accept-Language': 'en-US,en;q=0.5',
-              'Accept-Encoding': 'gzip, deflate',
-              Connection: 'keep-alive',
-              'Upgrade-Insecure-Requests': '1',
-              ...(sessionData?.cookies ? { Cookie: sessionData.cookies } : {}),
-              ...(sessionData?.headers ? sessionData.headers : {}),
-            },
-            bodyTimeout: 30000,
-            headersTimeout: 10000,
-          });
-
-          console.log(`📡 HTTP Response: ${response.statusCode} from ${url}`);
-
-          if (response.statusCode >= 400) {
-            throw new Error(
-              `HTTP ${response.statusCode}: Failed to fetch ${url}`
-            );
-          }
-
-          html = await response.body.text();
+          // Use Browserbase for reliable portal scraping
+          // HTTP with undici can hang indefinitely on response.body.text() for certain portals
+          console.log(`🌐 Using Browserbase for reliable portal scraping`);
+          const sessionId = `scrape-${Date.now()}`;
+          html = await this.scrapeBrowserbaseContent(
+            url,
+            sessionId,
+            'extract all page content including RFP details, documents, and links'
+          );
         }
 
         console.log(`📄 Fetched ${html.length} characters of HTML content`);
