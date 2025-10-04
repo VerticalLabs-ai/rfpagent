@@ -1,28 +1,28 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { createStep, createWorkflow } from "@mastra/core/workflows"
-import { randomUUID } from "crypto"
-import * as fs from "fs"
-import * as path from "path"
-import { z } from "zod"
-import { ObjectStorageService } from "../../../server/objectStorage"
-import { downloadFile } from "../../../server/services/fileDownloadService"
-import { performWebExtraction } from "../../../server/services/stagehandTools"
-import { storage } from "../../../server/storage"
+import { openai } from '@ai-sdk/openai';
+import { Agent } from '@mastra/core/agent';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
+import { z } from 'zod';
+import { ObjectStorageService } from '../../../server/objectStorage';
+import { downloadFile } from '../../../server/services/fileDownloadService';
+import { performWebExtraction } from '../../../server/services/stagehandTools';
+import { storage } from '../../../server/storage';
 
 // Document extraction schema
 const documentSchema = z.object({
-  title: z.string().describe("Document title"),
-  url: z.string().describe("Download URL"),
-  type: z.string().optional().describe("Document type (PDF, DOC, etc)"),
-  size: z.string().optional().describe("File size"),
-  description: z.string().optional().describe("Document description"),
-})
+  title: z.string().describe('Document title'),
+  url: z.string().describe('Download URL'),
+  type: z.string().optional().describe('Document type (PDF, DOC, etc)'),
+  size: z.string().optional().describe('File size'),
+  description: z.string().optional().describe('Document description'),
+});
 
 // Step 1: Extract document links from RFP page
 const extractDocumentLinksStep = createStep({
-  id: "extract-document-links",
-  description: "Extract all downloadable document links from RFP page",
+  id: 'extract-document-links',
+  description: 'Extract all downloadable document links from RFP page',
   inputSchema: z.object({
     rfpId: z.string(),
     rfpUrl: z.string(),
@@ -36,9 +36,9 @@ const extractDocumentLinksStep = createStep({
     extractedCount: z.number(),
   }),
   execute: async ({ inputData }) => {
-    console.log(`📄 Extracting document links from ${inputData.rfpUrl}`)
+    console.log(`📄 Extracting document links from ${inputData.rfpUrl}`);
 
-    const sessionId = `doc-extract-${inputData.rfpId}`
+    const sessionId = `doc-extract-${inputData.rfpId}`;
 
     try {
       const extractionResult = await performWebExtraction(
@@ -53,10 +53,10 @@ const extractDocumentLinksStep = createStep({
           documents: z.array(documentSchema),
         }),
         sessionId
-      )
+      );
 
-      const documents = extractionResult.data?.documents || []
-      console.log(`✅ Found ${documents.length} documents to download`)
+      const documents = extractionResult.data?.documents || [];
+      console.log(`✅ Found ${documents.length} documents to download`);
 
       return {
         rfpId: inputData.rfpId,
@@ -64,24 +64,24 @@ const extractDocumentLinksStep = createStep({
         portalType: inputData.portalType,
         documents,
         extractedCount: documents.length,
-      }
+      };
     } catch (error) {
-      console.error("❌ Document extraction failed:", error)
+      console.error('❌ Document extraction failed:', error);
       return {
         rfpId: inputData.rfpId,
         rfpUrl: inputData.rfpUrl,
         portalType: inputData.portalType,
         documents: [],
         extractedCount: 0,
-      }
+      };
     }
   },
-})
+});
 
 // Step 2: Download documents in parallel
 const downloadDocumentsStep = createStep({
-  id: "download-documents",
-  description: "Download all documents to temporary storage",
+  id: 'download-documents',
+  description: 'Download all documents to temporary storage',
   inputSchema: z.object({
     rfpId: z.string(),
     documents: z.array(documentSchema),
@@ -104,68 +104,68 @@ const downloadDocumentsStep = createStep({
     ),
   }),
   execute: async ({ inputData }) => {
-    const { rfpId, documents } = inputData
-    const tempDir = path.join(process.cwd(), "temp", "downloads", rfpId)
+    const { rfpId, documents } = inputData;
+    const tempDir = path.join(process.cwd(), 'temp', 'downloads', rfpId);
 
     // Ensure temp directory exists
     if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true })
+      fs.mkdirSync(tempDir, { recursive: true });
     }
 
     const downloadedFiles: Array<{
-      originalUrl: string
-      localPath: string
-      fileName: string
-      size: number
-    }> = []
+      originalUrl: string;
+      localPath: string;
+      fileName: string;
+      size: number;
+    }> = [];
     const failedDownloads: Array<{
-      url: string
-      error: string
-    }> = []
+      url: string;
+      error: string;
+    }> = [];
 
     // Download files in parallel with limit
-    const downloadPromises = documents.map(async (doc) => {
+    const downloadPromises = documents.map(async doc => {
       try {
         const fileName =
           path.basename(new URL(doc.url).pathname) ||
-          `document-${randomUUID()}.pdf`
-        const localPath = path.join(tempDir, fileName)
+          `document-${randomUUID()}.pdf`;
+        const localPath = path.join(tempDir, fileName);
 
-        await downloadFile(doc.url, localPath)
+        await downloadFile(doc.url, localPath);
 
-        const stats = fs.statSync(localPath)
+        const stats = fs.statSync(localPath);
         downloadedFiles.push({
           originalUrl: doc.url,
           localPath,
           fileName,
           size: stats.size,
-        })
+        });
       } catch (error) {
         failedDownloads.push({
           url: doc.url,
-          error: error instanceof Error ? error.message : "Unknown error",
-        })
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
       }
-    })
+    });
 
-    await Promise.all(downloadPromises)
+    await Promise.all(downloadPromises);
 
     console.log(
       `✅ Downloaded ${downloadedFiles.length} files, ${failedDownloads.length} failed`
-    )
+    );
 
     return {
       rfpId,
       downloadedFiles,
       failedDownloads,
-    }
+    };
   },
-})
+});
 
 // Step 3: Upload to object storage
 const uploadToStorageStep = createStep({
-  id: "upload-to-storage",
-  description: "Upload documents to object storage",
+  id: 'upload-to-storage',
+  description: 'Upload documents to object storage',
   inputSchema: z.object({
     rfpId: z.string(),
     downloadedFiles: z.array(
@@ -195,60 +195,60 @@ const uploadToStorageStep = createStep({
     ),
   }),
   execute: async ({ inputData }) => {
-    const { rfpId, downloadedFiles } = inputData
-    const objectStorage = new ObjectStorageService()
+    const { rfpId, downloadedFiles } = inputData;
+    const objectStorage = new ObjectStorageService();
     const uploadedDocuments: Array<{
-      fileName: string
-      storageUrl: string
-      size: number
-      uploadedAt: string
-    }> = []
+      fileName: string;
+      storageUrl: string;
+      size: number;
+      uploadedAt: string;
+    }> = [];
     const failedUploads: Array<{
-      fileName: string
-      error: string
-    }> = []
+      fileName: string;
+      error: string;
+    }> = [];
 
     for (const file of downloadedFiles) {
       try {
-        const fileBuffer = fs.readFileSync(file.localPath)
-        const objectPath = `rfps/${rfpId}/${file.fileName}`
+        const fileBuffer = fs.readFileSync(file.localPath);
+        const objectPath = `rfps/${rfpId}/${file.fileName}`;
 
         // Upload to object storage
-        const privateDir = objectStorage.getPrivateObjectDir()
-        const fullPath = `${privateDir}/${objectPath}`
-        const storageUrl = fullPath // For now, store the path
+        const privateDir = objectStorage.getPrivateObjectDir();
+        const fullPath = `${privateDir}/${objectPath}`;
+        const storageUrl = fullPath; // For now, store the path
 
         uploadedDocuments.push({
           fileName: file.fileName,
           storageUrl,
           size: file.size,
           uploadedAt: new Date().toISOString(),
-        })
+        });
 
         // Clean up temp file
-        fs.unlinkSync(file.localPath)
+        fs.unlinkSync(file.localPath);
       } catch (error) {
         failedUploads.push({
           fileName: file.fileName,
-          error: error instanceof Error ? error.message : "Upload failed",
-        })
+          error: error instanceof Error ? error.message : 'Upload failed',
+        });
       }
     }
 
-    console.log(`☁️ Uploaded ${uploadedDocuments.length} documents to storage`)
+    console.log(`☁️ Uploaded ${uploadedDocuments.length} documents to storage`);
 
     return {
       rfpId,
       uploadedDocuments,
       failedUploads,
-    }
+    };
   },
-})
+});
 
 // Step 4: Process documents with AI
 const processDocumentsStep = createStep({
-  id: "process-documents",
-  description: "Extract text and analyze documents with AI",
+  id: 'process-documents',
+  description: 'Extract text and analyze documents with AI',
   inputSchema: z.object({
     rfpId: z.string(),
     uploadedDocuments: z.array(
@@ -274,81 +274,79 @@ const processDocumentsStep = createStep({
     ),
   }),
   execute: async ({ inputData }) => {
-    const { rfpId, uploadedDocuments } = inputData
+    const { rfpId, uploadedDocuments } = inputData;
     const processedDocuments: Array<{
-      id: string
-      fileName: string
-      extractedText: string
-      category: string
-      keyRequirements: string[]
-      deadlines: string[]
-    }> = []
+      id: string;
+      fileName: string;
+      extractedText: string;
+      category: string;
+      keyRequirements: string[];
+      deadlines: string[];
+    }> = [];
 
     // Create document processor agent
     const documentProcessor = new Agent({
-      name: "Document Processor",
+      name: 'Document Processor',
       instructions: `You are analyzing RFP documents. Extract:
         - Key requirements and specifications
         - Important deadlines and dates
         - Submission requirements
         - Evaluation criteria
         - Document category (RFP main, pricing form, technical specs, etc.)`,
-      model: openai("gpt-5-mini"),
-    })
+      model: openai('gpt-5-mini'),
+    });
 
     for (const doc of uploadedDocuments) {
       try {
         // For now, we'll simulate text extraction
         // In production, you'd use PDF parsing libraries
-        const extractedText = `Extracted content from ${doc.fileName}`
+        const extractedText = `Extracted content from ${doc.fileName}`;
 
         const analysis = await documentProcessor.generateVNext([
           {
-            role: "user",
+            role: 'user',
             content: `Analyze this RFP document and extract key information:\n\n${extractedText}`,
           },
-        ])
+        ]);
 
         // Parse AI response to extract structured data
-        const documentId = randomUUID()
 
         // Save to database
-        await storage.createDocument({
-          id: documentId,
+        const createdDoc = await storage.createDocument({
           rfpId,
-          name: doc.fileName,
-          url: doc.storageUrl,
-          uploadedAt: new Date(),
+          filename: doc.fileName,
+          fileType: doc.fileName.split('.').pop() || 'unknown',
+          objectPath: doc.storageUrl,
           extractedText,
-          size: doc.size,
-        })
+        });
+        const documentId = createdDoc.id;
 
         processedDocuments.push({
           id: documentId,
           fileName: doc.fileName,
           extractedText,
-          category: "RFP Document",
+          category: 'RFP Document',
           keyRequirements: [],
           deadlines: [],
-        })
+        });
       } catch (error) {
-        console.error(`Failed to process ${doc.fileName}:`, error)
+        console.error(`Failed to process ${doc.fileName}:`, error);
       }
     }
 
-    console.log(`🤖 Processed ${processedDocuments.length} documents with AI`)
+    console.log(`🤖 Processed ${processedDocuments.length} documents with AI`);
 
     return {
       rfpId,
       processedDocuments,
-    }
+    };
   },
-})
+});
 
 // Step 5: Update RFP status
 const updateRfpStatusStep = createStep({
-  id: "update-rfp-status",
-  description: "Update RFP with document processing results",
+  id: 'update-rfp-status',
+  description: 'Update RFP with document processing results',
   inputSchema: z.object({
     rfpId: z.string(),
     processedDocuments: z.array(
@@ -378,46 +376,46 @@ const updateRfpStatusStep = createStep({
     ),
   }),
   execute: async ({ inputData }) => {
-    const { rfpId, processedDocuments } = inputData
+    const { rfpId, processedDocuments } = inputData;
 
     try {
       // Update RFP progress
       await storage.updateRFP(rfpId, {
         progress: 30, // Documents processed
-        status: "analyzing",
-      })
+        status: 'analyzing',
+      });
 
       // Create notification
       await storage.createNotification({
-        type: "system",
-        title: "Documents Processed",
+        type: 'system',
+        title: 'Documents Processed',
         message: `Successfully processed ${processedDocuments.length} documents for RFP`,
-        relatedEntityType: "rfp",
+        relatedEntityType: 'rfp',
         relatedEntityId: rfpId,
-      })
+      });
 
       return {
         success: true,
         message: `Processed ${processedDocuments.length} documents`,
         documentCount: processedDocuments.length,
         processedDocuments,
-      }
+      };
     } catch (error) {
-      console.error("Failed to update RFP status:", error)
+      console.error('Failed to update RFP status:', error);
       return {
         success: false,
-        message: "Failed to update RFP status",
+        message: 'Failed to update RFP status',
         documentCount: 0,
         processedDocuments: [],
-      }
+      };
     }
   },
-})
+});
 
 // Step to combine workflow inputs with extracted documents
 const combineWithRfpIdStep = createStep({
-  id: "combine-with-rfp-id",
-  description: "Combine RFP ID with documents",
+  id: 'combine-with-rfp-id',
+  description: 'Combine RFP ID with documents',
   inputSchema: z.object({
     rfpId: z.string(),
     rfpUrl: z.string(),
@@ -433,14 +431,14 @@ const combineWithRfpIdStep = createStep({
     return {
       rfpId: inputData.rfpId,
       documents: inputData.documents,
-    }
+    };
   },
-})
+});
 
 // Step to pass through download results with RFP ID
 const passDownloadResultsStep = createStep({
-  id: "pass-download-results",
-  description: "Pass download results with RFP ID",
+  id: 'pass-download-results',
+  description: 'Pass download results with RFP ID',
   inputSchema: z.object({
     rfpId: z.string(),
     downloadedFiles: z.array(
@@ -473,14 +471,14 @@ const passDownloadResultsStep = createStep({
     return {
       rfpId: inputData.rfpId,
       downloadedFiles: inputData.downloadedFiles,
-    }
+    };
   },
-})
+});
 
 // Step to pass upload results with RFP ID
 const passUploadResultsStep = createStep({
-  id: "pass-upload-results",
-  description: "Pass upload results with RFP ID",
+  id: 'pass-upload-results',
+  description: 'Pass upload results with RFP ID',
   inputSchema: z.object({
     rfpId: z.string(),
     uploadedDocuments: z.array(
@@ -513,14 +511,14 @@ const passUploadResultsStep = createStep({
     return {
       rfpId: inputData.rfpId,
       uploadedDocuments: inputData.uploadedDocuments,
-    }
+    };
   },
-})
+});
 
 // Final consolidation step
 const finalizeResultsStep = createStep({
-  id: "finalize-results",
-  description: "Finalize workflow results",
+  id: 'finalize-results',
+  description: 'Finalize workflow results',
   inputSchema: z.object({
     success: z.boolean(),
     message: z.string(),
@@ -548,14 +546,14 @@ const finalizeResultsStep = createStep({
       message: inputData.message,
       documentCount: inputData.documentCount,
       processedDocuments: inputData.processedDocuments,
-    }
+    };
   },
-})
+});
 
 // Create the complete workflow
 export const documentProcessingWorkflow = createWorkflow({
-  id: "document-processing",
-  description: "Extract, download, and process RFP documents",
+  id: 'document-processing',
+  description: 'Extract, download, and process RFP documents',
   inputSchema: z.object({
     rfpId: z.string(),
     rfpUrl: z.string(),
@@ -577,4 +575,4 @@ export const documentProcessingWorkflow = createWorkflow({
   .then(processDocumentsStep)
   .then(updateRfpStatusStep)
   .then(finalizeResultsStep)
-  .commit()
+  .commit();

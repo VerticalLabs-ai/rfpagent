@@ -4,11 +4,22 @@ import { sessionManager } from './session-manager';
 
 export const pageActTool = createTool({
   id: 'page-act',
-  description: 'Take an action on a webpage using Browserbase automation (clicking, typing, navigation)',
+  description:
+    'Take an action on a webpage using Browserbase automation (clicking, typing, navigation)',
   inputSchema: z.object({
-    url: z.string().optional().describe('URL to navigate to (optional if already on a page)'),
-    action: z.string().describe('Action to perform (e.g., "click sign in button", "type hello in search field", "navigate to login")'),
-    sessionId: z.string().optional().describe('Session ID for maintaining browser context'),
+    url: z
+      .string()
+      .optional()
+      .describe('URL to navigate to (optional if already on a page)'),
+    action: z
+      .string()
+      .describe(
+        'Action to perform (e.g., "click sign in button", "type hello in search field", "navigate to login")'
+      ),
+    sessionId: z
+      .string()
+      .optional()
+      .describe('Session ID for maintaining browser context'),
   }),
   execute: async ({ context }) => {
     const { url, action, sessionId } = context;
@@ -17,7 +28,7 @@ export const pageActTool = createTool({
 
     try {
       console.log(`🎭 Performing action: "${action}"`);
-      
+
       if (url) {
         console.log(`🌐 Navigating to: ${url}`);
         await page.goto(url);
@@ -25,15 +36,15 @@ export const pageActTool = createTool({
       }
 
       if (action) {
-        await page.act(action);
+        await page.act({ action });
         console.log(`✅ Successfully performed: ${action}`);
       }
 
       return {
         success: true,
         message: `Successfully performed: ${action}`,
-        currentUrl: await page.url(),
-        actionedAt: new Date().toISOString()
+        currentUrl: page.url(),
+        actionedAt: new Date().toISOString(),
       };
     } catch (error: any) {
       console.error(`❌ Stagehand action failed:`, error);

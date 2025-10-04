@@ -1,8 +1,8 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { createStep, createWorkflow } from "@mastra/core/workflows"
-import { z } from "zod"
-import { storage } from "../../../server/storage"
+import { openai } from '@ai-sdk/openai';
+import { Agent } from '@mastra/core/agent';
+import { createStep, createWorkflow } from '@mastra/core/workflows';
+import { z } from 'zod';
+import { storage } from '../../../server/storage';
 
 // RFP Analysis schema
 const rfpAnalysisSchema = z.object({
@@ -14,7 +14,7 @@ const rfpAnalysisSchema = z.object({
   evaluationCriteria: z.array(z.string()),
   specialRequirements: z.array(z.string()),
   estimatedBudget: z.string().optional(),
-})
+});
 
 // Company capability mapping
 const companyMappingSchema = z.object({
@@ -25,12 +25,12 @@ const companyMappingSchema = z.object({
     type: z.string(),
     capabilities: z.array(z.string()),
   }),
-})
+});
 
 // Step 1: Fetch RFP and documents
 const fetchRfpDataStep = createStep({
-  id: "fetch-rfp-data",
-  description: "Fetch RFP details and related documents",
+  id: 'fetch-rfp-data',
+  description: 'Fetch RFP details and related documents',
   inputSchema: z.object({
     rfpId: z.string(),
   }),
@@ -46,35 +46,35 @@ const fetchRfpDataStep = createStep({
     hasDocuments: z.boolean(),
   }),
   execute: async ({ inputData }) => {
-    const { rfpId } = inputData
+    const { rfpId } = inputData;
 
-    console.log(`📋 Fetching RFP ${rfpId} and documents...`)
+    console.log(`📋 Fetching RFP ${rfpId} and documents...`);
 
-    const rfp = await storage.getRFP(rfpId)
+    const rfp = await storage.getRFP(rfpId);
     if (!rfp) {
-      throw new Error(`RFP ${rfpId} not found`)
+      throw new Error(`RFP ${rfpId} not found`);
     }
 
-    const documents = await storage.getDocumentsByRFP(rfpId)
+    const documents = await storage.getDocumentsByRFP(rfpId);
 
-    console.log(`✅ Found RFP and ${documents.length} documents`)
+    console.log(`✅ Found RFP and ${documents.length} documents`);
 
     return {
       rfp,
-      documents: documents.map((doc) => ({
+      documents: documents.map(doc => ({
         id: doc.id,
-        name: doc.name,
+        name: doc.filename,
         extractedText: doc.extractedText || undefined,
       })),
       hasDocuments: documents.length > 0,
-    }
+    };
   },
-})
+});
 
 // Step 2: Analyze RFP with AI
 const analyzeRfpStep = createStep({
-  id: "analyze-rfp",
-  description: "Analyze RFP requirements using AI",
+  id: 'analyze-rfp',
+  description: 'Analyze RFP requirements using AI',
   inputSchema: z.object({
     rfp: z.any(),
     documents: z.array(
@@ -92,27 +92,27 @@ const analyzeRfpStep = createStep({
     documentContext: z.string(),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, documents, hasDocuments } = inputData
+    const { rfp, documents, hasDocuments } = inputData;
 
-    console.log(`🤖 Analyzing RFP requirements...`)
+    console.log(`🤖 Analyzing RFP requirements...`);
 
     // Combine document text for context
     const documentContext = documents
-      .map((doc) => doc.extractedText || "")
-      .filter((text) => text.length > 0)
-      .join("\n\n")
+      .map(doc => doc.extractedText || '')
+      .filter(text => text.length > 0)
+      .join('\n\n');
 
     // Create AI agent for analysis
     const analysisAgent = new Agent({
-      name: "RFP Analyzer",
+      name: 'RFP Analyzer',
       instructions: `You are analyzing an RFP to extract key requirements. Extract:
         - All mandatory requirements
         - All deadlines (submission, questions, etc.)
         - Evaluation criteria and scoring
         - Special requirements (certifications, insurance, etc.)
         - Budget or estimated value if mentioned`,
-      model: openai("gpt-5"),
-    })
+      model: openai('gpt-5'),
+    });
 
     const analysisPrompt = `Analyze this RFP:
       Title: ${rfp.title}
@@ -122,54 +122,54 @@ const analyzeRfpStep = createStep({
       Document Context:
       ${documentContext.substring(0, 10000)}
       
-      Extract all requirements, deadlines, and evaluation criteria.`
+      Extract all requirements, deadlines, and evaluation criteria.`;
 
     const response = await analysisAgent.generateVNext([
       {
-        role: "user",
+        role: 'user',
         content: analysisPrompt,
       },
-    ])
+    ]);
 
     // Parse response into structured data
     // For now, return default structure
     const rfpAnalysis: z.infer<typeof rfpAnalysisSchema> = {
       requirements: [
-        "Submit technical proposal",
-        "Provide pricing breakdown",
-        "Include past performance references",
+        'Submit technical proposal',
+        'Provide pricing breakdown',
+        'Include past performance references',
       ],
       deadlines: {
         submission: rfp.deadline?.toISOString(),
         questions: undefined,
       },
       evaluationCriteria: [
-        "Technical approach (40%)",
-        "Price (30%)",
-        "Past performance (20%)",
-        "Small business participation (10%)",
+        'Technical approach (40%)',
+        'Price (30%)',
+        'Past performance (20%)',
+        'Small business participation (10%)',
       ],
       specialRequirements: [
-        "WBE/MBE certification preferred",
-        "Insurance requirements",
+        'WBE/MBE certification preferred',
+        'Insurance requirements',
       ],
       estimatedBudget: rfp.estimatedValue || undefined,
-    }
+    };
 
-    console.log(`✅ RFP analysis complete`)
+    console.log(`✅ RFP analysis complete`);
 
     return {
       rfp,
       rfpAnalysis,
       documentContext,
-    }
+    };
   },
-})
+});
 
 // Step 3: Generate proposal content
 const generateProposalContentStep = createStep({
-  id: "generate-proposal-content",
-  description: "Generate proposal content using AI",
+  id: 'generate-proposal-content',
+  description: 'Generate proposal content using AI',
   inputSchema: z.object({
     rfp: z.any(),
     rfpAnalysis: rfpAnalysisSchema,
@@ -187,49 +187,49 @@ const generateProposalContentStep = createStep({
     }),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, rfpAnalysis, documentContext } = inputData
+    const { rfp, rfpAnalysis, documentContext } = inputData;
 
-    console.log(`✍️ Generating proposal content...`)
+    console.log(`✍️ Generating proposal content...`);
 
     // Company information
     const companyMapping: z.infer<typeof companyMappingSchema> = {
-      businessType: ["construction", "technology"],
-      certifications: ["WBENC", "HUB", "DBE", "MBE", "WBE"],
+      businessType: ['construction', 'technology'],
+      certifications: ['WBENC', 'HUB', 'DBE', 'MBE', 'WBE'],
       companyInfo: {
-        name: "iByte Enterprises LLC",
-        type: "Woman-owned business",
-        capabilities: ["construction services", "technology solutions"],
+        name: 'iByte Enterprises LLC',
+        type: 'Woman-owned business',
+        capabilities: ['construction services', 'technology solutions'],
       },
-    }
+    };
 
     // Create proposal generation agent
     const proposalAgent = new Agent({
-      name: "Proposal Writer",
+      name: 'Proposal Writer',
       instructions: `You are writing a winning proposal for a government RFP. 
         You represent ${companyMapping.companyInfo.name}, a ${
-        companyMapping.companyInfo.type
-      }.
+          companyMapping.companyInfo.type
+        }.
         Write compelling, compliant content that addresses all requirements.
         Emphasize our certifications: ${companyMapping.certifications.join(
-          ", "
+          ', '
         )}.
         Our capabilities: ${companyMapping.companyInfo.capabilities.join(
-          ", "
+          ', '
         )}.`,
-      model: openai("gpt-5"),
-    })
+      model: openai('gpt-5'),
+    });
 
     const proposalPrompt = `Generate a complete proposal for:
       RFP: ${rfp.title}
       
       Requirements to address:
-      ${rfpAnalysis.requirements.join("\n")}
+      ${rfpAnalysis.requirements.join('\n')}
       
       Evaluation criteria:
-      ${rfpAnalysis.evaluationCriteria.join("\n")}
+      ${rfpAnalysis.evaluationCriteria.join('\n')}
       
       Special requirements:
-      ${rfpAnalysis.specialRequirements.join("\n")}
+      ${rfpAnalysis.specialRequirements.join('\n')}
       
       Generate sections for:
       1. Executive Summary
@@ -237,15 +237,15 @@ const generateProposalContentStep = createStep({
       3. Qualifications and Past Performance
       4. Project Timeline
       5. Pricing Strategy (if budget is ${
-        rfpAnalysis.estimatedBudget || "not specified"
-      })`
+        rfpAnalysis.estimatedBudget || 'not specified'
+      })`;
 
     const response = await proposalAgent.generateVNext([
       {
-        role: "user",
+        role: 'user',
         content: proposalPrompt,
       },
-    ])
+    ]);
 
     // Parse AI response into sections
     const proposalContent = {
@@ -256,22 +256,22 @@ const generateProposalContentStep = createStep({
       pricing: rfpAnalysis.estimatedBudget
         ? `Our pricing strategy provides exceptional value within the estimated budget of ${rfpAnalysis.estimatedBudget}`
         : undefined,
-    }
+    };
 
-    console.log(`✅ Proposal content generated`)
+    console.log(`✅ Proposal content generated`);
 
     return {
       rfp,
       rfpAnalysis,
       proposalContent,
-    }
+    };
   },
-})
+});
 
 // Step 4: Generate pricing tables
 const generatePricingTablesStep = createStep({
-  id: "generate-pricing-tables",
-  description: "Generate detailed pricing tables",
+  id: 'generate-pricing-tables',
+  description: 'Generate detailed pricing tables',
   inputSchema: z.object({
     rfp: z.any(),
     rfpAnalysis: rfpAnalysisSchema,
@@ -309,53 +309,53 @@ const generatePricingTablesStep = createStep({
     }),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, rfpAnalysis, proposalContent } = inputData
+    const { rfp, rfpAnalysis, proposalContent } = inputData;
 
-    console.log(`💰 Generating pricing tables...`)
+    console.log(`💰 Generating pricing tables...`);
 
     // Generate sample pricing structure
     const pricingTables = {
       items: [
         {
-          description: "Project Management",
+          description: 'Project Management',
           quantity: 1,
-          unitPrice: "25000.00",
-          totalPrice: "25000.00",
+          unitPrice: '25000.00',
+          totalPrice: '25000.00',
         },
         {
-          description: "Implementation Services",
+          description: 'Implementation Services',
           quantity: 1,
-          unitPrice: "75000.00",
-          totalPrice: "75000.00",
+          unitPrice: '75000.00',
+          totalPrice: '75000.00',
         },
         {
-          description: "Training and Support",
+          description: 'Training and Support',
           quantity: 1,
-          unitPrice: "15000.00",
-          totalPrice: "15000.00",
+          unitPrice: '15000.00',
+          totalPrice: '15000.00',
         },
       ],
-      subtotal: "115000.00",
-      taxRate: "8.25",
-      tax: "9487.50",
-      total: "124487.50",
-      defaultMargin: "40.00",
-    }
+      subtotal: '115000.00',
+      taxRate: '8.25',
+      tax: '9487.50',
+      total: '124487.50',
+      defaultMargin: '40.00',
+    };
 
-    console.log(`✅ Pricing tables generated`)
+    console.log(`✅ Pricing tables generated`);
 
     return {
       rfp,
       proposalContent,
       pricingTables,
-    }
+    };
   },
-})
+});
 
 // Step 5: Save proposal to database
 const saveProposalStep = createStep({
-  id: "save-proposal",
-  description: "Save generated proposal to database",
+  id: 'save-proposal',
+  description: 'Save generated proposal to database',
   inputSchema: z.object({
     rfp: z.any(),
     proposalContent: z.object({
@@ -386,72 +386,72 @@ const saveProposalStep = createStep({
     success: z.boolean(),
   }),
   execute: async ({ inputData }) => {
-    const { rfp, proposalContent, pricingTables } = inputData
+    const { rfp, proposalContent, pricingTables } = inputData;
 
-    console.log(`💾 Saving proposal to database...`)
+    console.log(`💾 Saving proposal to database...`);
 
     try {
       // Check for existing proposal
-      const existingProposal = await storage.getProposalByRFP(rfp.id)
+      const existingProposal = await storage.getProposalByRFP(rfp.id);
 
-      let proposalId: string
+      let proposalId: string;
 
       if (existingProposal) {
         // Update existing proposal
         await storage.updateProposal(existingProposal.id, {
           content: JSON.stringify(proposalContent),
           pricingTables: JSON.stringify(pricingTables),
-          status: "review",
+          status: 'review',
           estimatedMargin: pricingTables.defaultMargin,
-        })
-        proposalId = existingProposal.id
+        });
+        proposalId = existingProposal.id;
       } else {
         // Create new proposal
         const newProposal = await storage.createProposal({
           rfpId: rfp.id,
           content: JSON.stringify(proposalContent),
           pricingTables: JSON.stringify(pricingTables),
-          status: "review",
+          status: 'review',
           estimatedMargin: pricingTables.defaultMargin,
-        })
-        proposalId = newProposal.id
+        });
+        proposalId = newProposal.id;
       }
 
       // Update RFP status
       await storage.updateRFP(rfp.id, {
-        status: "review",
+        status: 'review',
         progress: 85,
-      })
+      });
 
       // Create notification
       await storage.createNotification({
-        type: "approval",
-        title: "Proposal Generated",
+        type: 'approval',
+        title: 'Proposal Generated',
         message: `AI has generated a proposal for ${rfp.title}`,
-        relatedEntityType: "rfp",
+        relatedEntityType: 'rfp',
         relatedEntityId: rfp.id,
-      })
+      });
 
-      console.log(`✅ Proposal saved with ID: ${proposalId}`)
+      console.log(`✅ Proposal saved with ID: ${proposalId}`);
 
       return {
         proposalId,
         success: true,
-      }
+      };
     } catch (error) {
-      console.error("Failed to save proposal:", error)
+      console.error('Failed to save proposal:', error);
       return {
-        proposalId: "",
+        proposalId: '',
         success: false,
-      }
+      };
     }
   },
-})
+});
 
 // Create the complete workflow
 export const proposalGenerationWorkflow = createWorkflow({
-  id: "proposal-generation",
-  description: "Generate AI-powered proposals for RFPs",
+  id: 'proposal-generation',
+  description: 'Generate AI-powered proposals for RFPs',
   inputSchema: z.object({
     rfpId: z.string(),
   }),
@@ -468,7 +468,7 @@ export const proposalGenerationWorkflow = createWorkflow({
   .then(saveProposalStep)
   .then(
     createStep({
-      id: "finalize",
+      id: 'finalize',
       inputSchema: z.object({
         proposalId: z.string(),
         success: z.boolean(),
@@ -484,9 +484,9 @@ export const proposalGenerationWorkflow = createWorkflow({
           success: inputData.success,
           message: inputData.success
             ? `Proposal generated successfully`
-            : "Proposal generation failed",
-        }
+            : 'Proposal generation failed',
+        };
       },
     })
   )
-  .commit()
+  .commit();

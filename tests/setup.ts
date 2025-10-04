@@ -1,9 +1,17 @@
 import { jest } from '@jest/globals';
+import dotenv from 'dotenv';
 
-// Mock environment variables
+// Load environment variables from .env file
+dotenv.config();
+
+// Override NODE_ENV and DATABASE_URL for tests to use local Supabase
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test_db';
-process.env.OPENAI_API_KEY = 'test-key';
+process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:54422/postgres';
+
+// Only set OPENAI_API_KEY if not already in .env
+if (!process.env.OPENAI_API_KEY) {
+  process.env.OPENAI_API_KEY = 'test-key';
+}
 
 // Global test timeout
 jest.setTimeout(30000);
@@ -19,7 +27,7 @@ global.console = {
   // error: jest.fn(),
 };
 
-// Mock Date for consistent testing
-const mockDate = new Date('2025-01-01T00:00:00.000Z');
-jest.useFakeTimers();
-jest.setSystemTime(mockDate);
+// Don't use fake timers for integration tests - they interfere with database connections
+// const mockDate = new Date('2025-01-01T00:00:00.000Z');
+// jest.useFakeTimers();
+// jest.setSystemTime(mockDate);
