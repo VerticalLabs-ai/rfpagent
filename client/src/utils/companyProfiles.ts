@@ -12,7 +12,7 @@ const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
 export const normalizeCompanyContact = (
-  contact: CompanyContact,
+  contact: CompanyContact
 ): NormalizedCompanyContact => {
   const decisionAreas = Array.isArray(contact.decisionAreas)
     ? contact.decisionAreas.filter(isNonEmptyString)
@@ -25,29 +25,33 @@ export const normalizeCompanyContact = (
 };
 
 export const isDecisionMakerContact = (
-  contact: NormalizedCompanyContact,
+  contact: NormalizedCompanyContact
 ): boolean =>
   contact.contactType === 'decision_maker' || contact.contactType === 'owner';
 
 export const getDecisionMakers = (
-  contacts: NormalizedCompanyContact[],
+  contacts: NormalizedCompanyContact[]
 ): NormalizedCompanyContact[] => contacts.filter(isDecisionMakerContact);
 
 export const calculateDecisionAreaCoverage = (
-  decisionMakers: NormalizedCompanyContact[],
+  decisionMakers: NormalizedCompanyContact[]
 ): DecisionAreaCoverage[] =>
   DECISION_AREAS.map(area => ({
     ...area,
-    count: decisionMakers.filter(dm => dm.decisionAreas.includes(area.value)).length,
+    count: decisionMakers.filter(dm => dm.decisionAreas.includes(area.value))
+      .length,
   }));
 
 export const countCompaniesWithDecisionMakers = (
   profiles: CompanyProfile[],
-  contacts: NormalizedCompanyContact[],
+  contacts: NormalizedCompanyContact[]
 ): number => {
   const companiesWithCoverage = new Set(
-    contacts.filter(isDecisionMakerContact).map(contact => contact.companyProfileId),
+    contacts
+      .filter(isDecisionMakerContact)
+      .map(contact => contact.companyProfileId)
   );
 
-  return profiles.filter(profile => companiesWithCoverage.has(profile.id)).length;
+  return profiles.filter(profile => companiesWithCoverage.has(profile.id))
+    .length;
 };

@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams } from "wouter";
-import { AlertTriangle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { SubmissionMaterialsDialog } from "@/components/SubmissionMaterialsDialog";
-import { ProposalGenerationProgress } from "@/components/ProposalGenerationProgress";
-import { LoadingCards } from "@/components/shared";
+import { useState } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useParams } from 'wouter';
+import { AlertTriangle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { SubmissionMaterialsDialog } from '@/components/SubmissionMaterialsDialog';
+import { ProposalGenerationProgress } from '@/components/ProposalGenerationProgress';
+import { LoadingCards } from '@/components/shared';
 import {
   RFPHeader,
   RFPOverview,
@@ -17,23 +17,30 @@ import {
   RiskFlags,
   RFPSidebar,
   ProposalsSection,
-} from "@/components/rfp";
-import type { RFP, Document } from "@shared/schema";
+} from '@/components/rfp';
+import type { RFP, Document } from '@shared/schema';
 
 export default function RFPDetails() {
   const { id } = useParams();
   const { toast } = useToast();
   const [isDownloadingDocs, setIsDownloadingDocs] = useState(false);
   const [submissionMaterialsOpen, setSubmissionMaterialsOpen] = useState(false);
-  const [proposalGenerationActive, setProposalGenerationActive] = useState(false);
+  const [proposalGenerationActive, setProposalGenerationActive] =
+    useState(false);
   const [proposalSessionId, setProposalSessionId] = useState<string>('');
 
-  const { data: rfp, isLoading, error } = useQuery<RFP>({
+  const {
+    data: rfp,
+    isLoading,
+    error,
+  } = useQuery<RFP>({
     queryKey: ['/api/rfps', id],
     enabled: !!id,
   });
 
-  const { data: documents = [], isLoading: documentsLoading } = useQuery<Document[]>({
+  const { data: documents = [], isLoading: documentsLoading } = useQuery<
+    Document[]
+  >({
     queryKey: ['/api/rfps', id, 'documents'],
     queryFn: async () => {
       const response = await fetch(`/api/rfps/${id}/documents`);
@@ -49,17 +56,20 @@ export default function RFPDetails() {
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Re-scraping Complete",
+        title: 'Re-scraping Complete',
         description: `RFP re-scraped successfully! ${data.documentsFound || 0} documents were captured.`,
       });
       queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id, 'documents'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/rfps', id, 'documents'],
+      });
     },
     onError: (error: any) => {
       toast({
-        title: "Re-scraping Failed",
-        description: error?.message || "Failed to re-scrape RFP. Please try again.",
-        variant: "destructive",
+        title: 'Re-scraping Failed',
+        description:
+          error?.message || 'Failed to re-scrape RFP. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -67,21 +77,26 @@ export default function RFPDetails() {
   const downloadDocumentsMutation = useMutation({
     mutationFn: async (documentNames: string[]) => {
       setIsDownloadingDocs(true);
-      return apiRequest('POST', `/api/rfps/${id}/download-documents`, { documentNames });
+      return apiRequest('POST', `/api/rfps/${id}/download-documents`, {
+        documentNames,
+      });
     },
     onSuccess: (data: any) => {
       toast({
-        title: "Download Complete",
+        title: 'Download Complete',
         description: `Successfully downloaded ${data.documentsDownloaded || 0} documents.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id, 'documents'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/rfps', id, 'documents'],
+      });
       setIsDownloadingDocs(false);
     },
     onError: (error: any) => {
       toast({
-        title: "Download Failed",
-        description: error?.message || "Failed to download documents. Please try again.",
-        variant: "destructive",
+        title: 'Download Failed',
+        description:
+          error?.message || 'Failed to download documents. Please try again.',
+        variant: 'destructive',
       });
       setIsDownloadingDocs(false);
     },
@@ -93,17 +108,18 @@ export default function RFPDetails() {
     },
     onSuccess: () => {
       toast({
-        title: "RFP Deleted",
-        description: "The RFP has been deleted successfully.",
+        title: 'RFP Deleted',
+        description: 'The RFP has been deleted successfully.',
       });
       // Navigate back to RFPs list
       window.location.href = '/rfps';
     },
     onError: (error: any) => {
       toast({
-        title: "Delete Failed",
-        description: error?.message || "Failed to delete RFP. Please try again.",
-        variant: "destructive",
+        title: 'Delete Failed',
+        description:
+          error?.message || 'Failed to delete RFP. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -115,7 +131,9 @@ export default function RFPDetails() {
       const profiles = await profilesResponse.json();
 
       if (!profiles || profiles.length === 0) {
-        throw new Error('No company profiles found. Please create a company profile first.');
+        throw new Error(
+          'No company profiles found. Please create a company profile first.'
+        );
       }
 
       const companyProfileId = profiles[0].id;
@@ -124,13 +142,16 @@ export default function RFPDetails() {
       return apiRequest('POST', `/api/proposals/enhanced/generate`, {
         rfpId: id,
         companyProfileId,
-        options: {}
+        options: {},
       });
     },
     onMutate: () => {
       // Start progress tracking immediately when mutation starts
       const immediateSessionId = `session_${Date.now()}`;
-      console.log('Starting proposal generation with session:', immediateSessionId);
+      console.log(
+        'Starting proposal generation with session:',
+        immediateSessionId
+      );
       setProposalSessionId(immediateSessionId);
       setProposalGenerationActive(true);
     },
@@ -138,7 +159,10 @@ export default function RFPDetails() {
       console.log('Proposal generation response:', data);
       const sessionId = data?.sessionId || proposalSessionId;
 
-      console.log('Updating progress state with real session:', { sessionId, active: true });
+      console.log('Updating progress state with real session:', {
+        sessionId,
+        active: true,
+      });
 
       // Update with actual session ID if provided
       if (data?.sessionId && data.sessionId !== proposalSessionId) {
@@ -146,7 +170,7 @@ export default function RFPDetails() {
       }
 
       toast({
-        title: "Proposal Generation Started",
+        title: 'Proposal Generation Started',
         description: `AI agents are now processing your RFP. Session ID: ${sessionId}`,
       });
     },
@@ -157,9 +181,11 @@ export default function RFPDetails() {
       setProposalSessionId('');
 
       toast({
-        title: "Proposal Generation Failed",
-        description: error?.message || "Failed to start proposal generation. Please try again.",
-        variant: "destructive",
+        title: 'Proposal Generation Failed',
+        description:
+          error?.message ||
+          'Failed to start proposal generation. Please try again.',
+        variant: 'destructive',
       });
     },
   });
@@ -175,12 +201,18 @@ export default function RFPDetails() {
 
   const handleDownloadDocs = () => {
     const extractedDocNames = (() => {
-      if (typeof rfp?.requirements === 'object' && rfp.requirements && 'documents' in rfp.requirements) {
+      if (
+        typeof rfp?.requirements === 'object' &&
+        rfp.requirements &&
+        'documents' in rfp.requirements
+      ) {
         const docs = rfp.requirements.documents;
         if (Array.isArray(docs)) {
-          return docs.map((doc: any) =>
-            typeof doc === 'string' ? doc : (doc.name || doc.title || '')
-          ).filter(Boolean);
+          return docs
+            .map((doc: any) =>
+              typeof doc === 'string' ? doc : doc.name || doc.title || ''
+            )
+            .filter(Boolean);
         }
       }
       return [];
@@ -191,7 +223,8 @@ export default function RFPDetails() {
   const handleRescrape = () => {
     rescrapeMutation.mutate({
       url: rfp?.sourceUrl,
-      userNotes: "Re-scraping with enhanced Mastra/Browserbase system to capture documents"
+      userNotes:
+        'Re-scraping with enhanced Mastra/Browserbase system to capture documents',
     });
   };
 
@@ -202,8 +235,8 @@ export default function RFPDetails() {
   const handleProgressComplete = () => {
     setProposalGenerationActive(false);
     toast({
-      title: "Proposal Generated Successfully!",
-      description: "Your proposal is now ready for review.",
+      title: 'Proposal Generated Successfully!',
+      description: 'Your proposal is now ready for review.',
     });
     // Refresh data to show the new proposal
     queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
@@ -213,9 +246,9 @@ export default function RFPDetails() {
   const handleProgressError = (error: string) => {
     setProposalGenerationActive(false);
     toast({
-      title: "Proposal Generation Failed",
+      title: 'Proposal Generation Failed',
       description: error,
-      variant: "destructive",
+      variant: 'destructive',
     });
   };
 
@@ -241,7 +274,9 @@ export default function RFPDetails() {
   }
 
   const requirements = Array.isArray(rfp.requirements) ? rfp.requirements : [];
-  const complianceItems = Array.isArray(rfp.complianceItems) ? rfp.complianceItems : [];
+  const complianceItems = Array.isArray(rfp.complianceItems)
+    ? rfp.complianceItems
+    : [];
   const riskFlags = Array.isArray(rfp.riskFlags) ? rfp.riskFlags : [];
 
   return (
@@ -284,8 +319,10 @@ export default function RFPDetails() {
           onDeleteRFP={handleDeleteRFP}
           onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
           onGenerateProposal={handleGenerateProposal}
+          onRescrape={handleRescrape}
           isDeletePending={deleteRFPMutation.isPending}
           isGeneratingProposal={generateProposalMutation.isPending}
+          isRescrapePending={rescrapeMutation.isPending}
         />
       </div>
 
@@ -295,11 +332,13 @@ export default function RFPDetails() {
           rfpId={id}
           open={submissionMaterialsOpen}
           onOpenChange={setSubmissionMaterialsOpen}
-          onComplete={(materials) => {
+          onComplete={materials => {
             console.log('Submission materials completed:', materials);
             queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
             // Also invalidate proposals query to show the newly generated proposal
-            queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', id] });
+            queryClient.invalidateQueries({
+              queryKey: ['/api/proposals/rfp', id],
+            });
           }}
         />
       )}

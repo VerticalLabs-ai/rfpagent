@@ -252,11 +252,11 @@ export function AdvancedFilters({
             placeholder={
               filter.placeholder || `Enter ${filter.label.toLowerCase()}`
             }
-            value={currentValue || ''}
+            value={currentValue ?? ''}
             onChange={e =>
               updateFilter(
                 filter.id,
-                e.target.value ? Number(e.target.value) : ''
+                e.target.value ? Number(e.target.value) : null
               )
             }
             className="w-full"
@@ -383,6 +383,10 @@ export function SearchBar({
   debounceMs = 300,
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
 
   const debouncedOnChange = useMemo(() => {
     let timeout: NodeJS.Timeout;

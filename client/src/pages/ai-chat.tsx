@@ -1,16 +1,33 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { Send, Bot, User, Loader2, Search, FileText, Lightbulb, Trash2, Clock, BarChart3, CheckSquare, Calendar, Download, TrendingUp, FileEdit, FileSearch } from "lucide-react";
-import ReactMarkdown from "react-markdown";
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Send,
+  Bot,
+  User,
+  Loader2,
+  Search,
+  FileText,
+  Lightbulb,
+  Trash2,
+  Clock,
+  BarChart3,
+  CheckSquare,
+  Calendar,
+  Download,
+  TrendingUp,
+  FileEdit,
+  FileSearch,
+} from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 interface ChatMessage {
   id: string;
@@ -34,7 +51,12 @@ interface ActionSuggestion {
 interface ChatResponse {
   conversationId: string;
   message: string;
-  messageType: 'text' | 'rfp_results' | 'search_results' | 'analysis' | 'follow_up';
+  messageType:
+    | 'text'
+    | 'rfp_results'
+    | 'search_results'
+    | 'analysis'
+    | 'follow_up';
   data?: any;
   followUpQuestions?: string[];
   actionSuggestions?: ActionSuggestion[];
@@ -52,52 +74,57 @@ interface Conversation {
 }
 
 export default function AIChat() {
-  const [inputValue, setInputValue] = useState("");
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [inputValue, setInputValue] = useState('');
+  const [currentConversationId, setCurrentConversationId] = useState<
+    string | null
+  >(null);
   const { toast } = useToast();
 
   // Fetch user conversations
   const { data: conversations } = useQuery({
-    queryKey: ["/api/ai/conversations"],
+    queryKey: ['/api/ai/conversations'],
   });
 
   // Fetch current conversation history
   const { data: conversationHistory, refetch: refetchHistory } = useQuery({
-    queryKey: ["/api/ai/conversations", currentConversationId],
+    queryKey: ['/api/ai/conversations', currentConversationId],
     enabled: !!currentConversationId,
   });
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (data: { query: string; conversationId?: string }): Promise<ChatResponse> => {
-      const response = await fetch("/api/ai/chat", {
-        method: "POST",
+    mutationFn: async (data: {
+      query: string;
+      conversationId?: string;
+    }): Promise<ChatResponse> => {
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return response.json() as Promise<ChatResponse>;
     },
-    onSuccess: (response) => {
+    onSuccess: response => {
       if (response.conversationId && !currentConversationId) {
         setCurrentConversationId(response.conversationId);
       }
       // Refetch conversation history to show the new messages
       refetchHistory();
       // Invalidate conversations list to update with new conversation
-      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/conversations'] });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to send message",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to send message',
+        variant: 'destructive',
       });
     },
   });
@@ -106,13 +133,13 @@ export default function AIChat() {
   const deleteConversationMutation = useMutation({
     mutationFn: async (conversationId: string) => {
       const response = await fetch(`/api/ai/conversations/${conversationId}`, {
-        method: "DELETE",
+        method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return response.json();
     },
     onSuccess: (_, conversationId) => {
@@ -121,51 +148,55 @@ export default function AIChat() {
         setCurrentConversationId(null);
       }
       // Refetch conversations list
-      queryClient.invalidateQueries({ queryKey: ["/api/ai/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/ai/conversations'] });
       toast({
-        title: "Success",
-        description: "Conversation deleted successfully",
+        title: 'Success',
+        description: 'Conversation deleted successfully',
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete conversation",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to delete conversation',
+        variant: 'destructive',
       });
     },
   });
 
   // Execute action suggestion mutation
   const executeActionMutation = useMutation({
-    mutationFn: async (data: { suggestionId: string; conversationId: string; suggestion: ActionSuggestion }) => {
-      const response = await fetch("/api/ai/execute-action", {
-        method: "POST",
+    mutationFn: async (data: {
+      suggestionId: string;
+      conversationId: string;
+      suggestion: ActionSuggestion;
+    }) => {
+      const response = await fetch('/api/ai/execute-action', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       return response.json();
     },
-    onSuccess: (response) => {
+    onSuccess: response => {
       toast({
-        title: "Action Executed",
-        description: response.message || "Action completed successfully",
+        title: 'Action Executed',
+        description: response.message || 'Action completed successfully',
       });
       // Refetch conversation history to show results
       refetchHistory();
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to execute action",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to execute action',
+        variant: 'destructive',
       });
     },
   });
@@ -174,7 +205,7 @@ export default function AIChat() {
     if (!inputValue.trim()) return;
 
     const messageContent = inputValue.trim();
-    setInputValue("");
+    setInputValue('');
 
     try {
       await sendMessageMutation.mutateAsync({
@@ -182,12 +213,12 @@ export default function AIChat() {
         conversationId: currentConversationId || undefined,
       });
     } catch (error) {
-      console.error("Failed to send message:", error);
+      console.error('Failed to send message:', error);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -195,7 +226,9 @@ export default function AIChat() {
 
   const startNewConversation = () => {
     setCurrentConversationId(null);
-    queryClient.removeQueries({ queryKey: ["/api/ai/conversations", currentConversationId] });
+    queryClient.removeQueries({
+      queryKey: ['/api/ai/conversations', currentConversationId],
+    });
   };
 
   const selectConversation = (conversationId: string) => {
@@ -205,7 +238,11 @@ export default function AIChat() {
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
-    if (window.confirm("Are you sure you want to delete this conversation? This action cannot be undone.")) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete this conversation? This action cannot be undone.'
+      )
+    ) {
       await deleteConversationMutation.mutateAsync(conversationId);
     }
   };
@@ -226,18 +263,18 @@ export default function AIChat() {
 
   const getSuggestionIcon = (iconName: string) => {
     const icons: Record<string, any> = {
-      'FileSearch': FileSearch,
-      'TrendingUp': TrendingUp,
-      'FileEdit': FileEdit,
-      'CheckSquare': CheckSquare,
-      'Calendar': Calendar,
-      'Download': Download,
-      'BarChart3': BarChart3,
-      'Search': Search,
-      'Clock': Clock,
-      'Bot': Bot,
-      'FileText': FileText,
-      'Lightbulb': Lightbulb
+      FileSearch: FileSearch,
+      TrendingUp: TrendingUp,
+      FileEdit: FileEdit,
+      CheckSquare: CheckSquare,
+      Calendar: Calendar,
+      Download: Download,
+      BarChart3: BarChart3,
+      Search: Search,
+      Clock: Clock,
+      Bot: Bot,
+      FileText: FileText,
+      Lightbulb: Lightbulb,
     };
     const IconComponent = icons[iconName] || FileText;
     return <IconComponent className="h-4 w-4" />;
@@ -245,58 +282,68 @@ export default function AIChat() {
 
   const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
     switch (priority) {
-      case 'high': return 'border-red-200 bg-red-50 hover:bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
-      case 'medium': return 'border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
-      case 'low': return 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
-      default: return 'border-gray-200 bg-gray-50 hover:bg-gray-100';
+      case 'high':
+        return 'border-red-200 bg-red-50 hover:bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
+      case 'medium':
+        return 'border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
+      case 'low':
+        return 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
+      default:
+        return 'border-gray-200 bg-gray-50 hover:bg-gray-100';
     }
   };
 
   const handleActionClick = async (suggestion: ActionSuggestion) => {
     if (!currentConversationId) return;
-    
+
     executeActionMutation.mutate({
       suggestionId: suggestion.id,
       conversationId: currentConversationId,
-      suggestion
+      suggestion,
     });
   };
 
   const renderMessageContent = (message: any) => {
     // Always render action suggestions and follow-up questions, regardless of message type
-    const hasAdditionalContent = 
+    const hasAdditionalContent =
       (message.followUpQuestions && message.followUpQuestions.length > 0) ||
       (message.actionSuggestions && message.actionSuggestions.length > 0);
-    
+
     if (!hasAdditionalContent) {
       return null;
     }
-    
+
     return (
       <div className="space-y-3 mt-3 border-t border-border pt-3">
         {message.followUpQuestions && message.followUpQuestions.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">Follow-up questions:</h4>
+            <h4 className="text-sm font-semibold text-foreground">
+              Follow-up questions:
+            </h4>
             <div className="flex flex-wrap gap-2">
-              {message.followUpQuestions.map((question: string, index: number) => (
-                <Button
-                  key={index}
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setInputValue(question)}
-                  data-testid={`follow-up-question-${index}`}
-                >
-                  {question}
-                </Button>
-              ))}
+              {message.followUpQuestions.map(
+                (question: string, index: number) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setInputValue(question)}
+                    data-testid={`follow-up-question-${index}`}
+                  >
+                    {question}
+                  </Button>
+                )
+              )}
             </div>
           </div>
         )}
 
         {message.actionSuggestions && message.actionSuggestions.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-sm font-semibold text-foreground">Suggested Actions:</h4>
+            <h4 className="text-sm font-semibold text-foreground">
+              Suggested Actions:
+            </h4>
             <div className="grid gap-2">
               {message.actionSuggestions.map((suggestion: ActionSuggestion) => (
                 <div
@@ -311,26 +358,32 @@ export default function AIChat() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <h5 className="text-sm font-medium truncate">{suggestion.label}</h5>
+                        <h5 className="text-sm font-medium truncate">
+                          {suggestion.label}
+                        </h5>
                         <div className="flex items-center gap-1 text-xs opacity-75">
                           <Clock className="h-3 w-3" />
                           {suggestion.estimatedTime}
                         </div>
                       </div>
-                      <p className="text-xs opacity-75 mt-1 line-clamp-2">{suggestion.description}</p>
+                      <p className="text-xs opacity-75 mt-1 line-clamp-2">
+                        {suggestion.description}
+                      </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="text-xs px-1.5 py-0.5"
                         >
                           {suggestion.action}
                         </Badge>
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className={`text-xs px-1.5 py-0.5 ${
-                            suggestion.priority === 'high' ? 'bg-red-100 text-red-800' : 
-                            suggestion.priority === 'medium' ? 'bg-orange-100 text-orange-800' : 
-                            'bg-blue-100 text-blue-800'
+                            suggestion.priority === 'high'
+                              ? 'bg-red-100 text-red-800'
+                              : suggestion.priority === 'medium'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-blue-100 text-blue-800'
                           }`}
                         >
                           {suggestion.priority}
@@ -352,7 +405,9 @@ export default function AIChat() {
 
         {message.relatedRfps && message.relatedRfps.length > 0 && (
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-foreground">Related RFPs:</h4>
+            <h4 className="text-sm font-semibold text-foreground">
+              Related RFPs:
+            </h4>
             <div className="space-y-1">
               {message.relatedRfps.map((rfp: any, index: number) => (
                 <Badge key={index} variant="outline" className="text-xs">
@@ -373,57 +428,62 @@ export default function AIChat() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-foreground">AI Conversations</h2>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               onClick={startNewConversation}
               data-testid="button-new-conversation"
             >
               New Chat
             </Button>
           </div>
-          
+
           <ScrollArea className="h-[calc(100vh-200px)]">
             <div className="space-y-2">
-              {(conversations as Conversation[])?.map((conversation: Conversation) => (
-                <Card
-                  key={conversation.id}
-                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                    currentConversationId === conversation.id ? 'ring-2 ring-primary' : ''
-                  }`}
-                  onClick={() => selectConversation(conversation.id)}
-                  data-testid={`conversation-card-${conversation.id}`}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-medium text-foreground truncate flex-1">
-                        {conversation.title}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {conversation.type}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteConversation(conversation.id);
-                          }}
-                          data-testid={`button-delete-conversation-${conversation.id}`}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+              {(conversations as Conversation[])?.map(
+                (conversation: Conversation) => (
+                  <Card
+                    key={conversation.id}
+                    className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                      currentConversationId === conversation.id
+                        ? 'ring-2 ring-primary'
+                        : ''
+                    }`}
+                    onClick={() => selectConversation(conversation.id)}
+                    data-testid={`conversation-card-${conversation.id}`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-medium text-foreground truncate flex-1">
+                          {conversation.title}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {conversation.type}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteConversation(conversation.id);
+                            }}
+                            data-testid={`button-delete-conversation-${conversation.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(conversation.updatedAt).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {(!conversations || (conversations as Conversation[])?.length === 0) && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(conversation.updatedAt).toLocaleDateString()}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )
+              )}
+
+              {(!conversations ||
+                (conversations as Conversation[])?.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No conversations yet</p>
@@ -447,7 +507,8 @@ export default function AIChat() {
             <div>
               <h1 className="font-semibold text-foreground">RFP AI Agent</h1>
               <p className="text-sm text-muted-foreground">
-                Ask me anything about RFPs, search for opportunities, or get help with proposals
+                Ask me anything about RFPs, search for opportunities, or get
+                help with proposals
               </p>
             </div>
           </div>
@@ -456,84 +517,98 @@ export default function AIChat() {
         {/* Messages */}
         <ScrollArea className="flex-1 p-4" data-testid="chat-messages-area">
           <div className="space-y-4">
-            {(conversationHistory as any)?.messages?.map((message: ChatMessage) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {message.role !== 'user' && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      {getMessageIcon(message.messageType)}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-                
+            {(conversationHistory as any)?.messages?.map(
+              (message: ChatMessage) => (
                 <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
+                  key={message.id}
+                  className={`flex gap-3 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
-                  data-testid={`message-${message.role}-${message.id}`}
                 >
-                  {message.role === 'user' ? (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                  ) : (
-                    <div className="space-y-3 text-foreground">
-                      <ReactMarkdown
-                        components={{
-                          a: ({ href, children }) => (
-                            <a
-                              href={href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
-                            >
-                              {children}
-                            </a>
-                          ),
-                          p: ({ children }) => (
-                            <p className="text-foreground leading-relaxed mb-2">{children}</p>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="text-foreground space-y-1 ml-4 list-disc">{children}</ul>
-                          ),
-                          li: ({ children }) => (
-                            <li className="text-foreground">{children}</li>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-foreground font-semibold text-sm mb-2">{children}</h3>
-                          ),
-                          h4: ({ children }) => (
-                            <h4 className="text-foreground font-medium text-sm mb-1">{children}</h4>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="text-foreground font-semibold">{children}</strong>
-                          ),
-                          em: ({ children }) => (
-                            <em className="text-foreground italic">{children}</em>
-                          ),
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
-                      {renderMessageContent(message)}
-                    </div>
+                  {message.role !== 'user' && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {getMessageIcon(message.messageType)}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+
+                  <div
+                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
+                    data-testid={`message-${message.role}-${message.id}`}
+                  >
+                    {message.role === 'user' ? (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <div className="space-y-3 text-foreground">
+                        <ReactMarkdown
+                          components={{
+                            a: ({ href, children }) => (
+                              <a
+                                href={href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                              >
+                                {children}
+                              </a>
+                            ),
+                            p: ({ children }) => (
+                              <p className="text-foreground leading-relaxed mb-2">
+                                {children}
+                              </p>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="text-foreground space-y-1 ml-4 list-disc">
+                                {children}
+                              </ul>
+                            ),
+                            li: ({ children }) => (
+                              <li className="text-foreground">{children}</li>
+                            ),
+                            h3: ({ children }) => (
+                              <h3 className="text-foreground font-semibold text-sm mb-2">
+                                {children}
+                              </h3>
+                            ),
+                            h4: ({ children }) => (
+                              <h4 className="text-foreground font-medium text-sm mb-1">
+                                {children}
+                              </h4>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="text-foreground font-semibold">
+                                {children}
+                              </strong>
+                            ),
+                            em: ({ children }) => (
+                              <em className="text-foreground italic">
+                                {children}
+                              </em>
+                            ),
+                          }}
+                        >
+                          {message.content}
+                        </ReactMarkdown>
+                        {renderMessageContent(message)}
+                      </div>
+                    )}
+                  </div>
+
+                  {message.role === 'user' && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        <User className="h-4 w-4" />
+                      </AvatarFallback>
+                    </Avatar>
                   )}
                 </div>
-
-                {message.role === 'user' && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>
-                      <User className="h-4 w-4" />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
+              )
+            )}
 
             {sendMessageMutation.isPending && (
               <div className="flex gap-3 justify-start">
@@ -548,42 +623,52 @@ export default function AIChat() {
               </div>
             )}
 
-            {!(conversationHistory as any)?.messages && !sendMessageMutation.isPending && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-medium mb-2">Welcome to RFP AI Agent</h3>
-                <p className="text-sm mb-4 max-w-md mx-auto">
-                  I can help you search for RFPs, analyze requirements, craft proposals, 
-                  and research past bids. What would you like to know?
-                </p>
-                <div className="flex flex-wrap justify-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setInputValue("Find construction RFPs in Austin")}
-                    data-testid="suggestion-search-rfps"
-                  >
-                    Search for RFPs
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setInputValue("How do I write a winning proposal?")}
-                    data-testid="suggestion-proposal-help"
-                  >
-                    Get proposal help
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setInputValue("Show me recent bid analysis")}
-                    data-testid="suggestion-bid-analysis"
-                  >
-                    Analyze past bids
-                  </Button>
+            {!(conversationHistory as any)?.messages &&
+              !sendMessageMutation.isPending && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">
+                    Welcome to RFP AI Agent
+                  </h3>
+                  <p className="text-sm mb-4 max-w-md mx-auto">
+                    I can help you search for RFPs, analyze requirements, craft
+                    proposals, and research past bids. What would you like to
+                    know?
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setInputValue('Find construction RFPs in Austin')
+                      }
+                      data-testid="suggestion-search-rfps"
+                    >
+                      Search for RFPs
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setInputValue('How do I write a winning proposal?')
+                      }
+                      data-testid="suggestion-proposal-help"
+                    >
+                      Get proposal help
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setInputValue('Show me recent bid analysis')
+                      }
+                      data-testid="suggestion-bid-analysis"
+                    >
+                      Analyze past bids
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </ScrollArea>
 
@@ -595,7 +680,7 @@ export default function AIChat() {
             <Input
               placeholder="Ask me about RFPs, proposals, or get help with research..."
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={e => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={sendMessageMutation.isPending}
               className="flex-1"
@@ -613,7 +698,7 @@ export default function AIChat() {
               )}
             </Button>
           </div>
-          
+
           <div className="flex justify-center mt-2">
             <p className="text-xs text-muted-foreground">
               Press Enter to send • Shift+Enter for new line

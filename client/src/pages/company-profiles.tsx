@@ -47,9 +47,7 @@ import {
 
 type ExpiringDialogType = 'certifications' | 'insurance' | 'all';
 
-type ExpiringItem =
-  | CompanyCertification
-  | CompanyInsurance;
+type ExpiringItem = CompanyCertification | CompanyInsurance;
 
 type ExpiringListConfig = {
   title: string;
@@ -63,10 +61,9 @@ export default function CompanyProfiles() {
   const [expiringDialogType, setExpiringDialogType] =
     useState<ExpiringDialogType>('all');
 
-  const {
-    data: profiles = [],
-    isLoading: isProfilesLoading,
-  } = useQuery<CompanyProfile[]>({
+  const { data: profiles = [], isLoading: isProfilesLoading } = useQuery<
+    CompanyProfile[]
+  >({
     queryKey: ['/api/company/profiles'],
   });
 
@@ -91,11 +88,11 @@ export default function CompanyProfiles() {
         profiles.map(async profile => {
           const response = await apiRequest(
             'GET',
-            `/api/company/profiles/${profile.id}/contacts`,
+            `/api/company/profiles/${profile.id}/contacts`
           );
           const contactData = (await response.json()) as CompanyContact[];
           return contactData.map(normalizeCompanyContact);
-        }),
+        })
       );
 
       return responses.flat();
@@ -105,17 +102,17 @@ export default function CompanyProfiles() {
 
   const decisionMakers = useMemo(
     () => getDecisionMakers(allContacts),
-    [allContacts],
+    [allContacts]
   );
 
   const decisionAreaCoverage = useMemo(
     () => calculateDecisionAreaCoverage(decisionMakers),
-    [decisionMakers],
+    [decisionMakers]
   );
 
   const companiesWithDecisionMakers = useMemo(
     () => countCompaniesWithDecisionMakers(profiles, allContacts),
-    [profiles, allContacts],
+    [profiles, allContacts]
   );
 
   const hasExpiringItems =
@@ -152,7 +149,10 @@ export default function CompanyProfiles() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, index) => (
-            <div key={index} className="h-48 bg-muted rounded-lg animate-pulse" />
+            <div
+              key={index}
+              className="h-48 bg-muted rounded-lg animate-pulse"
+            />
           ))}
         </div>
       </div>
@@ -269,9 +269,13 @@ export default function CompanyProfiles() {
                   No Company Profiles
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your first company profile to start managing RFP proposals
+                  Create your first company profile to start managing RFP
+                  proposals
                 </p>
-                <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <Dialog
+                  open={createDialogOpen}
+                  onOpenChange={setCreateDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <Button data-testid="button-create-first-profile">
                       <Plus className="w-4 h-4 mr-2" />
@@ -391,7 +395,8 @@ export default function CompanyProfiles() {
                   {decisionMakers.length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {companiesWithDecisionMakers}/{profiles.length} companies covered
+                  {companiesWithDecisionMakers}/{profiles.length} companies
+                  covered
                 </p>
               </CardContent>
             </Card>
@@ -449,13 +454,13 @@ export default function CompanyProfiles() {
                     new Set(
                       profiles
                         .map(profile => profile.registrationState)
-                        .filter(Boolean),
-                    ),
+                        .filter(Boolean)
+                    )
                   )
                     .slice(0, 5)
                     .map(state => {
                       const count = profiles.filter(
-                        profile => profile.registrationState === state,
+                        profile => profile.registrationState === state
                       ).length;
 
                       return (
@@ -491,12 +496,16 @@ export default function CompanyProfiles() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isExpiringDialogOpen} onOpenChange={setIsExpiringDialogOpen}>
+      <Dialog
+        open={isExpiringDialogOpen}
+        onOpenChange={setIsExpiringDialogOpen}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>{expiringItems.title}</DialogTitle>
             <DialogDescription>
-              Review upcoming certification and insurance expirations to stay compliant.
+              Review upcoming certification and insurance expirations to stay
+              compliant.
             </DialogDescription>
           </DialogHeader>
 
@@ -512,28 +521,38 @@ export default function CompanyProfiles() {
                 <Card key={item.id}>
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center justify-between">
-                      <span>{'certificationType' in item ? item.certificationType : item.insuranceType}</span>
-                      {('expirationDate' in item && item.expirationDate) && (
+                      <span>
+                        {'certificationType' in item
+                          ? item.certificationType
+                          : item.insuranceType}
+                      </span>
+                      {'expirationDate' in item && item.expirationDate && (
                         <Badge variant="secondary">
-                          Expires {new Date(item.expirationDate).toLocaleDateString()}
+                          Expires{' '}
+                          {new Date(item.expirationDate).toLocaleDateString()}
                         </Badge>
                       )}
                     </CardTitle>
                     {'issuingEntity' in item && item.issuingEntity && (
-                      <CardDescription>Issued by {item.issuingEntity}</CardDescription>
+                      <CardDescription>
+                        Issued by {item.issuingEntity}
+                      </CardDescription>
                     )}
                     {'carrier' in item && item.carrier && (
                       <CardDescription>Carrier: {item.carrier}</CardDescription>
                     )}
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm text-muted-foreground">
-                    {'certificationNumber' in item && item.certificationNumber && (
-                      <div>Certification #: {item.certificationNumber}</div>
-                    )}
+                    {'certificationNumber' in item &&
+                      item.certificationNumber && (
+                        <div>Certification #: {item.certificationNumber}</div>
+                      )}
                     {'policyNumber' in item && item.policyNumber && (
                       <div>Policy #: {item.policyNumber}</div>
                     )}
-                    {'notes' in item && item.notes && <div>Notes: {item.notes}</div>}
+                    {'notes' in item && item.notes && (
+                      <div>Notes: {item.notes}</div>
+                    )}
                   </CardContent>
                 </Card>
               ))}

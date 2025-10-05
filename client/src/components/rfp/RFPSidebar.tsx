@@ -27,8 +27,10 @@ export function RFPSidebar({
   onDeleteRFP,
   onGenerateMaterials,
   onGenerateProposal,
+  onRescrape,
   isDeletePending = false,
   isGeneratingProposal = false,
+  isRescrapePending = false,
 }: RFPSidebarProps) {
   return (
     <div className="space-y-6">
@@ -62,11 +64,17 @@ export function RFPSidebar({
           </Button>
 
           <Button
+            onClick={onRescrape}
             variant="secondary"
             className="w-full"
+            disabled={isRescrapePending}
             data-testid="button-rescrape"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
+            {isRescrapePending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4 mr-2" />
+            )}
             Re-scrape RFP
           </Button>
 

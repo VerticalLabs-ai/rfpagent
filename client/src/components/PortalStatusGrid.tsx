@@ -176,7 +176,13 @@ export default function PortalStatusGrid() {
           >
             <Card
               className="cursor-pointer transition-all duration-200 hover:shadow-md hover:scale-105 border-2 hover:border-primary/20"
-              data-testid={`portal-status-${portal.name.toLowerCase().replace(/\s+/g, '-')}`}
+              data-testid={`portal-status-${
+                portal.id ||
+                portal.name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/gi, '-')
+                  .replace(/^-+|-+$/g, '')
+              }`}
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">

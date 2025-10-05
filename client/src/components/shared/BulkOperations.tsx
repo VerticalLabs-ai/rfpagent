@@ -81,7 +81,7 @@ export function BulkOperations<T extends { id: string }>({
         executeAction(action);
       }
     },
-    [selectedItems]
+    [executeAction]
   );
 
   const executeAction = useCallback(

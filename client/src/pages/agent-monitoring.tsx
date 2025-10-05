@@ -39,54 +39,55 @@ const fetchJson = async <T,>(url: string): Promise<T> => {
 };
 
 export default function AgentMonitoring() {
+  // Reduced polling intervals to minimize console noise
   const { data: agentPerformance, isLoading: perfLoading } = useQuery({
     queryKey: ['/api/agent-performance'],
     queryFn: () =>
       fetchJson<AgentPerformanceMetric[]>('/api/agent-performance'),
-    refetchInterval: 5000,
+    refetchInterval: 60000, // 1 min
   });
 
   const { data: systemHealth, isLoading: healthLoading } = useQuery({
     queryKey: ['/api/system-health'],
     queryFn: () => fetchJson<SystemHealthSnapshot>('/api/system-health'),
-    refetchInterval: 5000,
+    refetchInterval: 30000, // 30 sec
   });
 
   const { data: agentRegistry, isLoading: registryLoading } = useQuery({
     queryKey: ['/api/agent-registry'],
     queryFn: () => fetchJson<AgentRegistrySummary>('/api/agent-registry'),
-    refetchInterval: 3000,
+    refetchInterval: 60000, // 1 min
   });
 
   const { data: workItems, isLoading: workItemsLoading } = useQuery({
     queryKey: ['/api/work-items'],
     queryFn: () => fetchJson<WorkItemQueueSummary>('/api/work-items'),
-    refetchInterval: 3000,
+    refetchInterval: 45000, // 45 sec
   });
 
   const { data: agentActivities, isLoading: activitiesLoading } = useQuery({
     queryKey: ['/api/agent-activity'],
     queryFn: () => fetchJson<AgentActivityEvent[]>('/api/agent-activity'),
-    refetchInterval: 3000,
+    refetchInterval: 30000, // 30 sec
   });
 
   const { data: coordination, isLoading: coordLoading } = useQuery({
     queryKey: ['/api/agent-coordination'],
     queryFn: () =>
       fetchJson<AgentCoordinationEvent[]>('/api/agent-coordination'),
-    refetchInterval: 5000,
+    refetchInterval: 45000, // 45 sec
   });
 
   const { data: workflowStates, isLoading: workflowLoading } = useQuery({
     queryKey: ['/api/workflows/state'],
     queryFn: () => fetchJson<WorkflowStateSummary>('/api/workflows/state'),
-    refetchInterval: 3000,
+    refetchInterval: 30000, // 30 sec
   });
 
   const { data: phaseStats, isLoading: phaseStatsLoading } = useQuery({
     queryKey: ['/api/workflows/phase-stats'],
     queryFn: () => fetchJson<WorkflowPhaseStats>('/api/workflows/phase-stats'),
-    refetchInterval: 5000,
+    refetchInterval: 60000, // 1 min
   });
 
   const isLoading =
@@ -110,47 +111,45 @@ export default function AgentMonitoring() {
     !phaseStats;
 
   // Provide default values for missing data
-  const safeSystemHealth: SystemHealthSnapshot =
-    systemHealth ?? {
-      systemStatus: 'unhealthy',
-      agentStatus: { active: 0, total: 0 },
-      activeWorkflows: 0,
-      suspendedWorkflows: 0,
-      completedWorkflows: 0,
-      failedWorkflows: 0,
-      totalWorkflows: 0,
-      successRate: 0,
-      avgExecutionTimeSeconds: 0,
-      lastUpdated: '',
-    };
-  const safeAgentRegistry: AgentRegistrySummary =
-    agentRegistry ?? {
-      totals: { totalAgents: 0, activeAgents: 0, inactiveAgents: 0 },
-      byTier: {},
-      agents: [],
-    };
-  const safeWorkItems: WorkItemQueueSummary =
-    workItems ?? { counts: {}, recent: [] };
+  const safeSystemHealth: SystemHealthSnapshot = systemHealth ?? {
+    systemStatus: 'unhealthy',
+    agentStatus: { active: 0, total: 0 },
+    activeWorkflows: 0,
+    suspendedWorkflows: 0,
+    completedWorkflows: 0,
+    failedWorkflows: 0,
+    totalWorkflows: 0,
+    successRate: 0,
+    avgExecutionTimeSeconds: 0,
+    lastUpdated: '',
+  };
+  const safeAgentRegistry: AgentRegistrySummary = agentRegistry ?? {
+    totals: { totalAgents: 0, activeAgents: 0, inactiveAgents: 0 },
+    byTier: {},
+    agents: [],
+  };
+  const safeWorkItems: WorkItemQueueSummary = workItems ?? {
+    counts: {},
+    recent: [],
+  };
   const safeAgentActivities: AgentActivityEvent[] = agentActivities ?? [];
   const safeCoordination: AgentCoordinationEvent[] = coordination ?? [];
-  const safeWorkflowStates: WorkflowStateSummary =
-    workflowStates ?? {
-      activeWorkflows: 0,
-      byPhase: {},
-      byStatus: {},
-      recentlyCompleted: [],
-      workflows: [],
-    };
-  const safePhaseStats: WorkflowPhaseStats =
-    phaseStats ?? {
-      phases: {},
-      transitions: {
-        totalTransitions: 0,
-        successfulTransitions: 0,
-        failedTransitions: 0,
-        averageTransitionTime: 0,
-      },
-    };
+  const safeWorkflowStates: WorkflowStateSummary = workflowStates ?? {
+    activeWorkflows: 0,
+    byPhase: {},
+    byStatus: {},
+    recentlyCompleted: [],
+    workflows: [],
+  };
+  const safePhaseStats: WorkflowPhaseStats = phaseStats ?? {
+    phases: {},
+    transitions: {
+      totalTransitions: 0,
+      successfulTransitions: 0,
+      failedTransitions: 0,
+      averageTransitionTime: 0,
+    },
+  };
   const transitionMetrics = safePhaseStats.transitions;
 
   // Derive workflow metrics from available data
@@ -243,7 +242,13 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div
-              className="text-2xl font-bold text-green-600"
+              className={`text-2xl font-bold capitalize ${
+                safeSystemHealth.systemStatus === 'healthy'
+                  ? 'text-green-600'
+                  : safeSystemHealth.systemStatus === 'degraded'
+                    ? 'text-yellow-600'
+                    : 'text-red-600'
+              }`}
               data-testid="text-system-status"
             >
               {safeSystemHealth.systemStatus}
@@ -262,6 +267,11 @@ export default function AgentMonitoring() {
                 data-testid="progress-agent-health"
               />
             </div>
+            {safeSystemHealth.totalWorkflows === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                No workflows executed yet
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -319,8 +329,11 @@ export default function AgentMonitoring() {
         </Card>
       </div>
 
-      <Tabs defaultValue="activities" className="w-full">
+      <Tabs defaultValue="configuration" className="w-full">
         <TabsList>
+          <TabsTrigger value="configuration" data-testid="tab-configuration">
+            Agent Configuration
+          </TabsTrigger>
           <TabsTrigger value="activities" data-testid="tab-activities">
             Live Activities
           </TabsTrigger>
@@ -340,6 +353,239 @@ export default function AgentMonitoring() {
             Workflow Phases
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="configuration" className="space-y-6">
+          {/* Agent Registry with Configuration */}
+          <Card data-testid="card-agent-registry">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" />
+                Mastra Agent Registry
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                View and configure the 3-tier agent system: 1 Orchestrator, 3
+                Managers, 7 Specialists
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Tier 1: Orchestrator */}
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <span className="bg-purple-900/50 text-purple-300 border border-purple-700 px-2 py-0.5 rounded text-xs">
+                      Tier 1
+                    </span>
+                    Orchestrator
+                  </h3>
+                  <div className="space-y-2">
+                    {safeAgentRegistry.agents
+                      .filter(agent => agent.tier === 'orchestrator')
+                      .map(agent => (
+                        <div
+                          key={agent.agentId}
+                          className="flex items-center justify-between p-3 border border-purple-700/30 rounded-lg bg-purple-950/20 hover:bg-purple-950/30 transition-colors"
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className="w-2 h-2 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50" />
+                            <div>
+                              <div className="font-medium text-foreground">
+                                {agent.displayName}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {agent.role} • {agent.agentId}
+                              </div>
+                            </div>
+                          </div>
+                          <Badge
+                            variant={
+                              agent.status === 'active'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {agent.status}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Tier 2: Managers */}
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <span className="bg-blue-900/50 text-blue-300 border border-blue-700 px-2 py-0.5 rounded text-xs">
+                      Tier 2
+                    </span>
+                    Managers
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {safeAgentRegistry.agents
+                      .filter(agent => agent.tier === 'manager')
+                      .map(agent => (
+                        <div
+                          key={agent.agentId}
+                          className="flex flex-col p-3 border border-blue-700/30 rounded-lg bg-blue-950/20 hover:bg-blue-950/30 transition-colors"
+                        >
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />
+                            <div className="font-medium text-sm text-foreground">
+                              {agent.displayName}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            {agent.role}
+                          </div>
+                          <Badge
+                            variant={
+                              agent.status === 'active'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className="self-start"
+                          >
+                            {agent.status}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* Tier 3: Specialists */}
+                <div>
+                  <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <span className="bg-emerald-900/50 text-emerald-300 border border-emerald-700 px-2 py-0.5 rounded text-xs">
+                      Tier 3
+                    </span>
+                    Specialists
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {safeAgentRegistry.agents
+                      .filter(agent => agent.tier === 'specialist')
+                      .map(agent => (
+                        <div
+                          key={agent.agentId}
+                          className="flex flex-col p-3 border border-emerald-700/30 rounded-lg bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors"
+                        >
+                          <div className="flex items-center space-x-2 mb-2">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                            <div className="font-medium text-sm text-foreground">
+                              {agent.displayName}
+                            </div>
+                          </div>
+                          <div className="text-xs text-muted-foreground mb-2">
+                            {agent.role}
+                          </div>
+                          {agent.capabilities &&
+                            agent.capabilities.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {agent.capabilities
+                                  .slice(0, 3)
+                                  .map((cap, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="text-xs bg-emerald-900/40 text-emerald-300 border border-emerald-700/50 px-1.5 py-0.5 rounded"
+                                    >
+                                      {cap}
+                                    </span>
+                                  ))}
+                                {agent.capabilities.length > 3 && (
+                                  <span className="text-xs text-muted-foreground">
+                                    +{agent.capabilities.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          <Badge
+                            variant={
+                              agent.status === 'active'
+                                ? 'default'
+                                : 'secondary'
+                            }
+                            className="self-start"
+                          >
+                            {agent.status}
+                          </Badge>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                {/* No agents registered yet */}
+                {safeAgentRegistry.agents.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>No agents registered yet</p>
+                    <p className="text-sm">
+                      Agents will appear here once workflows are executed
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Workflow Configuration */}
+          <Card data-testid="card-workflow-config">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Workflow className="h-5 w-5" />
+                Workflow Configuration
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Available Mastra workflows and their coordination patterns
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">Master Orchestration</div>
+                    <div className="text-sm text-muted-foreground">
+                      End-to-end RFP lifecycle coordination
+                    </div>
+                  </div>
+                  <Badge>Available</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">RFP Discovery</div>
+                    <div className="text-sm text-muted-foreground">
+                      Portal scanning and opportunity detection
+                    </div>
+                  </div>
+                  <Badge>Available</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">Document Processing</div>
+                    <div className="text-sm text-muted-foreground">
+                      Parse and analyze RFP documents
+                    </div>
+                  </div>
+                  <Badge>Available</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">Proposal Generation</div>
+                    <div className="text-sm text-muted-foreground">
+                      AI-powered proposal creation
+                    </div>
+                  </div>
+                  <Badge>Available</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <div className="font-medium">Bonfire Authentication</div>
+                    <div className="text-sm text-muted-foreground">
+                      Handle 2FA for Bonfire portals
+                    </div>
+                  </div>
+                  <Badge>Available</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="activities" className="space-y-6">
           <Card data-testid="card-live-activities">
@@ -526,15 +772,17 @@ export default function AgentMonitoring() {
                     No agents registered yet.
                   </p>
                 )}
-                {Object.entries(safeAgentRegistry.byTier).map(([tier, count]) => (
-                  <div
-                    key={tier}
-                    className="flex items-center justify-between text-sm capitalize"
-                  >
-                    <span>{tier.replace('_', ' ')}</span>
-                    <span className="font-medium">{count}</span>
-                  </div>
-                ))}
+                {Object.entries(safeAgentRegistry.byTier).map(
+                  ([tier, count]) => (
+                    <div
+                      key={tier}
+                      className="flex items-center justify-between text-sm capitalize"
+                    >
+                      <span>{tier.replace('_', ' ')}</span>
+                      <span className="font-medium">{count}</span>
+                    </div>
+                  )
+                )}
               </div>
             </CardContent>
           </Card>
@@ -570,7 +818,8 @@ export default function AgentMonitoring() {
                             {coord.targetAgentId ?? 'Unknown'}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {coord.coordinationType.replace('_', ' ')} • {startedAt}
+                            {coord.coordinationType.replace('_', ' ')} •{' '}
+                            {startedAt}
                           </div>
                         </div>
                       </div>
@@ -784,15 +1033,15 @@ export default function AgentMonitoring() {
                   {transitionMetrics.totalTransitions > 0
                     ? Math.round(
                         (transitionMetrics.successfulTransitions /
-                          transitionMetrics.totalTransitions) * 100
+                          transitionMetrics.totalTransitions) *
+                          100
                       )
                     : 0}
                   %
                 </div>
                 <div className="text-sm text-muted-foreground mt-2">
                   {transitionMetrics.successfulTransitions} /{' '}
-                  {transitionMetrics.totalTransitions} transitions
-                  transitions
+                  {transitionMetrics.totalTransitions} transitions transitions
                 </div>
                 <Progress
                   value={
@@ -817,8 +1066,7 @@ export default function AgentMonitoring() {
                   className="text-3xl font-bold"
                   data-testid="text-avg-transition-time"
                 >
-                  {Math.round(transitionMetrics.averageTransitionTime)}
-                  s
+                  {Math.round(transitionMetrics.averageTransitionTime)}s
                 </div>
                 <p className="text-sm text-muted-foreground">
                   per phase transition
@@ -851,91 +1099,104 @@ export default function AgentMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeWorkflowStates.workflows.slice(0, 10).map((workflow, index) => {
-                  const status = workflow.status ?? 'pending';
-                  const updatedAt = workflow.updatedAt
-                    ? new Date(workflow.updatedAt).toLocaleString()
-                    : 'N/A';
+                {safeWorkflowStates.workflows
+                  .filter(workflow => workflow.title && workflow.progress > 0)
+                  .slice(0, 10)
+                  .map((workflow, index) => {
+                    const status = workflow.status ?? 'pending';
+                    const updatedAt = workflow.updatedAt
+                      ? new Date(workflow.updatedAt).toLocaleString()
+                      : 'N/A';
 
-                  return (
-                    <div
-                      key={workflow.workflowId ?? index}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          {workflow.currentPhase === 'discovery' && (
-                            <PlayCircle className="h-4 w-4 text-blue-500" />
-                          )}
-                          {workflow.currentPhase === 'analysis' && (
-                            <Bot className="h-4 w-4 text-amber-500" />
-                          )}
-                          {workflow.currentPhase === 'generation' && (
-                            <Zap className="h-4 w-4 text-purple-500" />
-                          )}
-                          {workflow.currentPhase === 'submission' && (
-                            <TrendingUp className="h-4 w-4 text-orange-500" />
-                          )}
-                          {workflow.currentPhase === 'monitoring' && (
-                            <Workflow className="h-4 w-4 text-sky-500" />
-                          )}
-                          {status === 'completed' && (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          )}
-                          <span className="font-medium capitalize">
-                            {workflow.currentPhase}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm">
-                            {workflow.title || 'Untitled RFP'}
+                    return (
+                      <div
+                        key={workflow.workflowId ?? index}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            {workflow.currentPhase === 'discovery' && (
+                              <PlayCircle className="h-4 w-4 text-blue-500" />
+                            )}
+                            {workflow.currentPhase === 'analysis' && (
+                              <Bot className="h-4 w-4 text-amber-500" />
+                            )}
+                            {workflow.currentPhase === 'generation' && (
+                              <Zap className="h-4 w-4 text-purple-500" />
+                            )}
+                            {workflow.currentPhase === 'submission' && (
+                              <TrendingUp className="h-4 w-4 text-orange-500" />
+                            )}
+                            {workflow.currentPhase === 'monitoring' && (
+                              <Workflow className="h-4 w-4 text-sky-500" />
+                            )}
+                            {status === 'completed' && (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            )}
+                            <span className="font-medium capitalize text-foreground">
+                              {workflow.currentPhase}
+                            </span>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {(workflow.agency || 'Unknown agency') + ` • Updated ${updatedAt}`}
+                          <div>
+                            <div className="font-semibold text-sm text-foreground">
+                              {workflow.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {(workflow.agency || 'Unknown agency') +
+                                ` • Updated ${updatedAt}`}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <Badge
+                            variant={
+                              status === 'failed'
+                                ? 'destructive'
+                                : status === 'completed'
+                                  ? 'default'
+                                  : 'secondary'
+                            }
+                            data-testid={`badge-workflow-status-${index}`}
+                          >
+                            {status === 'in_progress' && (
+                              <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
+                            )}
+                            {status === 'completed' && (
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {status === 'failed' && (
+                              <XCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {status === 'pending' && (
+                              <PauseCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {status.replace('_', ' ')}
+                          </Badge>
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-foreground">
+                              {Math.round(workflow.progress)}%
+                            </div>
+                            <Progress
+                              value={workflow.progress}
+                              className="w-20"
+                            />
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <Badge
-                          variant={
-                            status === 'failed'
-                              ? 'outline'
-                              : status === 'completed'
-                                ? 'default'
-                                : 'secondary'
-                          }
-                          data-testid={`badge-workflow-status-${index}`}
-                        >
-                          {status === 'in_progress' && (
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                          )}
-                          {status === 'completed' && (
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {status === 'failed' && (
-                            <XCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {status === 'pending' && (
-                            <PauseCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {status.replace('_', ' ')}
-                        </Badge>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {Math.round(workflow.progress)}%
-                          </div>
-                          <Progress value={workflow.progress} className="w-20" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-                {safeWorkflowStates.workflows.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Workflow className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No active workflows found</p>
+                    );
+                  })}
+                {(safeWorkflowStates.workflows.length === 0 ||
+                  safeWorkflowStates.workflows.filter(
+                    w => w.title && w.progress > 0
+                  ).length === 0) && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-2">
+                      No Active Workflows
+                    </p>
                     <p className="text-sm">
-                      Start scanning portals to discover RFPs
+                      Workflows will appear here once you start scanning portals
+                      or generating proposals
                     </p>
                   </div>
                 )}

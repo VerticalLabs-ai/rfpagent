@@ -194,12 +194,10 @@ export default function PortalSettings() {
     scanPortalMutation.mutate(portalId);
   };
 
-  // Get RFP counts per portal
+  // Get RFP counts per portal from portal data
   const getRFPCount = (portalId: string) => {
-    return (
-      portalActivity?.filter((activity: any) => activity.portalId === portalId)
-        .length || 0
-    );
+    const portal = portals?.find((p: any) => p.id === portalId);
+    return portal?.rfpCount ?? 0;
   };
 
   if (isLoading) {
