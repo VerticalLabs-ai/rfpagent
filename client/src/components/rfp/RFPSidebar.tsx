@@ -1,8 +1,15 @@
-import { Download, RefreshCw, ExternalLink, Trash2, Loader2, FileText } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import type { RFPSidebarProps } from "./types";
+import {
+  Download,
+  RefreshCw,
+  ExternalLink,
+  Trash2,
+  Loader2,
+  FileText,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import type { RFPSidebarProps } from './types';
 
 const formatDate = (date: string | Date | null | undefined) => {
   if (!date) return 'N/A';
@@ -65,7 +72,9 @@ export function RFPSidebar({
 
           <Button
             variant="outline"
-            onClick={() => window.open(rfp.sourceUrl, '_blank', 'noopener,noreferrer')}
+            onClick={() =>
+              window.open(rfp.sourceUrl, '_blank', 'noopener,noreferrer')
+            }
             className="w-full"
             data-testid="button-open-portal"
           >
@@ -98,7 +107,10 @@ export function RFPSidebar({
         <CardContent className="space-y-3">
           <div>
             <p className="text-sm font-medium">Discovered</p>
-            <p className="text-sm text-muted-foreground" data-testid="text-discovered-at">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="text-discovered-at"
+            >
               {formatDate(rfp.discoveredAt)}
             </p>
           </div>
@@ -107,7 +119,10 @@ export function RFPSidebar({
 
           <div>
             <p className="text-sm font-medium">Last Updated</p>
-            <p className="text-sm text-muted-foreground" data-testid="text-updated-at">
+            <p
+              className="text-sm text-muted-foreground"
+              data-testid="text-updated-at"
+            >
               {formatDate(rfp.updatedAt)}
             </p>
           </div>

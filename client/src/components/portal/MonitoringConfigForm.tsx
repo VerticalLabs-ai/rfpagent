@@ -1,10 +1,16 @@
-import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { FormWrapper } from "@/components/shared";
-import type { Portal } from "./types";
+import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { FormWrapper } from '@/components/shared';
+import type { Portal } from './types';
 
 interface MonitoringConfig {
   scanFrequency: number;
@@ -26,27 +32,39 @@ interface FormData {
   filters: string;
 }
 
-export function MonitoringConfigForm({ portal, onSubmit, isLoading }: MonitoringConfigFormProps) {
+export function MonitoringConfigForm({
+  portal,
+  onSubmit,
+  isLoading,
+}: MonitoringConfigFormProps) {
   const form = useForm<FormData>({
     defaultValues: {
       scanFrequency: (portal.scanFrequency || 24).toString(),
-      maxRfpsPerScan: "50",
-      selectors: JSON.stringify({
-        rfpList: '.search-results',
-        rfpItem: '.search-result-item',
-        title: '.search-result-title a',
-        agency: '.search-result-agency',
-        deadline: '.search-result-deadline',
-        link: '.search-result-title a',
-        value: '.search-result-value',
-        description: '.search-result-description',
-      }, null, 2),
-      filters: JSON.stringify({
-        minValue: null,
-        maxValue: null,
-        keywords: [],
-        excludeKeywords: [],
-      }, null, 2),
+      maxRfpsPerScan: '50',
+      selectors: JSON.stringify(
+        {
+          rfpList: '.search-results',
+          rfpItem: '.search-result-item',
+          title: '.search-result-title a',
+          agency: '.search-result-agency',
+          deadline: '.search-result-deadline',
+          link: '.search-result-title a',
+          value: '.search-result-value',
+          description: '.search-result-description',
+        },
+        null,
+        2
+      ),
+      filters: JSON.stringify(
+        {
+          minValue: null,
+          maxValue: null,
+          keywords: [],
+          excludeKeywords: [],
+        },
+        null,
+        2
+      ),
     },
   });
 
@@ -71,12 +89,12 @@ export function MonitoringConfigForm({ portal, onSubmit, isLoading }: Monitoring
       testId="monitoring-config-form"
       actions={[
         {
-          label: isLoading ? "Updating..." : "Update Configuration",
-          type: "submit",
-          icon: "fas fa-save",
+          label: isLoading ? 'Updating...' : 'Update Configuration',
+          type: 'submit',
+          icon: 'fas fa-save',
           loading: isLoading,
-          testId: "save-monitoring-config"
-        }
+          testId: 'save-monitoring-config',
+        },
       ]}
     >
       <div className="grid grid-cols-2 gap-4">

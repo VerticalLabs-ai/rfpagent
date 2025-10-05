@@ -1,6 +1,20 @@
-import { UserCheck, Shield, Users, Mail, Phone, Edit, Trash2 } from 'lucide-react';
+import {
+  UserCheck,
+  Shield,
+  Users,
+  Mail,
+  Phone,
+  Edit,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { NormalizedCompanyContact } from './types';
 import { DECISION_AREAS } from './types';
@@ -14,32 +28,54 @@ interface ContactCardProps {
 export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
   const getContactTypeIcon = (type: string) => {
     switch (type) {
-      case "owner": return <UserCheck className="w-4 h-4" />;
-      case "decision_maker": return <Shield className="w-4 h-4" />;
-      default: return <Users className="w-4 h-4" />;
+      case 'owner':
+        return <UserCheck className="w-4 h-4" />;
+      case 'decision_maker':
+        return <Shield className="w-4 h-4" />;
+      default:
+        return <Users className="w-4 h-4" />;
     }
   };
 
   const getContactTypeBadge = (type: string) => {
     switch (type) {
-      case "owner": return <Badge variant="secondary" className="bg-purple-100 text-purple-700">Owner</Badge>;
-      case "decision_maker": return <Badge variant="secondary" className="bg-blue-100 text-blue-700">Decision Maker</Badge>;
-      default: return <Badge variant="outline">Primary Contact</Badge>;
+      case 'owner':
+        return (
+          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+            Owner
+          </Badge>
+        );
+      case 'decision_maker':
+        return (
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+            Decision Maker
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">Primary Contact</Badge>;
     }
   };
 
   return (
-    <Card className="transition-shadow hover:shadow-md" data-testid={`card-contact-${contact.id}`}>
+    <Card
+      className="transition-shadow hover:shadow-md"
+      data-testid={`card-contact-${contact.id}`}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             {getContactTypeIcon(contact.contactType)}
             <div>
-              <CardTitle className="text-base" data-testid={`text-contact-name-${contact.id}`}>
+              <CardTitle
+                className="text-base"
+                data-testid={`text-contact-name-${contact.id}`}
+              >
                 {contact.name}
               </CardTitle>
               {contact.role && (
-                <CardDescription className="text-sm">{contact.role}</CardDescription>
+                <CardDescription className="text-sm">
+                  {contact.role}
+                </CardDescription>
               )}
             </div>
           </div>
@@ -70,7 +106,10 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
           {contact.email && (
             <div className="flex items-center gap-2">
               <Mail className="w-3 h-3 text-muted-foreground" />
-              <a href={`mailto:${contact.email}`} className="text-blue-600 hover:underline">
+              <a
+                href={`mailto:${contact.email}`}
+                className="text-blue-600 hover:underline"
+              >
                 {contact.email}
               </a>
             </div>
@@ -88,23 +127,27 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
               </div>
             </div>
           )}
-          {contact.contactType === "owner" && contact.ownershipPercent && (
+          {contact.contactType === 'owner' && contact.ownershipPercent && (
             <div className="text-xs text-muted-foreground">
               Ownership: {contact.ownershipPercent}
             </div>
           )}
-          {Array.isArray(contact.decisionAreas) && contact.decisionAreas.length > 0 && (
-            <div className="mt-2">
-              <div className="text-xs text-muted-foreground mb-1">Decision Areas:</div>
-              <div className="flex flex-wrap gap-1">
-                {contact.decisionAreas.map((area: string) => (
-                  <Badge key={area} variant="outline" className="text-xs">
-                    {DECISION_AREAS.find(d => d.value === area)?.label || area}
-                  </Badge>
-                ))}
+          {Array.isArray(contact.decisionAreas) &&
+            contact.decisionAreas.length > 0 && (
+              <div className="mt-2">
+                <div className="text-xs text-muted-foreground mb-1">
+                  Decision Areas:
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {contact.decisionAreas.map((area: string) => (
+                    <Badge key={area} variant="outline" className="text-xs">
+                      {DECISION_AREAS.find(d => d.value === area)?.label ||
+                        area}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </CardContent>
     </Card>

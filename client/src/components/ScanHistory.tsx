@@ -1,13 +1,26 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Activity, CheckCircle, XCircle, Clock, AlertCircle, FileText } from "lucide-react";
-import { formatDistanceToNow, format } from "date-fns";
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Activity,
+  CheckCircle,
+  XCircle,
+  Clock,
+  AlertCircle,
+  FileText,
+} from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
 
 interface ScanHistoryProps {
   portalId?: string;
@@ -17,7 +30,7 @@ interface ScanSummary {
   scanId: string;
   portalId: string;
   portalName: string;
-  status: "running" | "completed" | "failed";
+  status: 'running' | 'completed' | 'failed';
   startedAt: string;
   completedAt?: string;
   currentStep: string;
@@ -40,11 +53,11 @@ interface ScanDetails extends ScanSummary {
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case "completed":
+    case 'completed':
       return CheckCircle;
-    case "failed":
+    case 'failed':
       return XCircle;
-    case "running":
+    case 'running':
       return Activity;
     default:
       return Clock;
@@ -53,26 +66,26 @@ const getStatusIcon = (status: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case "completed":
-      return "text-green-600 dark:text-green-400";
-    case "failed":
-      return "text-red-600 dark:text-red-400";
-    case "running":
-      return "text-blue-600 dark:text-blue-400";
+    case 'completed':
+      return 'text-green-600 dark:text-green-400';
+    case 'failed':
+      return 'text-red-600 dark:text-red-400';
+    case 'running':
+      return 'text-blue-600 dark:text-blue-400';
     default:
-      return "text-gray-600 dark:text-gray-400";
+      return 'text-gray-600 dark:text-gray-400';
   }
 };
 
 const getEventIcon = (type: string) => {
   switch (type) {
-    case "rfp_discovered":
+    case 'rfp_discovered':
       return FileText;
-    case "error":
+    case 'error':
       return AlertCircle;
-    case "scan_completed":
+    case 'scan_completed':
       return CheckCircle;
-    case "scan_failed":
+    case 'scan_failed':
       return XCircle;
     default:
       return Activity;
@@ -80,31 +93,35 @@ const getEventIcon = (type: string) => {
 };
 
 const getEventColor = (type: string, level?: string) => {
-  if (level === "error" || type === "error" || type === "scan_failed") {
-    return "text-red-600 dark:text-red-400";
+  if (level === 'error' || type === 'error' || type === 'scan_failed') {
+    return 'text-red-600 dark:text-red-400';
   }
-  if (type === "rfp_discovered" || type === "scan_completed") {
-    return "text-green-600 dark:text-green-400";
+  if (type === 'rfp_discovered' || type === 'scan_completed') {
+    return 'text-green-600 dark:text-green-400';
   }
-  return "text-gray-600 dark:text-gray-400";
+  return 'text-gray-600 dark:text-gray-400';
 };
 
-function ScanDetailsDialog({ scanId, children }: { scanId: string; children: React.ReactNode }) {
+function ScanDetailsDialog({
+  scanId,
+  children,
+}: {
+  scanId: string;
+  children: React.ReactNode;
+}) {
   const { data: scanDetails, isLoading } = useQuery<ScanDetails>({
-    queryKey: ["/api/scans", scanId, "details"],
+    queryKey: ['/api/scans', scanId, 'details'],
     enabled: !!scanId,
   });
 
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle>Scan Details</DialogTitle>
         </DialogHeader>
-        
+
         {isLoading ? (
           <div className="space-y-4">
             <Skeleton className="h-20 w-full" />
@@ -118,7 +135,11 @@ function ScanDetailsDialog({ scanId, children }: { scanId: string; children: Rea
                 <CardTitle className="flex items-center gap-2">
                   {(() => {
                     const StatusIcon = getStatusIcon(scanDetails.status);
-                    return <StatusIcon className={`h-5 w-5 ${getStatusColor(scanDetails.status)}`} />;
+                    return (
+                      <StatusIcon
+                        className={`h-5 w-5 ${getStatusColor(scanDetails.status)}`}
+                      />
+                    );
                   })()}
                   {scanDetails.portalName}
                 </CardTitle>
@@ -127,23 +148,28 @@ function ScanDetailsDialog({ scanId, children }: { scanId: string; children: Rea
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Status:</span>
-                    <div className="font-medium capitalize">{scanDetails.status}</div>
+                    <div className="font-medium capitalize">
+                      {scanDetails.status}
+                    </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Duration:</span>
                     <div className="font-medium">
-                      {scanDetails.completedAt 
-                        ? formatDistanceToNow(new Date(scanDetails.startedAt), { 
+                      {scanDetails.completedAt
+                        ? formatDistanceToNow(new Date(scanDetails.startedAt), {
                             addSuffix: false,
-                            includeSeconds: true
+                            includeSeconds: true,
                           })
-                        : formatDistanceToNow(new Date(scanDetails.startedAt), { addSuffix: false })
-                      }
+                        : formatDistanceToNow(new Date(scanDetails.startedAt), {
+                            addSuffix: false,
+                          })}
                     </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">RFPs Found:</span>
-                    <div className="font-medium">{scanDetails.discoveredRfpsCount}</div>
+                    <div className="font-medium">
+                      {scanDetails.discoveredRfpsCount}
+                    </div>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Errors:</span>
@@ -161,20 +187,23 @@ function ScanDetailsDialog({ scanId, children }: { scanId: string; children: Rea
               <CardContent>
                 <ScrollArea className="h-96">
                   <div className="space-y-3">
-                    {scanDetails.events.map((event) => {
+                    {scanDetails.events.map(event => {
                       const EventIcon = getEventIcon(event.type);
                       return (
-                        <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                          <EventIcon 
-                            className={`h-4 w-4 mt-1 ${getEventColor(event.type, event.level)}`} 
+                        <div
+                          key={event.id}
+                          className="flex items-start gap-3 p-3 border rounded-lg"
+                        >
+                          <EventIcon
+                            className={`h-4 w-4 mt-1 ${getEventColor(event.type, event.level)}`}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium capitalize">
-                                {event.type.replace(/_/g, " ")}
+                                {event.type.replace(/_/g, ' ')}
                               </span>
                               <span className="text-xs text-muted-foreground">
-                                {format(new Date(event.timestamp), "HH:mm:ss")}
+                                {format(new Date(event.timestamp), 'HH:mm:ss')}
                               </span>
                             </div>
                             {event.message && (
@@ -182,9 +211,9 @@ function ScanDetailsDialog({ scanId, children }: { scanId: string; children: Rea
                                 {event.message}
                               </p>
                             )}
-                            {event.data && event.type === "rfp_discovered" && (
+                            {event.data && event.type === 'rfp_discovered' && (
                               <div className="text-xs text-muted-foreground mt-1">
-                                RFP: {event.data.title || "Unknown"}
+                                RFP: {event.data.title || 'Unknown'}
                               </div>
                             )}
                           </div>
@@ -207,19 +236,21 @@ function ScanDetailsDialog({ scanId, children }: { scanId: string; children: Rea
 }
 
 export function ScanHistory({ portalId }: ScanHistoryProps) {
-  const [selectedPortal, setSelectedPortal] = useState<string | null>(portalId || null);
+  const [selectedPortal, setSelectedPortal] = useState<string | null>(
+    portalId || null
+  );
 
   // Get scan history for specific portal or all portals
   const { data: scanHistory, isLoading } = useQuery<ScanSummary[]>({
-    queryKey: selectedPortal 
-      ? ["/api/portals", selectedPortal, "scans", "history"]
-      : ["/api/scans/active"],
+    queryKey: selectedPortal
+      ? ['/api/portals', selectedPortal, 'scans', 'history']
+      : ['/api/scans/active'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Get list of portals for filter
   const { data: portals } = useQuery({
-    queryKey: ["/api/portals"],
+    queryKey: ['/api/portals'],
   });
 
   if (isLoading) {
@@ -230,7 +261,7 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
@@ -248,24 +279,27 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Filter:</span>
               <Button
-                variant={selectedPortal ? "outline" : "default"}
+                variant={selectedPortal ? 'outline' : 'default'}
                 size="sm"
                 onClick={() => setSelectedPortal(null)}
                 data-testid="filter-all-portals"
               >
                 All Portals
               </Button>
-              {Array.isArray(portals) && portals.map((portal: any) => (
-                <Button
-                  key={portal.id}
-                  variant={selectedPortal === portal.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedPortal(portal.id)}
-                  data-testid={`filter-portal-${portal.id}`}
-                >
-                  {portal.name}
-                </Button>
-              ))}
+              {Array.isArray(portals) &&
+                portals.map((portal: any) => (
+                  <Button
+                    key={portal.id}
+                    variant={
+                      selectedPortal === portal.id ? 'default' : 'outline'
+                    }
+                    size="sm"
+                    onClick={() => setSelectedPortal(portal.id)}
+                    data-testid={`filter-portal-${portal.id}`}
+                  >
+                    {portal.name}
+                  </Button>
+                ))}
             </div>
           )}
         </div>
@@ -273,40 +307,65 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
       <CardContent>
         {scanHistory && scanHistory.length > 0 ? (
           <div className="space-y-3">
-            {scanHistory.map((scan) => {
+            {scanHistory.map(scan => {
               const StatusIcon = getStatusIcon(scan.status);
               return (
                 <ScanDetailsDialog key={scan.scanId} scanId={scan.scanId}>
-                  <div className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors" data-testid={`scan-${scan.scanId}`}>
+                  <div
+                    className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                    data-testid={`scan-${scan.scanId}`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <StatusIcon className={`h-5 w-5 ${getStatusColor(scan.status)}`} />
+                        <StatusIcon
+                          className={`h-5 w-5 ${getStatusColor(scan.status)}`}
+                        />
                         <div>
-                          <h4 className="font-medium" data-testid={`scan-portal-${scan.scanId}`}>
+                          <h4
+                            className="font-medium"
+                            data-testid={`scan-portal-${scan.scanId}`}
+                          >
                             {scan.portalName}
                           </h4>
-                          <p className="text-sm text-muted-foreground" data-testid={`scan-time-${scan.scanId}`}>
-                            {formatDistanceToNow(new Date(scan.startedAt), { addSuffix: true })}
+                          <p
+                            className="text-sm text-muted-foreground"
+                            data-testid={`scan-time-${scan.scanId}`}
+                          >
+                            {formatDistanceToNow(new Date(scan.startedAt), {
+                              addSuffix: true,
+                            })}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <div className="text-center">
-                          <div className="font-medium text-green-600" data-testid={`scan-rfps-${scan.scanId}`}>
+                          <div
+                            className="font-medium text-green-600"
+                            data-testid={`scan-rfps-${scan.scanId}`}
+                          >
                             {scan.discoveredRfpsCount}
                           </div>
                           <div className="text-muted-foreground">RFPs</div>
                         </div>
                         {scan.errorCount > 0 && (
                           <div className="text-center">
-                            <div className="font-medium text-red-600" data-testid={`scan-errors-${scan.scanId}`}>
+                            <div
+                              className="font-medium text-red-600"
+                              data-testid={`scan-errors-${scan.scanId}`}
+                            >
                               {scan.errorCount}
                             </div>
                             <div className="text-muted-foreground">Errors</div>
                           </div>
                         )}
-                        <Badge 
-                          variant={scan.status === "completed" ? "default" : scan.status === "failed" ? "destructive" : "secondary"}
+                        <Badge
+                          variant={
+                            scan.status === 'completed'
+                              ? 'default'
+                              : scan.status === 'failed'
+                                ? 'destructive'
+                                : 'secondary'
+                          }
                           data-testid={`scan-status-${scan.scanId}`}
                         >
                           {scan.status}
@@ -321,9 +380,13 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
         ) : (
           <div className="text-center py-8">
             <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Scan History</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              No Scan History
+            </h3>
             <p className="text-muted-foreground">
-              {selectedPortal ? "No scans found for this portal" : "No recent scans available"}
+              {selectedPortal
+                ? 'No scans found for this portal'
+                : 'No recent scans available'}
             </p>
           </div>
         )}

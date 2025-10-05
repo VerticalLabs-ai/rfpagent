@@ -24,45 +24,45 @@ const GENERATION_STEPS: ProgressStep[] = [
     id: 'init',
     name: 'Initializing',
     description: 'Setting up proposal generation',
-    status: 'pending'
+    status: 'pending',
   },
   {
     id: 'analysis',
     name: 'Document Analysis',
     description: 'Analyzing RFP requirements with AI agents',
-    status: 'pending'
+    status: 'pending',
   },
   {
     id: 'proposal_manager',
     name: 'Proposal Planning',
     description: 'Planning proposal structure and approach',
-    status: 'pending'
+    status: 'pending',
   },
   {
     id: 'content_generator',
     name: 'Content Generation',
     description: 'Generating proposal content with Mastra agents',
-    status: 'pending'
+    status: 'pending',
   },
   {
     id: 'compliance_checker',
     name: 'Compliance Check',
     description: 'Ensuring proposal meets all requirements',
-    status: 'pending'
+    status: 'pending',
   },
   {
     id: 'finalization',
     name: 'Finalizing',
     description: 'Completing proposal generation',
-    status: 'pending'
-  }
+    status: 'pending',
+  },
 ];
 
 export function ProposalGenerationProgress({
   sessionId,
   isVisible,
   onComplete,
-  onError
+  onError,
 }: ProposalGenerationProgressProps) {
   const [steps, setSteps] = useState<ProgressStep[]>(GENERATION_STEPS);
   const [currentStep, setCurrentStep] = useState<string>('init');
@@ -96,17 +96,21 @@ export function ProposalGenerationProgress({
       const currentStepId = GENERATION_STEPS[stepIndex].id;
 
       // Update steps
-      setSteps(prev => prev.map(step => {
-        if (step.id === currentStepId) {
-          return { ...step, status: 'in_progress' };
-        } else if (prev.findIndex(s => s.id === step.id) < stepIndex) {
-          return { ...step, status: 'completed' };
-        }
-        return step;
-      }));
+      setSteps(prev =>
+        prev.map(step => {
+          if (step.id === currentStepId) {
+            return { ...step, status: 'in_progress' };
+          } else if (prev.findIndex(s => s.id === step.id) < stepIndex) {
+            return { ...step, status: 'completed' };
+          }
+          return step;
+        })
+      );
 
       setCurrentStep(currentStepId);
-      setOverallProgress(Math.round((stepIndex / GENERATION_STEPS.length) * 100));
+      setOverallProgress(
+        Math.round((stepIndex / GENERATION_STEPS.length) * 100)
+      );
 
       stepIndex++;
 
@@ -153,14 +157,19 @@ export function ProposalGenerationProgress({
         <div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">Overall Progress</span>
-            <span className="text-sm text-muted-foreground">{overallProgress}%</span>
+            <span className="text-sm text-muted-foreground">
+              {overallProgress}%
+            </span>
           </div>
           <Progress value={overallProgress} className="h-2" />
         </div>
 
         {/* Session Info */}
         <div className="text-sm text-muted-foreground">
-          Session ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">{sessionId}</code>
+          Session ID:{' '}
+          <code className="text-xs bg-muted px-1 py-0.5 rounded">
+            {sessionId}
+          </code>
         </div>
 
         {/* Steps */}
@@ -172,10 +181,10 @@ export function ProposalGenerationProgress({
                 step.status === 'in_progress'
                   ? 'bg-blue-50 border-blue-200'
                   : step.status === 'completed'
-                  ? 'bg-green-50 border-green-200'
-                  : step.status === 'error'
-                  ? 'bg-red-50 border-red-200'
-                  : 'bg-gray-50 border-gray-200'
+                    ? 'bg-green-50 border-green-200'
+                    : step.status === 'error'
+                      ? 'bg-red-50 border-red-200'
+                      : 'bg-gray-50 border-gray-200'
               }`}
             >
               {/* Status Icon */}
@@ -196,12 +205,17 @@ export function ProposalGenerationProgress({
 
               {/* Step Info */}
               <div className="flex-1 min-w-0">
-                <p className={`font-medium ${
-                  step.status === 'in_progress' ? 'text-blue-900' :
-                  step.status === 'completed' ? 'text-green-900' :
-                  step.status === 'error' ? 'text-red-900' :
-                  'text-gray-700'
-                }`}>
+                <p
+                  className={`font-medium ${
+                    step.status === 'in_progress'
+                      ? 'text-blue-900'
+                      : step.status === 'completed'
+                        ? 'text-green-900'
+                        : step.status === 'error'
+                          ? 'text-red-900'
+                          : 'text-gray-700'
+                  }`}
+                >
                   {step.name}
                 </p>
                 <p className="text-sm text-muted-foreground mt-0.5">
@@ -213,10 +227,13 @@ export function ProposalGenerationProgress({
               <div className="flex-shrink-0">
                 <Badge
                   variant={
-                    step.status === 'completed' ? 'default' :
-                    step.status === 'in_progress' ? 'secondary' :
-                    step.status === 'error' ? 'destructive' :
-                    'outline'
+                    step.status === 'completed'
+                      ? 'default'
+                      : step.status === 'in_progress'
+                        ? 'secondary'
+                        : step.status === 'error'
+                          ? 'destructive'
+                          : 'outline'
                   }
                   className="text-xs"
                 >
@@ -234,10 +251,14 @@ export function ProposalGenerationProgress({
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-blue-900">3-Tier Mastra AI System Active</span>
+            <span className="text-sm font-medium text-blue-900">
+              3-Tier Mastra AI System Active
+            </span>
           </div>
           <p className="text-xs text-blue-700">
-            Our specialized AI agents are analyzing your RFP requirements and generating a comprehensive proposal using the latest Mastra framework.
+            Our specialized AI agents are analyzing your RFP requirements and
+            generating a comprehensive proposal using the latest Mastra
+            framework.
           </p>
         </div>
 
@@ -245,7 +266,9 @@ export function ProposalGenerationProgress({
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <AlertCircle className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium text-red-900">Generation Failed</span>
+              <span className="text-sm font-medium text-red-900">
+                Generation Failed
+              </span>
             </div>
             <p className="text-sm text-red-700">{error}</p>
           </div>
@@ -255,10 +278,13 @@ export function ProposalGenerationProgress({
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
               <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">Generation Complete!</span>
+              <span className="text-sm font-medium text-green-900">
+                Generation Complete!
+              </span>
             </div>
             <p className="text-sm text-green-700">
-              Your proposal has been generated successfully. It will appear in the proposals section below.
+              Your proposal has been generated successfully. It will appear in
+              the proposals section below.
             </p>
           </div>
         )}

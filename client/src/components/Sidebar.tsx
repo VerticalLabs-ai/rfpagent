@@ -12,7 +12,6 @@ export default function Sidebar() {
 
   const navigationItems = [
     { path: '/', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
-    { path: '/discovery', label: 'RFP Discovery', icon: 'fas fa-search' },
     { path: '/ai-chat', label: 'AI Agent', icon: 'fas fa-robot' },
     {
       path: '/workflow-management',
@@ -23,6 +22,11 @@ export default function Sidebar() {
       path: '/agent-monitoring',
       label: 'Agent Monitoring',
       icon: 'fas fa-chart-line',
+    },
+    {
+      path: '/safla-dashboard',
+      label: 'SAFLA Self-Improving AI',
+      icon: 'fas fa-brain',
     },
     {
       path: '/system-settings',

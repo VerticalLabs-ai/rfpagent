@@ -1,4 +1,4 @@
-import type { RFP, Document } from "@shared/schema";
+import type { RFP, Document } from '@shared/schema';
 
 export interface RFPDetailsProps {
   rfp: RFP;
@@ -42,7 +42,7 @@ export interface RFPHeaderProps {
 export interface ComplianceChecklistProps {
   complianceItems: Array<{
     item: string;
-    status: "pending" | "completed" | "na";
+    status: 'pending' | 'completed' | 'na';
     notes?: string;
   }>;
 }
@@ -54,7 +54,7 @@ export interface RequirementsListProps {
 export interface RiskFlagsProps {
   riskFlags: Array<{
     flag: string;
-    severity: "low" | "medium" | "high";
+    severity: 'low' | 'medium' | 'high';
     description?: string;
   }>;
 }

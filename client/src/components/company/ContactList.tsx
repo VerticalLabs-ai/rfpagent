@@ -25,13 +25,20 @@ interface ContactListProps {
 export function ContactList({ companyProfileId }: ContactListProps) {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<NormalizedCompanyContact | undefined>();
+  const [editingContact, setEditingContact] = useState<
+    NormalizedCompanyContact | undefined
+  >();
   const { toast } = useToast();
 
-  const { data: contacts = [], isLoading } = useQuery<NormalizedCompanyContact[]>({
+  const { data: contacts = [], isLoading } = useQuery<
+    NormalizedCompanyContact[]
+  >({
     queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/company/profiles/${companyProfileId}/contacts`);
+      const response = await apiRequest(
+        'GET',
+        `/api/company/profiles/${companyProfileId}/contacts`
+      );
       const data = (await response.json()) as CompanyContact[];
       return data.map(normalizeCompanyContact);
     },
@@ -44,7 +51,9 @@ export function ContactList({ companyProfileId }: ContactListProps) {
       queryClient.invalidateQueries({
         queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles', 'all-contacts'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', 'all-contacts'],
+      });
       toast({ title: 'Contact deleted successfully' });
     },
     onError: () => {
@@ -87,9 +96,7 @@ export function ContactList({ companyProfileId }: ContactListProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">
-          Contacts ({contacts.length})
-        </h3>
+        <h3 className="text-lg font-semibold">Contacts ({contacts.length})</h3>
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-contact">

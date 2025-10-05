@@ -1,5 +1,5 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
-import { ErrorFallback } from "./ErrorFallback";
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { ErrorFallback } from './ErrorFallback';
 
 interface Props {
   children: ReactNode;
@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     };
   }
 
@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Update state so the next render will show the fallback UI
     return {
       hasError: true,
-      error
+      error,
     };
   }
 
@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // Update state with error info
     this.setState({
       error,
-      errorInfo
+      errorInfo,
     });
 
     // Call onError callback if provided
@@ -58,18 +58,22 @@ export class ErrorBoundary extends Component<Props, State> {
       console.error('Production error caught by ErrorBoundary:', {
         error: error.message,
         stack: error.stack,
-        componentStack: errorInfo.componentStack
+        componentStack: errorInfo.componentStack,
       });
     }
   }
 
   componentDidUpdate(prevProps: Props) {
     // Reset error state when props change (if resetOnPropsChange is true)
-    if (this.props.resetOnPropsChange && prevProps.children !== this.props.children && this.state.hasError) {
+    if (
+      this.props.resetOnPropsChange &&
+      prevProps.children !== this.props.children &&
+      this.state.hasError
+    ) {
       this.setState({
         hasError: false,
         error: null,
-        errorInfo: null
+        errorInfo: null,
       });
     }
   }
@@ -78,7 +82,7 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
     });
   };
 
@@ -145,6 +149,6 @@ export function useErrorHandler() {
   return {
     captureError,
     resetError,
-    hasError: !!error
+    hasError: !!error,
   };
 }

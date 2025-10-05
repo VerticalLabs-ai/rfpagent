@@ -611,7 +611,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         const startIndex = text.indexOf('"executiveSummary"');
         if (startIndex > 0) {
           // Look backwards to find the opening brace
-          let braceIndex = text.lastIndexOf('{', startIndex);
+          const braceIndex = text.lastIndexOf('{', startIndex);
           if (braceIndex >= 0) {
             // Find the matching closing brace
             let braceCount = 0;

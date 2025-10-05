@@ -1,15 +1,18 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { LoadingCards, EmptyState, StatusBadge } from "@/components/shared";
-import type { Discovery } from "./types";
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { LoadingCards, EmptyState, StatusBadge } from '@/components/shared';
+import type { Discovery } from './types';
 
 interface RecentDiscoveriesProps {
   discoveries: Discovery[];
   isLoading: boolean;
 }
 
-export function RecentDiscoveries({ discoveries, isLoading }: RecentDiscoveriesProps) {
+export function RecentDiscoveries({
+  discoveries,
+  isLoading,
+}: RecentDiscoveriesProps) {
   if (isLoading) {
     return <LoadingCards count={5} variant="list" />;
   }
@@ -29,7 +32,9 @@ export function RecentDiscoveries({ discoveries, isLoading }: RecentDiscoveriesP
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold">Recent RFP Discoveries</h2>
-          <p className="text-muted-foreground">RFPs discovered in the last 24 hours</p>
+          <p className="text-muted-foreground">
+            RFPs discovered in the last 24 hours
+          </p>
         </div>
         <Badge variant="secondary" data-testid="discoveries-count">
           {discoveries.length} RFPs Found
@@ -37,15 +42,21 @@ export function RecentDiscoveries({ discoveries, isLoading }: RecentDiscoveriesP
       </div>
 
       <div className="space-y-4">
-        {discoveries.map((rfp) => (
+        {discoveries.map(rfp => (
           <Card key={rfp.id} data-testid={`discovery-${rfp.id}`}>
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-2 leading-tight" data-testid={`rfp-title-${rfp.id}`}>
+                  <h3
+                    className="font-semibold text-lg mb-2 leading-tight"
+                    data-testid={`rfp-title-${rfp.id}`}
+                  >
                     {rfp.title}
                   </h3>
-                  <p className="text-muted-foreground mb-3" data-testid={`rfp-portal-${rfp.id}`}>
+                  <p
+                    className="text-muted-foreground mb-3"
+                    data-testid={`rfp-portal-${rfp.id}`}
+                  >
                     {rfp.portalName}
                   </p>
                   {rfp.description && (
@@ -56,7 +67,10 @@ export function RecentDiscoveries({ discoveries, isLoading }: RecentDiscoveriesP
                   <div className="flex items-center space-x-4 text-sm">
                     <div className="flex items-center">
                       <i className="fas fa-calendar mr-2 text-muted-foreground"></i>
-                      <span>Discovered: {new Date(rfp.discoveredAt).toLocaleDateString()}</span>
+                      <span>
+                        Discovered:{' '}
+                        {new Date(rfp.discoveredAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -67,7 +81,12 @@ export function RecentDiscoveries({ discoveries, isLoading }: RecentDiscoveriesP
                   />
                   {rfp.rfpUrl && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={rfp.rfpUrl} target="_blank" rel="noopener noreferrer" data-testid={`view-rfp-${rfp.id}`}>
+                      <a
+                        href={rfp.rfpUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`view-rfp-${rfp.id}`}
+                      >
                         <i className="fas fa-external-link-alt mr-2"></i>
                         View RFP
                       </a>

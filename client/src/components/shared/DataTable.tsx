@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "./EmptyState";
-import { LoadingCards } from "./LoadingCards";
+import { ReactNode } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from './EmptyState';
+import { LoadingCards } from './LoadingCards';
 
 interface Column<T> {
   key: keyof T;
@@ -38,8 +38,8 @@ export function DataTable<T>({
   isLoading = false,
   emptyState,
   keyExtractor,
-  className = "",
-  testId
+  className = '',
+  testId,
 }: DataTableProps<T>) {
   if (isLoading) {
     return <LoadingCards count={3} variant="list" />;
@@ -68,17 +68,16 @@ export function DataTable<T>({
       )}
       <CardContent>
         <div className="space-y-4" data-testid={testId}>
-          {data.map((item) => (
+          {data.map(item => (
             <div
               key={keyExtractor(item)}
               className="flex items-center justify-between p-4 border rounded-lg"
             >
-              {columns.map((column) => (
+              {columns.map(column => (
                 <div key={String(column.key)} className={column.className}>
-                  {column.render ?
-                    column.render(item[column.key], item) :
-                    String(item[column.key] || '')
-                  }
+                  {column.render
+                    ? column.render(item[column.key], item)
+                    : String(item[column.key] || '')}
                 </div>
               ))}
             </div>

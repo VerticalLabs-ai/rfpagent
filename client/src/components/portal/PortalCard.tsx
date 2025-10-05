@@ -1,12 +1,28 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { EditPortalForm } from "./EditPortalForm";
-import { MonitoringConfigForm } from "./MonitoringConfigForm";
-import type { Portal, PortalFormData } from "./types";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { EditPortalForm } from './EditPortalForm';
+import { MonitoringConfigForm } from './MonitoringConfigForm';
+import type { Portal, PortalFormData } from './types';
 
 interface PortalCardProps {
   portal: Portal;
@@ -29,23 +45,25 @@ export function PortalCard({
   onUpdateMonitoring,
   scanning = false,
   deleting = false,
-  updatingMonitoring = false
+  updatingMonitoring = false,
 }: PortalCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "active":
-        return "bg-green-500";
-      case "maintenance":
-        return "bg-yellow-500";
-      case "error":
-        return "bg-red-500";
+      case 'active':
+        return 'bg-green-500';
+      case 'maintenance':
+        return 'bg-yellow-500';
+      case 'error':
+        return 'bg-red-500';
       default:
-        return "bg-gray-500";
+        return 'bg-gray-500';
     }
   };
 
-  const getLastScannedText = (lastScanned: Date | string | null | undefined) => {
-    if (!lastScanned) return "Never scanned";
+  const getLastScannedText = (
+    lastScanned: Date | string | null | undefined
+  ) => {
+    if (!lastScanned) return 'Never scanned';
 
     const date = new Date(lastScanned);
     const now = new Date();
@@ -62,22 +80,28 @@ export function PortalCard({
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="flex items-center gap-2" data-testid={`portal-name-${portal.id}`}>
+            <CardTitle
+              className="flex items-center gap-2"
+              data-testid={`portal-name-${portal.id}`}
+            >
               {portal.name}
               <div
-                className={`w-2 h-2 ${getStatusColor(portal.status || "active")} rounded-full`}
+                className={`w-2 h-2 ${getStatusColor(portal.status || 'active')} rounded-full`}
                 data-testid={`portal-status-indicator-${portal.id}`}
               ></div>
             </CardTitle>
-            <p className="text-sm text-muted-foreground break-all" data-testid={`portal-url-${portal.id}`}>
+            <p
+              className="text-sm text-muted-foreground break-all"
+              data-testid={`portal-url-${portal.id}`}
+            >
               {portal.url}
             </p>
           </div>
           <Badge
-            variant={portal.username ? "default" : "secondary"}
+            variant={portal.username ? 'default' : 'secondary'}
             data-testid={`portal-auth-badge-${portal.id}`}
           >
-            {portal.username ? "Auth Required" : "Public"}
+            {portal.username ? 'Auth Required' : 'Public'}
           </Badge>
         </div>
       </CardHeader>
@@ -86,13 +110,19 @@ export function PortalCard({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Status:</span>
-              <p className="font-medium capitalize" data-testid={`portal-status-text-${portal.id}`}>
-                {portal.status || "active"}
+              <p
+                className="font-medium capitalize"
+                data-testid={`portal-status-text-${portal.id}`}
+              >
+                {portal.status || 'active'}
               </p>
             </div>
             <div>
               <span className="text-muted-foreground">RFPs Found:</span>
-              <p className="font-medium" data-testid={`portal-rfp-count-${portal.id}`}>
+              <p
+                className="font-medium"
+                data-testid={`portal-rfp-count-${portal.id}`}
+              >
                 {rfpCount}
               </p>
             </div>
@@ -100,7 +130,10 @@ export function PortalCard({
 
           <div className="text-sm">
             <span className="text-muted-foreground">Last Scanned:</span>
-            <p className="font-medium" data-testid={`portal-last-scanned-${portal.id}`}>
+            <p
+              className="font-medium"
+              data-testid={`portal-last-scanned-${portal.id}`}
+            >
               {getLastScannedText(portal.lastScanned)}
             </p>
           </div>
@@ -114,7 +147,7 @@ export function PortalCard({
               data-testid={`scan-portal-${portal.id}`}
             >
               <i className="fas fa-search mr-2"></i>
-              {scanning ? "Scanning..." : "Scan Now"}
+              {scanning ? 'Scanning...' : 'Scan Now'}
             </Button>
 
             <Dialog>
@@ -151,7 +184,11 @@ export function PortalCard({
                 <DialogHeader>
                   <DialogTitle>Monitoring Configuration</DialogTitle>
                 </DialogHeader>
-                <MonitoringConfigForm portal={portal} onSubmit={onUpdateMonitoring} isLoading={updatingMonitoring} />
+                <MonitoringConfigForm
+                  portal={portal}
+                  onSubmit={onUpdateMonitoring}
+                  isLoading={updatingMonitoring}
+                />
               </DialogContent>
             </Dialog>
 
@@ -164,14 +201,17 @@ export function PortalCard({
                   data-testid={`delete-portal-${portal.id}`}
                 >
                   <i className="fas fa-trash mr-2"></i>
-                  {deleting ? "Deleting..." : "Delete"}
+                  {deleting ? 'Deleting...' : 'Delete'}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Portal</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{portal.name}"? This action will permanently remove the portal and all associated RFPs, proposals, documents, and submissions. This cannot be undone.
+                    Are you sure you want to delete "{portal.name}"? This action
+                    will permanently remove the portal and all associated RFPs,
+                    proposals, documents, and submissions. This cannot be
+                    undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
