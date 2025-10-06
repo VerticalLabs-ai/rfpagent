@@ -107,9 +107,9 @@ USER nodejs
 # Expose application port (Fly.io uses PORT env var)
 EXPOSE 3000
 
-# Health check - using liveness probe endpoint (matches fly.toml)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health/live', (r) => {if(r.statusCode !== 200) throw new Error('Health check failed')})"
+# Health check disabled - using Fly.io's HTTP health checks instead
+# HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+#     CMD node -e "require('http').get('http://localhost:3000/api/health/live', (r) => {if(r.statusCode !== 200) throw new Error('Health check failed')})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
