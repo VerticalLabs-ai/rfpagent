@@ -710,7 +710,13 @@ export class AgentMemoryService {
     agentId: string,
     entry: {
       domain: string;
-      knowledgeType: string;
+      knowledgeType:
+        | 'rfp_pattern'
+        | 'compliance_rule'
+        | 'market_insight'
+        | 'pricing_data'
+        | 'strategy'
+        | 'template';
       title: string;
       content: any;
       tags?: string[];
@@ -719,7 +725,7 @@ export class AgentMemoryService {
   ): Promise<any> {
     return await this.storeKnowledge({
       agentId,
-      knowledgeType: entry.knowledgeType as any,
+      knowledgeType: entry.knowledgeType,
       domain: entry.domain,
       title: entry.title,
       content: entry.content,

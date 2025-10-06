@@ -1,7 +1,9 @@
 import { rfps } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import * as fs from 'fs';
+import { createWriteStream } from 'fs';
 import * as path from 'path';
+import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 import { db } from '../db';
 import { storage } from '../storage';
@@ -168,7 +170,7 @@ export class RFPScrapingService {
 
         rfpId = existingRFP.id;
       } else {
-        console.log(`✨ Creating new RFP entry`);
+        console.log('✨ Creating new RFP entry');
         // Create new RFP
         const newRfp = await db
           .insert(rfps)
@@ -207,7 +209,7 @@ export class RFPScrapingService {
 
         // Check if this is a Philadelphia RFP
         if (url.includes('phlcontracts.phila.gov')) {
-          console.log(`🏛️ Using Philadelphia-specific document downloader`);
+          console.log('🏛️ Using Philadelphia-specific document downloader');
           const documentNames = extractedData.documents.map(doc => doc.name);
 
           try {
@@ -270,7 +272,7 @@ export class RFPScrapingService {
               }
             }
           } catch (error) {
-            console.error(`Error downloading Philadelphia documents:`, error);
+            console.error('Error downloading Philadelphia documents:', error);
             errors.push(`Failed to download Philadelphia documents: ${error}`);
           }
         } else {
@@ -353,7 +355,7 @@ export class RFPScrapingService {
     // Generic extraction for other portals
     return performWebExtraction(
       url,
-      `Extract all RFP details including: title, agency, description, deadline, estimated value, contact information, solicitation number, pre-bid meeting date, and all downloadable document links with their names`,
+      'Extract all RFP details including: title, agency, description, deadline, estimated value, contact information, solicitation number, pre-bid meeting date, and all downloadable document links with their names',
       rfpExtractionSchema,
       this.sessionId
     );
@@ -363,7 +365,7 @@ export class RFPScrapingService {
    * Special extraction for Philadelphia RFPs
    */
   private async extractPhiladelphiaRFPData(url: string) {
-    console.log(`🏛️ Using Philadelphia RFP extraction logic`);
+    console.log('🏛️ Using Philadelphia RFP extraction logic');
 
     try {
       // Use the PhiladelphiaDocumentDownloader's extraction method
@@ -419,7 +421,7 @@ export class RFPScrapingService {
       // Fall back to generic extraction
       return performWebExtraction(
         url,
-        `Extract RFP details from this Philadelphia contracting portal page. Look for bid information, attachments, and all relevant details.`,
+        'Extract RFP details from this Philadelphia contracting portal page. Look for bid information, attachments, and all relevant details.',
         rfpExtractionSchema,
         this.sessionId
       );
@@ -430,7 +432,7 @@ export class RFPScrapingService {
    * Special extraction for Austin Texas RFPs
    */
   private async extractAustinRFPData(url: string) {
-    console.log(`🏛️ Using Austin Texas RFP extraction logic`);
+    console.log('🏛️ Using Austin Texas RFP extraction logic');
 
     // Extract the data with specific instructions for Austin portal
     // The performWebExtraction will navigate to the URL automatically
@@ -491,20 +493,29 @@ export class RFPScrapingService {
   }
 
   /**
-   * Simple file download implementation
+   * Simple file download implementation with timeout and streaming
    */
   private async simpleDownloadFile(
     url: string,
-    filepath: string
+    filepath: string,
+    timeoutMs: number = 60000 // 60 second default timeout
   ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
       console.log(`⬇️ Downloading from: ${url}`);
 
-      const response = await fetch(url);
+      const response = await fetch(url, { signal: controller.signal });
+
       if (!response.ok) {
         throw new Error(
           `Failed to download: ${response.status} ${response.statusText}`
         );
+      }
+
+      if (!response.body) {
+        throw new Error('Response body is null');
       }
 
       // Ensure directory exists
@@ -513,14 +524,29 @@ export class RFPScrapingService {
         fs.mkdirSync(dir, { recursive: true });
       }
 
-      // Write file
-      const buffer = Buffer.from(await response.arrayBuffer());
-      fs.writeFileSync(filepath, buffer);
+      // Stream response to file
+      const fileStream = createWriteStream(filepath);
 
-      console.log(`✅ Downloaded successfully: ${path.basename(filepath)}`);
+      try {
+        // @ts-ignore - Node.js ReadableStream is compatible with pipeline
+        await pipeline(response.body, fileStream);
+        console.log(`✅ Downloaded successfully: ${path.basename(filepath)}`);
+      } catch (pipelineError) {
+        // Clean up partial file on error
+        if (fs.existsSync(filepath)) {
+          fs.unlinkSync(filepath);
+        }
+        throw pipelineError;
+      }
     } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error(`❌ Download timeout (${timeoutMs}ms) for ${url}`);
+        throw new Error(`Download timeout after ${timeoutMs}ms`);
+      }
       console.error(`❌ Download failed for ${url}:`, error);
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

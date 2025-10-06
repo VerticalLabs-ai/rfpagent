@@ -46,18 +46,8 @@ const PortalMonitoringConfigSchema = z.object({
  */
 router.get('/', async (req, res) => {
   try {
-    const portals = await storage.getAllPortals();
-
-    // Add RFP counts for each portal
-    const portalsWithCounts = await Promise.all(
-      portals.map(async portal => {
-        const rfpCount = await storage.getRFPsByPortal(portal.id);
-        return {
-          ...portal,
-          rfpCount,
-        };
-      })
-    );
+    // Use single query with JOIN to get portals with RFP counts (no N+1)
+    const portalsWithCounts = await storage.getPortalsWithRFPCounts();
 
     res.json(portalsWithCounts);
   } catch (error) {

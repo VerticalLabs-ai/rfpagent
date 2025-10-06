@@ -34,17 +34,37 @@ export const skipRateLimit = (req: Request): boolean => {
     process.env.NODE_ENV === undefined
   ) {
     const clientIP = req.ip || req.socket.remoteAddress || '';
-    // Check for localhost, IPv4 loopback, IPv6 loopback, and local network
+
+    // Check for localhost, IPv4 loopback, IPv6 loopback
     if (
       clientIP === '127.0.0.1' ||
       clientIP === '::1' ||
       clientIP === '::ffff:127.0.0.1' ||
-      clientIP.includes('localhost') ||
-      clientIP.startsWith('192.168.') ||
-      clientIP.startsWith('10.') ||
-      clientIP.startsWith('172.')
+      clientIP.includes('localhost')
     ) {
       return true;
+    }
+
+    // Check for RFC1918 private networks
+    // 10.0.0.0/8
+    if (clientIP.startsWith('10.')) {
+      return true;
+    }
+
+    // 192.168.0.0/16
+    if (clientIP.startsWith('192.168.')) {
+      return true;
+    }
+
+    // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255)
+    if (clientIP.startsWith('172.')) {
+      const octets = clientIP.split('.');
+      if (octets.length >= 2) {
+        const secondOctet = parseInt(octets[1], 10);
+        if (!isNaN(secondOctet) && secondOctet >= 16 && secondOctet <= 31) {
+          return true;
+        }
+      }
     }
   }
 

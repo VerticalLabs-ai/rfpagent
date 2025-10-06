@@ -1,92 +1,120 @@
 {
   "dashboard": {
+    "id": null,
+    "uid": "rfp-agent-overview",
     "title": "RFP Agent - Overview",
     "tags": ["rfp-agent", "production"],
+    "version": 1,
+    "schemaVersion": 27,
     "timezone": "browser",
     "panels": [
       {
+        "id": 1,
         "title": "Request Rate",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "rate(http_requests_total{app=\"rfp-agent\"}[5m])",
-            "legendFormat": "{{method}} {{path}}"
+            "legendFormat": "{{method}} {{path}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
       },
       {
+        "id": 2,
         "title": "Response Time (p95)",
+        "datasource": "Prometheus",
         "targets": [
           {
-            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"rfp-agent\"}[5m]))",
-            "legendFormat": "{{method}} {{path}}"
+            "expr": "histogram_quantile(0.95, sum by (le, method, path) (rate(http_request_duration_seconds_bucket{app=\"rfp-agent\"}[5m])))",
+            "legendFormat": "{{method}} {{path}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
       },
       {
+        "id": 3,
         "title": "Error Rate",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "rate(http_requests_total{app=\"rfp-agent\",status=~\"5..\"}[5m])",
-            "legendFormat": "{{status}} - {{path}}"
+            "legendFormat": "{{status}} - {{path}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
       },
       {
+        "id": 4,
         "title": "CPU Usage",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "rate(container_cpu_usage_seconds_total{pod=~\"rfp-agent.*\"}[5m])",
-            "legendFormat": "{{pod}}"
+            "legendFormat": "{{pod}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
       },
       {
+        "id": 5,
         "title": "Memory Usage",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "container_memory_usage_bytes{pod=~\"rfp-agent.*\"}",
-            "legendFormat": "{{pod}}"
+            "legendFormat": "{{pod}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
       },
       {
+        "id": 6,
         "title": "Active Pods",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "count(kube_pod_info{pod=~\"rfp-agent.*\",phase=\"Running\"})",
-            "legendFormat": "Running Pods"
+            "legendFormat": "Running Pods",
+            "datasource": "Prometheus"
           }
         ],
         "type": "stat",
         "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
       },
       {
+        "id": 7,
         "title": "Database Queries",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "rate(db_queries_total{app=\"rfp-agent\"}[5m])",
-            "legendFormat": "{{operation}}"
+            "legendFormat": "{{operation}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",
         "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
       },
       {
+        "id": 8,
         "title": "AI Agent Performance",
+        "datasource": "Prometheus",
         "targets": [
           {
             "expr": "rate(agent_execution_duration_seconds_sum{app=\"rfp-agent\"}[5m]) / rate(agent_execution_duration_seconds_count{app=\"rfp-agent\"}[5m])",
-            "legendFormat": "{{agent_type}}"
+            "legendFormat": "{{agent_type}}",
+            "datasource": "Prometheus"
           }
         ],
         "type": "graph",

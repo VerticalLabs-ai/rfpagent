@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pricingConfigLoader } from '../../../../config/pricing/pricingConfig';
 
 // Input schemas
 const requirementItemSchema = z.object({
@@ -56,31 +57,6 @@ export type PricingTableOutput = z.infer<typeof pricingTableSchema>;
 export type CompanyMappingExtended = z.infer<
   typeof companyMappingExtendedSchema
 >;
-
-// Historical average rates by category (fallback)
-const HISTORICAL_RATES: Record<string, { unitRate: number; unit: string }> = {
-  project_management: { unitRate: 150, unit: 'hour' },
-  senior_consultant: { unitRate: 175, unit: 'hour' },
-  consultant: { unitRate: 125, unit: 'hour' },
-  developer: { unitRate: 140, unit: 'hour' },
-  implementation: { unitRate: 75000, unit: 'project' },
-  training: { unitRate: 1500, unit: 'day' },
-  support: { unitRate: 5000, unit: 'month' },
-  documentation: { unitRate: 2500, unit: 'deliverable' },
-  default: { unitRate: 100, unit: 'hour' },
-};
-
-// State tax rates mapping
-const STATE_TAX_RATES: Record<string, number> = {
-  TX: 8.25,
-  CA: 7.25,
-  NY: 4.0,
-  FL: 6.0,
-  IL: 6.25,
-  PA: 6.0,
-  OH: 5.75,
-  default: 8.0,
-};
 
 interface ParsedRequirement {
   description: string;
@@ -198,8 +174,8 @@ function extractUnit(requirement: string, category: string): string {
   if (lowerReq.includes('project')) return 'project';
   if (lowerReq.includes('deliverable')) return 'deliverable';
 
-  // Use historical unit for category
-  return HISTORICAL_RATES[category]?.unit || HISTORICAL_RATES.default.unit;
+  // Use historical unit for category from config
+  return pricingConfigLoader.getHistoricalRate(category).unit;
 }
 
 /**
@@ -215,17 +191,20 @@ function getRate(
       r => r.category.toLowerCase() === category.toLowerCase()
     );
     if (companyRate) {
-      return (
+      const rate =
         companyRate.unitRate ||
         companyRate.hourlyRate ||
-        companyRate.dailyRate ||
-        0
-      );
+        companyRate.dailyRate;
+
+      // Only return company rate if it's a valid number > 0
+      if (rate && rate > 0) {
+        return rate;
+      }
     }
   }
 
-  // Fallback to historical rates
-  return HISTORICAL_RATES[category]?.unitRate || HISTORICAL_RATES.default.unitRate;
+  // Fallback to historical rates from config (always returns a valid rate)
+  return pricingConfigLoader.getHistoricalRate(category).unitRate;
 }
 
 /**
@@ -233,10 +212,10 @@ function getRate(
  */
 function getTaxRate(companyMapping: CompanyMappingExtended): number {
   const state = companyMapping.companyInfo.location?.state;
-  if (state && STATE_TAX_RATES[state]) {
-    return STATE_TAX_RATES[state];
+  if (state) {
+    return pricingConfigLoader.getStateTaxRate(state);
   }
-  return STATE_TAX_RATES.default;
+  return pricingConfigLoader.getStateTaxRate('default');
 }
 
 /**
@@ -296,22 +275,31 @@ function applyBudgetConstraints(
   margin: number
 ): { quantities: number[]; unitPrices: number[] } {
   const quantities = items.map(item => item.quantity);
-  let unitPrices = rates.slice();
+
+  // Convert margin from percentage to decimal
+  const marginMultiplier = 1 + margin / 100;
+
+  // Apply margin to base rates first
+  let unitPrices = rates.map(rate => rate * marginMultiplier);
 
   if (budget === null) {
     return { quantities, unitPrices };
   }
 
-  // Calculate total without margin
+  // Calculate total with margin-included prices
   const currentTotal = items.reduce(
-    (sum, item, i) => sum + item.quantity * rates[i],
+    (sum, item, i) => sum + item.quantity * unitPrices[i],
     0
   );
 
-  // If over budget, apply proportional discount
+  // If over budget, apply proportional discount to margin-included prices
   if (currentTotal > budget) {
     const discountFactor = budget / currentTotal;
-    unitPrices = rates.map(rate => rate * discountFactor);
+    unitPrices = unitPrices.map((price, i) => {
+      const discountedPrice = price * discountFactor;
+      // Ensure discounted price doesn't fall below original base rate
+      return Math.max(discountedPrice, rates[i]);
+    });
   }
 
   return { quantities, unitPrices };

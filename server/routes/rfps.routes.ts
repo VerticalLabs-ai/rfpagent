@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
@@ -217,7 +218,7 @@ router.post('/manual', async (req, res) => {
     );
 
     // Start processing asynchronously and return sessionId immediately
-    const sessionId = require('crypto').randomUUID();
+    const sessionId = randomUUID();
 
     // Return sessionId immediately so frontend can connect to progress stream
     res.status(202).json({

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { toast } from '@/hooks/use-toast';
 
 interface TouchPoint {
   x: number;
@@ -329,7 +330,11 @@ export function usePullToRefresh(options: UsePullToRefreshOptions) {
         await onRefresh();
       } catch (error) {
         console.error('Error during pull-to-refresh:', error);
-        throw error;
+        toast({
+          title: 'Refresh failed',
+          description: error instanceof Error ? error.message : 'An error occurred while refreshing',
+          variant: 'destructive',
+        });
       } finally {
         setIsRefreshing(false);
       }

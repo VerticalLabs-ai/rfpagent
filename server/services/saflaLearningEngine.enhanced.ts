@@ -33,6 +33,10 @@ import OpenAI from 'openai';
  *    - Performance degradation detection
  */
 
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
+}
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ============================================================================
@@ -297,14 +301,19 @@ export class EnhancedSAFLALearningEngine {
       const factors: { factor: string; impact: number }[] = [];
 
       // Factor 1: Value competitiveness
-      const avgWinningBid =
-        historicalBids
-          .filter(b => b.isWinner && b.bidAmount)
-          .reduce((sum, b) => sum + Number(b.bidAmount), 0) / wins;
+      let valueImpact = 0;
+      if (wins > 0) {
+        const avgWinningBid =
+          historicalBids
+            .filter(b => b.isWinner && b.bidAmount)
+            .reduce((sum, b) => sum + Number(b.bidAmount), 0) / wins;
 
-      const valueRatio = rfpFeatures.estimatedValue / avgWinningBid;
-      const valueImpact = (1 - Math.abs(1 - valueRatio)) * 0.2;
-      adjustedProbability += valueImpact;
+        if (avgWinningBid > 0) {
+          const valueRatio = rfpFeatures.estimatedValue / avgWinningBid;
+          valueImpact = (1 - Math.abs(1 - valueRatio)) * 0.2;
+          adjustedProbability += valueImpact;
+        }
+      }
       factors.push({ factor: 'value_competitiveness', impact: valueImpact });
 
       // Factor 2: Requirement complexity

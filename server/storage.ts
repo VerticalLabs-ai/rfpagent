@@ -194,6 +194,7 @@ export interface IStorage {
 
   // Portals
   getAllPortals(): Promise<PublicPortal[]>;
+  getPortalsWithRFPCounts(): Promise<(PublicPortal & { rfpCount: number })[]>;
   getActivePortals(): Promise<PublicPortal[]>;
   getPortal(id: string): Promise<PublicPortal | undefined>;
   getPortalWithCredentials(id: string): Promise<Portal | undefined>; // Internal use only - includes credentials
@@ -703,6 +704,37 @@ export class DatabaseStorage implements IStorage {
       })
       .from(portals)
       .orderBy(asc(portals.name));
+  }
+
+  async getPortalsWithRFPCounts(): Promise<(PublicPortal & { rfpCount: number })[]> {
+    // Single query with LEFT JOIN and GROUP BY to get portals with RFP counts
+    const results = await db
+      .select({
+        id: portals.id,
+        name: portals.name,
+        url: portals.url,
+        type: portals.type,
+        loginRequired: portals.loginRequired,
+        isActive: portals.isActive,
+        monitoringEnabled: portals.monitoringEnabled,
+        lastScanned: portals.lastScanned,
+        status: portals.status,
+        scanFrequency: portals.scanFrequency,
+        maxRfpsPerScan: portals.maxRfpsPerScan,
+        selectors: portals.selectors,
+        filters: portals.filters,
+        lastError: portals.lastError,
+        errorCount: portals.errorCount,
+        createdAt: portals.createdAt,
+        updatedAt: portals.updatedAt,
+        rfpCount: sql<number>`cast(count(${rfps.id}) as integer)`,
+      })
+      .from(portals)
+      .leftJoin(rfps, eq(portals.id, rfps.portalId))
+      .groupBy(portals.id)
+      .orderBy(asc(portals.name));
+
+    return results;
   }
 
   async getActivePortals(): Promise<PublicPortal[]> {

@@ -5,6 +5,7 @@
 This document contains scripts for a comprehensive video tutorial series covering the RFP Agent platform from basic usage to advanced integrations.
 
 ### Series Structure
+
 1. **Getting Started** (5-7 minutes)
 2. **RFP Discovery & Management** (8-10 minutes)
 3. **AI-Powered Proposal Generation** (10-12 minutes)
@@ -26,6 +27,7 @@ This document contains scripts for a comprehensive video tutorial series coverin
 "Welcome to RFP Agent - the AI-powered platform that revolutionizes how you discover, respond to, and win government contracts. I'm [Name], and in the next 5 minutes, I'll show you how to get started with RFP Agent and discover your first opportunities.
 
 By the end of this video, you'll know how to:
+
 - Set up your account
 - Configure government portals
 - Discover your first RFP
@@ -35,13 +37,14 @@ Let's dive in!"
 
 **[ACCOUNT SETUP - 0:30-1:30]**
 
-*[SCREEN: Login page]*
+_[SCREEN: Login page]_
 
 "First, let's log into RFP Agent. If you're a new user, click 'Sign Up' and enter your business details.
 
-*[SCREEN: Registration form]*
+_[SCREEN: Registration form]_
 
 You'll need to provide:
+
 - Your company name
 - Business email
 - Industry category
@@ -49,17 +52,18 @@ You'll need to provide:
 
 This information helps our AI understand which opportunities are most relevant for your business.
 
-*[SCREEN: Email verification]*
+_[SCREEN: Email verification]_
 
 Check your email for a verification link and click it to activate your account."
 
 **[DASHBOARD OVERVIEW - 1:30-2:30]**
 
-*[SCREEN: Main dashboard]*
+_[SCREEN: Main dashboard]_
 
 "Great! Now you're logged in. Let's familiarize ourselves with the dashboard.
 
 On the left sidebar, you'll find:
+
 - **Dashboard** - Your command center
 - **RFPs** - All discovered opportunities
 - **Proposals** - Generated proposal documents
@@ -67,6 +71,7 @@ On the left sidebar, you'll find:
 - **Submissions** - Track submitted proposals
 
 The main dashboard shows:
+
 - **Active RFPs** - Current opportunities
 - **Proposal Status** - Works in progress
 - **Portal Activity** - Recent discoveries
@@ -74,18 +79,19 @@ The main dashboard shows:
 
 **[PORTAL CONFIGURATION - 2:30-4:00]**
 
-*[SCREEN: Portals page]*
+_[SCREEN: Portals page]_
 
 "Next, let's configure which government portals to monitor. Click 'Portals' in the sidebar.
 
-*[SCREEN: Add Portal button]*
+_[SCREEN: Add Portal button]_
 
 Click 'Add Portal' and you'll see our pre-configured portals:
+
 - SAM.gov for federal contracts
 - State portals
 - Municipal portals
 
-*[SCREEN: Portal configuration]*
+_[SCREEN: Portal configuration]_
 
 For this demo, let's enable 'City of Austin Finance Online.'
 
@@ -94,39 +100,42 @@ Toggle 'Monitoring Enabled' to ON.
 Set scan frequency - I recommend every 24 hours to start.
 
 You can add filters for:
+
 - Business categories
 - Minimum contract value
 - Keywords to include or exclude
 
-*[CLICK: Save]*
+_[CLICK: Save]_
 
 Perfect! RFP Agent will now automatically scan this portal daily."
 
 **[FIRST RFP DISCOVERY - 4:00-5:30]**
 
-*[SCREEN: Portals page, click Scan Now]*
+_[SCREEN: Portals page, click Scan Now]_
 
 "Let's discover some opportunities right now. Click 'Scan Now' next to Austin portal.
 
-*[SCREEN: Scan progress modal]*
+_[SCREEN: Scan progress modal]_
 
 Watch as our AI agents work:
+
 1. Authenticating to the portal
 2. Searching for opportunities
 3. Extracting RFP details
 4. Downloading documents
 
-*[SCREEN: Scan complete notification]*
+_[SCREEN: Scan complete notification]_
 
 Great! We found 8 new RFPs. Click 'View Results' to see them.
 
-*[SCREEN: RFP list]*
+_[SCREEN: RFP list]_
 
 Here's our first discovery! Let's click on this 'IT Services' RFP.
 
-*[SCREEN: RFP detail page]*
+_[SCREEN: RFP detail page]_
 
 Notice how RFP Agent automatically extracted:
+
 - RFP title and description
 - Issuing agency
 - Deadline
@@ -137,7 +146,7 @@ You can also see our AI's initial analysis highlighting key requirements and com
 
 **[CALL TO ACTION - 5:30-6:00]**
 
-*[SCREEN: Dashboard with new RFPs]*
+_[SCREEN: Dashboard with new RFPs]_
 
 "And that's it! In just a few minutes, you've:
 ✓ Set up your account
@@ -162,6 +171,7 @@ Don't forget to subscribe and click the bell icon for notifications. See you in 
 **[INTRO - 0:00-0:30]**
 
 "Welcome back to RFP Agent Academy! In this video, we'll dive deep into RFP discovery and management. You'll learn how to:
+
 - Configure advanced portal filters
 - Manually add RFPs from any website
 - Organize and prioritize opportunities
@@ -171,11 +181,11 @@ Let's get started!"
 
 **[ADVANCED PORTAL FILTERS - 0:30-2:30]**
 
-*[SCREEN: Portal settings]*
+_[SCREEN: Portal settings]_
 
 "Smart filtering is key to finding the right opportunities. Let's configure advanced filters for maximum relevance.
 
-*[SCREEN: Portal edit modal]*
+_[SCREEN: Portal edit modal]_
 
 Click 'Edit' on the Austin portal. Here's how to set up powerful filters:
 
@@ -184,53 +194,56 @@ Set minimum value to $50,000 - this filters out smaller contracts.
 Set maximum if you have capacity limits - say $5 million.
 
 **Business Category Filters:**
-*[SCREEN: Category selection]*
+_[SCREEN: Category selection]_
 
 Select your expertise areas. For a tech company, choose:
+
 - Information Technology
 - Software Development
 - Cloud Services
 - Cybersecurity
 
 **Keyword Filters:**
-*[SCREEN: Keyword input]*
+_[SCREEN: Keyword input]_
 
 INCLUDE keywords like:
+
 - 'cloud migration'
 - 'application development'
 - 'digital transformation'
 
 EXCLUDE keywords to avoid irrelevant RFPs:
+
 - 'construction'
 - 'janitorial'
 - 'lawn maintenance'
 
-*[CLICK: Save]*
+_[CLICK: Save]_
 
 Now RFP Agent will only show you highly relevant opportunities!"
 
 **[MANUAL RFP ADDITION - 2:30-4:30]**
 
-*[SCREEN: RFP list page]*
+_[SCREEN: RFP list page]_
 
 "Sometimes you'll find an RFP on a portal we don't monitor yet. No problem! RFP Agent can process any RFP URL.
 
-*[SCREEN: Click 'Add RFP' button]*
+_[SCREEN: Click 'Add RFP' button]_
 
 Click 'Add RFP' in the top right.
 
-*[SCREEN: Manual RFP form]*
+_[SCREEN: Manual RFP form]_
 
 Paste the RFP URL - I'll use this Philadelphia contract:
-https://phlcontracts.phila.gov/contract/123456
+<https://phlcontracts.phila.gov/contract/123456>
 
 Add notes if needed - 'High priority, existing client relationship.'
 
-*[CLICK: Submit]*
+_[CLICK: Submit]_
 
 Watch the magic happen:
 
-*[SCREEN: Processing progress]*
+_[SCREEN: Processing progress]_
 
 1. **Scraping** - Our AI navigates the portal
 2. **Extracting** - Pulls RFP details automatically
@@ -238,9 +251,10 @@ Watch the magic happen:
 4. **Downloading** - Saves documents to your library
 5. **Analysis** - AI analyzes requirements
 
-*[SCREEN: Completed RFP detail]*
+_[SCREEN: Completed RFP detail]_
 
 In 30 seconds, RFP Agent has:
+
 - Created the RFP record
 - Downloaded 5 PDF documents
 - Extracted key dates and requirements
@@ -250,14 +264,15 @@ You just saved 2 hours of manual work!"
 
 **[RFP ORGANIZATION - 4:30-6:30]**
 
-*[SCREEN: RFP list with filters]*
+_[SCREEN: RFP list with filters]_
 
 "As opportunities pile up, organization is crucial. Let's explore RFP Agent's management tools.
 
 **Status-Based Organization:**
-*[SCREEN: Status filter dropdown]*
+_[SCREEN: Status filter dropdown]_
 
 RFPs move through these stages:
+
 - **Discovered** - Just found
 - **Parsing** - Documents being analyzed
 - **Drafting** - Proposal in progress
@@ -269,17 +284,19 @@ RFPs move through these stages:
 Filter by status to focus your work.
 
 **Priority Sorting:**
-*[SCREEN: Sort options]*
+_[SCREEN: Sort options]_
 
 Sort by:
+
 - **Deadline** - Most urgent first
 - **Value** - Highest revenue opportunities
 - **Match Score** - Best fit for your capabilities
 
 **Bulk Actions:**
-*[SCREEN: Select multiple RFPs]*
+_[SCREEN: Select multiple RFPs]_
 
 Select multiple RFPs to:
+
 - Generate proposals in batch
 - Export to spreadsheet
 - Archive older opportunities
@@ -288,30 +305,32 @@ This is perfect for proposal managers handling many RFPs!"
 
 **[AI CHAT FOR RFP DISCOVERY - 6:30-8:30]**
 
-*[SCREEN: AI Chat icon in top right]*
+_[SCREEN: AI Chat icon in top right]_
 
 "Here's a powerful feature: AI Chat. Click the chat icon.
 
-*[SCREEN: Chat interface]*
+_[SCREEN: Chat interface]_
 
 Instead of filtering manually, just ask:
 
-*[TYPE: 'Find me cloud infrastructure RFPs from Austin worth over $200k']*
+_[TYPE: 'Find me cloud infrastructure RFPs from Austin worth over $200k']_
 
-*[SCREEN: AI response with results]*
+_[SCREEN: AI response with results]_
 
 The AI instantly shows 3 matching RFPs with:
+
 - Summaries
 - Quick actions
 - Relevance scores
 
 Let's try something more complex:
 
-*[TYPE: 'Which RFPs have upcoming deadlines this month that match our cybersecurity expertise?']*
+_[TYPE: 'Which RFPs have upcoming deadlines this month that match our cybersecurity expertise?']_
 
-*[SCREEN: AI response]*
+_[SCREEN: AI response]_
 
 Amazing! The AI understands:
+
 - Time context ('this month')
 - Your company profile ('cybersecurity expertise')
 - Urgency (upcoming deadlines)
@@ -348,6 +367,7 @@ Subscribe and hit the notification bell. See you next time!"
 Today, I'll show you how our GPT-5 powered AI creates professional, compliant, winning proposals in minutes, not weeks.
 
 Here's what we'll cover:
+
 - Company profile setup
 - Automated proposal generation
 - Customization and refinement
@@ -357,31 +377,34 @@ By the end, you'll generate a complete proposal ready for submission. Let's begi
 
 **[COMPANY PROFILE SETUP - 0:45-3:00]**
 
-*[SCREEN: Company Profile page]*
+_[SCREEN: Company Profile page]_
 
 "Before generating proposals, we need your company profile. Click 'Company' in the sidebar.
 
-*[SCREEN: Profile creation form]*
+_[SCREEN: Profile creation form]_
 
 **Basic Information:**
+
 - Company legal name
 - DBA (if different)
 - Website
 - Business category
 
 **Identification:**
-*[SCREEN: Identifiers section]*
+_[SCREEN: Identifiers section]_
 
 Add your business identifiers:
+
 - DUNS number
 - SAM UEI number
 - Tax ID/EIN
 - Vendor IDs for each portal
 
 **Certifications:**
-*[SCREEN: Certifications section]*
+_[SCREEN: Certifications section]_
 
 List all certifications:
+
 - Small Business
 - Woman-Owned
 - HUB (Historically Underutilized Business)
@@ -390,9 +413,10 @@ List all certifications:
 Our AI uses these to highlight compliance advantages!
 
 **Capabilities:**
-*[SCREEN: Capabilities section]*
+_[SCREEN: Capabilities section]_
 
 Detail your expertise:
+
 - Core services
 - Technologies
 - Industries served
@@ -400,9 +424,10 @@ Detail your expertise:
 - Team size and specializations
 
 **Past Performance:**
-*[SCREEN: Projects section]*
+_[SCREEN: Projects section]_
 
 Add relevant projects:
+
 - Client name
 - Project description
 - Contract value
@@ -410,21 +435,22 @@ Add relevant projects:
 
 The more detail, the better the AI-generated proposals!
 
-*[CLICK: Save Profile]*"
+_[CLICK: Save Profile]_"
 
 **[PROPOSAL GENERATION - 3:00-6:30]**
 
-*[SCREEN: RFP detail page]*
+_[SCREEN: RFP detail page]_
 
 "Now for the exciting part! Let's generate a proposal for this Cloud Infrastructure RFP.
 
-*[SCREEN: Click 'Generate Proposal' button]*
+_[SCREEN: Click 'Generate Proposal' button]_
 
 You'll see generation options:
 
-*[SCREEN: Generation options modal]*
+_[SCREEN: Generation options modal]_
 
 **Proposal Type:**
+
 - Technical Proposal
 - Cost Proposal
 - Combined (recommended)
@@ -439,61 +465,68 @@ You'll see generation options:
 ☑ Compliance Matrix
 
 **Advanced Options:**
+
 - Quality threshold (0-100%)
 - Writing style (Professional, Persuasive, Technical)
 - Compliance strictness
 
-*[CLICK: Generate]*
+_[CLICK: Generate]_
 
 Watch the AI work:
 
-*[SCREEN: Generation progress]*
+_[SCREEN: Generation progress]_
 
 **Phase 1: Document Analysis** (30 seconds)
+
 - Reading all RFP documents
 - Extracting requirements
 - Identifying evaluation criteria
 - Finding compliance mandates
 
 **Phase 2: Content Generation** (2-3 minutes)
+
 - Crafting executive summary
 - Developing technical approach
 - Matching past performance
 - Creating staffing plan
 
 **Phase 3: Compliance Checking** (1 minute)
+
 - Verifying all requirements addressed
 - Building compliance matrix
 - Flagging any gaps
 
 **Phase 4: Quality Assurance** (30 seconds)
+
 - Checking consistency
 - Verifying formatting
 - Final polish
 
-*[SCREEN: Generation complete notification]*
+_[SCREEN: Generation complete notification]_
 
 Done! Let's review what the AI created."
 
 **[PROPOSAL REVIEW - 6:30-9:00]**
 
-*[SCREEN: Generated proposal view]*
+_[SCREEN: Generated proposal view]_
 
 "Here's your AI-generated proposal. Let's explore each section:
 
 **Executive Summary:**
-*[SCREEN: Scroll through executive summary]*
+_[SCREEN: Scroll through executive summary]_
 
 Notice how the AI:
+
 - Addresses the agency's specific needs
 - Highlights your unique qualifications
 - References the RFP by name and number
 - Uses persuasive, professional language
 
 **Technical Approach:**
-*[SCREEN: Technical approach section]*
+_[SCREEN: Technical approach section]_
 
 The AI created:
+
 - Detailed methodology aligned with requirements
 - Phase-by-phase implementation plan
 - Risk mitigation strategies
@@ -502,26 +535,29 @@ The AI created:
 All derived from your company capabilities and the RFP requirements!
 
 **Past Performance:**
-*[SCREEN: Past performance section]*
+_[SCREEN: Past performance section]_
 
 The AI selected your 3 most relevant projects and wrote compelling narratives showing:
+
 - Similar scope and complexity
 - Successful outcomes
 - Relevant technologies
 - Client satisfaction
 
 **Compliance Matrix:**
-*[SCREEN: Compliance matrix]*
+_[SCREEN: Compliance matrix]_
 
 This is crucial! The AI built a complete matrix showing:
+
 - Every RFP requirement
 - Where it's addressed in your proposal
 - Page numbers for easy reference
 
 **Pricing:**
-*[SCREEN: Pricing section]*
+_[SCREEN: Pricing section]_
 
 Based on the scope, the AI created:
+
 - Line item budget
 - Labor categories and rates
 - Materials and expenses
@@ -531,13 +567,14 @@ You can adjust any numbers before finalizing."
 
 **[CUSTOMIZATION - 9:00-10:30]**
 
-*[SCREEN: Edit mode]*
+_[SCREEN: Edit mode]_
 
 "While the AI does 90% of the work, you can customize anything. Click 'Edit.'
 
-*[SCREEN: Inline editing]*
+_[SCREEN: Inline editing]_
 
 You can:
+
 - Modify any text inline
 - Add sections
 - Reorder content
@@ -546,63 +583,69 @@ You can:
 
 Let's customize the executive summary:
 
-*[SCREEN: Edit executive summary]*
+_[SCREEN: Edit executive summary]_
 
 I'll add our recent industry award:
 'Recently recognized as 2024 Cloud Innovation Partner of the Year by TechExcellence Awards.'
 
-*[CLICK: Save]*
+_[CLICK: Save]_
 
 You can also regenerate specific sections if needed:
 
-*[SCREEN: Right-click section menu]*
+_[SCREEN: Right-click section menu]_
 
 Right-click any section and choose:
+
 - Regenerate with different tone
 - Expand with more detail
 - Condense for brevity
 
 Let's make the technical approach more detailed:
 
-*[CLICK: Regenerate > More Detail]*
+_[CLICK: Regenerate > More Detail]_
 
-*[SCREEN: AI regenerating section]*
+_[SCREEN: AI regenerating section]_
 
 Perfect! The AI expanded it with additional technical specifics."
 
 **[QUALITY ASSURANCE - 10:30-11:30]**
 
-*[SCREEN: Quality check dashboard]*
+_[SCREEN: Quality check dashboard]_
 
 "Before submitting, run the quality check. Click 'Run Quality Check.'
 
-*[SCREEN: Quality analysis running]*
+_[SCREEN: Quality analysis running]_
 
 The AI analyzes:
 
 **Completeness (95/100):**
+
 - All requirements addressed ✓
 - All forms included ✓
 - Minor: Add one more reference ⚠
 
 **Compliance (100/100):**
+
 - All mandatory items present ✓
 - Format requirements met ✓
 - Page limits adhered to ✓
 
 **Quality (92/100):**
+
 - Grammar and spelling perfect ✓
 - Consistent terminology ✓
 - Professional formatting ✓
 
 **Competitiveness (88/100):**
+
 - Strong value proposition ✓
 - Competitive pricing ✓
 - Good: Quantify more benefits ⚠
 
-*[SCREEN: Recommendations]*
+_[SCREEN: Recommendations]_
 
 The AI suggests:
+
 1. Add contact reference for XYZ Corp project
 2. Quantify cost savings in Executive Summary
 3. Emphasize sustainability approach (per RFP section 3.4)
@@ -641,6 +684,7 @@ Subscribe for more RFP Agent tutorials!"
 In this video, I'll show you how RFP Agent's automation can submit your proposal to government portals automatically, saving hours of tedious form-filling.
 
 We'll cover:
+
 - Pre-submission checklist
 - Portal authentication
 - Automated form filling
@@ -651,11 +695,11 @@ Let's automate your way to winning bids!"
 
 **[PRE-SUBMISSION CHECKLIST - 0:30-2:00]**
 
-*[SCREEN: Proposal detail page]*
+_[SCREEN: Proposal detail page]_
 
 "Before submitting, ensure everything is ready. RFP Agent provides a smart checklist.
 
-*[SCREEN: Click 'Prepare for Submission']*
+_[SCREEN: Click 'Prepare for Submission']_
 
 **Document Checklist:**
 ☑ Technical Proposal (PDF) - 42 pages ✓
@@ -680,55 +724,57 @@ Everything looks good! Let's proceed."
 
 **[PORTAL AUTHENTICATION - 2:00-3:30]**
 
-*[SCREEN: Click 'Submit to Portal']*
+_[SCREEN: Click 'Submit to Portal']_
 
 "RFP Agent needs to authenticate to the portal on your behalf.
 
-*[SCREEN: Portal credentials form]*
+_[SCREEN: Portal credentials form]_
 
 Enter your portal credentials:
-- Username: vendor@example.com
+
+- Username: <vendor@example.com>
 - Password: ••••••••
 
-*[SCREEN: Security notice]*
+_[SCREEN: Security notice]_
 
 Security note: RFP Agent encrypts and securely stores credentials. They're never exposed or shared.
 
-*[CLICK: Authenticate]*
+_[CLICK: Authenticate]_
 
-*[SCREEN: 2FA prompt]*
+_[SCREEN: 2FA prompt]_
 
 For portals with two-factor authentication, you'll need to verify:
 
-*[SCREEN: Phone notification]*
+_[SCREEN: Phone notification]_
 
 Check your phone for the 2FA code.
 
-*[ENTER: 2FA code]*
+_[ENTER: 2FA code]_
 
-*[SCREEN: Authentication successful]*
+_[SCREEN: Authentication successful]_
 
 Perfect! We're authenticated and ready to submit."
 
 **[AUTOMATED FORM FILLING - 3:30-5:30]**
 
-*[SCREEN: Submission automation dashboard]*
+_[SCREEN: Submission automation dashboard]_
 
 "Now watch as our AI fills out the portal forms automatically.
 
-*[SCREEN: Portal submission page loading]*
+_[SCREEN: Portal submission page loading]_
 
 The automation begins:
 
 **Step 1: RFP Selection**
-*[SCREEN: AI selecting correct RFP]*
+_[SCREEN: AI selecting correct RFP]_
 
 The AI navigates to the correct RFP submission page.
 
 **Step 2: Vendor Information**
-*[SCREEN: Form auto-filling]*
+_[SCREEN: Form auto-filling]_
 
 Watch as the AI fills in:
+
 - Company name
 - DUNS number
 - Address
@@ -737,9 +783,10 @@ Watch as the AI fills in:
 All from your company profile - no manual typing!
 
 **Step 3: Proposal Sections**
-*[SCREEN: Section-by-section filling]*
+_[SCREEN: Section-by-section filling]_
 
 The AI fills complex forms:
+
 - Technical approach summary
 - Key personnel
 - Subcontractors
@@ -748,7 +795,7 @@ The AI fills complex forms:
 Notice how it adapts to different form formats and field types.
 
 **Step 4: Compliance Questions**
-*[SCREEN: Checkbox forms]*
+_[SCREEN: Checkbox forms]_
 
 The AI intelligently answers compliance questions:
 'Are you a small business?' - YES ✓
@@ -759,13 +806,13 @@ All based on your company profile and RFP requirements."
 
 **[DOCUMENT UPLOAD - 5:30-7:00]**
 
-*[SCREEN: File upload section]*
+_[SCREEN: File upload section]_
 
 "Now comes document upload - typically the most tedious part.
 
 **Automated Upload Process:**
 
-*[SCREEN: Upload progress]*
+_[SCREEN: Upload progress]_
 
 The AI is uploading:
 
@@ -775,13 +822,14 @@ The AI is uploading:
 4. Insurance_Certificate.pdf → 'Required Documents' field ✓
 5. HUB_Certification.pdf → 'Certifications' field ✓
 
-*[SCREEN: Progress bar]*
+_[SCREEN: Progress bar]_
 
 All 5 documents uploaded in 45 seconds!
 
 **Smart Field Mapping:**
 
 Notice how the AI knew where to upload each document? It analyzed:
+
 - Form field labels
 - Document types
 - RFP requirements
@@ -790,7 +838,7 @@ And matched everything perfectly!"
 
 **[SUBMISSION VERIFICATION - 7:00-8:30]**
 
-*[SCREEN: Final review page]*
+_[SCREEN: Final review page]_
 
 "Before final submission, the AI performs verification:
 
@@ -800,31 +848,32 @@ And matched everything perfectly!"
 ✓ All questions answered
 ✓ No errors or warnings
 
-*[SCREEN: Click 'Final Submit']*
+_[SCREEN: Click 'Final Submit']_
 
-*[SCREEN: Confirmation dialog]*
+_[SCREEN: Confirmation dialog]_
 
 'Ready to submit? This action cannot be undone.'
 
-*[CLICK: Confirm]*
+_[CLICK: Confirm]_
 
-*[SCREEN: Submission progress]*
+_[SCREEN: Submission progress]_
 
 Submitting to portal...
 
-*[SCREEN: Success notification]*
+_[SCREEN: Success notification]_
 
 **Submission Successful!**
 
-*[SCREEN: Confirmation details]*
+_[SCREEN: Confirmation details]_
 
 Portal confirmation:
+
 - Reference Number: RFP-2024-IT-567
 - Submitted: Jan 15, 2024 at 3:42 PM
 - Received by: City of Austin Procurement
-- Confirmation Email: Sent to vendor@example.com
+- Confirmation Email: Sent to <vendor@example.com>
 
-*[SCREEN: Receipt download]*
+_[SCREEN: Receipt download]_
 
 RFP Agent automatically:
 ✓ Downloaded submission receipt
@@ -836,24 +885,27 @@ You're done!"
 
 **[TRACKING & ANALYTICS - 8:30-9:30]**
 
-*[SCREEN: Submissions dashboard]*
+_[SCREEN: Submissions dashboard]_
 
 "After submission, track everything in one place:
 
-*[SCREEN: Submission status]*
+_[SCREEN: Submission status]_
 
 **Active Submissions:**
+
 - RFP-2024-IT-567: Submitted, awaiting evaluation
 - Award notification expected: Feb 15, 2024
 - Status checks scheduled: Weekly
 
 **Submission Analytics:**
+
 - Total submitted: 23
 - Win rate: 35%
 - Average submission time: 8 minutes (vs 4 hours manual)
 - Time saved: 92 hours
 
 **Follow-up Actions:**
+
 - Calendar reminders for Q&A deadlines
 - Alerts for addendums
 - Notifications for award decisions
@@ -891,6 +943,7 @@ Don't forget to subscribe!"
 This is what makes RFP Agent truly intelligent - not just one AI, but a team of 11 specialized AI agents working together.
 
 We'll explore:
+
 - The 3-tier architecture
 - Agent coordination
 - Custom workflow creation
@@ -900,21 +953,22 @@ This knowledge will help you optimize RFP Agent for maximum efficiency. Let's di
 
 **[3-TIER ARCHITECTURE - 0:45-3:00]**
 
-*[SCREEN: Agent system diagram]*
+_[SCREEN: Agent system diagram]_
 
 "RFP Agent uses a sophisticated 3-tier hierarchy, inspired by how successful companies organize teams.
 
 **Tier 1: The Orchestrator (1 Agent)**
-*[SCREEN: Orchestrator dashboard]*
+_[SCREEN: Orchestrator dashboard]_
 
 The Primary Orchestrator is like a CEO:
+
 - Receives your requests
 - Plans the strategy
 - Delegates to managers
 - Ensures quality
 
 **Tier 2: The Managers (3 Agents)**
-*[SCREEN: Manager agents]*
+_[SCREEN: Manager agents]_
 
 Three specialized managers:
 
@@ -934,7 +988,7 @@ Three specialized managers:
    - Finds historical data
 
 **Tier 3: The Specialists (7 Agents)**
-*[SCREEN: Specialist agents]*
+_[SCREEN: Specialist agents]_
 
 Seven expert specialists:
 
@@ -950,17 +1004,17 @@ This division of labor enables parallel processing and expert-level performance!
 
 **[AGENT COORDINATION - 3:00-5:30]**
 
-*[SCREEN: Agent activity monitor]*
+_[SCREEN: Agent activity monitor]_
 
 "Let's watch the agents coordinate in real-time. Click 'Agent Monitor' in the admin menu.
 
-*[SCREEN: Live activity feed]*
+_[SCREEN: Live activity feed]_
 
 Here's a portal scan in progress:
 
 **Coordination Flow:**
 
-*[SCREEN: Event log]*
+_[SCREEN: Event log]_
 
 ```
 10:00:00 - Orchestrator receives: 'Scan Austin portal'
@@ -971,9 +1025,10 @@ Here's a portal scan in progress:
 
 **Parallel Execution:**
 
-*[SCREEN: Parallel tasks visualization]*
+_[SCREEN: Parallel tasks visualization]_
 
 Notice the agents work simultaneously:
+
 - Scanner finding new RFPs
 - Monitor checking existing ones
 - Document Processor downloading files
@@ -982,9 +1037,10 @@ This is 3x faster than sequential processing!
 
 **Inter-Agent Communication:**
 
-*[SCREEN: Communication graph]*
+_[SCREEN: Communication graph]_
 
 When Scanner finds an RFP:
+
 ```
 Scanner → Portal Manager: 'Found IT RFP'
 Portal Manager → Document Processor: 'Download docs'
@@ -996,17 +1052,18 @@ The agents pass context seamlessly, like a well-coordinated team."
 
 **[WORKFLOW CREATION - 5:30-9:00]**
 
-*[SCREEN: Workflows page]*
+_[SCREEN: Workflows page]_
 
 "Now let's create a custom workflow. Click 'Workflows' in the admin section.
 
-*[SCREEN: Click 'New Workflow']*
+_[SCREEN: Click 'New Workflow']_
 
 **Workflow: Auto-Bid Pipeline**
 
-*[SCREEN: Workflow builder]*
+_[SCREEN: Workflow builder]_
 
 Let's build a workflow that automatically:
+
 1. Discovers RFPs
 2. Filters by criteria
 3. Generates proposals
@@ -1015,94 +1072,101 @@ Let's build a workflow that automatically:
 
 **Step 1: Discovery Trigger**
 
-*[SCREEN: Add trigger]*
+_[SCREEN: Add trigger]_
 
 Trigger: 'New RFP Discovered'
 Filter conditions:
+
 - Category: Technology
 - Value: >$100,000
 - Match score: >80%
 
 **Step 2: Document Processing**
 
-*[SCREEN: Add action]*
+_[SCREEN: Add action]_
 
 Action: 'Process Documents'
 Assign to: Document Processor
 Options:
+
 - Extract requirements
 - Identify key dates
 - Download all files
 
 **Step 3: Proposal Generation**
 
-*[SCREEN: Add action]*
+_[SCREEN: Add action]_
 
 Action: 'Generate Proposal'
 Assign to: Proposal Manager
 Options:
+
 - Quality threshold: 90%
 - Include pricing: Yes
 - Auto-fill forms: Yes
 
 **Step 4: Compliance Check**
 
-*[SCREEN: Add action]*
+_[SCREEN: Add action]_
 
 Action: 'Verify Compliance'
 Assign to: Compliance Checker
 Options:
+
 - Strictness: High
 - Flag gaps: Yes
 - Suggest fixes: Yes
 
 **Step 5: Human Review**
 
-*[SCREEN: Add decision node]*
+_[SCREEN: Add decision node]_
 
 Decision: 'Quality Gate'
 If compliance score >95%:
-  → Route to: 'Auto-approve'
+→ Route to: 'Auto-approve'
 Else:
-  → Route to: 'Manual review'
+→ Route to: 'Manual review'
 
 **Step 6: Submission**
 
-*[SCREEN: Add action]*
+_[SCREEN: Add action]_
 
 Action: 'Submit to Portal'
 Assign to: Portal Manager
 Options:
+
 - Submit 24 hours before deadline
 - Verify submission
 - Archive confirmation
 
-*[CLICK: Save Workflow]*
+_[CLICK: Save Workflow]_
 
 Perfect! This workflow now runs automatically for matching RFPs."
 
 **[WORKFLOW MONITORING - 9:00-11:00]**
 
-*[SCREEN: Active workflows dashboard]*
+_[SCREEN: Active workflows dashboard]_
 
 "Let's monitor workflows in action. Click 'Active Workflows.'
 
-*[SCREEN: Workflow execution view]*
+_[SCREEN: Workflow execution view]_
 
 Here's our Auto-Bid Pipeline running:
 
 **Current Execution:**
-*[SCREEN: Progress visualization]*
+_[SCREEN: Progress visualization]_
 
 ✓ Step 1: RFP Discovered (Completed)
-   - Found: Cloud Infrastructure RFP
-   - Match score: 92%
-   - Triggered: 2 minutes ago
+
+- Found: Cloud Infrastructure RFP
+- Match score: 92%
+- Triggered: 2 minutes ago
 
 ⟳ Step 2: Processing Documents (In Progress)
-   - Downloaded: 4/5 documents
-   - Extracted: 127 requirements
-   - ETA: 30 seconds
+
+- Downloaded: 4/5 documents
+- Extracted: 127 requirements
+- ETA: 30 seconds
 
 ○ Step 3: Generate Proposal (Pending)
 ○ Step 4: Compliance Check (Pending)
@@ -1110,7 +1174,7 @@ Here's our Auto-Bid Pipeline running:
 ○ Step 6: Submit (Pending)
 
 **Agent Assignments:**
-*[SCREEN: Agent workload]*
+_[SCREEN: Agent workload]_
 
 - Document Processor: Active (this workflow)
 - Proposal Manager: Idle
@@ -1118,9 +1182,10 @@ Here's our Auto-Bid Pipeline running:
 - Portal Manager: Active (different workflow)
 
 **Performance Metrics:**
-*[SCREEN: Workflow stats]*
+_[SCREEN: Workflow stats]_
 
 This workflow has:
+
 - 15 successful executions
 - 95% success rate
 - Avg duration: 8 minutes
@@ -1128,13 +1193,13 @@ This workflow has:
 
 **[PERFORMANCE OPTIMIZATION - 11:00-13:00]**
 
-*[SCREEN: Agent performance dashboard]*
+_[SCREEN: Agent performance dashboard]_
 
 "Let's optimize agent performance. Click 'Agent Metrics.'
 
 **Agent Efficiency:**
 
-*[SCREEN: Performance charts]*
+_[SCREEN: Performance charts]_
 
 - **Portal Scanner**: 98% uptime, 2.3 RFPs/minute
 - **Content Generator**: 92% quality score, 15 min/proposal
@@ -1142,7 +1207,7 @@ This workflow has:
 
 **Bottleneck Analysis:**
 
-*[SCREEN: Bottleneck identification]*
+_[SCREEN: Bottleneck identification]_
 
 The system identified:
 ⚠ Document Processor is at 80% capacity
@@ -1150,7 +1215,7 @@ The system identified:
 
 **Optimization Recommendations:**
 
-*[SCREEN: Recommendations panel]*
+_[SCREEN: Recommendations panel]_
 
 1. **Increase Portal Scanner concurrency**
    - Current: 2 concurrent scans
@@ -1166,21 +1231,21 @@ The system identified:
    - Enable parallel processing
    - Speed improvement: 30%
 
-*[SCREEN: Apply optimizations]*
+_[SCREEN: Apply optimizations]_
 
 Click 'Apply Recommended' to automatically optimize.
 
-*[SCREEN: Optimization in progress]*
+_[SCREEN: Optimization in progress]_
 
 Done! The system is now 50% faster."
 
 **[CUSTOM AGENT CREATION - 13:00-14:30]**
 
-*[SCREEN: Advanced settings]*
+_[SCREEN: Advanced settings]_
 
 "For advanced users, you can create custom specialist agents.
 
-*[SCREEN: Create Agent form]*
+_[SCREEN: Create Agent form]_
 
 Let's create a 'Government Relations Specialist' agent:
 
@@ -1191,27 +1256,29 @@ Tier: Specialist (Tier 3)
 Parent Manager: Research Manager
 
 **Capabilities:**
+
 - Track agency contacts
 - Monitor policy changes
 - Analyze award history
 - Identify decision makers
 
 **Tools:**
+
 - Web search
 - Database queries
 - Email extraction
 - LinkedIn integration
 
 **Behavior:**
-*[SCREEN: Behavior settings]*
+_[SCREEN: Behavior settings]_
 
 - Proactive: Check for updates daily
 - Learning: Improve from feedback
 - Coordination: Share findings with other agents
 
-*[CLICK: Create Agent]*
+_[CLICK: Create Agent]_
 
-*[SCREEN: Agent activated]*
+_[SCREEN: Agent activated]_
 
 Your custom agent is now part of the team!
 
@@ -1248,6 +1315,7 @@ Subscribe and enable notifications for the complete series!"
 Whether you're building a custom dashboard, integrating with existing systems, or creating mobile apps, this guide has you covered.
 
 Topics we'll cover:
+
 - API authentication
 - Core endpoints and operations
 - Real-time updates with SSE
@@ -1259,11 +1327,11 @@ Let's build something amazing!"
 
 **[API AUTHENTICATION - 1:00-3:00]**
 
-*[SCREEN: API documentation page]*
+_[SCREEN: API documentation page]_
 
 "First, let's set up authentication. RFP Agent currently uses session-based auth, with JWT coming soon.
 
-*[SCREEN: Code editor]*
+_[SCREEN: Code editor]_
 
 **Session-Based Authentication:**
 
@@ -1275,8 +1343,8 @@ const response = await fetch('http://localhost:3000/api/auth/login', {
   credentials: 'include', // Important!
   body: JSON.stringify({
     username: 'your-username',
-    password: 'your-password'
-  })
+    password: 'your-password',
+  }),
 });
 
 // Check response
@@ -1293,7 +1361,7 @@ if (response.ok) {
 ```javascript
 // All subsequent requests include session cookie
 const rfps = await fetch('http://localhost:3000/api/rfps', {
-  credentials: 'include' // Include session
+  credentials: 'include', // Include session
 });
 
 const data = await rfps.json();
@@ -1306,8 +1374,8 @@ console.log(`Found ${data.total} RFPs`);
 // Future: JWT token authentication
 const response = await fetch('http://localhost:3000/api/rfps', {
   headers: {
-    'Authorization': `Bearer ${YOUR_API_TOKEN}`
-  }
+    Authorization: `Bearer ${YOUR_API_TOKEN}`,
+  },
 });
 ```
 
@@ -1315,7 +1383,7 @@ For production, we recommend API keys for better security."
 
 **[CORE API OPERATIONS - 3:00-7:00]**
 
-*[SCREEN: Split screen - docs and code]*
+_[SCREEN: Split screen - docs and code]_
 
 "Let's explore the core endpoints. I'll show you practical examples.
 
@@ -1327,13 +1395,12 @@ async function getRFPs(filters = {}) {
     status: filters.status || 'discovered',
     page: filters.page || '1',
     limit: filters.limit || '20',
-    ...filters
+    ...filters,
   });
 
-  const response = await fetch(
-    `http://localhost:3000/api/rfps?${params}`,
-    { credentials: 'include' }
-  );
+  const response = await fetch(`http://localhost:3000/api/rfps?${params}`, {
+    credentials: 'include',
+  });
 
   return response.json();
 }
@@ -1343,7 +1410,7 @@ const techRFPs = await getRFPs({
   status: 'discovered',
   category: 'technology',
   page: 1,
-  limit: 50
+  limit: 50,
 });
 
 console.log(`Found ${techRFPs.total} tech RFPs`);
@@ -1359,8 +1426,8 @@ async function submitRFP(url, notes) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       url,
-      userNotes: notes
-    })
+      userNotes: notes,
+    }),
   });
 
   if (!response.ok) {
@@ -1403,9 +1470,9 @@ async function generateProposal(rfpId, companyProfileId, options = {}) {
           generateCompliance: true,
           proposalType: 'technical',
           qualityThreshold: 0.85,
-          ...options
-        }
-      })
+          ...options,
+        },
+      }),
     }
   );
 
@@ -1413,10 +1480,7 @@ async function generateProposal(rfpId, companyProfileId, options = {}) {
 }
 
 // Usage
-const proposal = await generateProposal(
-  'rfp-id-123',
-  'company-profile-456'
-);
+const proposal = await generateProposal('rfp-id-123', 'company-profile-456');
 
 console.log('Proposal generation started:', proposal.sessionId);
 ```
@@ -1431,7 +1495,7 @@ async function startPortalScan(portalId, searchFilter = '') {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ searchFilter })
+      body: JSON.stringify({ searchFilter }),
     }
   );
 
@@ -1443,10 +1507,7 @@ async function startPortalScan(portalId, searchFilter = '') {
 }
 
 // Usage
-const scan = await startPortalScan(
-  'austin-portal-id',
-  'cloud services'
-);
+const scan = await startPortalScan('austin-portal-id', 'cloud services');
 
 console.log('Scan started:', scan.scanId);
 ```
@@ -1455,7 +1516,7 @@ These are your building blocks. Let's combine them!"
 
 **[REAL-TIME UPDATES WITH SSE - 7:00-10:00]**
 
-*[SCREEN: Code editor with SSE examples]*
+_[SCREEN: Code editor with SSE examples]_
 
 "For real-time updates, we use Server-Sent Events. Here's how to implement them:
 
@@ -1471,7 +1532,7 @@ function monitorPortalScan(portalId, scanId, callbacks) {
     callbacks.onConnect?.();
   };
 
-  eventSource.onmessage = (event) => {
+  eventSource.onmessage = event => {
     const data = JSON.parse(event.data);
 
     switch (data.type) {
@@ -1499,7 +1560,7 @@ function monitorPortalScan(portalId, scanId, callbacks) {
     }
   };
 
-  eventSource.onerror = (error) => {
+  eventSource.onerror = error => {
     callbacks.onError?.(error);
     eventSource.close();
   };
@@ -1509,33 +1570,29 @@ function monitorPortalScan(portalId, scanId, callbacks) {
 }
 
 // Usage
-const cleanup = monitorPortalScan(
-  'austin-portal-id',
-  'scan-123',
-  {
-    onConnect: () => console.log('Connected to scan stream'),
+const cleanup = monitorPortalScan('austin-portal-id', 'scan-123', {
+  onConnect: () => console.log('Connected to scan stream'),
 
-    onProgress: (step, progress) => {
-      console.log(`${step}: ${progress}%`);
-      updateProgressBar(progress);
-    },
+  onProgress: (step, progress) => {
+    console.log(`${step}: ${progress}%`);
+    updateProgressBar(progress);
+  },
 
-    onRFPFound: (rfp) => {
-      console.log('New RFP:', rfp.title);
-      addToList(rfp);
-    },
+  onRFPFound: rfp => {
+    console.log('New RFP:', rfp.title);
+    addToList(rfp);
+  },
 
-    onComplete: (total) => {
-      console.log(`Scan complete! Found ${total} RFPs`);
-      showNotification(`Discovered ${total} new opportunities`);
-    },
+  onComplete: total => {
+    console.log(`Scan complete! Found ${total} RFPs`);
+    showNotification(`Discovered ${total} new opportunities`);
+  },
 
-    onError: (error) => {
-      console.error('Scan error:', error);
-      showError(error.message);
-    }
-  }
-);
+  onError: error => {
+    console.error('Scan error:', error);
+    showError(error.message);
+  },
+});
 
 // Cleanup when component unmounts
 // cleanup();
@@ -1550,7 +1607,7 @@ function monitorProposalGeneration(sessionId) {
       `http://localhost:3000/api/proposals/submission-materials/stream/${sessionId}`
     );
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       const progress = JSON.parse(event.data);
 
       console.log(`${progress.currentStep}: ${progress.progress}%`);
@@ -1565,7 +1622,7 @@ function monitorProposalGeneration(sessionId) {
       }
     };
 
-    eventSource.onerror = (error) => {
+    eventSource.onerror = error => {
       eventSource.close();
       reject(error);
     };
@@ -1585,7 +1642,7 @@ SSE gives you real-time updates without polling!"
 
 **[WEBHOOK INTEGRATION - 10:00-12:30]**
 
-*[SCREEN: Webhook setup code]*
+_[SCREEN: Webhook setup code]_
 
 "Webhooks let you receive events in your application. Here's a complete implementation:
 
@@ -1600,8 +1657,8 @@ async function registerWebhook(url, events, secret) {
     body: JSON.stringify({
       url,
       events,
-      secret
-    })
+      secret,
+    }),
   });
 
   return response.json();
@@ -1614,7 +1671,7 @@ const webhook = await registerWebhook(
     'rfp.discovered',
     'rfp.updated',
     'proposal.generated',
-    'submission.completed'
+    'submission.completed',
   ],
   'your-secret-key'
 );
@@ -1634,10 +1691,7 @@ function verifyWebhookSignature(payload, signature, secret) {
   const hmac = crypto.createHmac('sha256', secret);
   const digest = hmac.update(JSON.stringify(payload)).digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(digest)
-  );
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
 
 app.post('/webhooks/rfp-agent', express.json(), async (req, res) => {
@@ -1685,7 +1739,7 @@ async function handleNewRFP(rfp) {
     channel: '#rfp-alerts',
     text: `New ${rfp.category} RFP: ${rfp.title}`,
     value: rfp.estimatedValue,
-    deadline: rfp.deadline
+    deadline: rfp.deadline,
   });
 
   // Auto-generate if criteria met
@@ -1703,7 +1757,7 @@ Webhooks are perfect for event-driven architectures!"
 
 **[ERROR HANDLING - 12:30-14:00]**
 
-*[SCREEN: Error handling patterns]*
+_[SCREEN: Error handling patterns]_
 
 "Robust error handling is crucial. Here's a production-ready approach:
 
@@ -1742,10 +1796,9 @@ async function fetchWithRetry(url, options, maxRetries = 3) {
 
 // Usage
 try {
-  const response = await fetchWithRetry(
-    'http://localhost:3000/api/rfps',
-    { credentials: 'include' }
-  );
+  const response = await fetchWithRetry('http://localhost:3000/api/rfps', {
+    credentials: 'include',
+  });
   const data = await response.json();
 } catch (error) {
   console.error('Failed after retries:', error);
@@ -1824,7 +1877,7 @@ Always handle errors gracefully in production!"
 
 **[COMPLETE INTEGRATION EXAMPLE - 14:00-17:00]**
 
-*[SCREEN: Full application code]*
+_[SCREEN: Full application code]_
 
 "Let's build a complete integration - an RFP dashboard.
 
@@ -1859,7 +1912,7 @@ class RFPDashboard {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username, password }),
     });
 
     if (!response.ok) {
@@ -1872,10 +1925,9 @@ class RFPDashboard {
   // Load RFPs
   async loadRFPs(filters = {}) {
     const params = new URLSearchParams(filters);
-    const response = await safeAPICall(
-      `${this.apiUrl}/api/rfps?${params}`,
-      { credentials: 'include' }
-    );
+    const response = await safeAPICall(`${this.apiUrl}/api/rfps?${params}`, {
+      credentials: 'include',
+    });
 
     this.displayRFPs(response.rfps);
     return response;
@@ -1883,10 +1935,9 @@ class RFPDashboard {
 
   // Load portals
   async loadPortals() {
-    const portals = await safeAPICall(
-      `${this.apiUrl}/api/portals`,
-      { credentials: 'include' }
-    );
+    const portals = await safeAPICall(`${this.apiUrl}/api/portals`, {
+      credentials: 'include',
+    });
 
     this.displayPortals(portals);
     return portals;
@@ -1899,7 +1950,7 @@ class RFPDashboard {
         `${this.apiUrl}/api/portals/${portalId}/scan`,
         {
           method: 'POST',
-          credentials: 'include'
+          credentials: 'include',
         }
       );
 
@@ -1924,7 +1975,7 @@ class RFPDashboard {
 
     this.eventSources.push(eventSource);
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       const data = JSON.parse(event.data);
 
       switch (data.type) {
@@ -1941,9 +1992,7 @@ class RFPDashboard {
           break;
 
         case 'scan_completed':
-          this.showNotification(
-            `Scan complete! Found ${data.totalRfps} RFPs`
-          );
+          this.showNotification(`Scan complete! Found ${data.totalRfps} RFPs`);
           this.loadRFPs(); // Refresh list
           eventSource.close();
           break;
@@ -1966,9 +2015,9 @@ class RFPDashboard {
             options: {
               generatePricing: true,
               generateCompliance: true,
-              proposalType: 'technical'
-            }
-          })
+              proposalType: 'technical',
+            },
+          }),
         }
       );
 
@@ -1989,7 +2038,7 @@ class RFPDashboard {
 
     this.eventSources.push(eventSource);
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       const progress = JSON.parse(event.data);
 
       this.updateProposalProgress(
@@ -2021,10 +2070,10 @@ class RFPDashboard {
         events: [
           'rfp.discovered',
           'proposal.generated',
-          'submission.completed'
+          'submission.completed',
         ],
-        secret: 'your-webhook-secret'
-      })
+        secret: 'your-webhook-secret',
+      }),
     });
   }
 
@@ -2034,7 +2083,7 @@ class RFPDashboard {
       // Check for new RFPs
       const rfps = await this.loadRFPs({
         status: 'discovered',
-        limit: 5
+        limit: 5,
       });
 
       // Auto-generate for high-value RFPs
@@ -2049,7 +2098,9 @@ class RFPDashboard {
   // UI update methods
   displayRFPs(rfps) {
     const container = document.getElementById('rfp-list');
-    container.innerHTML = rfps.map(rfp => `
+    container.innerHTML = rfps
+      .map(
+        rfp => `
       <div class="rfp-card">
         <h3>${rfp.title}</h3>
         <p>${rfp.agency}</p>
@@ -2058,7 +2109,9 @@ class RFPDashboard {
           Generate Proposal
         </button>
       </div>
-    `).join('');
+    `
+      )
+      .join('');
   }
 
   displayPortals(portals) {
@@ -2104,7 +2157,7 @@ This is a complete, production-ready integration!"
 
 **[BEST PRACTICES - 17:00-18:30]**
 
-*[SCREEN: Best practices checklist]*
+_[SCREEN: Best practices checklist]_
 
 "Before we wrap up, here are essential best practices:
 
@@ -2165,7 +2218,7 @@ class APICache {
     const data = await fetcher();
     this.cache.set(key, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
 
     return data;
@@ -2193,7 +2246,7 @@ function trackAPICall(name, fn) {
       analytics.track('API Call', {
         name,
         duration,
-        success: true
+        success: true,
       });
 
       return result;
@@ -2206,7 +2259,7 @@ function trackAPICall(name, fn) {
         name,
         duration,
         success: false,
-        error: error.message
+        error: error.message,
       });
 
       throw error;
@@ -2251,10 +2304,11 @@ These practices ensure robust, performant integrations!"
 ✓ Create production-ready integrations
 
 **Resources:**
-- 📚 Full API docs: https://docs.rfpagent.com/api
-- 💻 Code examples: https://github.com/rfpagent/examples
-- 🤝 Community: https://rfpagent.slack.com
-- 📧 Support: developers@rfpagent.com
+
+- 📚 Full API docs: <https://docs.rfpagent.com/api>
+- 💻 Code examples: <https://github.com/rfpagent/examples>
+- 🤝 Community: <https://rfpagent.slack.com>
+- 📧 Support: <developers@rfpagent.com>
 
 Thank you for watching this complete tutorial series! Happy coding, and may your integrations be bug-free!
 
@@ -2269,11 +2323,13 @@ Don't forget to subscribe for more tutorials and updates!"
 ### Equipment Recommendations
 
 **Video:**
+
 - Camera: 1080p minimum, 4K preferred
 - Lighting: Soft box lighting for face, ring light for screen
 - Screen recording: OBS Studio or Camtasia
 
 **Audio:**
+
 - Microphone: USB condenser mic (Blue Yeti, Rode NT-USB)
 - Room treatment: Minimize echo with acoustic panels
 - Audio software: Audacity for editing
@@ -2314,6 +2370,7 @@ Don't forget to subscribe for more tutorials and updates!"
 ### Follow-up Content
 
 Create supplementary materials:
+
 - Written transcripts for each video
 - Downloadable code samples
 - Interactive playground for testing

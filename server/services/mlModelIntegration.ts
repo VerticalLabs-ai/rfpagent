@@ -169,11 +169,12 @@ export class MLModelIntegration {
 
   // Model versions
   private readonly embeddingModel = 'text-embedding-3-large';
-  private readonly embeddingDimension = 3072;
+  private readonly embeddingDimensions = 3072;
 
   private constructor() {
     this.embeddingCache = new LRUCache(this.MAX_CACHE_SIZE);
   }
+}
 
   public static getInstance(): MLModelIntegration {
     if (!MLModelIntegration.instance) {
@@ -1234,8 +1235,8 @@ Respond with JSON:
     const clusterMap = new Map<number, number>(); // index -> clusterId
     for (let i = 0; i < clusters.length; i++) {
       const cluster = clusters[i];
-      if (cluster.members && Array.isArray(cluster.members)) {
-        cluster.members.forEach((idx: number) => {
+      if (cluster.memberIndices && Array.isArray(cluster.memberIndices)) {
+        cluster.memberIndices.forEach((idx: number) => {
           if (idx >= 0 && idx < embeddings.length) {
             clusterMap.set(idx, i);
           }
@@ -1279,7 +1280,7 @@ Respond with JSON:
 
     for (let i = 0; i < embeddings.length; i++) {
       const ownClusterId = clusterMap.get(i)!;
-      const ownClusterMembers = clusters[ownClusterId].members.filter(
+      const ownClusterMembers = clusters[ownClusterId].memberIndices.filter(
         (idx: number) => idx !== i
       );
 
@@ -1301,8 +1302,8 @@ Respond with JSON:
       for (let c = 0; c < clusters.length; c++) {
         if (c === ownClusterId) continue;
 
-        const otherClusterMembers = clusters[c].members;
-        if (otherClusterMembers.length === 0) continue;
+        const otherClusterMembers = clusters[c].memberIndices;
+        if (!otherClusterMembers || otherClusterMembers.length === 0) continue;
 
         let meanDist = 0;
         for (const idx of otherClusterMembers) {

@@ -11,7 +11,7 @@ commonLabels:
 
 replicas:
   - name: rfp-agent
-    count: 2
+    count: 3
 
 images:
   - name: ghcr.io/mgunnin/rfpagent
@@ -21,7 +21,7 @@ patches:
   - patch: |-
       - op: replace
         path: /spec/minReplicas
-        value: 2
+        value: 3
       - op: replace
         path: /spec/maxReplicas
         value: 5

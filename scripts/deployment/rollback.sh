@@ -42,7 +42,7 @@ confirm_rollback() {
         log_warn "WARNING: Rolling back PRODUCTION deployment!"
     fi
 
-    read -p "$(echo -e ${YELLOW}Are you sure you want to rollback? [yes/no]: ${NC})" confirm
+    read -p "$(echo -e "${YELLOW}Are you sure you want to rollback? [yes/no]: ${NC}")" confirm
     if [[ "${confirm}" != "yes" ]]; then
         log_warn "Rollback cancelled"
         exit 0
