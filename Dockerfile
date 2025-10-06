@@ -90,7 +90,12 @@ COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 
 # Copy necessary files
 COPY --chown=nodejs:nodejs package.json ./
+
+# Copy shared directory to both locations to support bundled path resolution
+# - /app/shared for direct imports
+# - /app/dist/shared for bundled vite config path resolution
 COPY --chown=nodejs:nodejs shared ./shared
+COPY --chown=nodejs:nodejs shared ./dist/shared
 
 # Set environment to production
 ENV NODE_ENV=production \
@@ -102,12 +107,13 @@ USER nodejs
 # Expose application port (Fly.io uses PORT env var)
 EXPOSE 3000
 
-# Health check
+# Health check - using liveness probe endpoint (matches fly.toml)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {if(r.statusCode !== 200) throw new Error('Health check failed')})"
+    CMD node -e "require('http').get('http://localhost:3000/api/health/live', (r) => {if(r.statusCode !== 200) throw new Error('Health check failed')})"
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-# Start the application
+# Start the application directly
+# Database migrations should be run separately via: flyctl ssh console -C "npx drizzle-kit push"
 CMD ["node", "dist/index.js"]
