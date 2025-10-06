@@ -69,7 +69,10 @@ export class ToolFactory {
       inputSchema: z.object({
         content: z.string().describe('HTML content retrieved by the crawler'),
         portalType: z.string().describe('Type of portal being scraped'),
-        searchFilter: z.string().optional().describe('Optional search filter to bias extraction'),
+        searchFilter: z
+          .string()
+          .optional()
+          .describe('Optional search filter to bias extraction'),
       }),
       outputSchema: z.object({
         opportunities: z.array(opportunitySchema),
@@ -324,7 +327,10 @@ export class ToolFactory {
           const hasDeadlines = content.some(item => {
             if (item && typeof item === 'object') {
               const candidate = item as { deadline?: unknown };
-              return typeof candidate.deadline === 'string' && candidate.deadline.length > 0;
+              return (
+                typeof candidate.deadline === 'string' &&
+                candidate.deadline.length > 0
+              );
             }
             return false;
           });

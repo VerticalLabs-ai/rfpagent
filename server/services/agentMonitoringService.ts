@@ -124,14 +124,12 @@ class AgentMonitoringService {
     const [workflowMetrics, agentHealth, globalState] = await Promise.all([
       storage.getWorkflowExecutionMetrics(),
       storage.getAgentHealthSummary(),
-      workflowCoordinator
-        .getGlobalWorkflowState()
-        .catch(() => ({
-          activeWorkflows: 0,
-          byPhase: {},
-          byStatus: {},
-          recentlyCompleted: [],
-        })),
+      workflowCoordinator.getGlobalWorkflowState().catch(() => ({
+        activeWorkflows: 0,
+        byPhase: {},
+        byStatus: {},
+        recentlyCompleted: [],
+      })),
     ]);
 
     const totalWorkflows = Number(workflowMetrics.totalWorkflows ?? 0);
@@ -163,14 +161,12 @@ class AgentMonitoringService {
 
   async getWorkflowOverview(): Promise<WorkflowStateSummary> {
     const [globalState, recentWorkflows] = await Promise.all([
-      workflowCoordinator
-        .getGlobalWorkflowState()
-        .catch(() => ({
-          activeWorkflows: 0,
-          byPhase: {},
-          byStatus: {},
-          recentlyCompleted: [],
-        })),
+      workflowCoordinator.getGlobalWorkflowState().catch(() => ({
+        activeWorkflows: 0,
+        byPhase: {},
+        byStatus: {},
+        recentlyCompleted: [],
+      })),
       storage.getRecentWorkflowStates(20),
     ]);
 
@@ -246,6 +242,18 @@ class AgentMonitoringService {
     successRate: number,
     agentHealthPercentage: number
   ): SystemHealthSnapshot['systemStatus'] {
+    // If no workflows executed yet, base status on agent health alone
+    if (successRate === 0) {
+      if (agentHealthPercentage >= 70) {
+        return 'healthy';
+      }
+      if (agentHealthPercentage >= 40) {
+        return 'degraded';
+      }
+      return 'unhealthy';
+    }
+
+    // When workflows exist, consider both success rate and agent health
     if (successRate >= 80 && agentHealthPercentage >= 70) {
       return 'healthy';
     }

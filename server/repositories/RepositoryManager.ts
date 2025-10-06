@@ -239,7 +239,9 @@ export interface RepositoryFacade {
   rfps: RFPRepository;
   healthCheck: () => ReturnType<RepositoryManager['healthCheck']>;
   getStats: () => ReturnType<RepositoryManager['getStats']>;
-  executeTransaction: <T>(callback: (repos: RepositoryFacade) => Promise<T>) => Promise<T>;
+  executeTransaction: <T>(
+    callback: (repos: RepositoryFacade) => Promise<T>
+  ) => Promise<T>;
 }
 
 export const repositories: RepositoryFacade = {

@@ -1,17 +1,17 @@
-import { openai } from "@ai-sdk/openai"
-import { Agent } from "@mastra/core/agent"
-import { pageActTool } from "../tools/page-act-tool"
-import { pageAuthTool } from "../tools/page-auth-tool"
-import { pageExtractTool } from "../tools/page-extract-tool"
-import { pageNavigateTool } from "../tools/page-navigate-tool"
-import { pageObserveTool } from "../tools/page-observe-tool"
-import { sharedMemory } from "../tools/shared-memory-provider"
+import { Agent } from '@mastra/core/agent';
+import { analyticalModel } from '../models';
 import {
-  requestSpecialist,
   checkTaskStatus,
+  requestSpecialist,
   sendAgentMessage,
-  updateWorkflowProgress
-} from "../tools/agent-coordination-tools"
+  updateWorkflowProgress,
+} from '../tools/agent-coordination-tools';
+import { pageActTool } from '../tools/page-act-tool';
+import { pageAuthTool } from '../tools/page-auth-tool';
+import { pageExtractTool } from '../tools/page-extract-tool';
+import { pageNavigateTool } from '../tools/page-navigate-tool';
+import { pageObserveTool } from '../tools/page-observe-tool';
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 /**
  * Portal Manager - Tier 2 Manager Agent
@@ -23,7 +23,7 @@ import {
  * - Data aggregation and validation
  */
 export const portalManager = new Agent({
-  name: "Portal Manager",
+  name: 'Portal Manager',
   instructions: `
 You are the Portal Manager, a Tier 2 manager agent responsible for all portal operations in the RFP Agent system.
 
@@ -121,7 +121,7 @@ When operations fail:
 
 Remember: You coordinate specialists for heavy lifting, but can handle direct portal interactions when needed for efficiency.
 `,
-  model: openai("gpt-5"),
+  model: analyticalModel,
   tools: {
     // Browser automation tools
     pageNavigateTool,
@@ -136,4 +136,4 @@ Remember: You coordinate specialists for heavy lifting, but can handle direct po
     updateWorkflowProgress,
   },
   memory: sharedMemory,
-})
+});

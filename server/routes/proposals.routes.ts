@@ -134,7 +134,9 @@ router.post(
       )
     );
 
-    const successfulPipelines = pipelineResults.filter(result => result.success);
+    const successfulPipelines = pipelineResults.filter(
+      result => result.success
+    );
 
     res.json({
       success: successfulPipelines.length === pipelineResults.length,
@@ -162,15 +164,16 @@ router.post(
       return res.status(404).json({ error: 'Proposal not found' });
     }
 
-    const pipelineResult = await proposalGenerationOrchestrator.createProposalGenerationPipeline({
-      rfpId: proposal.rfpId,
-      companyProfileId,
-      proposalType: options?.proposalType,
-      qualityThreshold: options?.qualityThreshold,
-      autoSubmit: options?.autoSubmit ?? false,
-      generatePricing: options?.generatePricing ?? true,
-      generateCompliance: options?.generateCompliance ?? true,
-    });
+    const pipelineResult =
+      await proposalGenerationOrchestrator.createProposalGenerationPipeline({
+        rfpId: proposal.rfpId,
+        companyProfileId,
+        proposalType: options?.proposalType,
+        qualityThreshold: options?.qualityThreshold,
+        autoSubmit: options?.autoSubmit ?? false,
+        generatePricing: options?.generatePricing ?? true,
+        generateCompliance: options?.generateCompliance ?? true,
+      });
 
     if (!pipelineResult.success) {
       return res.status(500).json({

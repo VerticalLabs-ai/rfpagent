@@ -327,6 +327,9 @@ export function usePullToRefresh(options: UsePullToRefreshOptions) {
       setIsRefreshing(true);
       try {
         await onRefresh();
+      } catch (error) {
+        console.error('Error during pull-to-refresh:', error);
+        throw error;
       } finally {
         setIsRefreshing(false);
       }

@@ -1,11 +1,10 @@
 import express from 'express';
-import { AnalysisOrchestrator } from '../services/analysisOrchestrator';
+import { analysisOrchestrator } from '../services/analysisOrchestrator';
 import { analysisProgressTracker } from '../services/analysisProgressTracker';
 import { analysisTestRunner } from '../services/analysisTestRunner';
 import { storage } from '../storage';
 
 const router = express.Router();
-const analysisOrchestrator = new AnalysisOrchestrator();
 
 /**
  * Analysis API Routes for Phase 7: Analysis Pipeline Integration

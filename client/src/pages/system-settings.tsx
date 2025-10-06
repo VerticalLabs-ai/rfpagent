@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -7,21 +8,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import {
-  Settings,
-  Activity,
-  Pause,
-  Play,
-  AlertTriangle,
-  Info,
-} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import {
+  Activity,
+  AlertTriangle,
+  Info,
+  Pause,
+  Play,
+  Settings,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface SystemConfig {
   backgroundServices: {
@@ -91,11 +90,7 @@ export default function SystemSettings() {
     }) => {
       const response = await apiRequest(
         'POST',
-        `/api/system/services/${service}/${action}`,
-        undefined,
-        {
-          Authorization: 'Bearer admin-token-change-in-production',
-        }
+        `/api/system/services/${service}/${action}`
       );
       return response.json() as Promise<ServiceControlResponse>;
     },

@@ -810,8 +810,7 @@ export class SubmissionOrchestrator {
     const verificationResult = pipeline.results.verification;
     const receiptData: SubmissionReceiptData | null =
       verificationResult?.receipt_data ?? null;
-    const referenceNumber =
-      verificationResult?.reference_number ?? undefined;
+    const referenceNumber = verificationResult?.reference_number ?? undefined;
     const lifecycleUpdate: SubmissionLifecycleData = {
       ...(pipeline.metadata ?? {}),
       pipelineId: pipeline.pipelineId,
@@ -1051,15 +1050,14 @@ export class SubmissionOrchestrator {
 
     // Permanent failure
     pipeline.status = 'failed';
-    const serializedFailures =
-      failedWorkItems
-        ?.filter((item): item is WorkItem => Boolean(item))
-        .map(item => ({
-          id: item.id,
-          taskType: item.taskType,
-          status: item.status,
-          error: item.error,
-        }));
+    const serializedFailures = failedWorkItems
+      ?.filter((item): item is WorkItem => Boolean(item))
+      .map(item => ({
+        id: item.id,
+        taskType: item.taskType,
+        status: item.status,
+        error: item.error,
+      }));
 
     pipeline.errorData = {
       error,

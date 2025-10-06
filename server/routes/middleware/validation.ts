@@ -106,9 +106,7 @@ export const commonSchemas = {
 /**
  * Combine multiple validation schemas
  */
-export const combineSchemas = (
-  ...schemas: Array<ZodObject<any>>
-) => {
+export const combineSchemas = (...schemas: Array<ZodObject<any>>) => {
   return schemas.reduce<ZodObject<any>>(
     (acc, schema) => acc.merge(schema),
     z.object({})
@@ -157,10 +155,7 @@ export const validateFileUpload = (
     }
 
     // Check file type
-    const fileExtension = file.originalname
-      ?.split('.')
-      .pop()
-      ?.toLowerCase();
+    const fileExtension = file.originalname?.split('.').pop()?.toLowerCase();
     if (fileExtension && !allowedTypes.includes(fileExtension)) {
       return res.status(400).json({
         error: 'Invalid file type',

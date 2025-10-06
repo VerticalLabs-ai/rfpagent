@@ -66,6 +66,50 @@ interface SAFLADashboard {
   }>;
 }
 
+// Runtime validation helpers
+function validateSAFLAStatus(data: any): data is SAFLAStatus {
+  return (
+    data &&
+    typeof data === 'object' &&
+    typeof data.isInitialized === 'boolean' &&
+    typeof data.learningEnabled === 'boolean' &&
+    data.components &&
+    typeof data.components === 'object' &&
+    typeof data.components.learningEngine === 'string' &&
+    typeof data.components.memoryEngine === 'string' &&
+    typeof data.components.adaptationEngine === 'string' &&
+    typeof data.components.performanceMonitor === 'string' &&
+    data.metrics &&
+    typeof data.metrics === 'object' &&
+    typeof data.metrics.totalLearningEvents === 'number' &&
+    typeof data.metrics.successfulAdaptations === 'number' &&
+    typeof data.metrics.knowledgeBaseSize === 'number' &&
+    typeof data.metrics.avgPerformanceImprovement === 'number'
+  );
+}
+
+function validateSAFLADashboard(data: any): data is SAFLADashboard {
+  return (
+    data &&
+    typeof data === 'object' &&
+    typeof data.timeframe === 'string' &&
+    typeof data.systemHealth === 'number' &&
+    data.learningMetrics &&
+    typeof data.learningMetrics === 'object' &&
+    typeof data.learningMetrics.learningRate === 'number' &&
+    typeof data.learningMetrics.knowledgeGrowth === 'number' &&
+    typeof data.learningMetrics.adaptationSuccess === 'number' &&
+    data.performanceMetrics &&
+    typeof data.performanceMetrics === 'object' &&
+    typeof data.performanceMetrics.proposalWinRate === 'number' &&
+    typeof data.performanceMetrics.parsingAccuracy === 'number' &&
+    typeof data.performanceMetrics.portalNavigationSuccess === 'number' &&
+    typeof data.performanceMetrics.avgProcessingTime === 'number' &&
+    Array.isArray(data.improvementOpportunities) &&
+    Array.isArray(data.alerts)
+  );
+}
+
 export default function SAFLADashboard() {
   const [timeframe, setTimeframe] = useState('24h');
   const { toast } = useToast();
@@ -127,8 +171,12 @@ export default function SAFLADashboard() {
     },
   });
 
-  const safeStatus = status?.data as SAFLAStatus | undefined;
-  const safeDashboard = dashboard?.data as SAFLADashboard | undefined;
+  // Validate API responses with runtime checks
+  const hasValidStatus = status?.data && validateSAFLAStatus(status.data);
+  const hasValidDashboard = dashboard?.data && validateSAFLADashboard(dashboard.data);
+
+  const safeStatus = hasValidStatus ? status.data : null;
+  const safeDashboard = hasValidDashboard ? dashboard.data : null;
 
   const isLoading = statusLoading || dashboardLoading;
 
@@ -151,6 +199,36 @@ export default function SAFLADashboard() {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  // Show error state if data is invalid
+  if (!isLoading && (!hasValidStatus || !hasValidDashboard)) {
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              Invalid Data Received
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">
+              The SAFLA system returned invalid or incomplete data. Please try
+              refreshing the page.
+            </p>
+            <Button
+              onClick={() =>
+                queryClient.invalidateQueries({ queryKey: ['/api/safla'] })
+              }
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -195,74 +273,76 @@ export default function SAFLADashboard() {
       </div>
 
       {/* System Status Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {safeDashboard?.systemHealth || 0}%
-            </div>
-            <Progress
-              value={safeDashboard?.systemHealth || 0}
-              className="mt-2"
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              {safeStatus?.isInitialized
-                ? 'System operational'
-                : 'Initializing...'}
-            </p>
-          </CardContent>
-        </Card>
+      {hasValidDashboard && hasValidStatus && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">System Health</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {safeDashboard.systemHealth}%
+              </div>
+              <Progress
+                value={safeDashboard.systemHealth}
+                className="mt-2"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {safeStatus.isInitialized
+                  ? 'System operational'
+                  : 'Initializing...'}
+              </p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Learning Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {safeDashboard?.learningMetrics.learningRate || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">events/day</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Learning Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {safeDashboard.learningMetrics.learningRate}
+              </div>
+              <p className="text-xs text-muted-foreground">events/day</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Knowledge Growth
-            </CardTitle>
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {safeDashboard?.learningMetrics.knowledgeGrowth || 0}
-            </div>
-            <p className="text-xs text-muted-foreground">entries/day</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Knowledge Growth
+              </CardTitle>
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {safeDashboard.learningMetrics.knowledgeGrowth}
+              </div>
+              <p className="text-xs text-muted-foreground">entries/day</p>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Adaptation Success
-            </CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {safeDashboard?.learningMetrics.adaptationSuccess || 0}%
-            </div>
-            <Progress
-              value={safeDashboard?.learningMetrics.adaptationSuccess || 0}
-              className="mt-2"
-            />
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Adaptation Success
+              </CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {safeDashboard.learningMetrics.adaptationSuccess}%
+              </div>
+              <Progress
+                value={safeDashboard.learningMetrics.adaptationSuccess}
+                className="mt-2"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Tabs defaultValue="performance" className="w-full">
         <TabsList>
@@ -276,123 +356,133 @@ export default function SAFLADashboard() {
 
         {/* Performance Metrics Tab */}
         <TabsContent value="performance" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Proposal Win Rate
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-green-600 mb-2">
-                  {safeDashboard?.performanceMetrics.proposalWinRate || 0}%
-                </div>
-                <Progress
-                  value={safeDashboard?.performanceMetrics.proposalWinRate || 0}
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Percentage of proposals that win bids
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart className="h-5 w-5" />
-                  Parsing Accuracy
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-blue-600 mb-2">
-                  {safeDashboard?.performanceMetrics.parsingAccuracy || 0}%
-                </div>
-                <Progress
-                  value={safeDashboard?.performanceMetrics.parsingAccuracy || 0}
-                  className="bg-blue-200"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Document processing accuracy
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Portal Navigation Success
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-purple-600 mb-2">
-                  {safeDashboard?.performanceMetrics.portalNavigationSuccess ||
-                    0}
-                  %
-                </div>
-                <Progress
-                  value={
-                    safeDashboard?.performanceMetrics.portalNavigationSuccess ||
-                    0
-                  }
-                  className="bg-purple-200"
-                />
-                <p className="text-sm text-muted-foreground mt-2">
-                  Portal scanning success rate
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Avg Processing Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-4xl font-bold text-orange-600 mb-2">
-                  {safeDashboard?.performanceMetrics.avgProcessingTime || 0}s
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Average operation duration
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Alerts */}
-          {safeDashboard?.alerts && safeDashboard.alerts.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Learning Events</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {safeDashboard.alerts.map((alert, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-3 p-3 rounded-lg border"
-                    >
-                      {alert.type === 'success' && (
-                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                      )}
-                      {alert.type === 'warning' && (
-                        <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
-                      )}
-                      {alert.type === 'error' && (
-                        <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                      )}
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{alert.message}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(alert.timestamp).toLocaleString()}
-                        </p>
-                      </div>
+          {hasValidDashboard ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      Proposal Win Rate
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-green-600 mb-2">
+                      {safeDashboard.performanceMetrics.proposalWinRate}%
                     </div>
-                  ))}
-                </div>
+                    <Progress
+                      value={safeDashboard.performanceMetrics.proposalWinRate}
+                    />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Percentage of proposals that win bids
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart className="h-5 w-5" />
+                      Parsing Accuracy
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-blue-600 mb-2">
+                      {safeDashboard.performanceMetrics.parsingAccuracy}%
+                    </div>
+                    <Progress
+                      value={safeDashboard.performanceMetrics.parsingAccuracy}
+                      className="bg-blue-200"
+                    />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Document processing accuracy
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Activity className="h-5 w-5" />
+                      Portal Navigation Success
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-purple-600 mb-2">
+                      {safeDashboard.performanceMetrics.portalNavigationSuccess}
+                      %
+                    </div>
+                    <Progress
+                      value={
+                        safeDashboard.performanceMetrics.portalNavigationSuccess
+                      }
+                      className="bg-purple-200"
+                    />
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Portal scanning success rate
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Zap className="h-5 w-5" />
+                      Avg Processing Time
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-orange-600 mb-2">
+                      {safeDashboard.performanceMetrics.avgProcessingTime}s
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Average operation duration
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Alerts */}
+              {safeDashboard.alerts.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Learning Events</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {safeDashboard.alerts.map((alert: SAFLADashboard['alerts'][number], index: number) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 p-3 rounded-lg border"
+                        >
+                          {alert.type === 'success' && (
+                            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                          )}
+                          {alert.type === 'warning' && (
+                            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                          )}
+                          {alert.type === 'error' && (
+                            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm font-medium">{alert.message}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {new Date(alert.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-center text-muted-foreground">
+                  Performance metrics unavailable
+                </p>
               </CardContent>
             </Card>
           )}
@@ -409,46 +499,50 @@ export default function SAFLADashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {safeDashboard?.improvementOpportunities?.map(
-                  (opportunity, index) => (
-                    <div
-                      key={index}
-                      className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <Badge
-                              variant={
-                                opportunity.priority === 'high'
-                                  ? 'destructive'
-                                  : opportunity.priority === 'medium'
-                                    ? 'default'
-                                    : 'secondary'
-                              }
-                            >
-                              {opportunity.priority} priority
-                            </Badge>
-                            <h4 className="font-medium">{opportunity.area}</h4>
+                {hasValidDashboard && safeDashboard.improvementOpportunities.length > 0 ? (
+                  safeDashboard.improvementOpportunities.map(
+                    (opportunity: SAFLADashboard['improvementOpportunities'][number], index: number) => (
+                      <div
+                        key={index}
+                        className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <Badge
+                                variant={
+                                  opportunity.priority === 'high'
+                                    ? 'destructive'
+                                    : opportunity.priority === 'medium'
+                                      ? 'default'
+                                      : 'secondary'
+                                }
+                              >
+                                {opportunity.priority} priority
+                              </Badge>
+                              <h4 className="font-medium">{opportunity.area}</h4>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              {opportunity.description}
+                            </p>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {opportunity.description}
-                          </p>
-                        </div>
-                        <div className="text-right ml-4">
-                          <div className="text-2xl font-bold text-green-600">
-                            +{opportunity.potentialImpact}%
+                          <div className="text-right ml-4">
+                            <div className="text-2xl font-bold text-green-600">
+                              +{opportunity.potentialImpact}%
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              potential impact
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            potential impact
-                          </p>
                         </div>
                       </div>
-                    </div>
+                    )
                   )
-                ) || (
+                ) : (
                   <p className="text-center text-muted-foreground py-8">
-                    No improvement opportunities identified yet
+                    {hasValidDashboard
+                      ? 'No improvement opportunities identified yet'
+                      : 'Dashboard data unavailable'}
                   </p>
                 )}
               </div>
@@ -458,82 +552,93 @@ export default function SAFLADashboard() {
 
         {/* System Components Tab */}
         <TabsContent value="components" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>System Component Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {safeStatus?.components &&
-                  Object.entries(safeStatus.components).map(
-                    ([component, status]) => (
-                      <div
-                        key={component}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <h4 className="font-medium capitalize">
-                            {component.replace(/([A-Z])/g, ' $1').trim()}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Core system component
-                          </p>
-                        </div>
-                        <Badge
-                          variant={
-                            status === 'operational' ? 'default' : 'secondary'
-                          }
+          {hasValidStatus ? (
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Component Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {(Object.entries(safeStatus.components) as [string, string][]).map(
+                      ([component, status]) => (
+                        <div
+                          key={component}
+                          className="flex items-center justify-between p-3 border rounded-lg"
                         >
-                          {status}
-                        </Badge>
-                      </div>
-                    )
-                  )}
-              </div>
-            </CardContent>
-          </Card>
+                          <div>
+                            <h4 className="font-medium capitalize">
+                              {component.replace(/([A-Z])/g, ' $1').trim()}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              Core system component
+                            </p>
+                          </div>
+                          <Badge
+                            variant={
+                              status === 'operational' ? 'default' : 'secondary'
+                            }
+                          >
+                            {status}
+                          </Badge>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>System Metrics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Total Learning Events
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {safeStatus?.metrics.totalLearningEvents || 0}
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Successful Adaptations
-                  </p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {safeStatus?.metrics.successfulAdaptations || 0}
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Knowledge Base Size
-                  </p>
-                  <p className="text-2xl font-bold">
-                    {safeStatus?.metrics.knowledgeBaseSize || 0}
-                  </p>
-                </div>
-                <div className="p-3 border rounded-lg">
-                  <p className="text-sm text-muted-foreground">
-                    Avg Performance Improvement
-                  </p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    +{safeStatus?.metrics.avgPerformanceImprovement || 0}%
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>System Metrics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 border rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Total Learning Events
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {safeStatus.metrics.totalLearningEvents}
+                      </p>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Successful Adaptations
+                      </p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {safeStatus.metrics.successfulAdaptations}
+                      </p>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Knowledge Base Size
+                      </p>
+                      <p className="text-2xl font-bold">
+                        {safeStatus.metrics.knowledgeBaseSize}
+                      </p>
+                    </div>
+                    <div className="p-3 border rounded-lg">
+                      <p className="text-sm text-muted-foreground">
+                        Avg Performance Improvement
+                      </p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        +{safeStatus.metrics.avgPerformanceImprovement}%
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-8">
+                <p className="text-center text-muted-foreground">
+                  System status unavailable
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Learning Demonstrations Tab */}

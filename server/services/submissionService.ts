@@ -625,10 +625,7 @@ export class SubmissionService {
             ? new Date(submissionData.initiatedAt)
             : null;
           if (initiatedAt && s.submittedAt) {
-            return (
-              sum +
-              (s.submittedAt.getTime() - initiatedAt.getTime())
-            );
+            return sum + (s.submittedAt.getTime() - initiatedAt.getTime());
           }
           return sum;
         }, 0);
@@ -794,8 +791,8 @@ export class SubmissionService {
       typeof error === 'string'
         ? error.toLowerCase()
         : error instanceof Error
-        ? error.message.toLowerCase()
-        : '';
+          ? error.message.toLowerCase()
+          : '';
     return retryableErrors.some(retryableError =>
       errorMessage.includes(retryableError)
     );

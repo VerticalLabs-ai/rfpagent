@@ -87,10 +87,7 @@ export class UserRepository extends BaseRepository<
    * Get active users
    */
   async getActiveUsers(): Promise<User[]> {
-    return await db
-      .select()
-      .from(users)
-      .where(eq(users.isActive, true));
+    return await db.select().from(users).where(eq(users.isActive, true));
   }
 
   /**

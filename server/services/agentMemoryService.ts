@@ -671,6 +671,63 @@ export class AgentMemoryService {
       new Set(words.filter(word => !commonWords.includes(word)))
     ).slice(0, 10);
   }
+
+  // Helper methods for SAFLA Learning Engine compatibility
+  async createMemory(
+    agentId: string,
+    memoryType: 'episodic' | 'semantic' | 'procedural' | 'working',
+    content: any,
+    options?: {
+      tags?: string[];
+      importance?: number;
+      contextKey?: string;
+      title?: string;
+    }
+  ): Promise<any> {
+    return await this.storeMemory({
+      agentId,
+      memoryType,
+      contextKey: options?.contextKey || `memory_${nanoid()}`,
+      title: options?.title || `${memoryType} memory`,
+      content,
+      importance: options?.importance || 5,
+      tags: options?.tags,
+    });
+  }
+
+  async getMemoryById(memoryId: string): Promise<any> {
+    return await this.getMemory(memoryId);
+  }
+
+  async updateMemoryMetadata(
+    memoryId: string,
+    metadata: Record<string, any>
+  ): Promise<any> {
+    return await this.updateMemory(memoryId, { metadata });
+  }
+
+  async createKnowledgeEntry(
+    agentId: string,
+    entry: {
+      domain: string;
+      knowledgeType: string;
+      title: string;
+      content: any;
+      tags?: string[];
+      metadata?: any;
+    }
+  ): Promise<any> {
+    return await this.storeKnowledge({
+      agentId,
+      knowledgeType: entry.knowledgeType as any,
+      domain: entry.domain,
+      title: entry.title,
+      content: entry.content,
+      confidenceScore: entry.metadata?.confidenceScore || 0.5,
+      sourceType: 'experience',
+      tags: entry.tags,
+    });
+  }
 }
 
 export const agentMemoryService = AgentMemoryService.getInstance();

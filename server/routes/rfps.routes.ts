@@ -216,26 +216,40 @@ router.post('/manual', async (req, res) => {
       `📝 Processing manual RFP submission: ${validationResult.data.url}`
     );
 
-    const result = await manualRfpService.processManualRfp(
-      validationResult.data
-    );
+    // Start processing asynchronously and return sessionId immediately
+    const sessionId = require('crypto').randomUUID();
 
-    if (result.success) {
-      // Create audit log for manual RFP addition
-      await storage.createAuditLog({
-        entityType: 'rfp',
-        entityId: result.rfpId!,
-        action: 'created_manually',
-        details: {
-          url: validationResult.data.url,
-          userNotes: validationResult.data.userNotes,
-        },
+    // Return sessionId immediately so frontend can connect to progress stream
+    res.status(202).json({
+      success: true,
+      sessionId,
+      message:
+        'RFP processing started. Connect to the progress stream for updates.',
+    });
+
+    // Process asynchronously in the background
+    manualRfpService
+      .processManualRfp({ ...validationResult.data, sessionId })
+      .then(async result => {
+        if (result.success && result.rfpId) {
+          // Create audit log for manual RFP addition
+          await storage.createAuditLog({
+            entityType: 'rfp',
+            entityId: result.rfpId,
+            action: 'created_manually',
+            details: {
+              url: validationResult.data.url,
+              userNotes: validationResult.data.userNotes,
+            },
+          });
+          console.log(`✅ Manual RFP processing completed: ${result.rfpId}`);
+        } else {
+          console.error(`❌ Manual RFP processing failed: ${result.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error in background RFP processing:', error);
       });
-
-      res.status(201).json(result);
-    } else {
-      res.status(400).json(result);
-    }
   } catch (error) {
     console.error('Error processing manual RFP:', error);
     res.status(500).json({

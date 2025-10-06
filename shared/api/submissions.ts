@@ -8,9 +8,7 @@ import type {
   SubmissionPipelineResultKey,
 } from '@shared/schema';
 
-export const SUBMISSION_PHASES: SubmissionPhase[] = [
-  ...submissionPhaseOrder,
-];
+export const SUBMISSION_PHASES: SubmissionPhase[] = [...submissionPhaseOrder];
 
 const SUBMISSION_PHASE_SET = new Set<SubmissionPhase>(SUBMISSION_PHASES);
 
@@ -62,6 +60,4 @@ export function getResultKeyForPhase(
 }
 
 export const SUBMISSION_PHASE_RESULT_KEY_MAP = RESULT_KEY_MAP;
-export const SUBMISSION_PIPELINE_PHASES = [
-  ...submissionPipelinePhaseValues,
-];
+export const SUBMISSION_PIPELINE_PHASES = [...submissionPipelinePhaseValues];

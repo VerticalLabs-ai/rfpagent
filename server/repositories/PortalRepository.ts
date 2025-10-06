@@ -66,7 +66,9 @@ export class PortalRepository extends BaseRepository<
       offset: filter?.offset,
     });
 
-    const total = whereClause ? await this.count(whereClause) : await this.count();
+    const total = whereClause
+      ? await this.count(whereClause)
+      : await this.count();
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;

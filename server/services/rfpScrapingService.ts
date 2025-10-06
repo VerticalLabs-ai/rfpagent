@@ -1,19 +1,12 @@
-import { z } from 'zod';
-import {
-  performWebExtraction,
-  performWebObservation,
-  performWebAction,
-} from './stagehandTools';
-import { sessionManager } from '../../src/mastra/tools/session-manager';
-import { db } from '../db';
-import { rfps, documents } from '@shared/schema';
+import { rfps } from '@shared/schema';
 import { eq } from 'drizzle-orm';
-import { nanoid } from 'nanoid';
-import { randomUUID } from 'crypto';
-import { storage } from '../storage';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+import { z } from 'zod';
+import { db } from '../db';
+import { storage } from '../storage';
 import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
+import { performWebExtraction } from './stagehandTools';
 
 // Schema for extracted RFP data
 const rfpExtractionSchema = z.object({

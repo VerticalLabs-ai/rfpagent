@@ -17,9 +17,12 @@ export const pageExtractTool = createTool({
         'What to extract (e.g., "extract all RFP titles and deadlines", "get form data")'
       ),
     schema: z
-      .record(z.any())
+      .union([
+        z.record(z.any()), // Plain object field map
+        z.instanceof(z.ZodObject), // Pre-built Zod object
+      ])
       .optional()
-      .describe('Zod schema definition for data extraction'),
+      .describe('Zod schema definition for data extraction - accepts either a plain object field map or a pre-built ZodObject'),
     sessionId: z
       .string()
       .optional()
@@ -55,8 +58,22 @@ export const pageExtractTool = createTool({
         url: z.string().optional().describe('Link to full RFP details'),
       });
 
-      // Use provided schema or default, but don't double-wrap
-      const extractionSchema = schema ? z.object(schema) : defaultSchema;
+      // Determine the extraction schema based on input type
+      let extractionSchema: z.ZodObject<any>;
+      if (!schema) {
+        // No schema provided, use default
+        extractionSchema = defaultSchema;
+      } else if (schema instanceof z.ZodObject) {
+        // Pre-built Zod object, use as-is
+        extractionSchema = schema;
+      } else if (typeof schema === 'object' && schema !== null) {
+        // Plain object field map, wrap with z.object()
+        extractionSchema = z.object(schema);
+      } else {
+        // Fallback to default if schema format is unexpected
+        console.warn('Unexpected schema format, using default schema');
+        extractionSchema = defaultSchema;
+      }
       const extractedData = await page.extract({
         instruction,
         schema: extractionSchema,

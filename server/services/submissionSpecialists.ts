@@ -1280,13 +1280,11 @@ export class DocumentUploadSpecialist {
           );
 
           if (matchingDoc) {
-            const path = matchingDoc.objectPath ||
+            const path =
+              matchingDoc.objectPath ||
               (matchingDoc.parsedData as any)?.downloadUrl;
 
-            if (
-              path &&
-              !documentsToUpload.find(d => d.path === path)
-            ) {
+            if (path && !documentsToUpload.find(d => d.path === path)) {
               documentsToUpload.push({
                 type: requiredDoc.type,
                 name: requiredDoc.name,

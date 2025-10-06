@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ScanStep {
   step:
@@ -58,6 +58,7 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const currentScanIdRef = useRef<string | null>(null);
+  const timeoutIdsRef = useRef<number[]>([]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -73,9 +74,12 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
       // Disconnect any existing connection
       disconnect();
 
-      const eventSource = new EventSource(
-        `/api/portals/${targetPortalId}/scan/stream?scanId=${scanId}`
+      const url = new URL(
+        `/api/portals/${encodeURIComponent(targetPortalId)}/scan/stream`,
+        window.location.origin
       );
+      url.searchParams.set('scanId', scanId);
+      const eventSource = new EventSource(url.toString());
       eventSourceRef.current = eventSource;
       currentScanIdRef.current = scanId;
 
@@ -86,7 +90,7 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
       eventSource.onerror = () => {
         setIsConnected(false);
-        setError('Connection lost. Attempting to reconnect...');
+        setError('Connection lost. Call reconnect() to retry.');
       };
 
       eventSource.onmessage = event => {
@@ -125,12 +129,26 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                 break;
 
               case 'step_update':
-                newState.currentStep = {
-                  step: scanEvent.data.step,
-                  progress: scanEvent.data.progress,
-                  message: scanEvent.data.message,
-                  timestamp: new Date(scanEvent.timestamp),
-                };
+                // Validate scanEvent.data is an object with expected fields
+                if (
+                  typeof scanEvent.data === 'object' &&
+                  scanEvent.data !== null &&
+                  typeof scanEvent.data.step === 'string' &&
+                  typeof scanEvent.data.progress === 'number' &&
+                  typeof scanEvent.data.message === 'string'
+                ) {
+                  newState.currentStep = {
+                    step: scanEvent.data.step,
+                    progress: scanEvent.data.progress,
+                    message: scanEvent.data.message,
+                    timestamp: scanEvent.timestamp
+                      ? new Date(scanEvent.timestamp)
+                      : new Date(),
+                  };
+                } else {
+                  // Log malformed event and skip update
+                  console.warn('Malformed step_update event:', scanEvent);
+                }
                 break;
 
               case 'rfp_discovered':
@@ -149,7 +167,7 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   message: 'Scan completed successfully',
                 };
                 // Auto-disconnect after completion
-                setTimeout(disconnect, 1000);
+                timeoutIdsRef.current.push(window.setTimeout(disconnect, 1000));
                 break;
 
               case 'scan_failed':
@@ -161,7 +179,7 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   message: `Scan failed: ${newState.error}`,
                 };
                 // Auto-disconnect after failure
-                setTimeout(disconnect, 1000);
+                timeoutIdsRef.current.push(window.setTimeout(disconnect, 1000));
                 break;
 
               case 'error':
@@ -222,6 +240,9 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Clear all pending timeouts
+      timeoutIdsRef.current.forEach(id => clearTimeout(id));
+      timeoutIdsRef.current = [];
       disconnect();
     };
   }, [disconnect]);

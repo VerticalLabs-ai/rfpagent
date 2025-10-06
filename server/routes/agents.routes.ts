@@ -7,7 +7,7 @@ const router = Router();
 /**
  * Get agent activity
  */
-router.get('/activity', async (req, res) => {
+router.get('/agent-activity', async (req, res) => {
   try {
     const agentActivity = await agentMonitoringService.getRecentActivity(25);
     res.json(agentActivity);
@@ -20,7 +20,7 @@ router.get('/activity', async (req, res) => {
 /**
  * Get agent performance metrics
  */
-router.get('/performance', async (req, res) => {
+router.get('/agent-performance', async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
     const allowed: AgentMetricsTimeframe[] = ['24h', '7d', '30d'];
@@ -39,7 +39,7 @@ router.get('/performance', async (req, res) => {
 /**
  * Get agent coordination status
  */
-router.get('/coordination', async (req, res) => {
+router.get('/agent-coordination', async (req, res) => {
   try {
     const { limit } = req.query;
     const size =
@@ -58,7 +58,7 @@ router.get('/coordination', async (req, res) => {
 /**
  * Get agent registry
  */
-router.get('/registry', async (req, res) => {
+router.get('/agent-registry', async (req, res) => {
   try {
     const agentRegistry = await agentMonitoringService.getRegistrySummary();
     res.json(agentRegistry);
@@ -78,6 +78,19 @@ router.get('/work-items', async (req, res) => {
   } catch (error) {
     console.error('Error fetching work items:', error);
     res.status(500).json({ error: 'Failed to fetch work items' });
+  }
+});
+
+/**
+ * Get system health snapshot
+ */
+router.get('/system-health', async (req, res) => {
+  try {
+    const health = await agentMonitoringService.getSystemHealthSnapshot();
+    res.json(health);
+  } catch (error) {
+    console.error('Error fetching system health:', error);
+    res.status(500).json({ error: 'Failed to fetch system health' });
   }
 });
 

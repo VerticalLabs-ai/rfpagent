@@ -5,7 +5,17 @@ import {
   createPaginatedResult,
 } from './BaseRepository';
 import { rfps, portals, type RFP, type InsertRFP } from '@shared/schema';
-import { eq, and, or, sql, desc, gte, lte, inArray, type SQL } from 'drizzle-orm';
+import {
+  eq,
+  and,
+  or,
+  sql,
+  desc,
+  gte,
+  lte,
+  inArray,
+  type SQL,
+} from 'drizzle-orm';
 import { db } from '../db';
 
 export interface RFPFilter extends BaseFilter {
@@ -87,7 +97,9 @@ export class RFPRepository extends BaseRepository<typeof rfps, RFP, InsertRFP> {
       offset: filter?.offset,
     });
 
-    const total = whereClause ? await this.count(whereClause) : await this.count();
+    const total = whereClause
+      ? await this.count(whereClause)
+      : await this.count();
 
     if (filter?.limit) {
       const page = Math.floor((filter.offset || 0) / filter.limit) + 1;

@@ -1,0 +1,11 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rfp-agent-pdb
+  labels:
+    app: rfp-agent
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rfp-agent

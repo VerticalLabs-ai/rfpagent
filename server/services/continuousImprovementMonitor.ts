@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { and, avg, count, eq, gte, lte, sql, sum } from 'drizzle-orm';
 import { z } from 'zod';
 import {
@@ -962,7 +963,7 @@ export class ContinuousImprovementMonitor {
   ): Promise<void> {
     try {
       await db.insert(agentMemory).values({
-        id: `dashboard_${Date.now()}`,
+        id: `dashboard_${randomUUID()}`,
         agentId: 'continuous_improvement_monitor',
         memoryType: 'semantic',
         contextKey: 'dashboard_snapshot',
@@ -975,8 +976,11 @@ export class ContinuousImprovementMonitor {
         importance: 8,
         createdAt: new Date(),
       });
-    } catch (error) {
-      console.error('Error storing dashboard snapshot:', error);
+    } catch (error: any) {
+      // Silently ignore duplicate key errors (code 23505) - dashboard snapshots are non-critical
+      if (error?.code !== '23505') {
+        console.error('Error storing dashboard snapshot:', error);
+      }
     }
   }
 

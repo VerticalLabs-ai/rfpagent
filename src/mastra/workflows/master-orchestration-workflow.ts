@@ -1,7 +1,7 @@
 import { createWorkflow } from '@mastra/core';
 import { z } from 'zod';
+import { agentMemoryService } from '../../../server/services/agentMemoryService';
 import { storage } from '../../../server/storage';
-import { sharedMemory } from '../tools/shared-memory-provider';
 import { bonfireAuthWorkflow } from './bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './document-processing-workflow';
 import { proposalGenerationWorkflow } from './proposal-generation-workflow';
@@ -51,7 +51,9 @@ export const masterOrchestrationWorkflow = createWorkflow({
 
           // Handle BonfireHub authentication if needed
           const allPortals = await storage.getAllPortals();
-          const bonfirePortals = allPortals.filter((p: any) => p.type === 'bonfirehub');
+          const bonfirePortals = allPortals.filter(
+            (p: any) => p.type === 'bonfirehub'
+          );
           const bonfireIds = bonfirePortals
             .map((p: any) => p.id)
             .filter((id: string) => portalIds.includes(id));
@@ -61,14 +63,58 @@ export const masterOrchestrationWorkflow = createWorkflow({
             const authResults = await parallel(
               bonfireIds.map((portalId: string) =>
                 step.run(`auth-bonfire-${portalId}`, async () => {
-                  const portal = await storage.getPortalWithCredentials(portalId);
+                  const portal =
+                    await storage.getPortalWithCredentials(portalId);
                   if (!portal) return null;
 
-                  // Authentication check skipped - Memory API changed
-                  console.log(`🔐 Authenticating ${portal.name}`);
+                  // Check authentication state from Memory API
+                  const authContextKey = `bonfire_auth_state_${portalId}`;
+                  const existingAuthState =
+                    await agentMemoryService.getMemoryByContext(
+                      'master-orchestrator',
+                      authContextKey
+                    );
 
-                  // Run authentication workflow
-                  return await bonfireAuthWorkflow.execute({
+                  // Validate existing authentication state
+                  if (existingAuthState?.content) {
+                    const { authenticated, timestamp, expiresAt } =
+                      existingAuthState.content;
+                    const now = Date.now();
+                    const authTimestamp = new Date(timestamp).getTime();
+                    const authExpiry = expiresAt
+                      ? new Date(expiresAt).getTime()
+                      : null;
+
+                    // Check if auth is valid (authenticated, not expired, and within 24 hours)
+                    const isValid =
+                      authenticated &&
+                      (!authExpiry || authExpiry > now) &&
+                      now - authTimestamp < 24 * 60 * 60 * 1000;
+
+                    if (isValid) {
+                      console.log(
+                        `✅ Valid authentication found for ${portal.name}, skipping re-auth`
+                      );
+                      return {
+                        success: true,
+                        portalId,
+                        authenticated: true,
+                        cached: true,
+                        timestamp: existingAuthState.content.timestamp,
+                      };
+                    } else {
+                      console.log(
+                        `⏰ Authentication expired for ${portal.name}, re-authenticating...`
+                      );
+                    }
+                  } else {
+                    console.log(
+                      `🔐 No authentication state found for ${portal.name}, authenticating...`
+                    );
+                  }
+
+                  // Run authentication workflow if no valid session exists
+                  const authResult = await bonfireAuthWorkflow.execute({
                     portalId,
                     username: (portal as any).username || '',
                     password: (portal as any).password || '',
@@ -76,6 +122,33 @@ export const masterOrchestrationWorkflow = createWorkflow({
                     retryCount: 0,
                     maxRetries: 3,
                   });
+
+                  // Store authentication state in Memory API for future checks
+                  if (authResult.success && authResult.authenticated) {
+                    await agentMemoryService.storeMemory({
+                      agentId: 'master-orchestrator',
+                      memoryType: 'working',
+                      contextKey: authContextKey,
+                      title: `BonfireHub Auth State: ${portal.name}`,
+                      content: {
+                        portalId,
+                        authenticated: true,
+                        timestamp: new Date().toISOString(),
+                        expiresAt: new Date(
+                          Date.now() + 24 * 60 * 60 * 1000
+                        ).toISOString(), // 24 hours
+                        sessionId: authResult.sessionId,
+                      },
+                      importance: 8,
+                      tags: ['authentication', 'bonfirehub', portalId],
+                      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours TTL
+                    });
+                    console.log(
+                      `💾 Stored authentication state for ${portal.name}`
+                    );
+                  }
+
+                  return authResult;
                 })
               )
             );
@@ -272,7 +345,9 @@ export const masterOrchestrationWorkflow = createWorkflow({
       console.log('💾 Storing orchestration results...');
 
       // Results stored via Memory provider
-      console.log(`Orchestration ${mode} completed with ${results.workflows.length} workflows`);
+      console.log(
+        `Orchestration ${mode} completed with ${results.workflows.length} workflows`
+      );
 
       // Log to database
       if (results.discoveredRfps?.length > 0) {

@@ -317,7 +317,10 @@ describe('SAFLA Learning Engine', () => {
 
   describe('Learning from Outcomes', () => {
     it('should learn from successful portal scan', async () => {
-      await saflaLearningEngine.learn({
+      const initialEvents = await saflaLearningEngine.getEvents(testAgentId, 'portal_scan');
+      const initialEventCount = initialEvents.length;
+
+      const learningEvent = {
         agentId: testAgentId,
         taskType: 'portal_scan',
         context: {
@@ -337,14 +340,49 @@ describe('SAFLA Learning Engine', () => {
           },
         },
         timestamp: new Date(),
+      };
+
+      await saflaLearningEngine.learn(learningEvent);
+
+      // Verify learning event was persisted
+      const updatedEvents = await saflaLearningEngine.getEvents(testAgentId, 'portal_scan');
+
+      // Total events should have increased
+      expect(updatedEvents.length).toBeGreaterThan(initialEventCount);
+      expect(updatedEvents.length).toBe(initialEventCount + 1);
+
+      // Find the latest event
+      const latestEvent = updatedEvents[updatedEvents.length - 1];
+      expect(latestEvent).toBeDefined();
+      expect(latestEvent.agentId).toBe(testAgentId);
+      expect(latestEvent.memoryType).toBe('episodic');
+      expect(latestEvent.content.taskType).toBe('portal_scan');
+      expect(latestEvent.content.outcome.success).toBe(true);
+
+      // Verify context was stored
+      expect(latestEvent.content.context.portalId).toBe('sam-gov');
+      expect(latestEvent.content.context.scanStrategy).toBe('full_depth');
+      expect(latestEvent.content.context.selectors).toEqual({
+        title: '.rfp-title',
+        agency: '.agency-name',
       });
 
-      // Learning should complete without errors
-      expect(true).toBe(true);
+      // Verify metrics were stored
+      expect(latestEvent.content.outcome.metrics.rfpsFound).toBe(25);
+      expect(latestEvent.content.outcome.metrics.scanDuration).toBe(45000);
+      expect(latestEvent.content.outcome.metrics.accuracy).toBe(0.95);
+
+      // Verify tags include success
+      expect(latestEvent.tags).toContain('success');
+      expect(latestEvent.tags).toContain('learning_event');
+      expect(latestEvent.tags).toContain('portal_scan');
     });
 
     it('should learn from failed document processing', async () => {
-      await saflaLearningEngine.learn({
+      const initialEvents = await saflaLearningEngine.getEvents(testAgentId, 'document_processing');
+      const initialEventCount = initialEvents.length;
+
+      const learningEvent = {
         agentId: testAgentId,
         taskType: 'document_processing',
         context: {
@@ -364,9 +402,46 @@ describe('SAFLA Learning Engine', () => {
           },
         },
         timestamp: new Date(),
-      });
+      };
 
-      expect(true).toBe(true);
+      await saflaLearningEngine.learn(learningEvent);
+
+      // Verify learning event was persisted
+      const updatedEvents = await saflaLearningEngine.getEvents(testAgentId, 'document_processing');
+
+      // Total events should have increased
+      expect(updatedEvents.length).toBeGreaterThan(initialEventCount);
+      expect(updatedEvents.length).toBe(initialEventCount + 1);
+
+      // Find the latest event
+      const latestEvent = updatedEvents[updatedEvents.length - 1];
+      expect(latestEvent).toBeDefined();
+      expect(latestEvent.agentId).toBe(testAgentId);
+      expect(latestEvent.memoryType).toBe('episodic');
+      expect(latestEvent.content.taskType).toBe('document_processing');
+      expect(latestEvent.content.outcome.success).toBe(false);
+
+      // Verify context was stored
+      expect(latestEvent.content.context.documentType).toBe('PDF');
+      expect(latestEvent.content.context.parsingMethod).toBe('text_extraction');
+
+      // Verify metrics were stored
+      expect(latestEvent.content.outcome.metrics.fieldsExtracted).toBe(3);
+      expect(latestEvent.content.outcome.metrics.expectedFields).toBe(10);
+      expect(latestEvent.content.outcome.metrics.accuracy).toBe(0.3);
+
+      // Verify error details were stored
+      expect(latestEvent.content.outcome.errorDetails).toBeDefined();
+      expect(latestEvent.content.outcome.errorDetails.error).toBe('OCR quality too low');
+      expect(latestEvent.content.outcome.errorDetails.reason).toBe('Scanned document with poor image quality');
+
+      // Verify tags include failure
+      expect(latestEvent.tags).toContain('failure');
+      expect(latestEvent.tags).toContain('learning_event');
+      expect(latestEvent.tags).toContain('document_processing');
+
+      // Verify importance is higher for failures (8 vs 6 for successes)
+      expect(latestEvent.importance).toBe(8);
     });
   });
 

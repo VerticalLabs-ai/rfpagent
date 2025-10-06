@@ -26,6 +26,7 @@ import agentRoutes from './agents.routes';
 import metricsRoutes from './metrics.routes';
 import e2eRoutes from './e2e.routes';
 import saflaRoutes from './safla-monitoring';
+import healthRoutes from './health.routes';
 
 /**
  * Configure and mount all API routes
@@ -61,6 +62,9 @@ export function configureRoutes(app: Express): void {
 
   // Mount SAFLA monitoring routes
   apiRouter.use('/safla', saflaRoutes);
+
+  // Mount health check routes (skip rate limiting for health checks)
+  apiRouter.use('/health', healthRoutes);
 
   // Mount the API router
   app.use('/api', apiRouter);
@@ -175,6 +179,11 @@ export const routeModules = {
   safla: {
     prefix: '/api/safla',
     description: 'SAFLA self-improving system monitoring and management',
+    version: '1.0.0',
+  },
+  health: {
+    prefix: '/api/health',
+    description: 'Health checks and system monitoring',
     version: '1.0.0',
   },
 } as const;

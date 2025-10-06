@@ -1,8 +1,7 @@
-import { createWorkflow } from '@mastra/core';
+import { createWorkflow, WorkflowContext } from '@mastra/core';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
 import { sessionManager } from '../tools/session-manager';
-import { sharedMemory } from '../tools/shared-memory-provider';
 
 // Input schema for BonfireHub authentication workflow
 const BonfireAuthInputSchema = z.object({
@@ -20,7 +19,11 @@ export const bonfireAuthWorkflow = createWorkflow({
     'Handles complex BonfireHub authentication with 2FA and human-in-the-loop',
   inputSchema: BonfireAuthInputSchema,
 
-  execute: async ({ input, step, suspend }: any) => {
+  execute: async ({
+    input,
+    step,
+    suspend,
+  }: WorkflowContext<z.infer<typeof BonfireAuthInputSchema>>) => {
     const {
       portalId,
       username,

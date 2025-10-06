@@ -1,4 +1,4 @@
-import { AnalysisOrchestrator } from './analysisOrchestrator';
+import { analysisOrchestrator } from './analysisOrchestrator';
 import { analysisProgressTracker } from './analysisProgressTracker';
 import { storage } from '../storage';
 import { nanoid } from 'nanoid';
@@ -57,7 +57,7 @@ export interface TestResult {
 }
 
 export class AnalysisTestRunner {
-  private analysisOrchestrator = new AnalysisOrchestrator();
+  private analysisOrchestrator = analysisOrchestrator;
 
   /**
    * Run comprehensive analysis pipeline tests

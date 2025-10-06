@@ -95,9 +95,7 @@ export class DocumentProcessorSpecialist {
         throw new Error('Work item missing documentId');
       }
 
-      console.log(
-        `📄 Document processor validating document: ${documentId}`
-      );
+      console.log(`📄 Document processor validating document: ${documentId}`);
 
       const document = await storage.getDocument(documentId);
 
@@ -125,15 +123,15 @@ export class DocumentProcessorSpecialist {
         content: {
           documentId,
           filename: document.filename,
-        validation,
-        processedAt: new Date(),
-      },
-      importance: validation.isValid ? 7 : 9, // Higher importance for invalid docs
-      metadata: {
-        workItemId: workItem.id,
-        rfpId,
-      },
-    });
+          validation,
+          processedAt: new Date(),
+        },
+        importance: validation.isValid ? 7 : 9, // Higher importance for invalid docs
+        metadata: {
+          workItemId: workItem.id,
+          rfpId,
+        },
+      });
 
       if (!validation.isValid) {
         return {
@@ -180,9 +178,7 @@ export class DocumentProcessorSpecialist {
         throw new Error('Work item missing documentId');
       }
 
-      console.log(
-        `📝 Document processor extracting text: ${documentId}`
-      );
+      console.log(`📝 Document processor extracting text: ${documentId}`);
 
       // Use existing document parsing service
       await this.documentParsingService.parseDocument(documentId);
@@ -423,9 +419,7 @@ export class RequirementsExtractorSpecialist {
         throw new Error('Work item missing documentId or rfpId');
       }
 
-      console.log(
-        `📋 Requirements extractor parsing document: ${documentId}`
-      );
+      console.log(`📋 Requirements extractor parsing document: ${documentId}`);
 
       const document = await storage.getDocument(documentId);
       const rfp = await storage.getRFP(rfpId);

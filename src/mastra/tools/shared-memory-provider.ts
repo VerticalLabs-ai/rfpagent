@@ -53,8 +53,7 @@ export class SharedMemoryProvider {
           },
 
           retrieve: async (sessionId: string, limit?: number) => {
-            // Generate safe session ID to prevent cross-contamination
-            const safeSessionId = sessionId;
+            // No fallback ID generation during retrieval to prevent cross-contamination
             if (
               !sessionId ||
               sessionId.trim() === '' ||
@@ -68,7 +67,7 @@ export class SharedMemoryProvider {
             }
 
             const memories = await agentMemoryService.getAgentMemories(
-              safeSessionId,
+              sessionId,
               'working',
               limit || 50
             );

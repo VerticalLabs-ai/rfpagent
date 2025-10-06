@@ -1,5 +1,5 @@
-import { openai } from "@ai-sdk/openai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic } from '@ai-sdk/anthropic';
+import { openai } from '@ai-sdk/openai';
 
 /**
  * Model Configuration for Multi-Agent System
@@ -14,14 +14,14 @@ import { anthropic } from "@ai-sdk/anthropic";
  */
 
 // OpenAI GPT-5 (Latest and most capable OpenAI model)
-export const gpt5 = openai("gpt-5");
-export const gpt5Turbo = openai("gpt-5-turbo"); // Faster variant if available
+export const gpt5 = openai('gpt-5');
+export const gpt5Turbo = openai('gpt-5-turbo'); // Faster variant if available
 
 // Claude Sonnet 4.5 (Anthropic's latest model)
-export const claudeSonnet45 = anthropic("claude-sonnet-4.5-20250929");
+export const claudeSonnet45 = anthropic('claude-sonnet-4.5');
 
 // Claude Opus (For tasks requiring maximum capability)
-export const claudeOpus4 = anthropic("claude-opus-4-20250514");
+export const claudeOpus4 = anthropic('claude-opus-4');
 
 /**
  * Model Selection Strategy
@@ -119,33 +119,44 @@ export function getModelForAgent(agentType: string) {
  */
 export const modelCapabilities = {
   gpt5: {
-    name: "GPT-5",
-    provider: "OpenAI",
+    name: 'GPT-5',
+    provider: 'OpenAI',
     contextWindow: 128000,
-    strengths: ["Creative writing", "Proposals", "Content generation", "Conversational"],
+    strengths: [
+      'Creative writing',
+      'Proposals',
+      'Content generation',
+      'Conversational',
+    ],
     pricing: {
-      input: "$0.10/1K tokens",  // Example pricing
-      output: "$0.30/1K tokens",
+      input: '$0.10/1K tokens', // Example pricing
+      output: '$0.30/1K tokens',
     },
   },
   claudeSonnet45: {
-    name: "Claude Sonnet 4.5",
-    provider: "Anthropic",
+    name: 'Claude Sonnet 4.5',
+    provider: 'Anthropic',
     contextWindow: 200000,
-    strengths: ["Analysis", "Code", "Reasoning", "Long context", "Structured output"],
+    strengths: [
+      'Analysis',
+      'Code',
+      'Reasoning',
+      'Long context',
+      'Structured output',
+    ],
     pricing: {
-      input: "$0.03/1K tokens",
-      output: "$0.15/1K tokens",
+      input: '$0.03/1K tokens',
+      output: '$0.15/1K tokens',
     },
   },
   claudeOpus4: {
-    name: "Claude Opus 4",
-    provider: "Anthropic",
+    name: 'Claude Opus 4',
+    provider: 'Anthropic',
     contextWindow: 200000,
-    strengths: ["Maximum capability", "Complex reasoning", "Critical analysis"],
+    strengths: ['Maximum capability', 'Complex reasoning', 'Critical analysis'],
     pricing: {
-      input: "$0.15/1K tokens",
-      output: "$0.75/1K tokens",
+      input: '$0.15/1K tokens',
+      output: '$0.75/1K tokens',
     },
   },
 };

@@ -110,7 +110,8 @@ router.post('/document-processing/execute', async (req, res) => {
       sessionId,
       message: workflowResult.success
         ? 'Document processing workflow started successfully'
-        : workflowResult.error || 'Failed to start document processing workflow',
+        : workflowResult.error ||
+          'Failed to start document processing workflow',
     });
   } catch (error) {
     console.error('Error executing document processing workflow:', error);
@@ -207,7 +208,8 @@ router.post('/proposal-generation/execute', async (req, res) => {
       return res.status(500).json({
         success: false,
         error:
-          pipelineResult.error || 'Failed to start proposal generation pipeline',
+          pipelineResult.error ||
+          'Failed to start proposal generation pipeline',
       });
     }
 
@@ -262,9 +264,9 @@ router.post('/:workflowId/suspend', async (req, res) => {
     );
 
     if (!result.success) {
-      return res
-        .status(404)
-        .json({ error: result.error || 'Workflow not found or cannot be suspended' });
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be suspended',
+      });
     }
 
     res.json({
@@ -293,9 +295,9 @@ router.post('/:workflowId/resume', async (req, res) => {
     );
 
     if (!result.success) {
-      return res
-        .status(404)
-        .json({ error: result.error || 'Workflow not found or cannot be resumed' });
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be resumed',
+      });
     }
 
     res.json({
@@ -324,9 +326,9 @@ router.post('/:workflowId/cancel', async (req, res) => {
     );
 
     if (!result.success) {
-      return res
-        .status(404)
-        .json({ error: result.error || 'Workflow not found or cannot be cancelled' });
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be cancelled',
+      });
     }
 
     res.json({

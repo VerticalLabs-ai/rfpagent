@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { configureRoutes } from './routes';
 import { setupVite, serveStatic, log } from './vite';
 import { agentRegistryService } from './services/agentRegistryService';
+import { websocketService } from './services/websocketService';
 
 const app = express();
 app.use(express.json());
@@ -63,17 +64,6 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // Bootstrap 3-tier agentic system with default agents
-  try {
-    await agentRegistryService.bootstrapDefaultAgents();
-    log('🤖 3-tier agentic system initialized with default agents');
-  } catch (error) {
-    log(
-      '⚠️ Failed to bootstrap default agents:',
-      error instanceof Error ? error.message : String(error)
-    );
-  }
-
   // ALWAYS serve the app on the port specified in the environment variable PORT
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
@@ -81,5 +71,33 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || '3000', 10);
   server.listen(port, '0.0.0.0', () => {
     log(`serving on port ${port}`);
+  });
+
+  // Initialize WebSocket server AFTER server is listening
+  websocketService.initialize(server);
+  log('🔌 WebSocket server initialized on /ws');
+
+  // Bootstrap 3-tier agentic system with default agents in background
+  // This allows the server to respond to requests while agents initialize
+  setImmediate(async () => {
+    try {
+      await agentRegistryService.bootstrapDefaultAgents();
+      log('🤖 3-tier agentic system initialized with default agents');
+    } catch (error) {
+      log(
+        '⚠️ Failed to bootstrap default agents:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    log('SIGTERM received, shutting down gracefully');
+    websocketService.shutdown();
+    server.close(() => {
+      log('Server closed');
+      process.exit(0);
+    });
   });
 })();

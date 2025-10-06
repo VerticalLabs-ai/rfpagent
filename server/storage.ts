@@ -1,3 +1,5 @@
+import type { DashboardMetrics } from '@shared/api/dashboard';
+import type { RfpDetail } from '@shared/api/rfps';
 import {
   agentCoordinationLog,
   agentKnowledgeBase,
@@ -77,35 +79,44 @@ import {
   type InsertWorkItem,
   type Notification,
   type Portal,
-  type PublicPortal,
   type Proposal,
   type ProposalRow,
+  type PublicPortal,
   type ResearchFinding,
   type RFP,
   type Scan,
   type ScanEvent,
   type Submission,
+  type SubmissionEvent,
   type SubmissionLifecycleData,
+  type SubmissionPhaseResult,
+  type SubmissionPipeline,
+  type SubmissionPipelineErrorData,
+  type SubmissionPipelineMetadata,
+  type SubmissionPipelinePhase,
+  type SubmissionPipelineRow,
+  type SubmissionPipelineStatus,
   type SubmissionReceiptData,
   type SubmissionRow,
-  type SubmissionStatusValue,
-  type SubmissionEvent,
-  type SubmissionPipeline,
-  type SubmissionPipelineRow,
-  type SubmissionPipelinePhase,
-  type SubmissionPipelineStatus,
-  type SubmissionPipelineMetadata,
-  type SubmissionPhaseResult,
-  type SubmissionVerificationResult,
-  type SubmissionPipelineErrorData,
   type SubmissionStatusHistory,
+  type SubmissionStatusValue,
+  type SubmissionVerificationResult,
   type User,
   type WorkItem,
 } from '@shared/schema';
-import { and, asc, count, desc, eq, gte, lte, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  lte,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import { db } from './db';
-import type { DashboardMetrics } from '@shared/api/dashboard';
-import type { RfpDetail } from '@shared/api/rfps';
 
 const toSubmission = (row: SubmissionRow): Submission => ({
   ...row,
@@ -125,7 +136,8 @@ const toSubmissionPipeline = (
   currentPhase: row.currentPhase as SubmissionPipelinePhase,
   status: row.status as SubmissionPipelineStatus,
   metadata: (row.metadata as SubmissionPipelineMetadata | null) ?? null,
-  preflightChecks: (row.preflightChecks as SubmissionPhaseResult | null) ?? null,
+  preflightChecks:
+    (row.preflightChecks as SubmissionPhaseResult | null) ?? null,
   authenticationData:
     (row.authenticationData as SubmissionPhaseResult | null) ?? null,
   formData: (row.formData as SubmissionPhaseResult | null) ?? null,
@@ -220,8 +232,15 @@ export interface IStorage {
 
   // Submissions
   getSubmission(id: string): Promise<Submission | undefined>;
+  getSubmissions(options?: {
+    limit?: number;
+    status?: string;
+  }): Promise<Submission[]>;
   getSubmissionsByRFP(rfpId: string): Promise<Submission[]>;
-  getSubmissionsByDateRange(startDate: Date, endDate: Date): Promise<Submission[]>;
+  getSubmissionsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<Submission[]>;
   getSubmissionByProposal(proposalId: string): Promise<Submission | undefined>;
   createSubmission(submission: InsertSubmission): Promise<Submission>;
   updateSubmission(
@@ -477,9 +496,17 @@ export interface IStorage {
   getPortalHealthSummary(): Promise<any>;
   getAgentHealthSummary(): Promise<any>;
   getCoordinationLogs(limit?: number): Promise<any[]>;
-  getPhaseTransitionSummary(
-    days?: number
-  ): Promise<{
+  createCoordinationLog(log: {
+    sessionId: string;
+    workflowId?: string;
+    initiatorAgentId: string;
+    targetAgentId: string;
+    coordinationType: string;
+    priority: number;
+    payload: any;
+    status: string;
+  }): Promise<any>;
+  getPhaseTransitionSummary(days?: number): Promise<{
     totalTransitions: number;
     successfulTransitions: number;
     failedTransitions: number;
@@ -525,6 +552,7 @@ export interface IStorage {
     dlq?: boolean;
     scheduledBefore?: Date;
     workflowId?: string;
+    limit?: number;
   }): Promise<WorkItem[]>;
   getWorkItemStatusSummary(): Promise<Record<string, number>>;
   getRecentWorkItemActivity(limit?: number): Promise<WorkItemActivityRow[]>;
@@ -624,6 +652,9 @@ export interface IStorage {
   getAllAgentRegistries(): Promise<AgentRegistry[]>;
   getAgentUtilizationMetrics(): Promise<any[]>;
   updateAgentWorkload(agentId: string, workload: number): Promise<void>;
+
+  // Feedback
+  getRecentFeedback(limit: number): Promise<Array<{ rating: number }>>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1103,6 +1134,26 @@ export class DatabaseStorage implements IStorage {
     return submission ? toSubmission(submission) : undefined;
   }
 
+  async getSubmissions(options?: {
+    limit?: number;
+    status?: string;
+  }): Promise<Submission[]> {
+    const { limit = 100, status } = options || {};
+
+    let query = db
+      .select()
+      .from(submissions)
+      .orderBy(desc(submissions.createdAt))
+      .limit(limit);
+
+    if (status) {
+      query = query.where(eq(submissions.status, status)) as any;
+    }
+
+    const rows = await query;
+    return mapSubmissionRows(rows);
+  }
+
   async getSubmissionsByRFP(rfpId: string): Promise<Submission[]> {
     const rows = await db
       .select()
@@ -1267,7 +1318,8 @@ export class DatabaseStorage implements IStorage {
       .where(eq(submissionEvents.submissionId, submissionId))
       .orderBy(desc(submissionEvents.timestamp));
 
-    const query = typeof limit === 'number' ? baseQuery.limit(limit) : baseQuery;
+    const query =
+      typeof limit === 'number' ? baseQuery.limit(limit) : baseQuery;
 
     return await query;
   }
@@ -1394,41 +1446,53 @@ export class DatabaseStorage implements IStorage {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    const [activeRfpsCount, submittedCount, totalValue, portalsCount, newRfpsToday, pendingReviewCount, submissionsToday] =
-      await Promise.all([
-        db
-          .select({ count: count() })
-          .from(rfps)
-          .where(
-            or(
-              eq(rfps.status, 'discovered'),
-              eq(rfps.status, 'parsing'),
-              eq(rfps.status, 'drafting'),
-              eq(rfps.status, 'review'),
-              eq(rfps.status, 'approved')
-            )
-          ),
-        db.select({ count: count() }).from(rfps).where(eq(rfps.status, 'submitted')),
-        db
-          .select({ total: sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)` })
-          .from(rfps)
-          .where(or(eq(rfps.status, 'approved'), eq(rfps.status, 'submitted'))),
-        db.select({ count: count() }).from(portals),
-        db
-          .select({ count: count() })
-          .from(rfps)
-          .where(gte(rfps.discoveredAt, startOfToday)),
-        db.select({ count: count() }).from(rfps).where(eq(rfps.status, 'review')),
-        db
-          .select({ count: count() })
-          .from(submissions)
-          .where(
-            and(
-              eq(submissions.status, 'submitted'),
-              gte(submissions.submittedAt, startOfToday)
-            )
-          ),
-      ]);
+    const [
+      activeRfpsCount,
+      submittedCount,
+      totalValue,
+      portalsCount,
+      newRfpsToday,
+      pendingReviewCount,
+      submissionsToday,
+    ] = await Promise.all([
+      db
+        .select({ count: count() })
+        .from(rfps)
+        .where(
+          or(
+            eq(rfps.status, 'discovered'),
+            eq(rfps.status, 'parsing'),
+            eq(rfps.status, 'drafting'),
+            eq(rfps.status, 'review'),
+            eq(rfps.status, 'approved')
+          )
+        ),
+      db
+        .select({ count: count() })
+        .from(rfps)
+        .where(eq(rfps.status, 'submitted')),
+      db
+        .select({
+          total: sql`COALESCE(SUM(CAST(estimated_value AS DECIMAL)), 0)`,
+        })
+        .from(rfps)
+        .where(or(eq(rfps.status, 'approved'), eq(rfps.status, 'submitted'))),
+      db.select({ count: count() }).from(portals),
+      db
+        .select({ count: count() })
+        .from(rfps)
+        .where(gte(rfps.discoveredAt, startOfToday)),
+      db.select({ count: count() }).from(rfps).where(eq(rfps.status, 'review')),
+      db
+        .select({ count: count() })
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.status, 'submitted'),
+            gte(submissions.submittedAt, startOfToday)
+          )
+        ),
+    ]);
 
     const activeRfps = Number(activeRfpsCount[0]?.count ?? 0);
     const submittedRfps = Number(submittedCount[0]?.count ?? 0);
@@ -1446,7 +1510,15 @@ export class DatabaseStorage implements IStorage {
       newRfpsToday: discoveredToday,
       pendingReview,
       submittedToday,
-      winRate: submittedRfps === 0 ? 0 : Math.min(100, Math.round((submittedRfps / Math.max(activeRfps + submittedRfps, 1)) * 100)),
+      winRate:
+        submittedRfps === 0
+          ? 0
+          : Math.min(
+              100,
+              Math.round(
+                (submittedRfps / Math.max(activeRfps + submittedRfps, 1)) * 100
+              )
+            ),
       avgResponseTime: 0,
     };
   }
@@ -1536,32 +1608,28 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAgentHealthSummary(): Promise<any> {
+    // Get total registered agents from agent_registry
     const totalAgents = await db
       .select({
-        count: sql`COUNT(DISTINCT agent_id)`,
+        count: sql`COUNT(*)`,
       })
-      .from(agentPerformanceMetrics);
+      .from(agentRegistry);
 
-    const recentActivity = await db
+    // Get active agents (those with status = 'active' or 'busy')
+    const activeAgents = await db
       .select({
-        count: sql`COUNT(DISTINCT agent_id)`,
+        count: sql`COUNT(*)`,
       })
-      .from(agentPerformanceMetrics)
-      .where(
-        gte(
-          agentPerformanceMetrics.recordedAt,
-          new Date(Date.now() - 24 * 60 * 60 * 1000)
-        )
-      ); // Last 24 hours
+      .from(agentRegistry)
+      .where(sql`${agentRegistry.status} IN ('active', 'busy')`);
+
+    const total = Number(totalAgents[0].count);
+    const active = Number(activeAgents[0].count);
 
     return {
-      totalAgents: Number(totalAgents[0].count),
-      activeAgents: Number(recentActivity[0].count),
-      healthPercentage:
-        Number(totalAgents[0].count) > 0
-          ? (Number(recentActivity[0].count) / Number(totalAgents[0].count)) *
-            100
-          : 0,
+      totalAgents: total,
+      activeAgents: active,
+      healthPercentage: total > 0 ? (active / total) * 100 : 0,
     };
   }
 
@@ -1573,9 +1641,34 @@ export class DatabaseStorage implements IStorage {
       .limit(limit);
   }
 
-  async getPhaseTransitionSummary(
-    days: number = 7
-  ): Promise<{
+  async createCoordinationLog(log: {
+    sessionId: string;
+    workflowId?: string;
+    initiatorAgentId: string;
+    targetAgentId: string;
+    coordinationType: string;
+    priority: number;
+    payload: any;
+    status: string;
+  }): Promise<any> {
+    const [result] = await db
+      .insert(agentCoordinationLog)
+      .values({
+        sessionId: log.sessionId,
+        workflowId: log.workflowId,
+        initiatorAgentId: log.initiatorAgentId,
+        targetAgentId: log.targetAgentId,
+        coordinationType: log.coordinationType,
+        priority: log.priority,
+        payload: log.payload,
+        status: log.status,
+        startedAt: new Date(),
+      })
+      .returning();
+    return result;
+  }
+
+  async getPhaseTransitionSummary(days: number = 7): Promise<{
     totalTransitions: number;
     successfulTransitions: number;
     failedTransitions: number;
@@ -2852,6 +2945,7 @@ export class DatabaseStorage implements IStorage {
     dlq?: boolean;
     scheduledBefore?: Date;
     workflowId?: string;
+    limit?: number;
   }): Promise<WorkItem[]> {
     const conditions = [];
 
@@ -2868,11 +2962,17 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(workItems.workflowId, filter.workflowId));
     }
 
-    return await db
+    let query = db
       .select()
       .from(workItems)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(asc(workItems.priority), asc(workItems.deadline));
+
+    if (filter?.limit) {
+      query = query.limit(filter.limit) as any;
+    }
+
+    return await query;
   }
 
   async getWorkItemStatusSummary(): Promise<Record<string, number>> {
@@ -3595,6 +3695,25 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date(),
       })
       .where(eq(agentRegistry.agentId, agentId));
+  }
+
+  async getRecentFeedback(limit: number): Promise<Array<{ rating: number }>> {
+    // Since there's no dedicated feedback table, derive satisfaction from agent performance metrics
+    // This uses user_satisfaction and task_completion metrics as proxies
+    const metrics = await db
+      .select()
+      .from(agentPerformanceMetrics)
+      .where(
+        sql`${agentPerformanceMetrics.metricType} IN ('user_satisfaction', 'task_completion', 'accuracy')`
+      )
+      .orderBy(desc(agentPerformanceMetrics.recordedAt))
+      .limit(limit);
+
+    // Convert performance metrics to feedback ratings (0-5 scale)
+    // metricValue is typically 0-1, normalize to 0-5 scale
+    return metrics.map(metric => ({
+      rating: parseFloat(metric.metricValue) * 5,
+    }));
   }
 }
 

@@ -152,7 +152,8 @@ router.post('/initialize', async (req, res) => {
 // Trigger memory consolidation
 router.post('/consolidate-memory', async (req, res) => {
   try {
-    const result = await workflowCoordinator.consolidateSystemMemory('triggered');
+    const result =
+      await workflowCoordinator.consolidateSystemMemory('triggered');
 
     res.json({
       success: true,

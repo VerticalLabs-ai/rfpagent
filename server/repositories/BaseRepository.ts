@@ -20,7 +20,11 @@ const DRIZZLE_NAME = Symbol.for('drizzle:Name');
 
 type TableColumns<TTable extends AnyPgTable> =
   TTable extends PgTableWithColumns<infer TColumns>
-    ? { [K in keyof TColumns]: TColumns[K] extends AnyPgColumn ? TColumns[K] : never }
+    ? {
+        [K in keyof TColumns]: TColumns[K] extends AnyPgColumn
+          ? TColumns[K]
+          : never;
+      }
     : TTable['_']['columns'];
 type ColumnName<TTable extends AnyPgTable> = Extract<
   keyof TableColumns<TTable>,
@@ -294,7 +298,9 @@ export abstract class BaseRepository<
       query = query.where(where);
     }
 
-    const [{ count: total }] = (await query) as Array<{ count: number | string }>;
+    const [{ count: total }] = (await query) as Array<{
+      count: number | string;
+    }>;
     return Number(total ?? 0);
   }
 
@@ -307,10 +313,7 @@ export abstract class BaseRepository<
   ): Promise<TSelect[]> {
     const tableColumn = this.resolveColumn(column as string);
     const table = this.table as unknown as AnyPgTable;
-    const results = await db
-      .select()
-      .from(table)
-      .where(eq(tableColumn, value));
+    const results = await db.select().from(table).where(eq(tableColumn, value));
     return results as TSelect[];
   }
 
@@ -353,8 +356,10 @@ export abstract class BaseRepository<
    * Begin transaction
    */
   async transaction<T>(callback: (tx: typeof db) => Promise<T>): Promise<T> {
-    return await (db.transaction as unknown as (
-      cb: (tx: typeof db) => Promise<T>
-    ) => Promise<T>)(callback);
+    return await (
+      db.transaction as unknown as (
+        cb: (tx: typeof db) => Promise<T>
+      ) => Promise<T>
+    )(callback);
   }
 }

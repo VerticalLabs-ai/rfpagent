@@ -1,10 +1,10 @@
+import { insertPortalSchema } from '@shared/schema';
 import { Router } from 'express';
 import { z } from 'zod';
-import { insertPortalSchema } from '@shared/schema';
-import { storage } from '../storage';
 import { PortalMonitoringService } from '../services/portal-monitoring-service';
 import { PortalSchedulerService } from '../services/portal-scheduler-service';
 import { scanManager } from '../services/scan-manager';
+import { storage } from '../storage';
 
 const router = Router();
 
@@ -42,12 +42,24 @@ const PortalMonitoringConfigSchema = z.object({
 });
 
 /**
- * Get all portals
+ * Get all portals with RFP counts
  */
 router.get('/', async (req, res) => {
   try {
     const portals = await storage.getAllPortals();
-    res.json(portals);
+
+    // Add RFP counts for each portal
+    const portalsWithCounts = await Promise.all(
+      portals.map(async portal => {
+        const rfpCount = await storage.getRFPsByPortal(portal.id);
+        return {
+          ...portal,
+          rfpCount,
+        };
+      })
+    );
+
+    res.json(portalsWithCounts);
   } catch (error) {
     console.error('Error fetching portals:', error);
     res.status(500).json({ error: 'Failed to fetch portals' });

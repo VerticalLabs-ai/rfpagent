@@ -531,7 +531,8 @@ export class AnalysisOrchestrator {
       try {
         const taskInputs = task.inputs as Record<string, unknown>;
         const taskMetadata = task.metadata as Record<string, unknown>;
-        const priorityValue = (taskMetadata.priority as number | undefined) ?? 5;
+        const priorityValue =
+          (taskMetadata.priority as number | undefined) ?? 5;
         const deadlineValue =
           taskMetadata.deadline instanceof Date
             ? (taskMetadata.deadline as Date)
@@ -558,7 +559,9 @@ export class AnalysisOrchestrator {
           `✅ Created work item ${workItem.id} for task: ${task.name}`
         );
 
-        const assignment = await workflowCoordinator.assignWorkItem(workItem.id);
+        const assignment = await workflowCoordinator.assignWorkItem(
+          workItem.id
+        );
         if (!assignment.success) {
           console.warn(
             `⚠️ Work item ${workItem.id} pending assignment: ${assignment.error}`
@@ -633,7 +636,9 @@ export class AnalysisOrchestrator {
             dependentMetadata.deadline instanceof Date
               ? (dependentMetadata.deadline as Date)
               : undefined;
-          const dependentContextRef = dependentInputs.rfpId as string | undefined;
+          const dependentContextRef = dependentInputs.rfpId as
+            | string
+            | undefined;
 
           const newWorkItem = await workflowCoordinator.createWorkItem({
             sessionId: workItem.sessionId,

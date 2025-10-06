@@ -1,7 +1,10 @@
-import { Agent } from "@mastra/core/agent"
-import { analyticalModel } from "../models"
-import { sharedMemory } from "../tools/shared-memory-provider"
-import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordination-tools"
+import { Agent } from '@mastra/core/agent';
+import { analyticalModel } from '../models';
+import {
+  sendAgentMessage,
+  updateWorkflowProgress,
+} from '../tools/agent-coordination-tools';
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 /**
  * Document Processor - Tier 3 Specialist Agent
@@ -10,7 +13,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  * Specialized in handling document parsing and analysis
  */
 export const documentProcessor = new Agent({
-  name: "Document Processor",
+  name: 'Document Processor',
   instructions: `
 You are a Document Processor specialist (Tier 3), handling document parsing and analysis.
 
@@ -266,4 +269,4 @@ Report all processing results and challenges to the Proposal Manager for coordin
     updateWorkflowProgress,
   },
   memory: sharedMemory,
-})
+});

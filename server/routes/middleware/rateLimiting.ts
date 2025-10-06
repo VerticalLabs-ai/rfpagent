@@ -16,10 +16,50 @@ declare module 'express-serve-static-core' {
  * Rate limiting middleware configurations
  */
 
+// Skip rate limiting for certain conditions
+export const skipRateLimit = (req: Request): boolean => {
+  // Skip for health checks
+  if (req.path.includes('/health') || req.path.includes('/status')) {
+    return true;
+  }
+
+  // Skip for internal services (if using API keys)
+  if (req.headers['x-internal-service'] === process.env.INTERNAL_SERVICE_KEY) {
+    return true;
+  }
+
+  // Skip for localhost in development - check multiple IP formats
+  if (
+    process.env.NODE_ENV === 'development' ||
+    process.env.NODE_ENV === undefined
+  ) {
+    const clientIP = req.ip || req.socket.remoteAddress || '';
+    // Check for localhost, IPv4 loopback, IPv6 loopback, and local network
+    if (
+      clientIP === '127.0.0.1' ||
+      clientIP === '::1' ||
+      clientIP === '::ffff:127.0.0.1' ||
+      clientIP.includes('localhost') ||
+      clientIP.startsWith('192.168.') ||
+      clientIP.startsWith('10.') ||
+      clientIP.startsWith('172.')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 // Default rate limiter for most API endpoints
+// More permissive limits for development, stricter for production
+const isDevelopment =
+  process.env.NODE_ENV === 'development' || process.env.NODE_ENV === undefined;
+
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: isDevelopment ? 1000 : 100, // Higher limit for development
+  skip: skipRateLimit, // Skip for localhost in development
   message: {
     error: 'Too many requests',
     details: 'Rate limit exceeded. Please try again later.',
@@ -31,9 +71,7 @@ export const rateLimiter = rateLimit({
     const retryAfterSeconds = req.rateLimit?.resetTime
       ? Math.max(
           0,
-          Math.ceil(
-            (req.rateLimit.resetTime.getTime() - Date.now()) / 1000
-          )
+          Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)
         )
       : 900;
     res.status(429).json({
@@ -127,31 +165,6 @@ export const createDynamicLimiter = (config: {
     standardHeaders: true,
     legacyHeaders: false,
   });
-};
-
-// Skip rate limiting for certain conditions
-export const skipRateLimit = (req: Request): boolean => {
-  // Skip for health checks
-  if (req.path.includes('/health') || req.path.includes('/status')) {
-    return true;
-  }
-
-  // Skip for internal services (if using API keys)
-  if (req.headers['x-internal-service'] === process.env.INTERNAL_SERVICE_KEY) {
-    return true;
-  }
-
-  // Skip for localhost in development
-  if (
-    process.env.NODE_ENV === 'development' &&
-    (req.ip === '127.0.0.1' ||
-      req.ip === '::1' ||
-      req.ip?.startsWith('192.168.'))
-  ) {
-    return true;
-  }
-
-  return false;
 };
 
 // Rate limiter with skip function

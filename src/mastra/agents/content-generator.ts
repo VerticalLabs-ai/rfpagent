@@ -1,7 +1,10 @@
-import { Agent } from "@mastra/core/agent"
-import { creativeModel } from "../models"
-import { sharedMemory } from "../tools/shared-memory-provider"
-import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordination-tools"
+import { Agent } from '@mastra/core/agent';
+import { creativeModel } from '../models';
+import {
+  sendAgentMessage,
+  updateWorkflowProgress,
+} from '../tools/agent-coordination-tools';
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 /**
  * Content Generator - Tier 3 Specialist Agent
@@ -10,7 +13,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  * Specialized in creating high-quality proposal content and narratives
  */
 export const contentGenerator = new Agent({
-  name: "Content Generator",
+  name: 'Content Generator',
   instructions: `
 You are a Content Generator specialist (Tier 3), creating high-quality proposal content and narratives.
 
@@ -171,4 +174,4 @@ Report all content generation progress and challenges to the Proposal Manager fo
     updateWorkflowProgress,
   },
   memory: sharedMemory,
-})
+});

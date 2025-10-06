@@ -3,6 +3,11 @@ import { Agent } from '@mastra/core/agent';
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
+import {
+  generatePricingTables,
+  companyMappingExtendedSchema,
+  pricingTableSchema,
+} from './pricing/generatePricingTables';
 
 // RFP Analysis schema
 const rfpAnalysisSchema = z.object({
@@ -16,16 +21,8 @@ const rfpAnalysisSchema = z.object({
   estimatedBudget: z.string().optional(),
 });
 
-// Company capability mapping
-const companyMappingSchema = z.object({
-  businessType: z.array(z.string()),
-  certifications: z.array(z.string()),
-  companyInfo: z.object({
-    name: z.string(),
-    type: z.string(),
-    capabilities: z.array(z.string()),
-  }),
-});
+// Company capability mapping (re-export from pricing module for consistency)
+const companyMappingSchema = companyMappingExtendedSchema;
 
 // Step 1: Fetch RFP and documents
 const fetchRfpDataStep = createStep({
@@ -131,30 +128,38 @@ const analyzeRfpStep = createStep({
       },
     ]);
 
-    // Parse response into structured data
-    // For now, return default structure
-    const rfpAnalysis: z.infer<typeof rfpAnalysisSchema> = {
-      requirements: [
-        'Submit technical proposal',
-        'Provide pricing breakdown',
-        'Include past performance references',
-      ],
-      deadlines: {
-        submission: rfp.deadline?.toISOString(),
-        questions: undefined,
-      },
-      evaluationCriteria: [
-        'Technical approach (40%)',
-        'Price (30%)',
-        'Past performance (20%)',
-        'Small business participation (10%)',
-      ],
-      specialRequirements: [
-        'WBE/MBE certification preferred',
-        'Insurance requirements',
-      ],
-      estimatedBudget: rfp.estimatedValue || undefined,
-    };
+    // Parse AI response into structured data
+    let rfpAnalysis: z.infer<typeof rfpAnalysisSchema>;
+    try {
+      const parsedResponse = JSON.parse(response.text);
+      // Validate against schema
+      rfpAnalysis = rfpAnalysisSchema.parse(parsedResponse);
+    } catch (error) {
+      console.warn('Failed to parse AI analysis, using defaults:', error);
+      // Fallback to defaults
+      rfpAnalysis = {
+        requirements: [
+          'Submit technical proposal',
+          'Provide pricing breakdown',
+          'Include past performance references',
+        ],
+        deadlines: {
+          submission: rfp.deadline?.toISOString(),
+          questions: undefined,
+        },
+        evaluationCriteria: [
+          'Technical approach (40%)',
+          'Price (30%)',
+          'Past performance (20%)',
+          'Small business participation (10%)',
+        ],
+        specialRequirements: [
+          'WBE/MBE certification preferred',
+          'Insurance requirements',
+        ],
+        estimatedBudget: rfp.estimatedValue || undefined,
+      };
+    }
 
     console.log(`✅ RFP analysis complete`);
 
@@ -185,13 +190,14 @@ const generateProposalContentStep = createStep({
       timeline: z.string(),
       pricing: z.string().optional(),
     }),
+    companyMapping: companyMappingSchema,
   }),
   execute: async ({ inputData }) => {
     const { rfp, rfpAnalysis, documentContext } = inputData;
 
     console.log(`✍️ Generating proposal content...`);
 
-    // Company information
+    // Company information with rate structure
     const companyMapping: z.infer<typeof companyMappingSchema> = {
       businessType: ['construction', 'technology'],
       certifications: ['WBENC', 'HUB', 'DBE', 'MBE', 'WBE'],
@@ -199,7 +205,20 @@ const generateProposalContentStep = createStep({
         name: 'iByte Enterprises LLC',
         type: 'Woman-owned business',
         capabilities: ['construction services', 'technology solutions'],
+        location: {
+          state: 'TX',
+          city: 'Austin',
+        },
       },
+      rates: [
+        { category: 'project_management', hourlyRate: 150, margin: 40 },
+        { category: 'senior_consultant', hourlyRate: 175, margin: 45 },
+        { category: 'consultant', hourlyRate: 125, margin: 40 },
+        { category: 'developer', hourlyRate: 140, margin: 40 },
+        { category: 'implementation', unitRate: 75000, margin: 35 },
+        { category: 'training', dailyRate: 1500, margin: 50 },
+        { category: 'support', unitRate: 5000, margin: 30 },
+      ],
     };
 
     // Create proposal generation agent
@@ -248,15 +267,34 @@ const generateProposalContentStep = createStep({
     ]);
 
     // Parse AI response into sections
-    const proposalContent = {
-      executiveSummary: `iByte Enterprises LLC is pleased to submit our proposal for ${rfp.title}. As a certified woman-owned business with extensive experience in construction and technology services, we are uniquely qualified to deliver exceptional results for this project.`,
-      technicalApproach: `Our technical approach leverages industry best practices and innovative methodologies to ensure successful project delivery. We will implement a phased approach that minimizes risk while maximizing value.`,
-      qualifications: `iByte Enterprises LLC brings over a decade of experience delivering similar projects for government agencies. Our certifications include WBENC, HUB, DBE, MBE, and WBE, demonstrating our commitment to diversity and excellence.`,
-      timeline: `We propose a structured timeline that aligns with all RFP deadlines and ensures timely delivery of all deliverables. Our project will be completed within the specified timeframe.`,
-      pricing: rfpAnalysis.estimatedBudget
-        ? `Our pricing strategy provides exceptional value within the estimated budget of ${rfpAnalysis.estimatedBudget}`
-        : undefined,
-    };
+    let proposalContent;
+    try {
+      const parsedResponse = JSON.parse(response.text);
+      proposalContent = {
+        executiveSummary:
+          parsedResponse.executiveSummary || parsedResponse.executive_summary,
+        technicalApproach:
+          parsedResponse.technicalApproach || parsedResponse.technical_approach,
+        qualifications: parsedResponse.qualifications,
+        timeline: parsedResponse.timeline,
+        pricing: parsedResponse.pricing,
+      };
+    } catch (error) {
+      console.warn(
+        'Failed to parse AI proposal content, using defaults:',
+        error
+      );
+      // Fallback to defaults
+      proposalContent = {
+        executiveSummary: `iByte Enterprises LLC is pleased to submit our proposal for ${rfp.title}. As a certified woman-owned business with extensive experience in construction and technology services, we are uniquely qualified to deliver exceptional results for this project.`,
+        technicalApproach: `Our technical approach leverages industry best practices and innovative methodologies to ensure successful project delivery. We will implement a phased approach that minimizes risk while maximizing value.`,
+        qualifications: `iByte Enterprises LLC brings over a decade of experience delivering similar projects for government agencies. Our certifications include WBENC, HUB, DBE, MBE, and WBE, demonstrating our commitment to diversity and excellence.`,
+        timeline: `We propose a structured timeline that aligns with all RFP deadlines and ensures timely delivery of all deliverables. Our project will be completed within the specified timeframe.`,
+        pricing: rfpAnalysis.estimatedBudget
+          ? `Our pricing strategy provides exceptional value within the estimated budget of ${rfpAnalysis.estimatedBudget}`
+          : undefined,
+      };
+    }
 
     console.log(`✅ Proposal content generated`);
 
@@ -264,6 +302,7 @@ const generateProposalContentStep = createStep({
       rfp,
       rfpAnalysis,
       proposalContent,
+      companyMapping,
     };
   },
 });
@@ -282,6 +321,7 @@ const generatePricingTablesStep = createStep({
       timeline: z.string(),
       pricing: z.string().optional(),
     }),
+    companyMapping: companyMappingSchema,
   }),
   outputSchema: z.object({
     rfp: z.any(),
@@ -292,63 +332,73 @@ const generatePricingTablesStep = createStep({
       timeline: z.string(),
       pricing: z.string().optional(),
     }),
-    pricingTables: z.object({
-      items: z.array(
-        z.object({
-          description: z.string(),
-          quantity: z.number(),
-          unitPrice: z.string(),
-          totalPrice: z.string(),
-        })
-      ),
-      subtotal: z.string(),
-      taxRate: z.string(),
-      tax: z.string(),
-      total: z.string(),
-      defaultMargin: z.string(),
-    }),
+    pricingTables: pricingTableSchema,
   }),
   execute: async ({ inputData }) => {
-    const { rfp, rfpAnalysis, proposalContent } = inputData;
+    const { rfp, rfpAnalysis, proposalContent, companyMapping } = inputData;
 
     console.log(`💰 Generating pricing tables...`);
 
-    // Generate sample pricing structure
-    const pricingTables = {
-      items: [
-        {
-          description: 'Project Management',
-          quantity: 1,
-          unitPrice: '25000.00',
-          totalPrice: '25000.00',
-        },
-        {
-          description: 'Implementation Services',
-          quantity: 1,
-          unitPrice: '75000.00',
-          totalPrice: '75000.00',
-        },
-        {
-          description: 'Training and Support',
-          quantity: 1,
-          unitPrice: '15000.00',
-          totalPrice: '15000.00',
-        },
-      ],
-      subtotal: '115000.00',
-      taxRate: '8.25',
-      tax: '9487.50',
-      total: '124487.50',
-      defaultMargin: '40.00',
-    };
+    try {
+      // Use the dynamic pricing generation function
+      const pricingTables = generatePricingTables(
+        rfpAnalysis.requirements,
+        rfpAnalysis.estimatedBudget,
+        companyMapping
+      );
 
-    console.log(`✅ Pricing tables generated`);
+      console.log(
+        `✅ Pricing tables generated: ${pricingTables.items.length} items, total $${pricingTables.total}`
+      );
 
-    return {
-      rfp,
-      proposalContent,
-      pricingTables,
-    };
+      return {
+        rfp,
+        proposalContent,
+        pricingTables,
+      };
+    } catch (error) {
+      console.error('Failed to generate pricing tables:', error);
+
+      // Fallback to default pricing structure if generation fails
+      const fallbackPricingTables = {
+        items: [
+          {
+            description: 'Project Management',
+            quantity: 1,
+            unit: 'project',
+            unitPrice: '25000.00',
+            totalPrice: '25000.00',
+          },
+          {
+            description: 'Implementation Services',
+            quantity: 1,
+            unit: 'project',
+            unitPrice: '75000.00',
+            totalPrice: '75000.00',
+          },
+          {
+            description: 'Training and Support',
+            quantity: 1,
+            unit: 'project',
+            unitPrice: '15000.00',
+            totalPrice: '15000.00',
+          },
+        ],
+        subtotal: '115000.00',
+        taxRate: '8.25',
+        tax: '9487.50',
+        total: '124487.50',
+        defaultMargin: '40.00',
+      };
+
+      console.log(`⚠️ Using fallback pricing structure`);
+
+      return {
+        rfp,
+        proposalContent,
+        pricingTables: fallbackPricingTables,
+      };
+    }
   },
 });
 
@@ -365,21 +415,7 @@ const saveProposalStep = createStep({
       timeline: z.string(),
       pricing: z.string().optional(),
     }),
-    pricingTables: z.object({
-      items: z.array(
-        z.object({
-          description: z.string(),
-          quantity: z.number(),
-          unitPrice: z.string(),
-          totalPrice: z.string(),
-        })
-      ),
-      subtotal: z.string(),
-      taxRate: z.string(),
-      tax: z.string(),
-      total: z.string(),
-      defaultMargin: z.string(),
-    }),
+    pricingTables: pricingTableSchema,
   }),
   outputSchema: z.object({
     proposalId: z.string(),

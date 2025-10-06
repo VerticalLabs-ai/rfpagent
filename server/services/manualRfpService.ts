@@ -11,6 +11,7 @@ import { scrapeRFPFromUrl } from './rfpScrapingService.js';
 export interface ManualRfpInput {
   url: string;
   userNotes?: string;
+  sessionId?: string; // Optional sessionId for tracking
 }
 
 export interface ManualRfpResult {
@@ -37,7 +38,7 @@ export class ManualRfpService {
   }
 
   async processManualRfp(input: ManualRfpInput): Promise<ManualRfpResult> {
-    const sessionId = randomUUID();
+    const sessionId = input.sessionId || randomUUID();
 
     try {
       console.log(

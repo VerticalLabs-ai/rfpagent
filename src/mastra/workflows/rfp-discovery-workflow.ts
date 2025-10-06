@@ -4,6 +4,114 @@ import { MastraScrapingService } from '../../../server/services/mastraScrapingSe
 import { storage } from '../../../server/storage';
 import { pageAuthTool, pageExtractTool } from '../tools';
 
+/**
+ * Calculate dynamic confidence score for extracted RFP opportunity
+ * @param opportunity - Extracted opportunity data
+ * @param extractionMetadata - Optional metadata from extraction tool
+ * @returns Confidence score between 0 and 1
+ */
+export function calculateConfidence(
+  opportunity: {
+    title?: string;
+    description?: string;
+    agency?: string;
+    deadline?: string;
+    estimatedValue?: string;
+    url?: string;
+    category?: string;
+  },
+  extractionMetadata?: {
+    confidence?: number;
+    extractionQuality?: number;
+  }
+): number {
+  let confidence = 0.5; // Base score
+
+  // Critical field: Title (required for all opportunities)
+  if (opportunity.title && opportunity.title.trim().length > 0) {
+    confidence += 0.2;
+    // Bonus for descriptive titles (longer, more informative)
+    if (opportunity.title.length > 20) {
+      confidence += 0.05;
+    }
+  } else {
+    // Significantly penalize missing title
+    confidence -= 0.3;
+  }
+
+  // Important field: URL
+  if (opportunity.url && opportunity.url.trim().length > 0) {
+    try {
+      const url = new URL(opportunity.url);
+      // Valid URL format
+      if (url.protocol === 'http:' || url.protocol === 'https:') {
+        confidence += 0.15;
+      }
+    } catch {
+      // Invalid URL format - minor penalty
+      confidence -= 0.05;
+    }
+  }
+
+  // Important field: Deadline
+  if (opportunity.deadline && opportunity.deadline.trim().length > 0) {
+    const deadlineDate = new Date(opportunity.deadline);
+    // Valid, parseable date
+    if (!isNaN(deadlineDate.getTime())) {
+      confidence += 0.1;
+      // Bonus for future deadlines (not expired)
+      if (deadlineDate > new Date()) {
+        confidence += 0.05;
+      }
+    } else {
+      // Invalid date format - minor penalty
+      confidence -= 0.03;
+    }
+  }
+
+  // Supporting field: Agency
+  if (opportunity.agency && opportunity.agency.trim().length > 0) {
+    confidence += 0.08;
+  }
+
+  // Supporting field: Description
+  if (opportunity.description && opportunity.description.trim().length > 0) {
+    confidence += 0.05;
+    // Bonus for detailed descriptions
+    if (opportunity.description.length > 100) {
+      confidence += 0.03;
+    }
+  }
+
+  // Supporting field: Category
+  if (opportunity.category && opportunity.category.trim().length > 0) {
+    confidence += 0.04;
+  }
+
+  // Supporting field: Estimated Value
+  if (
+    opportunity.estimatedValue &&
+    opportunity.estimatedValue.trim().length > 0
+  ) {
+    confidence += 0.04;
+  }
+
+  // Incorporate extraction tool confidence if available
+  if (extractionMetadata?.confidence !== undefined) {
+    // Weight the extraction tool confidence at 20% of final score
+    confidence = confidence * 0.8 + extractionMetadata.confidence * 0.2;
+  }
+
+  // Incorporate extraction quality if available
+  if (extractionMetadata?.extractionQuality !== undefined) {
+    // Weight the extraction quality at 10% of final score
+    confidence = confidence * 0.9 + extractionMetadata.extractionQuality * 0.1;
+  }
+
+  // Clamp to valid range [0, 1]
+  return Math.max(0, Math.min(1, confidence));
+}
+
 // Portal configuration schema
 const portalConfigSchema = z.object({
   id: z.string(),
@@ -132,7 +240,10 @@ const scrapePortalStep = createStep({
         (opp: any) => ({
           ...opp,
           portalId: portal.id,
-          confidence: 0.9,
+          confidence: calculateConfidence(opp, {
+            confidence: extractionResult.confidence,
+            extractionQuality: extractionResult.quality,
+          }),
         })
       );
 
@@ -165,14 +276,16 @@ const processDiscoveredRfpsStep = createStep({
   description: 'Save discovered RFPs to database',
   inputSchema: z.object({
     allOpportunities: z.array(opportunitySchema),
+    portalsScanned: z.number(),
   }),
   outputSchema: z.object({
     newRfps: z.number(),
     updatedRfps: z.number(),
     totalProcessed: z.number(),
+    portalsScanned: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { allOpportunities } = inputData;
+    const { allOpportunities, portalsScanned } = inputData;
     let newRfps = 0;
     let updatedRfps = 0;
 
@@ -245,6 +358,7 @@ const processDiscoveredRfpsStep = createStep({
       newRfps,
       updatedRfps,
       totalProcessed: allOpportunities.length,
+      portalsScanned,
     };
   },
 });
@@ -269,12 +383,15 @@ export const rfpDiscoveryWorkflow = createWorkflow({
       id: 'prepare-parallel-scraping',
       inputSchema: z.object({
         portals: z.array(portalConfigSchema),
+        maxPortals: z.number().optional(),
       }),
       outputSchema: z.object({
         portalBatches: z.array(portalConfigSchema),
       }),
       execute: async ({ inputData, mastra }) => {
-        const maxPortals = 5; // Limit concurrent scraping
+        // Read maxPortals from inputData, default to 5, validate bounds
+        const rawMaxPortals = inputData.maxPortals ?? 5;
+        const maxPortals = Math.max(1, Math.min(Math.floor(rawMaxPortals), 50));
         const portalBatches = inputData.portals.slice(0, maxPortals);
 
         console.log(
@@ -295,12 +412,12 @@ export const rfpDiscoveryWorkflow = createWorkflow({
         allOpportunities: z.array(opportunitySchema),
         portalsScanned: z.number(),
       }),
-      execute: async ({ inputData }) => {
+      execute: async ({ inputData, mastra }) => {
         // Execute scraping in parallel for each portal
         const scrapePromises = inputData.portalBatches.map(portal =>
           scrapePortalStep.execute({
             inputData: portal,
-            mastra: {} as any,
+            mastra,
           })
         );
 
@@ -336,6 +453,7 @@ export const rfpDiscoveryWorkflow = createWorkflow({
         newRfps: z.number(),
         updatedRfps: z.number(),
         totalProcessed: z.number(),
+        portalsScanned: z.number(),
       }),
       outputSchema: z.object({
         newRfps: z.number(),
@@ -343,10 +461,9 @@ export const rfpDiscoveryWorkflow = createWorkflow({
         totalProcessed: z.number(),
         portalsScanned: z.number(),
       }),
-      execute: async ({ inputData, mastra }) => {
+      execute: async ({ inputData }) => {
         return {
           ...inputData,
-          portalsScanned: 0, // Will be set by workflow context
         };
       },
     })

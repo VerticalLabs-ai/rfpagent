@@ -1,8 +1,4 @@
-import type {
-  RFP,
-  AiConversation,
-  ConversationMessage,
-} from '@shared/schema';
+import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
 import OpenAI from 'openai';
 import { storage } from '../storage';
 
@@ -63,7 +59,7 @@ export class AIService {
       ];
 
       const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-5',
         messages,
         temperature: 0.4,
       });
@@ -79,7 +75,10 @@ export class AIService {
     return this.generateFallbackReply(latestUserMessage, conversation.type);
   }
 
-  private generateFallbackReply(query: string, conversationType: string): string {
+  private generateFallbackReply(
+    query: string,
+    conversationType: string
+  ): string {
     const normalizedQuery = query.trim();
     const followUp =
       normalizedQuery.length > 0
@@ -106,11 +105,20 @@ export class AIService {
     query: string,
     conversationId?: string,
     userId?: string,
-    conversationType: 'general' | 'rfp_search' | 'bid_crafting' | 'research' = 'general'
+    conversationType:
+      | 'general'
+      | 'rfp_search'
+      | 'bid_crafting'
+      | 'research' = 'general'
   ): Promise<{
     conversationId: string;
     message: string;
-    messageType: 'text' | 'analysis' | 'follow_up' | 'rfp_results' | 'search_results';
+    messageType:
+      | 'text'
+      | 'analysis'
+      | 'follow_up'
+      | 'rfp_results'
+      | 'search_results';
     data?: unknown;
     followUpQuestions?: string[];
     actionSuggestions?: Array<{
@@ -177,7 +185,10 @@ export class AIService {
       relatedEntityType: null,
     });
 
-    const followUpQuestions = this.suggestFollowUps(trimmedQuery, conversation.type);
+    const followUpQuestions = this.suggestFollowUps(
+      trimmedQuery,
+      conversation.type
+    );
 
     return {
       conversationId: conversation.id,
@@ -189,19 +200,21 @@ export class AIService {
         | 'rfp_results'
         | 'search_results',
       followUpQuestions,
-      actionSuggestions: this.buildActionSuggestions(conversation.type, trimmedQuery),
+      actionSuggestions: this.buildActionSuggestions(
+        conversation.type,
+        trimmedQuery
+      ),
     };
   }
 
-  private suggestFollowUps(
-    query: string,
-    conversationType: string
-  ): string[] {
+  private suggestFollowUps(query: string, conversationType: string): string[] {
     const suggestions = new Set<string>();
 
     if (conversationType === 'rfp_search') {
       suggestions.add('Do you want me to filter by deadline or agency?');
-      suggestions.add('Should I surface similar opportunities from the past quarter?');
+      suggestions.add(
+        'Should I surface similar opportunities from the past quarter?'
+      );
     }
 
     if (conversationType === 'bid_crafting') {
@@ -216,10 +229,7 @@ export class AIService {
     return Array.from(suggestions);
   }
 
-  private buildActionSuggestions(
-    conversationType: string,
-    query: string
-  ) {
+  private buildActionSuggestions(conversationType: string, query: string) {
     const baseId = `${Date.now()}`;
 
     switch (conversationType) {
@@ -231,7 +241,8 @@ export class AIService {
             action: 'workflow' as const,
             priority: 'medium' as const,
             estimatedTime: '2-3 minutes',
-            description: 'Run the discovery specialist to capture fresh opportunities related to your query.',
+            description:
+              'Run the discovery specialist to capture fresh opportunities related to your query.',
             icon: 'Search',
             payload: { query },
           },
@@ -244,7 +255,8 @@ export class AIService {
             action: 'agent' as const,
             priority: 'high' as const,
             estimatedTime: '4-5 minutes',
-            description: 'Compile required forms, signatures, and supporting documentation.',
+            description:
+              'Compile required forms, signatures, and supporting documentation.',
             icon: 'CheckSquare',
             payload: { query },
           },
