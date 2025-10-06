@@ -43,6 +43,18 @@ app.use((req, res, next) => {
 (async () => {
   log('🚀 Starting BidHive server...');
 
+  // Validate critical environment variables
+  const requiredEnvVars = ['DATABASE_URL'];
+  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+  if (missingEnvVars.length > 0) {
+    log(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    process.exit(1);
+  }
+
+  log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+  log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'configured'}`);
+
   // Configure modular routes
   log('📝 Configuring routes...');
   configureRoutes(app);
