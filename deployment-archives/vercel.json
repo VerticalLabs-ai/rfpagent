@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "vite build",
+  "outputDirectory": "dist/public",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "regions": ["iad1"],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    }
+  ]
+}

@@ -41,8 +41,12 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  log('🚀 Starting BidHive server...');
+
   // Configure modular routes
+  log('📝 Configuring routes...');
   configureRoutes(app);
+  log('✓ Routes configured');
 
   // Create HTTP server
   const server = createServer(app);
@@ -59,9 +63,18 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get('env') === 'development') {
+    log('🔧 Setting up Vite development server...');
     await setupVite(app, server);
+    log('✓ Vite dev server ready');
   } else {
-    serveStatic(app);
+    log('📦 Setting up static file serving...');
+    try {
+      serveStatic(app);
+      log('✓ Static files configured');
+    } catch (error) {
+      log('⚠️  Static file serving failed (non-fatal):', error instanceof Error ? error.message : String(error));
+      log('   API endpoints will still work, but frontend may not load');
+    }
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

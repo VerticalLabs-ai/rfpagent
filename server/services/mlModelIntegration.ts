@@ -174,7 +174,6 @@ export class MLModelIntegration {
   private constructor() {
     this.embeddingCache = new LRUCache(this.MAX_CACHE_SIZE);
   }
-}
 
   public static getInstance(): MLModelIntegration {
     if (!MLModelIntegration.instance) {
