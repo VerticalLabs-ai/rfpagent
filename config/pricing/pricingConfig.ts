@@ -74,7 +74,7 @@ class PricingConfigLoader {
     }
 
     return (
-      this.config.stateTaxRates[stateCode] ||
+      this.config.stateTaxRates[stateCode] ??
       this.config.stateTaxRates.default
     );
   }
@@ -84,7 +84,7 @@ class PricingConfigLoader {
       throw new Error('Pricing configuration not loaded');
     }
 
-    return this.config.historicalRates;
+    return { ...this.config.historicalRates };
   }
 
   public getAllStateTaxRates(): Record<string, number> {
@@ -92,7 +92,7 @@ class PricingConfigLoader {
       throw new Error('Pricing configuration not loaded');
     }
 
-    return this.config.stateTaxRates;
+    return { ...this.config.stateTaxRates };
   }
 
   /**

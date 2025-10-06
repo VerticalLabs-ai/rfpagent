@@ -40,7 +40,7 @@ export const skipRateLimit = (req: Request): boolean => {
       clientIP === '127.0.0.1' ||
       clientIP === '::1' ||
       clientIP === '::ffff:127.0.0.1' ||
-      clientIP.includes('localhost')
+      clientIP === 'localhost'
     ) {
       return true;
     }
