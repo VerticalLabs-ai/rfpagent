@@ -17,9 +17,6 @@ kill_timeout = '10s'
   NODE_ENV = 'production'
   PORT = '3000'
 
-[processes]
-  app = 'node dist/index.js'
-
 [http_service]
   processes = ["app"]
   internal_port = 3000
