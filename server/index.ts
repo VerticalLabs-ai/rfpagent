@@ -69,14 +69,19 @@ app.use((req, res, next) => {
     try {
       log('🔄 Running database migrations...');
       const { execSync } = await import('child_process');
-      execSync('node_modules/.bin/drizzle-kit push --force', {
-        stdio: 'inherit',
+      // Use push with yes flag to auto-confirm
+      const result = execSync('echo "yes" | node_modules/.bin/drizzle-kit push', {
+        stdio: 'pipe',
         env: process.env,
       });
       log('✅ Database migrations completed');
+      log('   Migration output:', result.toString().trim());
     } catch (error) {
-      log('⚠️ Database migration failed:', error instanceof Error ? error.message : String(error));
-      log('   Continuing startup - migrations may have already been applied');
+      log('⚠️ Database migration error:', error instanceof Error ? error.message : String(error));
+      if (error && typeof error === 'object' && 'stderr' in error) {
+        log('   Error output:', (error as any).stderr?.toString().trim());
+      }
+      log('   Server will continue startup - check logs for details');
     }
   }
 
