@@ -64,6 +64,22 @@ app.use((req, res, next) => {
   log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
   log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'configured'}`);
 
+  // Run database migrations in production
+  if (process.env.NODE_ENV === 'production') {
+    try {
+      log('🔄 Running database migrations...');
+      const { execSync } = await import('child_process');
+      execSync('node_modules/.bin/drizzle-kit push --force', {
+        stdio: 'inherit',
+        env: process.env,
+      });
+      log('✅ Database migrations completed');
+    } catch (error) {
+      log('⚠️ Database migration failed:', error instanceof Error ? error.message : String(error));
+      log('   Continuing startup - migrations may have already been applied');
+    }
+  }
+
   // Configure modular routes
   log('📝 Configuring routes...');
   configureRoutes(app);
