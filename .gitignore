@@ -20,4 +20,4 @@ yarn.lock
 .env
 
 # Coverage reports
-coverage/
+coverage/.env.local

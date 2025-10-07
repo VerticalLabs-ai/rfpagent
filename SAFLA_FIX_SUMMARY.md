@@ -65,6 +65,25 @@
 - Package was imported in `server/routes/middleware/rateLimiting.ts` but not listed as dependency
 - esbuild's `--packages=external` flag requires all dependencies to be in `node_modules`
 
+### 5. Missing Vite and Vite Plugins in Production
+
+**Problem**: Fly.io deployment failing with `ERR_MODULE_NOT_FOUND: Cannot find package 'vite'` and `Cannot find package '@vitejs/plugin-react'`
+
+**Solution**:
+
+- Moved `vite` from devDependencies to dependencies
+- Moved three Vite plugins to dependencies:
+  - `@vitejs/plugin-react` (upgraded from 4.7.0 to 5.0.4)
+  - `@replit/vite-plugin-runtime-error-modal@^0.0.3`
+  - `@replit/vite-plugin-cartographer@^0.3.1`
+- Plugins are imported in `vite.config.ts` which is loaded by `server/vite.ts` at runtime
+- Dockerfile multi-stage build only installs production dependencies in runtime stage
+
+**Files Modified**:
+
+- `package.json`
+- `pnpm-lock.yaml`
+
 ## Testing
 
 ### Local Development
@@ -119,7 +138,8 @@ NODE_ENV="development"
 3. **server/db.ts**: Added dotenv configuration before imports
 4. **server/index.ts**: Added .env.local priority loading
 5. **.env.local** (new): Local Supabase configuration
-6. **package.json**: Added missing express-rate-limit dependency
+6. **package.json**: Added missing express-rate-limit dependency, moved vite and vite plugins to dependencies
+7. **pnpm-lock.yaml**: Updated for dependency changes
 
 ## Verification Checklist
 
@@ -127,43 +147,33 @@ NODE_ENV="development"
 - [x] SAFLA dashboard endpoint returns valid data structure
 - [x] Frontend validation passes (no "Invalid Data Received" error)
 - [x] Local development connects to local Supabase
-- [ ] Production deployment connects to Fly.io database
-- [ ] Production SAFLA dashboard displays correctly
+- [x] Production deployment connects to Fly.io database
+- [x] Production SAFLA dashboard displays correctly
+- [x] All required dependencies in production node_modules
+- [x] Fly.io health checks passing
 
-## Next Steps for Production
+## Production Deployment Complete ✅
 
-1. **Verify Fly.io DATABASE_URL**:
+All deployment issues have been resolved. The application is now running successfully on Fly.io with:
 
-   ```bash
-   flyctl secrets list
-   ```
+- **Image**: `bidhive:deployment-01K706DVDVY57QTS44AEME213C`
+- **Machine State**: started
+- **Health Checks**: 1/1 passing
+- **API Endpoint Verified**: `https://bidhive.fly.dev/api/safla/status` returns valid data
+- **SAFLA System**: Fully initialized and operational
 
-   Should show DATABASE_URL pointing to Neon production database
+### Final Verification Performed
 
-2. **Deploy to Fly.io**:
+```bash
+# Deployment status
+flyctl status
+# App: bidhive
+# Machines: 286e192a6e7468, VERSION=22, STATE=started, CHECKS=1 total, 1 passing
 
-   ```bash
-   flyctl deploy
-   ```
-
-3. **Monitor deployment**:
-
-   ```bash
-   flyctl logs
-   ```
-
-   Look for:
-   - "✓ Database: ..." (Fly.io Postgres hostname)
-   - "🧠 SAFLA self-improving system initialized"
-   - No socket hang up errors
-   - No ERR_MODULE_NOT_FOUND errors
-
-4. **Test production endpoints**:
-
-   ```bash
-   curl https://your-app.fly.dev/api/safla/status
-   curl https://your-app.fly.dev/api/safla/dashboard?timeframe=24h
-   ```
+# API endpoint test
+curl -s https://bidhive.fly.dev/api/safla/status
+# {"success":true,"data":{"isInitialized":true,"components":{"learningEngine":"operational",...}}}
+```
 
 ## Notes
 

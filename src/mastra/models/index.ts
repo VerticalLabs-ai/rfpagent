@@ -17,11 +17,11 @@ import { openai } from '@ai-sdk/openai';
 export const gpt5 = openai('gpt-5');
 export const gpt5Turbo = openai('gpt-5-turbo'); // Faster variant if available
 
-// Claude Sonnet 4.5 (Anthropic's latest model)
-export const claudeSonnet45 = anthropic('claude-sonnet-4.5');
+// Claude Sonnet 4.5 (Anthropic's latest model - what Claude Code uses!)
+export const claudeSonnet45 = anthropic('claude-sonnet-4-5');
 
 // Claude Opus (For tasks requiring maximum capability)
-export const claudeOpus4 = anthropic('claude-opus-4');
+export const claudeOpus4 = anthropic('claude-opus-4-20250514');
 
 /**
  * Model Selection Strategy
@@ -143,6 +143,7 @@ export const modelCapabilities = {
       'Reasoning',
       'Long context',
       'Structured output',
+      'Multi-agent coordination',
     ],
     pricing: {
       input: '$0.03/1K tokens',

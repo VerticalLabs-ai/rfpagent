@@ -69,19 +69,31 @@ app.use((req, res, next) => {
     try {
       log('🔄 Running database migrations...');
       const { execSync } = await import('child_process');
-      // Use push with yes flag to auto-confirm
-      const result = execSync('echo "yes" | node_modules/.bin/drizzle-kit push', {
+      // Run drizzle-kit push directly with auto-confirmation via piped yes
+      const result = execSync('printf "yes\\n" | /app/node_modules/.bin/drizzle-kit push', {
         stdio: 'pipe',
         env: process.env,
+        cwd: '/app',
+        shell: '/bin/sh',
       });
+      const output = result.toString().trim();
       log('✅ Database migrations completed');
-      log('   Migration output:', result.toString().trim());
+      if (output) {
+        output.split('\n').forEach(line => log(`   ${line}`));
+      }
     } catch (error) {
       log('⚠️ Database migration error:', error instanceof Error ? error.message : String(error));
-      if (error && typeof error === 'object' && 'stderr' in error) {
-        log('   Error output:', (error as any).stderr?.toString().trim());
+      if (error && typeof error === 'object') {
+        if ('stdout' in error && (error as any).stdout) {
+          const stdout = (error as any).stdout.toString().trim();
+          if (stdout) stdout.split('\n').forEach((line: string) => log(`   Output: ${line}`));
+        }
+        if ('stderr' in error && (error as any).stderr) {
+          const stderr = (error as any).stderr.toString().trim();
+          if (stderr) stderr.split('\n').forEach((line: string) => log(`   Error: ${line}`));
+        }
       }
-      log('   Server will continue startup - check logs for details');
+      log('   Server will continue startup - migrations may need manual intervention');
     }
   }
 
