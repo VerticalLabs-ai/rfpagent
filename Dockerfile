@@ -90,6 +90,7 @@ COPY --from=build --chown=nodejs:nodejs /app/dist ./dist
 
 # Copy necessary files
 COPY --chown=nodejs:nodejs package.json ./
+COPY --chown=nodejs:nodejs drizzle.config.ts ./
 
 # Copy shared directory to both locations to support bundled path resolution
 # - /app/shared for direct imports
