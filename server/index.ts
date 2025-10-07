@@ -1,10 +1,19 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load .env.local first (takes precedence), then .env
+const envLocalPath = path.join(process.cwd(), '.env.local');
+const envPath = path.join(process.cwd(), '.env');
+dotenv.config({ path: envLocalPath });
+dotenv.config({ path: envPath });
+
 import express, { type Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { configureRoutes } from './routes';
 import { setupVite, serveStatic, log } from './vite';
 import { agentRegistryService } from './services/agentRegistryService';
 import { websocketService } from './services/websocketService';
+import { saflaSystemIntegration } from './services/saflaSystemIntegration';
 
 const app = express();
 app.use(express.json());
@@ -101,6 +110,23 @@ app.use((req, res, next) => {
   // Initialize WebSocket server AFTER server is listening
   websocketService.initialize(server);
   log('🔌 WebSocket server initialized on /ws');
+
+  // Initialize SAFLA self-improving system
+  setImmediate(async () => {
+    try {
+      const saflaResult = await saflaSystemIntegration.initializeSystem();
+      if (saflaResult.success) {
+        log('🧠 SAFLA self-improving system initialized');
+      } else {
+        log('⚠️ SAFLA initialization completed with warnings');
+      }
+    } catch (error) {
+      log(
+        '⚠️ Failed to initialize SAFLA system:',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  });
 
   // Bootstrap 3-tier agentic system with default agents in background
   // This allows the server to respond to requests while agents initialize

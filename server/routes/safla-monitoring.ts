@@ -51,19 +51,41 @@ router.get('/dashboard', async (req, res) => {
     const dashboard =
       await workflowCoordinator.generatePerformanceDashboard(timeframe);
 
+    // Transform the response to match frontend expectations
     res.json({
       success: true,
       data: {
         timeframe,
-        systemHealth: dashboard.systemHealth,
-        learningMetrics: dashboard.learningMetrics,
-        performanceMetrics: dashboard.performanceMetrics,
-        improvementOpportunities: dashboard.improvementOpportunities,
-        alerts: dashboard.alerts,
+        systemHealth: dashboard.systemHealth?.overall || 75,
+        learningMetrics: {
+          learningRate: dashboard.learningMetrics?.learningRate || 0,
+          knowledgeGrowth: dashboard.learningMetrics?.knowledgeGrowth || 0,
+          adaptationSuccess: dashboard.learningMetrics?.adaptationSuccess || 0,
+        },
+        performanceMetrics: {
+          proposalWinRate: dashboard.performanceMetrics?.proposalWinRate || 0,
+          parsingAccuracy: dashboard.performanceMetrics?.parsingAccuracy || 0,
+          portalNavigationSuccess: dashboard.performanceMetrics?.portalNavigationSuccess || 0,
+          avgProcessingTime: dashboard.performanceMetrics?.documentProcessingTime || 0,
+        },
+        improvementOpportunities: dashboard.improvementOpportunities?.map(opp => ({
+          area: opp.component,
+          priority: opp.impact as 'high' | 'medium' | 'low',
+          description: opp.opportunity,
+          potentialImpact: opp.impact === 'high' ? 25 : opp.impact === 'medium' ? 15 : 5,
+        })) || [],
+        alerts: dashboard.alerts?.map(alert => ({
+          type: alert.severity === 'critical' ? 'error' as const :
+                alert.severity === 'warning' ? 'warning' as const :
+                'success' as const,
+          message: alert.message,
+          timestamp: alert.timestamp,
+        })) || [],
       },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
+    console.error('Error generating SAFLA dashboard:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

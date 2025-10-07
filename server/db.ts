@@ -1,3 +1,12 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables before anything else
+const envLocalPath = path.join(process.cwd(), '.env.local');
+const envPath = path.join(process.cwd(), '.env');
+dotenv.config({ path: envLocalPath });
+dotenv.config({ path: envPath });
+
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import * as schema from '@shared/schema';
 import { drizzle as drizzleNeon } from 'drizzle-orm/neon-serverless';
