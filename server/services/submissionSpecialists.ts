@@ -47,7 +47,7 @@ export class PortalAuthenticationSpecialist {
 
       // Get portal and submission data
       const [portal, submission] = await Promise.all([
-        storage.getPortal(portalId),
+        storage.getPortalWithCredentials(portalId),
         storage.getSubmission(submissionId),
       ]);
 
@@ -161,7 +161,9 @@ export class PortalAuthenticationSpecialist {
         phase: 'authenticating',
         level: 'error',
         message: 'Portal authentication failed',
-        details: { error: error instanceof Error ? error.message : String(error) },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'portal-authentication-specialist',
       });
 
@@ -412,7 +414,10 @@ export class PortalAuthenticationSpecialist {
     await stagehand.page.waitForTimeout(3000);
   }
 
-  private async handleMFA(stagehand: any, portal: Partial<Portal>): Promise<any> {
+  private async handleMFA(
+    stagehand: any,
+    portal: Partial<Portal>
+  ): Promise<any> {
     try {
       // Check for common MFA elements
       const mfaSelectors = [
@@ -447,7 +452,10 @@ export class PortalAuthenticationSpecialist {
 
       return { mfaDetected };
     } catch (error) {
-      return { mfaDetected: false, error: error.message };
+      return {
+        mfaDetected: false,
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
   }
 
@@ -511,7 +519,10 @@ export class PortalAuthenticationSpecialist {
         currentUrl,
       };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : String(error) };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
@@ -533,7 +544,7 @@ export class PortalAuthenticationSpecialist {
         portalName: portal.name,
         authMethod: authDetails.method,
         authenticatedAt: new Date(),
-        currentUrl: authDetails.currentUrl,
+        currentUrl: authDetails.currentUrl || portal.url,
       },
       importance: 8,
       tags: ['portal_authentication', 'active_session', portal.name],
@@ -738,7 +749,9 @@ export class FormSubmissionSpecialist {
         phase: 'filling',
         level: 'error',
         message: 'Form population failed',
-        details: { error: error instanceof Error ? error.message : String(error) },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'form-submission-specialist',
       });
 
@@ -877,7 +890,10 @@ export class FormSubmissionSpecialist {
         } catch (fieldError) {
           errors.push({
             field: await this.getFieldName(element),
-            error: fieldError instanceof Error ? fieldError.message : String(fieldError),
+            error:
+              fieldError instanceof Error
+                ? fieldError.message
+                : String(fieldError),
           });
         }
       }
@@ -888,7 +904,9 @@ export class FormSubmissionSpecialist {
         status: errors.length === 0 ? 'success' : 'partial',
       };
     } catch (error) {
-      throw new Error(`Form population failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Form population failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -1021,7 +1039,9 @@ export class FormSubmissionSpecialist {
       // Wait a bit for any dynamic updates
       await element.page().waitForTimeout(300);
     } catch (error) {
-      throw new Error(`Failed to populate field: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to populate field: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -1241,7 +1261,9 @@ export class DocumentUploadSpecialist {
         phase: 'uploading',
         level: 'error',
         message: 'Document upload failed',
-        details: { error: error instanceof Error ? error.message : String(error) },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'document-upload-specialist',
       });
 
@@ -1288,7 +1310,8 @@ export class DocumentUploadSpecialist {
             type: 'supporting',
             name: doc.filename || 'document.pdf',
             path,
-            description: (doc.parsedData as any)?.description || 'Supporting document',
+            description:
+              (doc.parsedData as any)?.description || 'Supporting document',
           });
         }
       }
@@ -1406,7 +1429,10 @@ export class DocumentUploadSpecialist {
           document: document.name,
           type: document.type,
           status: 'failed',
-          error: uploadError instanceof Error ? uploadError.message : String(uploadError),
+          error:
+            uploadError instanceof Error
+              ? uploadError.message
+              : String(uploadError),
           path: document.path,
         });
       }
@@ -1442,7 +1468,9 @@ export class DocumentUploadSpecialist {
 
       return null;
     } catch (error) {
-      throw new Error(`Could not find file input: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Could not find file input: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 

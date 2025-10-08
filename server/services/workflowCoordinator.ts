@@ -885,42 +885,42 @@ export class WorkflowCoordinator {
             estimatedCompletionTime: analysisResult.estimatedCompletionTime,
           },
         };
-      } else if (rfpId) {
-        // Use AI service for RFP compliance analysis
-        const rfp = await storage.getRFP(rfpId);
-        if (!rfp) {
-          throw new Error(`RFP not found: ${rfpId}`);
-        }
-
-        // Get documents for the RFP
-        const documents = await storage.getDocumentsByRFP(rfpId);
-        let documentText = rfp.description || '';
-
-        // Include extracted text from documents
-        for (const doc of documents) {
-          if (doc.extractedText) {
-            documentText += '\n\n' + doc.extractedText;
-          }
-        }
-
-        const compliance = await this.aiService.analyzeDocumentCompliance(
-          documentText,
-          rfp
-        );
-
-        return {
-          success: true,
-          data: {
-            rfpId,
-            complianceScore: compliance.requirements?.length > 0 ? 0.85 : 0.65,
-            requirements: compliance.requirements,
-            deadlines: compliance.deadlines,
-            riskFlags: compliance.riskFlags,
-            evaluationCriteria: compliance.evaluationCriteria,
-            mandatoryFields: compliance.mandatoryFields,
-          },
-        };
       }
+
+      // Use AI service for RFP compliance analysis (rfpId branch)
+      const rfp = await storage.getRFP(rfpId!);
+      if (!rfp) {
+        throw new Error(`RFP not found: ${rfpId}`);
+      }
+
+      // Get documents for the RFP
+      const documents = await storage.getDocumentsByRFP(rfpId!);
+      let documentText = rfp.description || '';
+
+      // Include extracted text from documents
+      for (const doc of documents) {
+        if (doc.extractedText) {
+          documentText += '\n\n' + doc.extractedText;
+        }
+      }
+
+      const compliance = await this.aiService.analyzeDocumentCompliance(
+        documentText,
+        rfp
+      );
+
+      return {
+        success: true,
+        data: {
+          rfpId,
+          complianceScore: compliance.requirements?.length > 0 ? 0.85 : 0.65,
+          requirements: compliance.requirements,
+          deadlines: compliance.deadlines,
+          riskFlags: compliance.riskFlags,
+          evaluationCriteria: compliance.evaluationCriteria,
+          mandatoryFields: compliance.mandatoryFields,
+        },
+      };
     } catch (error) {
       return {
         success: false,
@@ -1104,7 +1104,7 @@ export class WorkflowCoordinator {
           marketAnalysis,
           historicalBids: historicalBids.length,
           averageValue:
-            historicalBids.reduce((sum, bid) => sum + (bid.bidAmount || 0), 0) /
+            historicalBids.reduce((sum, bid) => sum + (Number(bid.bidAmount) || 0), 0) /
             Math.max(historicalBids.length, 1),
           competitorInsights: marketAnalysis.competitors || [],
           riskFactors: marketAnalysis.risks || [],
@@ -2633,7 +2633,7 @@ export class WorkflowCoordinator {
       }
 
       // Perform basic pricing analysis
-      const estimatedValue = rfp.estimatedValue || 0;
+      const estimatedValue = Number(rfp.estimatedValue) || 0;
       const pricingAnalysis = {
         rfpId,
         estimatedValue,
