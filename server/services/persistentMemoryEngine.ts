@@ -1201,7 +1201,7 @@ export class PersistentMemoryEngine {
     if (contents.length === 0) return {};
 
     const commonKeys = Object.keys(contents[0]).filter(key =>
-      contents.every(content => content.hasOwnProperty(key))
+      contents.every(content => Object.hasOwn(content, key))
     );
 
     const common: Record<string, any> = {};

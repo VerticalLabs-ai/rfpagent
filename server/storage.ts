@@ -706,7 +706,9 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(portals.name));
   }
 
-  async getPortalsWithRFPCounts(): Promise<(PublicPortal & { rfpCount: number })[]> {
+  async getPortalsWithRFPCounts(): Promise<
+    (PublicPortal & { rfpCount: number })[]
+  > {
     // Single query with LEFT JOIN and GROUP BY to get portals with RFP counts
     const results = await db
       .select({

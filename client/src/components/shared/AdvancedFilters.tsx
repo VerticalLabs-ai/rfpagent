@@ -127,7 +127,7 @@ export function AdvancedFilters({
           </Select>
         );
 
-      case 'multiselect':
+      case 'multiselect': {
         const selectedValues = Array.isArray(currentValue) ? currentValue : [];
         return (
           <div className="space-y-2">
@@ -160,6 +160,7 @@ export function AdvancedFilters({
             ))}
           </div>
         );
+      }
 
       case 'date':
         return (
@@ -188,7 +189,7 @@ export function AdvancedFilters({
           </Popover>
         );
 
-      case 'daterange':
+      case 'daterange': {
         const [from, to] = Array.isArray(currentValue)
           ? currentValue
           : [null, null];
@@ -244,6 +245,7 @@ export function AdvancedFilters({
             </Popover>
           </div>
         );
+      }
 
       case 'number':
         return (

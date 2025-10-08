@@ -242,12 +242,13 @@ export default function AgentMonitoring() {
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold capitalize ${safeSystemHealth.systemStatus === 'healthy'
+              className={`text-2xl font-bold capitalize ${
+                safeSystemHealth.systemStatus === 'healthy'
                   ? 'text-green-600'
                   : safeSystemHealth.systemStatus === 'degraded'
                     ? 'text-yellow-600'
                     : 'text-red-600'
-                }`}
+              }`}
               data-testid="text-system-status"
             >
               {safeSystemHealth.systemStatus}
@@ -1038,8 +1039,8 @@ export default function AgentMonitoring() {
                   value={
                     transitionMetrics.totalTransitions > 0
                       ? (transitionMetrics.successfulTransitions /
-                        transitionMetrics.totalTransitions) *
-                      100
+                          transitionMetrics.totalTransitions) *
+                        100
                       : 0
                   }
                   className="mt-2"
@@ -1180,17 +1181,17 @@ export default function AgentMonitoring() {
                   safeWorkflowStates.workflows.filter(
                     w => w.title && w.progress > 0
                   ).length === 0) && (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                      <p className="text-lg font-medium mb-2">
-                        No Active Workflows
-                      </p>
-                      <p className="text-sm">
-                        Workflows will appear here once you start scanning portals
-                        or generating proposals
-                      </p>
-                    </div>
-                  )}
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-2">
+                      No Active Workflows
+                    </p>
+                    <p className="text-sm">
+                      Workflows will appear here once you start scanning portals
+                      or generating proposals
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

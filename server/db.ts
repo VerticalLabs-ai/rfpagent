@@ -40,7 +40,11 @@ function isLocalDatabase(databaseUrl: string): boolean {
     const hostname = url.hostname.toLowerCase();
 
     // Check for common local hostnames
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0'
+    ) {
       return true;
     }
 
@@ -58,12 +62,14 @@ function isLocalDatabase(databaseUrl: string): boolean {
   } catch {
     // Fallback to simple string checks if URL parsing fails
     const lower = databaseUrl.toLowerCase();
-    return lower.includes('localhost') ||
-           lower.includes('127.0.0.1') ||
-           lower.includes('0.0.0.0') ||
-           lower.includes('::1') ||
-           lower.includes('.local') ||
-           lower.includes('.dev');
+    return (
+      lower.includes('localhost') ||
+      lower.includes('127.0.0.1') ||
+      lower.includes('0.0.0.0') ||
+      lower.includes('::1') ||
+      lower.includes('.local') ||
+      lower.includes('.dev')
+    );
   }
 }
 
@@ -76,8 +82,7 @@ if (isLocal) {
   // Use node-postgres for local PostgreSQL/Supabase
   pool = new PgPool({ connectionString: process.env.DATABASE_URL });
   db = drizzleNode(pool, { schema });
-}
-else {
+} else {
   // Use Neon serverless for production
   neonConfig.webSocketConstructor = ws;
   pool = new NeonPool({ connectionString: process.env.DATABASE_URL });

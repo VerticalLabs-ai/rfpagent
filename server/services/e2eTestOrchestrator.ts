@@ -870,7 +870,7 @@ export class E2ETestOrchestrator {
 
       for (const entity of entities) {
         switch (entity) {
-          case 'portals':
+          case 'portals': {
             const portals = await this.storage.getAllPortals();
             results.push({
               entity,
@@ -878,7 +878,8 @@ export class E2ETestOrchestrator {
               sample: portals.slice(0, 3),
             });
             break;
-          case 'rfps':
+          }
+          case 'rfps': {
             const rfps = await this.storage.getAllRFPs({ limit: 100 });
             results.push({
               entity,
@@ -886,7 +887,8 @@ export class E2ETestOrchestrator {
               sample: rfps.rfps.slice(0, 3),
             });
             break;
-          case 'documents':
+          }
+          case 'documents': {
             // Test document persistence by checking if we can create and retrieve documents
             const sampleRFPs = await this.storage.getAllRFPs({ limit: 5 });
             if (sampleRFPs.rfps.length > 0) {
@@ -898,19 +900,23 @@ export class E2ETestOrchestrator {
               results.push({ entity, count: 0 });
             }
             break;
-          case 'proposals':
+          }
+          case 'proposals': {
             const proposalCount = await this.countProposalsByRFPs();
             results.push({ entity, count: proposalCount });
             break;
-          case 'submissions':
+          }
+          case 'submissions': {
             const submissionCount = await this.countSubmissionsByRFPs();
             results.push({ entity, count: submissionCount });
             break;
-          case 'work_items':
+          }
+          case 'work_items': {
             const workItemCount = await this.countWorkItems();
             results.push({ entity, count: workItemCount });
             break;
-          case 'agents':
+          }
+          case 'agents': {
             const agents = await this.agentRegistry.getActiveAgents();
             results.push({
               entity,
@@ -918,11 +924,13 @@ export class E2ETestOrchestrator {
               sample: agents.slice(0, 3),
             });
             break;
-          case 'workflow_states':
+          }
+          case 'workflow_states': {
             // Note: getWorkflowStatesOverview doesn't exist, using getActiveWorkflows instead
             const workflowStates = await this.storage.getActiveWorkflows();
             results.push({ entity, count: workflowStates.length });
             break;
+          }
         }
       }
 

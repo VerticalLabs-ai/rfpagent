@@ -99,7 +99,8 @@ router.post(
             workflowCoordinator.startWorkItemProcessing();
             serviceRuntimeState.workDistribution = true;
             response.success = true;
-            response.message = 'Work distribution enabled and processing started';
+            response.message =
+              'Work distribution enabled and processing started';
           } else {
             workflowCoordinator.stopWorkItemProcessing();
             serviceRuntimeState.workDistribution = false;

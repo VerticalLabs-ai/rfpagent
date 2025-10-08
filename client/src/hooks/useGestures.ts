@@ -332,7 +332,10 @@ export function usePullToRefresh(options: UsePullToRefreshOptions) {
         console.error('Error during pull-to-refresh:', error);
         toast({
           title: 'Refresh failed',
-          description: error instanceof Error ? error.message : 'An error occurred while refreshing',
+          description:
+            error instanceof Error
+              ? error.message
+              : 'An error occurred while refreshing',
           variant: 'destructive',
         });
       } finally {

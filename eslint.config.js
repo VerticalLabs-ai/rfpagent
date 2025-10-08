@@ -48,6 +48,20 @@ export default [
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
+        fetch: 'readonly',
+        NodeJS: 'readonly',
+        React: 'readonly',
+        confirm: 'readonly',
+        alert: 'readonly',
+        prompt: 'readonly',
+        Error: 'readonly',
+        Promise: 'readonly',
       },
     },
     plugins: {
@@ -70,6 +84,7 @@ export default [
       'prettier/prettier': 'error',
       semi: ['error', 'always'],
       'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off', // TypeScript provides type checking
       '@typescript-eslint/no-unused-vars': [
         'warn',
         {
@@ -84,6 +99,7 @@ export default [
       'no-console': 'off',
       'prefer-const': 'error',
       'no-var': 'error',
+      'no-undef': 'off', // TypeScript provides this checking
     },
   },
 ];

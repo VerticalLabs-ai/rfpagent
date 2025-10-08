@@ -1445,13 +1445,13 @@ export const agentSessionsRelations = relations(
 );
 
 // Agent Memory and Knowledge Relations
-export const agentMemoryRelations = relations(agentMemory, ({}) => ({
+export const agentMemoryRelations = relations(agentMemory, () => ({
   // Memory can be linked to knowledge for learning
 }));
 
 export const agentKnowledgeBaseRelations = relations(
   agentKnowledgeBase,
-  ({}) => ({
+  () => ({
     // Knowledge can reference multiple memories
   })
 );

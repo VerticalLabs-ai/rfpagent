@@ -173,7 +173,8 @@ export default function SAFLADashboard() {
 
   // Validate API responses with runtime checks
   const hasValidStatus = status?.data && validateSAFLAStatus(status.data);
-  const hasValidDashboard = dashboard?.data && validateSAFLADashboard(dashboard.data);
+  const hasValidDashboard =
+    dashboard?.data && validateSAFLADashboard(dashboard.data);
 
   const safeStatus = hasValidStatus ? status.data : null;
   const safeDashboard = hasValidDashboard ? dashboard.data : null;
@@ -277,17 +278,16 @@ export default function SAFLADashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                System Health
+              </CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
                 {safeDashboard.systemHealth}%
               </div>
-              <Progress
-                value={safeDashboard.systemHealth}
-                className="mt-2"
-              />
+              <Progress value={safeDashboard.systemHealth} className="mt-2" />
               <p className="text-xs text-muted-foreground mt-2">
                 {safeStatus.isInitialized
                   ? 'System operational'
@@ -298,7 +298,9 @@ export default function SAFLADashboard() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Learning Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Learning Rate
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -450,28 +452,35 @@ export default function SAFLADashboard() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {safeDashboard.alerts.map((alert: SAFLADashboard['alerts'][number], index: number) => (
-                        <div
-                          key={index}
-                          className="flex items-start gap-3 p-3 rounded-lg border"
-                        >
-                          {alert.type === 'success' && (
-                            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                          )}
-                          {alert.type === 'warning' && (
-                            <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
-                          )}
-                          {alert.type === 'error' && (
-                            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                          )}
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{alert.message}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {new Date(alert.timestamp).toLocaleString()}
-                            </p>
+                      {safeDashboard.alerts.map(
+                        (
+                          alert: SAFLADashboard['alerts'][number],
+                          index: number
+                        ) => (
+                          <div
+                            key={index}
+                            className="flex items-start gap-3 p-3 rounded-lg border"
+                          >
+                            {alert.type === 'success' && (
+                              <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                            )}
+                            {alert.type === 'warning' && (
+                              <AlertCircle className="h-5 w-5 text-orange-600 mt-0.5" />
+                            )}
+                            {alert.type === 'error' && (
+                              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">
+                                {alert.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {new Date(alert.timestamp).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -499,9 +508,13 @@ export default function SAFLADashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {hasValidDashboard && safeDashboard.improvementOpportunities.length > 0 ? (
+                {hasValidDashboard &&
+                safeDashboard.improvementOpportunities.length > 0 ? (
                   safeDashboard.improvementOpportunities.map(
-                    (opportunity: SAFLADashboard['improvementOpportunities'][number], index: number) => (
+                    (
+                      opportunity: SAFLADashboard['improvementOpportunities'][number],
+                      index: number
+                    ) => (
                       <div
                         key={index}
                         className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
@@ -520,7 +533,9 @@ export default function SAFLADashboard() {
                               >
                                 {opportunity.priority} priority
                               </Badge>
-                              <h4 className="font-medium">{opportunity.area}</h4>
+                              <h4 className="font-medium">
+                                {opportunity.area}
+                              </h4>
                             </div>
                             <p className="text-sm text-muted-foreground">
                               {opportunity.description}
@@ -560,30 +575,33 @@ export default function SAFLADashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {(Object.entries(safeStatus.components) as [string, string][]).map(
-                      ([component, status]) => (
-                        <div
-                          key={component}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div>
-                            <h4 className="font-medium capitalize">
-                              {component.replace(/([A-Z])/g, ' $1').trim()}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">
-                              Core system component
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              status === 'operational' ? 'default' : 'secondary'
-                            }
-                          >
-                            {status}
-                          </Badge>
+                    {(
+                      Object.entries(safeStatus.components) as [
+                        string,
+                        string,
+                      ][]
+                    ).map(([component, status]) => (
+                      <div
+                        key={component}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div>
+                          <h4 className="font-medium capitalize">
+                            {component.replace(/([A-Z])/g, ' $1').trim()}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Core system component
+                          </p>
                         </div>
-                      )
-                    )}
+                        <Badge
+                          variant={
+                            status === 'operational' ? 'default' : 'secondary'
+                          }
+                        >
+                          {status}
+                        </Badge>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>

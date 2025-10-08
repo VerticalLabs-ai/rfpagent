@@ -323,7 +323,9 @@ export class PortalAuthenticationSpecialist {
           usernameField = element;
           break;
         }
-      } catch (e) {}
+      } catch (_e) {
+        // Ignore if element not found, try next selector
+      }
     }
 
     // Find password field
@@ -334,7 +336,9 @@ export class PortalAuthenticationSpecialist {
           passwordField = element;
           break;
         }
-      } catch (e) {}
+      } catch (_e) {
+        // Ignore if element not found, try next selector
+      }
     }
 
     // Find login button
@@ -345,7 +349,9 @@ export class PortalAuthenticationSpecialist {
           loginButton = element;
           break;
         }
-      } catch (e) {}
+      } catch (_e) {
+        // Ignore if element not found, try next selector
+      }
     }
 
     return { usernameField, passwordField, loginButton };
@@ -425,7 +431,9 @@ export class PortalAuthenticationSpecialist {
             mfaDetected = true;
             break;
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       if (mfaDetected) {
@@ -464,7 +472,9 @@ export class PortalAuthenticationSpecialist {
           if (await element.isVisible({ timeout: 5000 })) {
             return { success: true, indicator };
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       // Check for error messages
@@ -484,7 +494,9 @@ export class PortalAuthenticationSpecialist {
             const errorText = await element.textContent();
             return { success: false, error: errorText };
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       // If no clear indicators, consider it successful if we're not on login page
@@ -770,7 +782,9 @@ export class FormSubmissionSpecialist {
               return new URL(href, stagehand.page.url()).href;
             }
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       return null;
@@ -897,7 +911,9 @@ export class FormSubmissionSpecialist {
             elements.push(element);
           }
         }
-      } catch (e) {}
+      } catch (_e) {
+        // Ignore - element not found, continue checking
+      }
     }
 
     return elements;
@@ -1029,7 +1045,9 @@ export class FormSubmissionSpecialist {
               errors.push(errorText);
             }
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       return {
@@ -1328,7 +1346,9 @@ export class DocumentUploadSpecialist {
             uploadAreas.push(element);
           }
         }
-      } catch (e) {}
+      } catch (_e) {
+        // Ignore - element not found, continue checking
+      }
     }
 
     return uploadAreas;
@@ -1440,7 +1460,9 @@ export class DocumentUploadSpecialist {
           if (await element.isVisible({ timeout: 3000 })) {
             return true;
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       // Look for error indicators
@@ -1457,7 +1479,9 @@ export class DocumentUploadSpecialist {
           if (await element.isVisible({ timeout: 1000 })) {
             return false;
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       // If no clear indicators, assume success
@@ -1495,7 +1519,9 @@ export class DocumentUploadSpecialist {
             foundUploadList = true;
             break;
           }
-        } catch (e) {}
+        } catch (_e) {
+          // Ignore - element not found, continue checking
+        }
       }
 
       return {

@@ -65,22 +65,30 @@ router.get('/dashboard', async (req, res) => {
         performanceMetrics: {
           proposalWinRate: dashboard.performanceMetrics?.proposalWinRate || 0,
           parsingAccuracy: dashboard.performanceMetrics?.parsingAccuracy || 0,
-          portalNavigationSuccess: dashboard.performanceMetrics?.portalNavigationSuccess || 0,
-          avgProcessingTime: dashboard.performanceMetrics?.documentProcessingTime || 0,
+          portalNavigationSuccess:
+            dashboard.performanceMetrics?.portalNavigationSuccess || 0,
+          avgProcessingTime:
+            dashboard.performanceMetrics?.documentProcessingTime || 0,
         },
-        improvementOpportunities: dashboard.improvementOpportunities?.map(opp => ({
-          area: opp.component,
-          priority: opp.impact as 'high' | 'medium' | 'low',
-          description: opp.opportunity,
-          potentialImpact: opp.impact === 'high' ? 25 : opp.impact === 'medium' ? 15 : 5,
-        })) || [],
-        alerts: dashboard.alerts?.map(alert => ({
-          type: alert.severity === 'critical' ? 'error' as const :
-                alert.severity === 'warning' ? 'warning' as const :
-                'success' as const,
-          message: alert.message,
-          timestamp: alert.timestamp,
-        })) || [],
+        improvementOpportunities:
+          dashboard.improvementOpportunities?.map(opp => ({
+            area: opp.component,
+            priority: opp.impact as 'high' | 'medium' | 'low',
+            description: opp.opportunity,
+            potentialImpact:
+              opp.impact === 'high' ? 25 : opp.impact === 'medium' ? 15 : 5,
+          })) || [],
+        alerts:
+          dashboard.alerts?.map(alert => ({
+            type:
+              alert.severity === 'critical'
+                ? ('error' as const)
+                : alert.severity === 'warning'
+                  ? ('warning' as const)
+                  : ('success' as const),
+            message: alert.message,
+            timestamp: alert.timestamp,
+          })) || [],
       },
       timestamp: new Date().toISOString(),
     });

@@ -159,7 +159,7 @@ export class SAFLASystemIntegration {
           );
           break;
 
-        case 'proposal_generation':
+        case 'proposal_generation': {
           // Create a demo proposal to learn from
           const demoRfp = await storage.createRFP({
             title: 'Demo RFP for Learning System',
@@ -197,6 +197,7 @@ export class SAFLASystemIntegration {
             'Consider replicating approach for similar RFPs'
           );
           break;
+        }
       }
 
       // Generate system-wide improvements based on learning
@@ -441,10 +442,16 @@ export class SAFLASystemIntegration {
         },
         learningEnabled: true,
         metrics: {
-          totalLearningEvents: dashboard?.learningMetrics?.totalLearningEvents || 0,
-          successfulAdaptations: Math.round((dashboard?.learningMetrics?.adaptationSuccess || 0) * 10),
-          knowledgeBaseSize: Math.round((dashboard?.learningMetrics?.knowledgeGrowth || 0) * 100),
-          avgPerformanceImprovement: Math.round((dashboard?.systemHealth?.overall || 75) * 0.1) || 7,
+          totalLearningEvents:
+            dashboard?.learningMetrics?.totalLearningEvents || 0,
+          successfulAdaptations: Math.round(
+            (dashboard?.learningMetrics?.adaptationSuccess || 0) * 10
+          ),
+          knowledgeBaseSize: Math.round(
+            (dashboard?.learningMetrics?.knowledgeGrowth || 0) * 100
+          ),
+          avgPerformanceImprovement:
+            Math.round((dashboard?.systemHealth?.overall || 75) * 0.1) || 7,
         },
       };
     } catch (error) {

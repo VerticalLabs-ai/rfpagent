@@ -75,21 +75,21 @@ class ComplianceIntegrationTester {
         // Check structure of individual items
         const requirementStructure =
           aiResult.requirements.length === 0 ||
-          (aiResult.requirements[0].hasOwnProperty('type') &&
-            aiResult.requirements[0].hasOwnProperty('description') &&
-            aiResult.requirements[0].hasOwnProperty('mandatory'));
+          (Object.hasOwn(aiResult.requirements[0], 'type') &&
+            Object.hasOwn(aiResult.requirements[0], 'description') &&
+            Object.hasOwn(aiResult.requirements[0], 'mandatory'));
 
         const complianceStructure =
           aiResult.complianceItems.length === 0 ||
-          (aiResult.complianceItems[0].hasOwnProperty('field') &&
-            aiResult.complianceItems[0].hasOwnProperty('description') &&
-            aiResult.complianceItems[0].hasOwnProperty('format'));
+          (Object.hasOwn(aiResult.complianceItems[0], 'field') &&
+            Object.hasOwn(aiResult.complianceItems[0], 'description') &&
+            Object.hasOwn(aiResult.complianceItems[0], 'format'));
 
         const riskStructure =
           aiResult.riskFlags.length === 0 ||
-          (aiResult.riskFlags[0].hasOwnProperty('type') &&
-            aiResult.riskFlags[0].hasOwnProperty('category') &&
-            aiResult.riskFlags[0].hasOwnProperty('description'));
+          (Object.hasOwn(aiResult.riskFlags[0], 'type') &&
+            Object.hasOwn(aiResult.riskFlags[0], 'category') &&
+            Object.hasOwn(aiResult.riskFlags[0], 'description'));
 
         if (requirementStructure && complianceStructure && riskStructure) {
           this.addResult(

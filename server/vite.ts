@@ -71,9 +71,7 @@ export function serveStatic(app: Express) {
   const distPath = path.resolve(import.meta.dirname, 'public');
 
   if (!fs.existsSync(distPath)) {
-    console.warn(
-      `⚠️  Could not find the build directory: ${distPath}`
-    );
+    console.warn(`⚠️  Could not find the build directory: ${distPath}`);
     console.warn('   Frontend will not be served, but API endpoints will work');
     console.warn('   Make sure to build the client first: pnpm build');
 

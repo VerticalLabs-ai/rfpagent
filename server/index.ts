@@ -54,15 +54,21 @@ app.use((req, res, next) => {
 
   // Validate critical environment variables
   const requiredEnvVars = ['DATABASE_URL'];
-  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  const missingEnvVars = requiredEnvVars.filter(
+    varName => !process.env[varName]
+  );
 
   if (missingEnvVars.length > 0) {
-    log(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    log(
+      `❌ Missing required environment variables: ${missingEnvVars.join(', ')}`
+    );
     process.exit(1);
   }
 
   log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'configured'}`);
+  log(
+    `✓ Database: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'configured'}`
+  );
 
   // Run database migrations in production
   if (process.env.NODE_ENV === 'production') {
@@ -70,30 +76,44 @@ app.use((req, res, next) => {
       log('🔄 Running database migrations...');
       const { execSync } = await import('child_process');
       // Run drizzle-kit push directly with auto-confirmation via piped yes
-      const result = execSync('printf "yes\\n" | /app/node_modules/.bin/drizzle-kit push', {
-        stdio: 'pipe',
-        env: process.env,
-        cwd: '/app',
-        shell: '/bin/sh',
-      });
+      const result = execSync(
+        'printf "yes\\n" | /app/node_modules/.bin/drizzle-kit push',
+        {
+          stdio: 'pipe',
+          env: process.env,
+          cwd: '/app',
+          shell: '/bin/sh',
+        }
+      );
       const output = result.toString().trim();
       log('✅ Database migrations completed');
       if (output) {
         output.split('\n').forEach(line => log(`   ${line}`));
       }
     } catch (error) {
-      log('⚠️ Database migration error:', error instanceof Error ? error.message : String(error));
+      log(
+        '⚠️ Database migration error:',
+        error instanceof Error ? error.message : String(error)
+      );
       if (error && typeof error === 'object') {
         if ('stdout' in error && (error as any).stdout) {
           const stdout = (error as any).stdout.toString().trim();
-          if (stdout) stdout.split('\n').forEach((line: string) => log(`   Output: ${line}`));
+          if (stdout)
+            stdout
+              .split('\n')
+              .forEach((line: string) => log(`   Output: ${line}`));
         }
         if ('stderr' in error && (error as any).stderr) {
           const stderr = (error as any).stderr.toString().trim();
-          if (stderr) stderr.split('\n').forEach((line: string) => log(`   Error: ${line}`));
+          if (stderr)
+            stderr
+              .split('\n')
+              .forEach((line: string) => log(`   Error: ${line}`));
         }
       }
-      log('   Server will continue startup - migrations may need manual intervention');
+      log(
+        '   Server will continue startup - migrations may need manual intervention'
+      );
     }
   }
 
@@ -126,7 +146,10 @@ app.use((req, res, next) => {
       serveStatic(app);
       log('✓ Static files configured');
     } catch (error) {
-      log('⚠️  Static file serving failed (non-fatal):', error instanceof Error ? error.message : String(error));
+      log(
+        '⚠️  Static file serving failed (non-fatal):',
+        error instanceof Error ? error.message : String(error)
+      );
       log('   API endpoints will still work, but frontend may not load');
     }
   }

@@ -1489,7 +1489,7 @@ export class SelfImprovingLearningService {
     if (objects.length === 0) return {};
 
     const commonKeys = Object.keys(objects[0]).filter(key =>
-      objects.every(obj => obj.hasOwnProperty(key))
+      objects.every(obj => Object.hasOwn(obj, key))
     );
 
     const common: Record<string, any> = {};
