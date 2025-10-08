@@ -254,9 +254,9 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
    */
   private hasAustinSolicitationPattern(text: string): boolean {
     const patterns = [
-      /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}/i,
+      /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:.-]?\s*\d{3,5}/i,
       /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i,
-      /solicitation\s*[#:\.-]?\s*\d+/i,
+      /solicitation\s*[#:.-]?\s*\d+/i,
     ];
 
     return patterns.some(pattern => pattern.test(text));
@@ -272,7 +272,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   ): RFPOpportunity | null {
     // Extract solicitation ID using tolerant patterns
     const tolerantPattern =
-      /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
+      /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
     const fallbackPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i;
 
     const idMatch = text.match(tolerantPattern) || text.match(fallbackPattern);

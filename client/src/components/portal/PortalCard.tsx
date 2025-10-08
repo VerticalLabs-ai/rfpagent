@@ -208,10 +208,10 @@ export function PortalCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Portal</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{portal.name}"? This action
-                    will permanently remove the portal and all associated RFPs,
-                    proposals, documents, and submissions. This cannot be
-                    undone.
+                    Are you sure you want to delete &quot;{portal.name}&quot;?
+                    This action will permanently remove the portal and all
+                    associated RFPs, proposals, documents, and submissions. This
+                    cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

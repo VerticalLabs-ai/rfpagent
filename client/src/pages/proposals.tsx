@@ -353,7 +353,7 @@ export default function Proposals() {
                   No Proposal Yet
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  This RFP doesn't have a generated proposal yet
+                  This RFP doesn&apos;t have a generated proposal yet
                 </p>
                 <Button
                   onClick={() =>

@@ -1257,7 +1257,7 @@ export class IntelligentDocumentProcessor {
       if (line.toLowerCase().includes(keyword.toLowerCase())) {
         // Look for patterns like "keyword: value" or "keyword value"
         const match = line.match(
-          new RegExp(keyword + '\\s*[:\-]?\\s*([^\\n\\r,;]+)', 'i')
+          new RegExp(keyword + '\\s*[:-]?\\s*([^\\n\\r,;]+)', 'i')
         );
         if (match && match[1]) {
           return match[1].trim();
