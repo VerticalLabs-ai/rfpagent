@@ -19,18 +19,22 @@ Copy everything below this line and paste into a new Claude Code session:
 ## 7-Step Fix Plan
 
 ### Step 1: Audit Service Interfaces (30 min)
+
 Check these files for actual method signatures and interfaces:
+
 - `server/services/enhancedProposalService.ts`
 - `server/services/documentIntelligenceService.ts`
 - `server/services/agentMemoryService.ts`
 
 Find out:
+
 - Do `generateComprehensiveProposal` and `performMarketResearch` exist?
 - Does `getProcessingStrategies` exist?
 - What properties does `LearningOutcome` interface have?
 - What properties does `QualityEvaluation` have?
 
 ### Step 2: Create Type Definitions (30 min)
+
 Add to `server/services/workflowCoordinator.ts`:
 
 ```typescript
@@ -54,21 +58,28 @@ interface WorkItemMetadata {
 ```
 
 ### Step 3: Fix Missing Service Methods (20 min)
+
 Fix 3 errors at lines 814, 1094, 2386:
+
 - Replace method calls with correct names from audit OR
 - Add stub methods to services if they don't exist
 
 ### Step 4: Fix LearningOutcome Interface (30 min)
+
 Fix 4 errors at lines 2185, 2236, 2288, 2354:
+
 - Update `LearningOutcome` interface to make missing properties optional OR
 - Add missing properties (`agentId`, `confidenceScore`, `domain`, `category`) to all calls
 
 ### Step 5: Fix QualityEvaluation Access (20 min)
+
 Fix 6 errors at lines 2325, 2326, 2327, 2333, 2334, 2335:
+
 - Update `QualityEvaluation` interface with missing properties OR
 - Use correct property access pattern
 
 ### Step 6: Fix Metadata/Unknown Types (45 min)
+
 Fix 29 errors with type assertions:
 
 ```typescript
@@ -78,6 +89,7 @@ const metadata = workItem.metadata as WorkItemMetadata;
 ```
 
 ### Step 7: Verify (15 min)
+
 ```bash
 pnpm type-check  # Should show 0 errors
 pnpm lint        # Should still pass
@@ -86,26 +98,32 @@ pnpm lint        # Should still pass
 ## Error Categories Summary
 
 **Category 1**: Missing service methods (3 errors)
+
 - Lines 814, 1094, 2386
 
 **Category 2**: LearningOutcome type mismatches (4 errors)
+
 - Lines 2185, 2236, 2288, 2354
 - Missing: `agentId`, `confidenceScore`, `domain`, `category`
 
 **Category 3**: QualityEvaluation properties (6 errors)
+
 - Lines 2325, 2326, 2327, 2333, 2334, 2335
 - Missing: `qualityScore`, `complianceScore`, `competitiveScore`, `winProbability`, `efficiency`
 
 **Category 4**: Type interface issues (2 errors)
+
 - Line 2306: `outcome` not in ProposalOutcome
 - Line 2432: `consolidatedMemories` not in MemoryConsolidation
 
 **Category 5**: Metadata/unknown types (29 errors)
+
 - Lines 2758, 2858, 2861, 2987, 2990, 3027, 3030: metadata unknown
 - Lines 3067-3073, 3153-3160: property access on unknown
 - Lines 3322, 3327: Proposal type issues
 
 ## Success Criteria
+
 - [ ] All 44 errors fixed
 - [ ] `pnpm type-check` returns 0 errors
 - [ ] `pnpm lint` still passes

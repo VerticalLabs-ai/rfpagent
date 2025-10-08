@@ -3,6 +3,7 @@
 ## Context
 
 This RFP automation platform has 44 remaining TypeScript errors concentrated in `server/services/workflowCoordinator.ts`. Previous work has fixed:
+
 - ✅ All 12 ESLint errors (100%)
 - ✅ 30 TypeScript errors (41% of original 74)
 - ✅ All frontend type errors
@@ -24,23 +25,25 @@ These methods are called but don't exist on the service types:
 
 ```typescript
 // Line 814
-enhancedProposalService.generateComprehensiveProposal()
+enhancedProposalService.generateComprehensiveProposal();
 // Error: Property 'generateComprehensiveProposal' does not exist on type 'EnhancedProposalService'
 
 // Line 1094
-enhancedProposalService.performMarketResearch()
+enhancedProposalService.performMarketResearch();
 // Error: Property 'performMarketResearch' does not exist on type 'EnhancedProposalService'
 
 // Line 2386
-documentIntelligenceService.getProcessingStrategies()
+documentIntelligenceService.getProcessingStrategies();
 // Error: Property 'getProcessingStrategies' does not exist on type 'IntelligentDocumentProcessor'
 ```
 
 **Files to check**:
+
 - `server/services/enhancedProposalService.ts` - Check if these methods exist with different names
 - `server/services/documentIntelligenceService.ts` - Check for getProcessingStrategies
 
 **Fix approach**:
+
 1. Search for actual method names in these services
 2. Either rename the calls OR add the missing methods
 3. If methods are legacy/deprecated, replace with current equivalents
@@ -68,6 +71,7 @@ agentMemoryService.recordLearningOutcome({
 ```
 
 **Fix approach**:
+
 1. Find the `LearningOutcome` interface definition (likely in `server/services/agentMemoryService.ts` or types file)
 2. Compare the interface with what's being passed
 3. Either:
@@ -76,10 +80,15 @@ agentMemoryService.recordLearningOutcome({
    - Make missing properties optional in interface
 
 **Expected interface update**:
+
 ```typescript
 interface LearningOutcome {
   id: string;
-  type: "general" | "document_processing" | "proposal_generation" | "portal_interaction";
+  type:
+    | 'general'
+    | 'document_processing'
+    | 'proposal_generation'
+    | 'portal_interaction';
   agentId?: string; // Add or make optional
   confidenceScore?: number; // Add or make optional
   domain?: string; // Add or make optional
@@ -116,6 +125,7 @@ const efficiency = evaluation.efficiency; // Error: doesn't exist
 ```
 
 **Fix approach**:
+
 1. Find `QualityEvaluation` type/interface definition
 2. Check what properties it actually has
 3. Either:
@@ -140,6 +150,7 @@ const memories = consolidation.consolidatedMemories // Error: doesn't exist on M
 ```
 
 **Fix approach**:
+
 1. Find `ProposalOutcome` interface - check what properties it expects
 2. Find `MemoryConsolidation` interface - check correct property name
 3. Update code to match interface OR update interface if code is correct
@@ -151,35 +162,40 @@ const memories = consolidation.consolidatedMemories // Error: doesn't exist on M
 Multiple issues with `unknown` types and property access:
 
 **Metadata as unknown** (Lines 2758, 2858, 2861, 2987, 2990, 3027, 3030):
+
 ```typescript
-workItem.metadata // Type: unknown
+workItem.metadata; // Type: unknown
 ```
 
 **Property access on unknown types** (Lines 3067-3073, 3153-3160):
+
 ```typescript
-workItem.inputs.rfpId // Error: Property 'rfpId' does not exist on type 'unknown'
-workItem.inputs.companyProfileId // Error: doesn't exist
-workItem.inputs.outline // Error: doesn't exist
-workItem.inputs.content // Error: doesn't exist
-workItem.inputs.pricing // Error: doesn't exist
-workItem.inputs.compliance // Error: doesn't exist
-workItem.inputs.forms // Error: doesn't exist
-workItem.inputs.pipelineId // Error: doesn't exist
+workItem.inputs.rfpId; // Error: Property 'rfpId' does not exist on type 'unknown'
+workItem.inputs.companyProfileId; // Error: doesn't exist
+workItem.inputs.outline; // Error: doesn't exist
+workItem.inputs.content; // Error: doesn't exist
+workItem.inputs.pricing; // Error: doesn't exist
+workItem.inputs.compliance; // Error: doesn't exist
+workItem.inputs.forms; // Error: doesn't exist
+workItem.inputs.pipelineId; // Error: doesn't exist
 ```
 
 **Proposal type issues** (Lines 3322, 3327):
+
 ```typescript
-proposal.aiAnalysis // Error: Property doesn't exist on type 'Proposal'
+proposal.aiAnalysis; // Error: Property doesn't exist on type 'Proposal'
 // Line 3327: Cannot find name 'Proposal'
 ```
 
 **Fix approach**:
+
 1. Create proper type definitions for `WorkItem.inputs` and `WorkItem.metadata`
 2. Add type guards or type assertions with proper interfaces
 3. Define input schemas for different work item types
 4. Import `Proposal` type from `@shared/schema`
 
 **Recommended solution**:
+
 ```typescript
 // Add at top of file
 import type { WorkItem, Proposal } from '@shared/schema';
@@ -211,33 +227,40 @@ const metadata = workItem.metadata as WorkItemMetadata;
 ## Recommended Approach
 
 ### Step 1: Audit Service Interfaces (30 min)
+
 1. Check `server/services/enhancedProposalService.ts` for actual method signatures
 2. Check `server/services/documentIntelligenceService.ts` for methods
 3. Check `server/services/agentMemoryService.ts` for LearningOutcome interface
 4. Document what exists vs what's being called
 
 ### Step 2: Create Type Definitions (30 min)
+
 1. Create comprehensive `WorkItemInputs` type union or interfaces
 2. Create `WorkItemMetadata` interface
 3. Update or create missing interface properties
 
 ### Step 3: Fix Service Method Calls (20 min)
+
 1. Update the 3 missing method calls to use correct names
 2. Or stub out methods if they're planned features
 
 ### Step 4: Fix LearningOutcome Calls (30 min)
+
 1. Update interface to match usage OR add missing properties to calls
 2. Ensure consistency across all 4 usages
 
 ### Step 5: Fix QualityEvaluation Access (20 min)
+
 1. Update type definition OR use correct property access patterns
 
 ### Step 6: Fix Metadata/Unknown Types (45 min)
+
 1. Add proper type definitions for WorkItem variants
 2. Add type assertions with created interfaces
 3. Import Proposal type correctly
 
 ### Step 7: Verify (15 min)
+
 1. Run `pnpm type-check` - should show 0 errors
 2. Run `pnpm lint` - should still pass
 3. Ensure no runtime regressions
@@ -247,14 +270,17 @@ const metadata = workItem.metadata as WorkItemMetadata;
 ## Files You'll Need to Modify
 
 **Primary file**:
+
 - `server/services/workflowCoordinator.ts` (most changes here)
 
 **Service definition files** (may need updates):
+
 - `server/services/enhancedProposalService.ts`
 - `server/services/documentIntelligenceService.ts`
 - `server/services/agentMemoryService.ts`
 
 **Type definition files**:
+
 - `@shared/schema.ts` (check WorkItem, Proposal types)
 - Possibly create `server/types/workItems.ts` for WorkItem input types
 
@@ -294,16 +320,19 @@ pnpm type-check 2>&1 | grep "workflowCoordinator.ts"
 ## Additional Context
 
 **Project structure**:
+
 - Monorepo with `client/`, `server/`, `shared/`, `src/mastra/`
 - Uses Drizzle ORM with PostgreSQL
 - Mastra framework for AI agent workflows
 - TypeScript strict mode enabled
 
 **Related documentation**:
+
 - See `docs/testing/CI_STATUS.md` for full history
 - Previous commits have examples of similar fixes
 
 **Commit message template**:
+
 ```
 fix: resolve remaining 44 TypeScript errors in workflowCoordinator
 

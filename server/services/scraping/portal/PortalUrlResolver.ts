@@ -18,9 +18,11 @@ export class PortalUrlResolver {
     [
       'financeonline.austintexas.gov',
       {
-        listingUrl: 'https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitations.cfm',
+        listingUrl:
+          'https://financeonline.austintexas.gov/afo/account_services/solicitation/solicitations.cfm',
         requiresAuth: false,
-        waitForSelector: 'table, .solicitation, a[href*="solicitation_details"]',
+        waitForSelector:
+          'table, .solicitation, a[href*="solicitation_details"]',
         extractorType: 'austin',
       },
     ],
@@ -81,7 +83,9 @@ export class PortalUrlResolver {
   /**
    * Get extractor type for a portal
    */
-  static getExtractorType(portalUrl: string): 'austin' | 'philadelphia' | 'generic' {
+  static getExtractorType(
+    portalUrl: string
+  ): 'austin' | 'philadelphia' | 'generic' {
     const config = this.getNavigationConfig(portalUrl);
     return config?.extractorType || 'generic';
   }
@@ -89,7 +93,10 @@ export class PortalUrlResolver {
   /**
    * Register a new portal configuration
    */
-  static registerPortal(hostname: string, config: PortalNavigationConfig): void {
+  static registerPortal(
+    hostname: string,
+    config: PortalNavigationConfig
+  ): void {
     this.portalConfigs.set(hostname, config);
   }
 }
