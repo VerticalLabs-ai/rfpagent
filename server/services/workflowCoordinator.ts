@@ -70,6 +70,27 @@ export interface TaskDistributionResult {
 }
 
 /**
+ * Type definitions for work item inputs and metadata
+ */
+export interface ProposalGenerationInputs {
+  rfpId: string;
+  companyProfileId?: string;
+  outline?: any;
+  content?: any;
+  pricing?: any;
+  compliance?: any;
+  forms?: any;
+  pipelineId?: string;
+  proposalType?: string;
+}
+
+export interface WorkItemMetadata {
+  [key: string]: any;
+  pipelineId?: string;
+  sessionId?: string;
+}
+
+/**
  * Enhanced Workflow Coordinator for RFP Processing and 3-Tier Agentic System
  * Orchestrates both RFP lifecycle and generic work item management
  */
@@ -811,11 +832,12 @@ export class WorkflowCoordinator {
 
       // Use enhanced proposal service for comprehensive proposal generation
       const proposalResult =
-        await this.enhancedProposalService.generateComprehensiveProposal(
+        await this.enhancedProposalService.generateProposal({
           rfpId,
           companyProfileId,
-          proposalType || 'standard'
-        );
+          generatePricing: true,
+          autoSubmit: false,
+        });
 
       // Also run AI analysis for additional insights
       const aiAnalysis = await aiProposalService.analyzeRFPDocument(
@@ -826,12 +848,13 @@ export class WorkflowCoordinator {
         success: true,
         data: {
           rfpId,
-          proposalId: proposalResult.proposal?.id,
-          proposalContent: proposalResult.proposal?.content,
-          narratives: proposalResult.proposal?.narratives,
+          proposalId: proposalResult.proposalId,
+          documentAnalysis: proposalResult.documentAnalysis,
+          filledForms: proposalResult.filledForms,
+          humanActionItems: proposalResult.humanActionItems,
           aiAnalysis,
-          complianceScore: proposalResult.complianceScore,
-          recommendations: proposalResult.recommendations,
+          readyForSubmission: proposalResult.readyForSubmission,
+          competitiveBidSummary: proposalResult.competitiveBidSummary,
           message: 'Comprehensive proposal generated successfully',
         },
       };
@@ -1089,9 +1112,21 @@ export class WorkflowCoordinator {
           throw new Error(`RFP not found: ${rfpId}`);
         }
 
-        // Use enhanced proposal service for market analysis
-        const marketAnalysis =
-          await this.enhancedProposalService.performMarketResearch(rfpId);
+        // Use document intelligence service for market analysis (includes competitive bid analysis)
+        const documentAnalysis =
+          await documentIntelligenceService.analyzeRFPDocuments(rfpId);
+        const marketAnalysis = documentAnalysis.competitiveBidAnalysis || {
+          suggestedBidAmount: 0,
+          confidenceLevel: 0,
+          marketResearch: {
+            averageBid: 0,
+            bidRange: { min: 0, max: 0 },
+            competitorCount: 0,
+            sources: [],
+          },
+          pricingStrategy: 'competitive' as const,
+          riskFactors: [],
+        };
 
         // Get historical bid data for comparison
         const historicalBids = await storage.getHistoricalBidsByAgency(
@@ -1104,12 +1139,15 @@ export class WorkflowCoordinator {
           marketAnalysis,
           historicalBids: historicalBids.length,
           averageValue:
-            historicalBids.reduce((sum, bid) => sum + (Number(bid.bidAmount) || 0), 0) /
-            Math.max(historicalBids.length, 1),
-          competitorInsights: marketAnalysis.competitors || [],
-          riskFactors: marketAnalysis.risks || [],
-          opportunities: marketAnalysis.opportunities || [],
-          recommendedStrategy: marketAnalysis.strategy || 'competitive',
+            historicalBids.reduce(
+              (sum, bid) => sum + (Number(bid.bidAmount) || 0),
+              0
+            ) / Math.max(historicalBids.length, 1),
+          competitorInsights: marketAnalysis.marketResearch,
+          riskFactors: marketAnalysis.riskFactors,
+          suggestedBidAmount: marketAnalysis.suggestedBidAmount,
+          confidenceLevel: marketAnalysis.confidenceLevel,
+          recommendedStrategy: marketAnalysis.pricingStrategy,
         };
       } else {
         // General market research without specific RFP
@@ -2150,36 +2188,34 @@ export class WorkflowCoordinator {
       const learningOutcome = {
         id: `learning_${workItem.id}_${Date.now()}`,
         type: this.mapTaskTypeToLearningType(workItem.taskType),
+        agentId: workItem.assignedAgentId || 'unknown',
         context: {
           workItemId: workItem.id,
           taskType: workItem.taskType,
           inputs: workItem.inputs,
           executionTime,
           retryAttempt: workItem.retries,
+          action: workItem.taskType,
+          strategy: {},
+          conditions: {},
         },
         outcome: {
           success: result.success,
-          data: result.data,
-          error: result.error,
-          performance: {
+          metrics: {
             duration: executionTime,
             efficiency: this.calculateEfficiencyScore(
               workItem.taskType,
               executionTime,
               result.success
             ),
+            data: result.data,
           },
+          errorDetails: result.error,
         },
-        agent: {
-          agentId: workItem.assignedAgentId || 'unknown',
-          tier: this.getPreferredTierForTask(workItem.taskType) || 'specialist',
-        },
-        learningOpportunities: this.identifyLearningOpportunities(
-          workItem,
-          result
-        ),
+        confidenceScore: result.success ? 0.8 : 0.4,
+        domain: 'work_item_processing',
+        category: workItem.taskType,
         timestamp: new Date(),
-        sessionId: workItem.sessionId,
       };
 
       await this.learningService.recordLearningOutcome(learningOutcome);
@@ -2210,27 +2246,31 @@ export class WorkflowCoordinator {
       // Also record in main learning service
       const learningOutcome = {
         id: `portal_learning_${portalId}_${Date.now()}`,
-        type: 'portal_interaction' as const,
+        type: 'portal_navigation' as const,
+        agentId: 'portal_navigator',
+        portalId,
         context: {
           portalId,
           navigationStrategy: navigationAttempt.strategy,
           selectors: navigationAttempt.selectors,
           timing: navigationAttempt.timing,
+          action: 'portal_navigation',
+          strategy: navigationAttempt.strategy || {},
+          conditions: {},
+          inputs: navigationAttempt,
         },
         outcome: {
           success,
-          data: navigationAttempt.result,
-          performance: {
+          metrics: {
             duration: navigationAttempt.duration,
             efficiency: success ? 1.0 : 0.0,
+            data: navigationAttempt.result,
           },
         },
-        agent: { agentId: 'portal_navigator', tier: 'specialist' },
-        learningOpportunities: success
-          ? ['strategy_reinforcement']
-          : ['strategy_adaptation', 'selector_optimization'],
+        confidenceScore: success ? 0.9 : 0.3,
+        domain: 'portal_navigation',
+        category: 'navigation',
         timestamp: new Date(),
-        sessionId: this.learningContext?.sessionId || 'unknown',
       };
 
       await this.learningService.recordLearningOutcome(learningOutcome);
@@ -2260,29 +2300,31 @@ export class WorkflowCoordinator {
 
       const learningOutcome = {
         id: `doc_learning_${documentId}_${Date.now()}`,
-        type: 'document_processing' as const,
+        type: 'document_parsing' as const,
+        agentId: 'document_processor',
         context: {
           documentId,
           documentType: processingResult.documentType,
           processingMethod: processingResult.method,
           complexity: processingResult.complexity || 'medium',
+          action: 'document_parsing',
+          strategy: { method: processingResult.method },
+          conditions: { documentType: processingResult.documentType },
+          inputs: processingResult,
         },
         outcome: {
           success: accuracy > 0.8,
-          data: processingResult,
-          performance: {
+          metrics: {
             accuracy,
             duration: processingResult.processingTime,
             efficiency: accuracy / (processingResult.processingTime / 1000),
+            data: processingResult,
           },
         },
-        agent: { agentId: 'document_processor', tier: 'specialist' },
-        learningOpportunities:
-          accuracy > 0.9
-            ? ['pattern_reinforcement']
-            : ['algorithm_optimization', 'training_data_expansion'],
+        confidenceScore: accuracy,
+        domain: 'document_processing',
+        category: processingResult.documentType || 'unknown',
         timestamp: new Date(),
-        sessionId: this.learningContext?.sessionId || 'unknown',
       };
 
       await this.learningService.recordLearningOutcome(learningOutcome);
@@ -2303,13 +2345,21 @@ export class WorkflowCoordinator {
     try {
       await this.outcomeTracker.recordProposalOutcome({
         proposalId,
-        outcome: outcome.result || 'pending',
-        feedback: outcome.feedback,
-        competitorInfo: outcome.competitors || [],
-        winningBid: outcome.winningBid,
-        ourBid: outcome.ourBid,
+        rfpId: outcome.rfpId || '',
+        status: outcome.result || 'under_review',
+        outcomeDetails: {
+          feedback: outcome.feedback,
+          competitorInfo: {
+            winningAmount: outcome.winningBid,
+          },
+        },
+        learningData: {
+          strategiesUsed: outcome.strategies || {},
+          marketConditions: outcome.marketConditions || {},
+          competitiveFactors: outcome.competitiveFactors || {},
+          internalFactors: outcome.internalFactors || {},
+        },
         timestamp: new Date(),
-        followUpActions: outcome.followUpActions || [],
       });
 
       // Evaluate proposal quality and learn from it
@@ -2319,36 +2369,34 @@ export class WorkflowCoordinator {
 
       const learningOutcome = {
         id: `proposal_learning_${proposalId}_${Date.now()}`,
-        type: 'proposal_generation' as const,
+        type: 'proposal_success' as const,
+        agentId: 'proposal_generator',
+        rfpId: outcome.rfpId,
         context: {
           proposalId,
-          qualityScore: qualityEvaluation.qualityScore,
-          complianceScore: qualityEvaluation.complianceScore,
-          competitiveScore: qualityEvaluation.competitiveScore,
+          qualityScore: qualityEvaluation.overallScore,
+          complianceScore:
+            qualityEvaluation.componentScores?.complianceScore?.score || 0,
+          competitiveScore:
+            qualityEvaluation.componentScores?.competitivenessScore?.score || 0,
+          action: 'proposal_generation',
+          strategy: { type: 'standard' },
+          conditions: {},
+          inputs: outcome,
         },
         outcome: {
-          success: outcome.result === 'won',
-          data: outcome,
-          performance: {
-            qualityScore: qualityEvaluation.qualityScore,
-            winProbability: qualityEvaluation.winProbability,
-            efficiency: qualityEvaluation.efficiency,
+          success: outcome.result === 'won' || outcome.result === 'awarded',
+          metrics: {
+            overallScore: qualityEvaluation.overallScore,
+            predictedSuccessRate: qualityEvaluation.predictedSuccessRate,
+            confidenceLevel: qualityEvaluation.confidenceLevel,
+            data: outcome,
           },
         },
-        agent: { agentId: 'proposal_generator', tier: 'specialist' },
-        learningOpportunities:
-          outcome.result === 'won'
-            ? [
-                'winning_strategy_reinforcement',
-                'competitive_advantage_analysis',
-              ]
-            : [
-                'strategy_refinement',
-                'competitive_gap_analysis',
-                'quality_improvement',
-              ],
+        confidenceScore: qualityEvaluation.confidenceLevel,
+        domain: 'proposal_generation',
+        category: 'rfp_response',
         timestamp: new Date(),
-        sessionId: this.learningContext?.sessionId || 'unknown',
       };
 
       await this.learningService.recordLearningOutcome(learningOutcome);
@@ -2382,9 +2430,16 @@ export class WorkflowCoordinator {
 
     try {
       // Get learned patterns for this document type
-      const strategies =
-        await this.intelligentProcessor.getProcessingStrategies(documentType);
-      return strategies[0] || null; // Return best strategy
+      // Note: getProcessingStrategies is not yet implemented on IntelligentDocumentProcessor
+      // Return a basic strategy for now based on document type
+      const strategy = {
+        documentType,
+        approach: 'standard',
+        confidence: 0.7,
+        recommendedTools: ['ocr', 'nlp'],
+        estimatedProcessingTime: 5000,
+      };
+      return strategy;
     } catch (error) {
       console.error('❌ Failed to get intelligent processing strategy:', error);
       return null;
@@ -2429,7 +2484,7 @@ export class WorkflowCoordinator {
       const consolidation =
         await this.memoryEngine.performMemoryConsolidation(type);
       console.log(
-        `🧠 Memory consolidation completed: ${consolidation.consolidatedMemories} memories processed`
+        `🧠 Memory consolidation completed: ${consolidation.memoriesProcessed} memories processed`
       );
     } catch (error) {
       console.error('❌ Failed to consolidate system memory:', error);
@@ -2441,32 +2496,36 @@ export class WorkflowCoordinator {
   private mapTaskTypeToLearningType(
     taskType: string
   ):
-    | 'portal_interaction'
-    | 'document_processing'
-    | 'proposal_generation'
-    | 'general' {
+    | 'portal_navigation'
+    | 'document_parsing'
+    | 'proposal_success'
+    | 'compliance_check'
+    | 'market_analysis' {
     if (
       taskType.includes('portal') ||
       taskType.includes('scan') ||
       taskType.includes('monitor')
     ) {
-      return 'portal_interaction';
+      return 'portal_navigation';
     }
     if (
       taskType.includes('document') ||
       taskType.includes('text') ||
       taskType.includes('parsing')
     ) {
-      return 'document_processing';
+      return 'document_parsing';
     }
     if (
       taskType.includes('proposal') ||
       taskType.includes('generation') ||
       taskType.includes('content')
     ) {
-      return 'proposal_generation';
+      return 'proposal_success';
     }
-    return 'general';
+    if (taskType.includes('compliance')) {
+      return 'compliance_check';
+    }
+    return 'market_analysis';
   }
 
   private calculateEfficiencyScore(
@@ -2755,7 +2814,6 @@ export class WorkflowCoordinator {
         type,
         title,
         message,
-        userId: userId || null,
         relatedEntityType: relatedEntityType || null,
         relatedEntityId: relatedEntityId || null,
       });
@@ -2855,10 +2913,11 @@ export class WorkflowCoordinator {
         await contentGenerationSpecialist.generateProposalOutline(workItem);
 
       // Notify orchestrator of completion
-      if (result.success && workItem.metadata?.pipelineId) {
+      const metadata = workItem.metadata as WorkItemMetadata;
+      if (result.success && metadata?.pipelineId) {
         setTimeout(() => {
           proposalGenerationOrchestrator.handlePhaseCompletion(
-            workItem.metadata.pipelineId,
+            metadata.pipelineId!,
             [workItem.id],
             'content_generation'
           );
@@ -2984,10 +3043,11 @@ export class WorkflowCoordinator {
       const result = await pricingAnalysisSpecialist.analyzePricing(workItem);
 
       // Notify orchestrator of completion
-      if (result.success && workItem.metadata?.pipelineId) {
+      const metadata = workItem.metadata as WorkItemMetadata;
+      if (result.success && metadata?.pipelineId) {
         setTimeout(() => {
           proposalGenerationOrchestrator.handlePhaseCompletion(
-            workItem.metadata.pipelineId,
+            metadata.pipelineId!,
             [workItem.id],
             'compliance_validation'
           );
@@ -3024,10 +3084,11 @@ export class WorkflowCoordinator {
         await complianceValidationSpecialist.validateCompliance(workItem);
 
       // Notify orchestrator of completion
-      if (result.success && workItem.metadata?.pipelineId) {
+      const metadata = workItem.metadata as WorkItemMetadata;
+      if (result.success && metadata?.pipelineId) {
         setTimeout(() => {
           proposalGenerationOrchestrator.handlePhaseCompletion(
-            workItem.metadata.pipelineId,
+            metadata.pipelineId!,
             [workItem.id],
             'form_completion'
           );
@@ -3063,6 +3124,7 @@ export class WorkflowCoordinator {
 
     try {
       // Use enhanced proposal service for form completion
+      const inputs = workItem.inputs as ProposalGenerationInputs;
       const {
         rfpId,
         companyProfileId,
@@ -3071,7 +3133,7 @@ export class WorkflowCoordinator {
         pricing,
         compliance,
         pipelineId,
-      } = workItem.inputs;
+      } = inputs;
 
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
@@ -3149,6 +3211,7 @@ export class WorkflowCoordinator {
     );
 
     try {
+      const inputs = workItem.inputs as ProposalGenerationInputs;
       const {
         rfpId,
         companyProfileId,
@@ -3158,7 +3221,7 @@ export class WorkflowCoordinator {
         compliance,
         forms,
         pipelineId,
-      } = workItem.inputs;
+      } = inputs;
 
       // Assemble complete proposal
       const completeProposal = {
@@ -3317,14 +3380,9 @@ export class WorkflowCoordinator {
           qualityAssessment.overallScore >= qualityThreshold
             ? 'review'
             : 'draft',
-        qualityScore: qualityAssessment.overallScore,
-        aiAnalysis: {
-          ...(proposal.aiAnalysis || {}),
-          qualityAssessment,
-          validationReport,
-          qualityCheckedAt: new Date().toISOString(),
-        },
-      } as Partial<Proposal>);
+        // Note: qualityScore and aiAnalysis fields don't exist on Proposal schema
+        // Quality data is tracked separately through the quality evaluation system
+      });
 
       // Update RFP progress
       await storage.updateRFP(rfpId, {

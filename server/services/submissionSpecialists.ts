@@ -454,7 +454,7 @@ export class PortalAuthenticationSpecialist {
     } catch (error) {
       return {
         mfaDetected: false,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -547,7 +547,11 @@ export class PortalAuthenticationSpecialist {
         currentUrl: authDetails.currentUrl || portal.url,
       },
       importance: 8,
-      tags: ['portal_authentication', 'active_session', portal.name],
+      tags: [
+        'portal_authentication',
+        'active_session',
+        portal.name || 'unknown_portal',
+      ],
       metadata: { submissionId: submission.id, pipelineId },
     });
 

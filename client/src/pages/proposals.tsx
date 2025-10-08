@@ -19,7 +19,9 @@ import {
 import type { RFP, ProposalRow } from '@shared/schema';
 
 type RFPWithDetails = { rfp: RFP; proposal?: ProposalRow };
-type ProposalUpdateData = Partial<Pick<ProposalRow, 'content' | 'pricing' | 'status'>>;
+type ProposalUpdateData = Partial<
+  Pick<ProposalRow, 'content' | 'pricingTables' | 'status'>
+>;
 
 export default function Proposals() {
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
@@ -30,10 +32,11 @@ export default function Proposals() {
     queryKey: ['/api/rfps', 'detailed'],
   });
 
-  const { data: selectedProposal, isLoading: proposalLoading } = useQuery<ProposalRow>({
-    queryKey: ['/api/proposals/rfp', selectedRfp],
-    enabled: !!selectedRfp,
-  });
+  const { data: selectedProposal, isLoading: proposalLoading } =
+    useQuery<ProposalRow>({
+      queryKey: ['/api/proposals/rfp', selectedRfp],
+      enabled: !!selectedRfp,
+    });
 
   const generateProposalMutation = useMutation({
     mutationFn: async (rfpId: string) => {

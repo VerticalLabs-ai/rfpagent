@@ -86,12 +86,15 @@ export default function ScanHistoryPage() {
       const searchParams = new URLSearchParams();
 
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== null) {
           searchParams.append(key, value.toString());
         }
       });
 
-      const response = await apiRequest('GET', `${url}?${searchParams.toString()}`);
+      const response = await apiRequest(
+        'GET',
+        `${url}?${searchParams.toString()}`
+      );
       return response.json();
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -377,38 +380,40 @@ export default function ScanHistoryPage() {
                     <h4 className="text-sm font-medium text-red-800 mb-2">
                       Error Details
                     </h4>
-                    {scan.errors.map((error: ScanHistoryItem['errors'][0], index: number) => (
-                      <div
-                        key={index}
-                        className="text-sm"
-                        data-testid={`error-${scan.id}-${index}`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge
-                            variant="outline"
-                            data-testid={`error-code-${scan.id}-${index}`}
-                          >
-                            {error.code}
-                          </Badge>
-                          <Badge
-                            variant={
-                              error.recoverable ? 'secondary' : 'destructive'
-                            }
-                            data-testid={`error-recovery-${scan.id}-${index}`}
-                          >
-                            {error.recoverable
-                              ? 'Recoverable'
-                              : 'Manual intervention required'}
-                          </Badge>
-                        </div>
-                        <p
-                          className="text-red-700"
-                          data-testid={`error-message-${scan.id}-${index}`}
+                    {scan.errors.map(
+                      (error: ScanHistoryItem['errors'][0], index: number) => (
+                        <div
+                          key={index}
+                          className="text-sm"
+                          data-testid={`error-${scan.id}-${index}`}
                         >
-                          {error.message}
-                        </p>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge
+                              variant="outline"
+                              data-testid={`error-code-${scan.id}-${index}`}
+                            >
+                              {error.code}
+                            </Badge>
+                            <Badge
+                              variant={
+                                error.recoverable ? 'secondary' : 'destructive'
+                              }
+                              data-testid={`error-recovery-${scan.id}-${index}`}
+                            >
+                              {error.recoverable
+                                ? 'Recoverable'
+                                : 'Manual intervention required'}
+                            </Badge>
+                          </div>
+                          <p
+                            className="text-red-700"
+                            data-testid={`error-message-${scan.id}-${index}`}
+                          >
+                            {error.message}
+                          </p>
+                        </div>
+                      )
+                    )}
                   </div>
                 )}
               </CardContent>

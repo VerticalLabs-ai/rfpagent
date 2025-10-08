@@ -204,7 +204,7 @@ const scrapePortalStep = createStep({
         portalId: portal.id,
         sessionId: `portal-${portal.id}-${Date.now()}`,
         forceFullScan: false,
-        maxRfpsToScan: portal.maxRfpsPerScan || 50,
+        maxRfpsToScan: 50, // Default max RFPs per scan
       });
 
       // Fetch newly discovered RFPs to return as opportunities
@@ -379,7 +379,7 @@ export const rfpDiscoveryWorkflow = createWorkflow({
           newRfps: z.number(),
           updatedRfps: z.number(),
           unchangedRfps: z.number(),
-        })),
+        })).optional(),
       }),
       execute: async ({ inputData }) => {
         // Execute scraping in parallel for each portal
