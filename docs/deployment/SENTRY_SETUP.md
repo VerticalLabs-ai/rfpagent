@@ -148,16 +148,31 @@ Then remove it from `fly.toml`:
 
 ### 1. Test Error Tracking
 
-Create a test endpoint to verify Sentry is capturing errors:
+Use the built-in test endpoint:
 
-```typescript
-// In your routes file
-app.get('/api/sentry-test', (req, res) => {
-  throw new Error('Test error for Sentry');
-});
+```bash
+# Development
+curl http://localhost:3000/api/sentry/test-error
+
+# Production (if ENABLE_SENTRY_TEST is set)
+curl https://bidhive.fly.dev/api/sentry/test-error
 ```
 
-Visit the endpoint and check your Sentry dashboard.
+This endpoint intentionally throws an error and you can verify it appears in your Sentry dashboard.
+
+To manually test error capture in your own code:
+
+```typescript
+import { captureException } from '@sentry/node';
+
+try {
+  // Your risky operation
+  await someOperation();
+} catch (e) {
+  captureException(e);
+  throw e; // Re-throw if needed
+}
+```
 
 ### 2. Test Transaction Tracking
 

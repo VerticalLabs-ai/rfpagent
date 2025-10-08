@@ -2,9 +2,7 @@ import { expressIntegration, init } from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 init({
-  dsn:
-    process.env.SENTRY_DSN ||
-    'https://315d8fa4019d9670c0496e5f71f562d9@o4510143884296192.ingest.us.sentry.io/4510155732615168',
+  dsn: process.env.SENTRY_DSN,
 
   // Set sample rate for production
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,

@@ -14,16 +14,15 @@ Sentry error tracking is now configured for your application. Here's how to use 
    pnpm dev
    ```
 
-2. **Test error capture:**
+2. **Test error capture (optional):**
 
    ```bash
-   # Open in browser or use curl
    curl http://localhost:3000/api/sentry/test-error
    ```
 
 3. **Check Sentry Dashboard:**
    - Go to: https://sentry.io/organizations/ibyte/projects/
-   - Look for the test error in the **Issues** tab
+   - Look for any test errors in the **Issues** tab
 
 ## 📦 Deploy to Production
 

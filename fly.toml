@@ -16,7 +16,6 @@ kill_timeout = '10s'
 [env]
   NODE_ENV = 'production'
   PORT = '3000'
-  SENTRY_DSN = 'https://315d8fa4019d9670c0496e5f71f562d9@o4510143884296192.ingest.us.sentry.io/4510155732615168'
 
 [http_service]
   processes = ["app"]
