@@ -1,14 +1,3 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,8 +8,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronDown, Check, X, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { ChevronDown, Loader2, X } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
 
 export interface BulkAction {
   id: string;
@@ -81,7 +81,7 @@ export function BulkOperations<T extends { id: string }>({
         executeAction(action);
       }
     },
-    [executeAction]
+    [executeAction, selectedItems]
   );
 
   const executeAction = useCallback(
@@ -285,9 +285,8 @@ export function SelectableItem({
 }: SelectableItemProps) {
   return (
     <div
-      className={`group relative transition-all ${
-        selected ? 'ring-2 ring-primary ring-offset-2' : ''
-      } ${className}`}
+      className={`group relative transition-all ${selected ? 'ring-2 ring-primary ring-offset-2' : ''
+        } ${className}`}
     >
       <div className="absolute top-2 left-2 z-10">
         <Checkbox

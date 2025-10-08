@@ -21,3 +21,6 @@ yarn.lock
 
 # Coverage reports
 coverage/.env.local
+
+# Attached assets
+attached_assets/

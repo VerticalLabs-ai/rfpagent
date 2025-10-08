@@ -7,6 +7,7 @@
 ## Automated Verification Suite
 
 ### Step 1: Type Checking
+
 ```bash
 pnpm check
 ```
@@ -18,6 +19,7 @@ pnpm check
 ---
 
 ### Step 2: Linting
+
 ```bash
 pnpm run lint
 ```
@@ -29,12 +31,14 @@ pnpm run lint
 ---
 
 ### Step 3: Build Verification
+
 ```bash
 pnpm build
 ```
 
 **Expected Outcome**: ✅ Build completes successfully
 **Success Criteria**:
+
 - Frontend bundle created in `dist/public/`
 - Backend bundle created in `dist/index.js`
 - No build errors
@@ -43,6 +47,7 @@ pnpm build
 **Baseline**: 815.9kb total bundle
 
 **Failure Action**:
+
 1. Check build output for errors
 2. Verify all imports are resolved
 3. Check for circular dependencies
@@ -50,17 +55,20 @@ pnpm build
 ---
 
 ### Step 4: Test Suite Execution
+
 ```bash
 pnpm test
 ```
 
 **Expected Outcome**: ✅ All tests pass
 **Success Criteria**:
+
 - All test suites pass
 - No new test failures
 - Coverage maintained or improved
 
 **Known Test Files**:
+
 - `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/tests/basic.test.ts`
 - `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/tests/storage.test.ts`
 - `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/tests/agentMonitoringService.test.ts`
@@ -68,6 +76,7 @@ pnpm test
 - `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/tests/integration/rfp-scraping.test.ts`
 
 **Failure Action**:
+
 1. Review test output for specific failures
 2. Identify which fix caused test failure
 3. Rollback specific fix or adjust test
@@ -75,6 +84,7 @@ pnpm test
 ---
 
 ### Step 5: Development Server Start
+
 ```bash
 # Terminal 1: Backend
 pnpm dev:backend
@@ -85,12 +95,14 @@ pnpm dev:frontend
 
 **Expected Outcome**: ✅ Both servers start without errors
 **Success Criteria**:
+
 - Backend starts on port 3000
 - Frontend Vite server starts (default: 5173)
 - No runtime errors in console
 - No import/module resolution errors
 
 **Failure Action**:
+
 1. Check server startup logs
 2. Verify environment variables
 3. Check database connection
@@ -100,15 +112,18 @@ pnpm dev:frontend
 ## Manual Verification - Critical Paths
 
 ### Critical Path 1: Database Connection
+
 **File**: `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/server/db.ts`
 **Risk Level**: 🔴 HIGH
 
 **Verification Steps**:
+
 1. Start backend server: `pnpm dev:backend`
 2. Check logs for database connection success
 3. Test basic query (via API or script)
 
 **Test Script**:
+
 ```bash
 # Create a simple test script
 cat > /tmp/test-db-connection.ts << 'EOF'
@@ -138,15 +153,18 @@ tsx /tmp/test-db-connection.ts
 ---
 
 ### Critical Path 2: Mastra Workflows
+
 **Files**: `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/src/mastra/workflows/*.ts`
 **Risk Level**: 🔴 HIGH
 
 **Verification Steps**:
+
 1. Import workflow modules without errors
 2. Verify workflow definitions load
 3. Test basic workflow execution (if safe)
 
 **Test Commands**:
+
 ```bash
 # Test workflow imports
 node -e "
@@ -161,10 +179,12 @@ console.log('✅ Workflow imports successful');
 ---
 
 ### Critical Path 3: API Endpoints
+
 **Files**: `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/server/routes/*.ts`
 **Risk Level**: 🟡 MEDIUM
 
 **Verification Steps**:
+
 1. Start backend server
 2. Test critical endpoints:
 
@@ -185,10 +205,12 @@ curl http://localhost:3000/api/portals
 ---
 
 ### Critical Path 4: Frontend Components
+
 **Files**: `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/client/src/components/*.tsx`
 **Risk Level**: 🟡 MEDIUM
 
 **Verification Steps**:
+
 1. Start frontend server: `pnpm dev:frontend`
 2. Open browser to frontend URL
 3. Check browser console for errors
@@ -208,6 +230,7 @@ curl http://localhost:3000/api/portals
 ### Git Checkpoint System
 
 **Before Fixes**:
+
 ```bash
 # Create checkpoint branch
 git checkout -b checkpoint-pre-linting-fixes
@@ -215,6 +238,7 @@ git push origin checkpoint-pre-linting-fixes
 ```
 
 **After Fixes** (if all tests pass):
+
 ```bash
 # Create checkpoint for post-fixes
 git checkout -b checkpoint-post-linting-fixes
@@ -236,6 +260,7 @@ git restore --source=checkpoint-pre-linting-fixes path/to/file.ts
 ### Full Rollback
 
 If widespread issues:
+
 ```bash
 git checkout checkpoint-pre-linting-fixes
 git checkout -b fix-linting-errors-v2
@@ -264,21 +289,25 @@ Run this checklist after all fixes are applied:
 ## High-Risk Fixes - Special Attention
 
 ### 1. server/db.ts - Database Pool Configuration
+
 **Fix Required**: Type mismatch in drizzle Pool initialization
 **Risk**: Database connection failure would break entire app
 **Test**: Connection test script (see Critical Path 1)
 
 ### 2. src/mastra/workflows/bonfire-auth-workflow.ts
+
 **Fix Required**: Missing WorkflowContext import
 **Risk**: Workflow execution failures
 **Test**: Import test, workflow definition validation
 
 ### 3. server/routes/middleware/rateLimiting.ts
+
 **Fix Required**: Missing rateLimit property on Request type
 **Risk**: Rate limiting middleware failure, potential DOS vulnerability
 **Test**: API endpoint test with rate limiting enabled
 
 ### 4. server/storage.ts - Workflow Insert
+
 **Fix Required**: Schema mismatch in workflow insert
 **Risk**: Storage operations fail, workflow state not persisted
 **Test**: Workflow storage operations
@@ -288,6 +317,7 @@ Run this checklist after all fixes are applied:
 ## Performance Regression Checks
 
 ### Bundle Size
+
 ```bash
 # Before fixes
 ls -lh dist/index.js
@@ -297,6 +327,7 @@ ls -lh dist/index.js
 ```
 
 ### Build Time
+
 ```bash
 # Before fixes: ~3.5s total
 time pnpm build
@@ -304,6 +335,7 @@ time pnpm build
 ```
 
 ### Test Execution Time
+
 ```bash
 time pnpm test
 # Monitor for significant slowdowns (>50% increase)
@@ -314,6 +346,7 @@ time pnpm test
 ## Success Metrics
 
 ### Minimum Acceptable (Go/No-Go)
+
 1. ✅ Zero TypeScript errors (`pnpm check`)
 2. ✅ Build succeeds (`pnpm build`)
 3. ✅ No new test failures
@@ -321,6 +354,7 @@ time pnpm test
 5. ✅ Database connection works
 
 ### Target Goals
+
 1. ✅ <10 ESLint warnings
 2. ✅ All existing tests pass
 3. ✅ No console errors in development
@@ -328,6 +362,7 @@ time pnpm test
 5. ✅ Build time within 20% of baseline
 
 ### Stretch Goals
+
 1. ✅ Zero ESLint warnings
 2. ✅ Improved type coverage
 3. ✅ Test coverage maintained/improved
