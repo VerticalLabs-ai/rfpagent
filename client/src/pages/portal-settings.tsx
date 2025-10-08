@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,7 +42,7 @@ export default function PortalSettings() {
     reconnect,
   } = useScanStream(activeScanPortalId || undefined);
 
-  const { data: portals, isLoading } = useQuery({
+  const { data: portals = [], isLoading } = useQuery<Portal[]>({
     queryKey: ['/api/portals'],
   });
 
@@ -52,12 +51,12 @@ export default function PortalSettings() {
   });
 
   // New monitoring queries
-  const { data: monitoringStatus } = useQuery({
+  const { data: monitoringStatus = [] } = useQuery<any[]>({
     queryKey: ['/api/portals/monitoring/status'],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  const { data: recentDiscoveries } = useQuery({
+  const { data: recentDiscoveries = [] } = useQuery<any[]>({
     queryKey: ['/api/portals/discoveries/recent'],
     refetchInterval: 60000, // Refresh every minute
   });
@@ -196,8 +195,8 @@ export default function PortalSettings() {
 
   // Get RFP counts per portal from portal data
   const getRFPCount = (portalId: string) => {
-    const portal = portals?.find((p: any) => p.id === portalId);
-    return portal?.rfpCount ?? 0;
+    const portal = portals.find((p: Portal) => p.id === portalId);
+    return (portal as any)?.rfpCount ?? 0;
   };
 
   if (isLoading) {
@@ -259,7 +258,7 @@ export default function PortalSettings() {
         <TabsList>
           <TabsTrigger value="portals" data-testid="portals-tab">
             <i className="fas fa-globe mr-2"></i>
-            Portals ({portals?.length || 0})
+            Portals ({portals.length})
           </TabsTrigger>
           <TabsTrigger value="monitoring" data-testid="monitoring-tab">
             <i className="fas fa-chart-line mr-2"></i>
@@ -276,7 +275,7 @@ export default function PortalSettings() {
         </TabsList>
 
         <TabsContent value="portals" className="space-y-6">
-          {portals?.length === 0 ? (
+          {portals.length === 0 ? (
             <Card>
               <CardContent className="p-12 text-center">
                 <i className="fas fa-globe text-4xl text-muted-foreground mb-4"></i>
@@ -301,7 +300,7 @@ export default function PortalSettings() {
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {portals?.map((portal: Portal) => (
+              {portals.map((portal: Portal) => (
                 <PortalCard
                   key={portal.id}
                   portal={portal}
@@ -324,16 +323,16 @@ export default function PortalSettings() {
 
         <TabsContent value="monitoring" className="space-y-6">
           <MonitoringDashboard
-            monitoringStatus={monitoringStatus || []}
-            isLoading={!monitoringStatus}
+            monitoringStatus={monitoringStatus}
+            isLoading={monitoringStatus.length === 0}
             onTriggerScan={handleTriggerScan}
           />
         </TabsContent>
 
         <TabsContent value="discoveries" className="space-y-6">
           <RecentDiscoveries
-            discoveries={recentDiscoveries || []}
-            isLoading={!recentDiscoveries}
+            discoveries={recentDiscoveries}
+            isLoading={recentDiscoveries.length === 0}
           />
         </TabsContent>
 

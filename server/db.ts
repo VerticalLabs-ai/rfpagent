@@ -81,7 +81,7 @@ let db: ReturnType<typeof drizzleNeon> | ReturnType<typeof drizzleNode>;
 if (isLocal) {
   // Use node-postgres for local PostgreSQL/Supabase
   pool = new PgPool({ connectionString: process.env.DATABASE_URL });
-  db = drizzleNode(pool, { schema });
+  db = drizzleNode(pool as any, { schema });
 } else {
   // Use Neon serverless for production
   neonConfig.webSocketConstructor = ws;

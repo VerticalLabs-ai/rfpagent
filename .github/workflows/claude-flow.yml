@@ -17,10 +17,12 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "18"
+                  node-version: "22"
 
-            - name: Install Claude Flow
-              run: npm install -g claude-flow@alpha
+            - name: Install Claude Flow and Dependencies
+              run: |
+                  npm install -g claude-flow@alpha
+                  npm install -g better-sqlite3
 
             - name: Run Analysis
               env:

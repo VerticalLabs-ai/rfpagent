@@ -24,7 +24,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export interface FilterOption {
   id: string;

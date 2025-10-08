@@ -132,11 +132,11 @@ export class CircuitBreaker {
     this.nextAttempt = Date.now() + this.options.timeout;
     this.successes = 0;
 
-    logger.error(`Circuit breaker opened`, {
-      service: this.name,
-      failures: this.failures,
-      timeout: this.options.timeout,
-    });
+    const error = new Error(`Circuit breaker opened`);
+    (error as any).service = this.name;
+    (error as any).failures = this.failures;
+    (error as any).timeout = this.options.timeout;
+    logger.error(error.message, error);
   }
 
   /**

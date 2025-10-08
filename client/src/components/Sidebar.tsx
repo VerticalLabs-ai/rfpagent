@@ -77,7 +77,7 @@ export default function Sidebar() {
       {/* Quick Stats */}
       <div className="p-4 mt-8">
         <h3 className="text-sm font-semibold text-foreground mb-3">
-          Today's Activity
+          Today&apos;s Activity
         </h3>
         <div className="space-y-3">
           <div className="flex justify-between items-center">

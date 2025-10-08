@@ -88,10 +88,12 @@ export const rateLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   handler: (req: Request, res: Response) => {
-    const retryAfterSeconds = req.rateLimit?.resetTime
+    const retryAfterSeconds = (req as any).rateLimit?.resetTime
       ? Math.max(
           0,
-          Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000)
+          Math.ceil(
+            ((req as any).rateLimit.resetTime.getTime() - Date.now()) / 1000
+          )
         )
       : 900;
     res.status(429).json({

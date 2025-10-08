@@ -39,7 +39,7 @@ interface SAFLAStatus {
   };
 }
 
-interface SAFLADashboard {
+interface SAFLADashboardData {
   timeframe: string;
   systemHealth: number;
   learningMetrics: {
@@ -88,7 +88,7 @@ function validateSAFLAStatus(data: any): data is SAFLAStatus {
   );
 }
 
-function validateSAFLADashboard(data: any): data is SAFLADashboard {
+function validateSAFLADashboard(data: any): data is SAFLADashboardData {
   return (
     data &&
     typeof data === 'object' &&
@@ -454,7 +454,7 @@ export default function SAFLADashboard() {
                     <div className="space-y-3">
                       {safeDashboard.alerts.map(
                         (
-                          alert: SAFLADashboard['alerts'][number],
+                          alert: SAFLADashboardData['alerts'][number],
                           index: number
                         ) => (
                           <div
@@ -512,7 +512,7 @@ export default function SAFLADashboard() {
                 safeDashboard.improvementOpportunities.length > 0 ? (
                   safeDashboard.improvementOpportunities.map(
                     (
-                      opportunity: SAFLADashboard['improvementOpportunities'][number],
+                      opportunity: SAFLADashboardData['improvementOpportunities'][number],
                       index: number
                     ) => (
                       <div

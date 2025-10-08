@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import MetricsCards from '@/components/MetricsCards';
-import PortalStatusGrid from '@/components/PortalStatusGrid';
 import ActiveRFPsTable from '@/components/ActiveRFPsTable';
 import ActivityFeed from '@/components/ActivityFeed';
+import MetricsCards from '@/components/MetricsCards';
+import PortalStatusGrid from '@/components/PortalStatusGrid';
 import { LiveIndicator } from '@/components/providers/RealtimeProvider';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Activity, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
 import { usePerformanceMonitoring } from '@/hooks/usePerformance';
+import { Activity, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');

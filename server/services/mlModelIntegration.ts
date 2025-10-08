@@ -136,8 +136,10 @@ class LRUCache<K, V> {
 
     // Evict oldest entry if at capacity
     if (this.cache.size >= this.maxSize) {
-      const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+      const oldestKey = this.cache.keys().next().value as K;
+      if (oldestKey !== undefined) {
+        this.cache.delete(oldestKey);
+      }
     }
 
     // Add new entry (most recently used)
@@ -352,7 +354,7 @@ export class MLModelIntegration {
 
       // Get all other RFPs
       const allRfps = await storage.getAllRFPs();
-      const otherRfps = allRfps.filter(r => r.id !== rfpId);
+      const otherRfps = allRfps.rfps.filter((r: any) => r.id !== rfpId);
 
       // Perform semantic search
       const documents = otherRfps.map(r => ({

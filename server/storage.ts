@@ -1689,12 +1689,12 @@ export class DatabaseStorage implements IStorage {
       .insert(agentCoordinationLog)
       .values({
         sessionId: log.sessionId,
-        workflowId: log.workflowId,
         initiatorAgentId: log.initiatorAgentId,
         targetAgentId: log.targetAgentId,
         coordinationType: log.coordinationType,
+        context: { workflowId: log.workflowId },
+        request: log.payload,
         priority: log.priority,
-        payload: log.payload,
         status: log.status,
         startedAt: new Date(),
       })

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { storage } from '../storage';
 import { agentRegistryService } from './agentRegistryService';
 import { aiProposalService } from './ai-proposal-service';
@@ -3279,8 +3278,8 @@ export class WorkflowCoordinator {
     );
 
     try {
-      const { rfpId, proposalId, qualityThreshold, pipelineId } =
-        workItem.inputs;
+      const inputs = workItem.inputs as Record<string, any>;
+      const { rfpId, proposalId, qualityThreshold, pipelineId } = inputs;
 
       // Get proposal for quality assessment
       const proposal = await storage.getProposal(proposalId);
@@ -3318,14 +3317,14 @@ export class WorkflowCoordinator {
           qualityAssessment.overallScore >= qualityThreshold
             ? 'review'
             : 'draft',
-        metadata: {
-          ...proposal.metadata,
-          qualityScore: qualityAssessment.overallScore,
+        qualityScore: qualityAssessment.overallScore,
+        aiAnalysis: {
+          ...(proposal.aiAnalysis || {}),
           qualityAssessment,
           validationReport,
-          qualityCheckedAt: new Date(),
+          qualityCheckedAt: new Date().toISOString(),
         },
-      });
+      } as Partial<Proposal>);
 
       // Update RFP progress
       await storage.updateRFP(rfpId, {

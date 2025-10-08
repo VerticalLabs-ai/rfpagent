@@ -136,8 +136,9 @@ export class RFPScrapingService {
       }
 
       // Check if RFP already exists
-      const existingRFP = await db.query.rfps.findFirst({
-        where: (rfpsTable, { eq }) => eq(rfpsTable.sourceUrl, url),
+      const queryResult = db.query as any;
+      const existingRFP = await queryResult.rfps.findFirst({
+        where: (rfpsTable: any, { eq }: any) => eq(rfpsTable.sourceUrl, url),
       });
 
       let rfpId: string;
@@ -316,8 +317,9 @@ export class RFPScrapingService {
       }
 
       // Get the final RFP data
-      const finalRfp = await db.query.rfps.findFirst({
-        where: (rfpsTable, { eq }) => eq(rfpsTable.id, rfpId),
+      const queryResult2 = db.query as any;
+      const finalRfp = await queryResult2.rfps.findFirst({
+        where: (rfpsTable: any, { eq }: any) => eq(rfpsTable.id, rfpId),
       });
 
       console.log(`✅ RFP scraping completed for: ${extractedData.title}`);
@@ -528,7 +530,7 @@ export class RFPScrapingService {
       const fileStream = createWriteStream(filepath);
 
       try {
-        // @ts-ignore - Node.js ReadableStream is compatible with pipeline
+        // @ts-expect-error - Node.js ReadableStream type compatibility with pipeline
         await pipeline(response.body, fileStream);
         console.log(`✅ Downloaded successfully: ${path.basename(filepath)}`);
       } catch (pipelineError) {

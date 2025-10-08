@@ -59,7 +59,7 @@ export const pageExtractTool = createTool({
       });
 
       // Determine the extraction schema based on input type
-      let extractionSchema: z.ZodObject<any>;
+      let extractionSchema: any;
       if (!schema) {
         // No schema provided, use default
         extractionSchema = defaultSchema;
