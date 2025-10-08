@@ -1,11 +1,16 @@
 import { BaseRepository } from './BaseRepository';
 import { users, type User, type InsertUser } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { db } from '../db';
 
 /**
  * User repository for user-specific database operations
  */
-export class UserRepository extends BaseRepository<typeof users, User, InsertUser> {
+export class UserRepository extends BaseRepository<
+  typeof users,
+  User,
+  InsertUser
+> {
   constructor() {
     super(users);
   }
@@ -14,30 +19,40 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    * Find user by username
    */
   async findByUsername(username: string): Promise<User | undefined> {
-    return await this.findOneBy('username', username);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1);
+    return user ?? undefined;
   }
 
   /**
    * Find user by email
    */
   async findByEmail(email: string): Promise<User | undefined> {
-    return await this.findOneBy('email', email);
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    return user ?? undefined;
   }
 
   /**
    * Check if username is available
    */
   async isUsernameAvailable(username: string): Promise<boolean> {
-    const user = await this.findByUsername(username);
-    return !user;
+    const existing = await this.findByUsername(username);
+    return !existing;
   }
 
   /**
    * Check if email is available
    */
   async isEmailAvailable(email: string): Promise<boolean> {
-    const user = await this.findByEmail(email);
-    return !user;
+    const existing = await this.findByEmail(email);
+    return !existing;
   }
 
   /**
@@ -45,7 +60,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    */
   async updateLastLogin(id: string): Promise<void> {
     await this.update(id, {
-      lastLoginAt: new Date()
+      lastLoginAt: new Date(),
     });
   }
 
@@ -55,7 +70,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
   async activateUser(id: string): Promise<User | undefined> {
     return await this.update(id, {
       isActive: true,
-      activatedAt: new Date()
+      activatedAt: new Date(),
     });
   }
 
@@ -64,7 +79,7 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    */
   async deactivateUser(id: string): Promise<User | undefined> {
     return await this.update(id, {
-      isActive: false
+      isActive: false,
     });
   }
 
@@ -72,26 +87,24 @@ export class UserRepository extends BaseRepository<typeof users, User, InsertUse
    * Get active users
    */
   async getActiveUsers(): Promise<User[]> {
-    return await this.findBy('isActive', true);
+    return await db.select().from(users).where(eq(users.isActive, true));
   }
 
   /**
    * Search users by name or username
    */
   async searchUsers(query: string): Promise<User[]> {
-    return await this.executeRaw(
-      `
+    const pattern = `%${query}%`;
+    return await this.executeRaw<User>(sql`
       SELECT * FROM users
       WHERE (
-        username ILIKE $1
-        OR email ILIKE $1
-        OR (first_name || ' ' || last_name) ILIKE $1
+        username ILIKE ${pattern}
+        OR email ILIKE ${pattern}
+        OR (first_name || ' ' || last_name) ILIKE ${pattern}
       )
       AND is_active = true
       ORDER BY username
       LIMIT 50
-      `,
-      [`%${query}%`]
-    );
+    `);
   }
 }

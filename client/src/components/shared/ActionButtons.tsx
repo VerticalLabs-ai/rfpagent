@@ -1,11 +1,17 @@
-import { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
+import { ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface ActionButton {
   label: string;
   icon?: string;
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-  size?: "default" | "sm" | "lg" | "icon";
+  variant?:
+    | 'default'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
   onClick?: () => void;
   disabled?: boolean;
   loading?: boolean;
@@ -15,48 +21,50 @@ interface ActionButton {
 
 interface ActionButtonsProps {
   buttons: ActionButton[];
-  alignment?: "left" | "right" | "center" | "between";
-  spacing?: "tight" | "normal" | "loose";
+  alignment?: 'left' | 'right' | 'center' | 'between';
+  spacing?: 'tight' | 'normal' | 'loose';
   className?: string;
 }
 
 export function ActionButtons({
   buttons,
-  alignment = "right",
-  spacing = "normal",
-  className = ""
+  alignment = 'right',
+  spacing = 'normal',
+  className = '',
 }: ActionButtonsProps) {
   const getAlignmentClass = () => {
     switch (alignment) {
-      case "left":
-        return "justify-start";
-      case "center":
-        return "justify-center";
-      case "between":
-        return "justify-between";
+      case 'left':
+        return 'justify-start';
+      case 'center':
+        return 'justify-center';
+      case 'between':
+        return 'justify-between';
       default:
-        return "justify-end";
+        return 'justify-end';
     }
   };
 
   const getSpacingClass = () => {
     switch (spacing) {
-      case "tight":
-        return "space-x-1";
-      case "loose":
-        return "space-x-4";
+      case 'tight':
+        return 'space-x-1';
+      case 'loose':
+        return 'space-x-4';
       default:
-        return "space-x-2";
+        return 'space-x-2';
     }
   };
 
   return (
-    <div className={`flex ${getAlignmentClass()} ${getSpacingClass()} ${className}`}>
+    <div
+      className={`flex ${getAlignmentClass()} ${getSpacingClass()} ${className}`}
+    >
       {buttons.map((button, index) => (
         <Button
           key={index}
-          variant={button.variant || "default"}
-          size={button.size || "default"}
+          variant={button.variant || 'default'}
+          size={button.size || 'default'}
           onClick={button.onClick}
           disabled={button.disabled || button.loading}
           data-testid={button.testId}

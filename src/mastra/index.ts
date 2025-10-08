@@ -3,31 +3,31 @@ import { Mastra } from '@mastra/core/mastra';
 // Orchestrator Agent
 import { primaryOrchestrator } from './agents/primary-orchestrator';
 
-// Manager Agents (3)
+// Manager Agents
 import { portalManager } from './agents/portal-manager';
 import { proposalManager } from './agents/proposal-manager';
 import { researchManager } from './agents/research-manager';
 
-// Specialist Agents (7)
-import { portalScanner } from './agents/portal-scanner';
-import { portalMonitor } from './agents/portal-monitor';
-import { contentGenerator } from './agents/content-generator';
+// Specialist Agents
 import { complianceChecker } from './agents/compliance-checker';
+import { contentGenerator } from './agents/content-generator';
 import { documentProcessor } from './agents/document-processor';
-import { marketAnalyst } from './agents/market-analyst';
 import { historicalAnalyzer } from './agents/historical-analyzer';
+import { marketAnalyst } from './agents/market-analyst';
+import { portalMonitor } from './agents/portal-monitor';
+import { portalScanner } from './agents/portal-scanner';
 
 // Legacy mappings for backward compatibility
-import { rfpDiscoveryAgent } from './agents/rfp-discovery-agent';
 import { rfpAnalysisAgent } from './agents/rfp-analysis-agent';
+import { rfpDiscoveryAgent } from './agents/rfp-discovery-agent';
 import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
 
 // Workflows
-import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
-import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
-import { proposalGenerationWorkflow } from './workflows/proposal-generation-workflow';
 import { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
+import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 import { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
+import { proposalGenerationWorkflow } from './workflows/proposal-generation-workflow';
+import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
 
 // Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
@@ -35,12 +35,12 @@ export const mastra = new Mastra({
   agents: {
     // Tier 1: Orchestrator (1 agent)
     primaryOrchestrator,
-    
+
     // Tier 2: Managers (3 agents)
     portalManager,
     proposalManager,
     researchManager,
-    
+
     // Tier 3: Specialists (7 agents)
     portalScanner,
     portalMonitor,
@@ -49,7 +49,7 @@ export const mastra = new Mastra({
     documentProcessor,
     marketAnalyst,
     historicalAnalyzer,
-    
+
     // Legacy agents for backward compatibility
     rfpDiscoveryAgent,
     rfpAnalysisAgent,

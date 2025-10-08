@@ -1,27 +1,32 @@
-import React from "react";
-import { Switch, Route, useLocation } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Dashboard from "@/pages/dashboard";
-import RFPDiscovery from "@/pages/rfp-discovery";
-import RFPDetails from "@/pages/rfp-details";
-import RFPs from "@/pages/rfps";
-import ScanHistory from "@/pages/scan-history";
-import Proposals from "@/pages/proposals";
-import Compliance from "@/pages/compliance";
-import Submissions from "@/pages/submissions";
-import PortalSettings from "@/pages/portal-settings";
-import Analytics from "@/pages/analytics";
-import CompanyProfiles from "@/pages/company-profiles";
-import AIChat from "@/pages/ai-chat";
-import WorkflowManagement from "@/pages/workflow-management";
-import AgentMonitoring from "@/pages/agent-monitoring";
-import SystemSettings from "@/pages/system-settings";
-import NotFound from "@/pages/not-found";
-import Sidebar from "@/components/Sidebar";
-import Header from "@/components/Header";
+import React, { Suspense, lazy } from 'react';
+import { Switch, Route, useLocation } from 'wouter';
+import { queryClient } from './lib/queryClient';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
+import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { DashboardSkeleton } from '@/components/shared/SkeletonLoaders';
+import Sidebar from '@/components/Sidebar';
+import Header from '@/components/Header';
+
+// Lazy load pages for code splitting
+const Dashboard = lazy(() => import('@/pages/dashboard'));
+const RFPDetails = lazy(() => import('@/pages/rfp-details'));
+const RFPs = lazy(() => import('@/pages/rfps'));
+const ScanHistory = lazy(() => import('@/pages/scan-history'));
+const Proposals = lazy(() => import('@/pages/proposals'));
+const Compliance = lazy(() => import('@/pages/compliance'));
+const Submissions = lazy(() => import('@/pages/submissions'));
+const PortalSettings = lazy(() => import('@/pages/portal-settings'));
+const Analytics = lazy(() => import('@/pages/analytics'));
+const CompanyProfiles = lazy(() => import('@/pages/company-profiles'));
+const AIChat = lazy(() => import('@/pages/ai-chat'));
+const WorkflowManagement = lazy(() => import('@/pages/workflow-management'));
+const AgentMonitoring = lazy(() => import('@/pages/agent-monitoring'));
+const SAFLADashboard = lazy(() => import('@/pages/safla-dashboard'));
+const SystemSettings = lazy(() => import('@/pages/system-settings'));
+const NotFound = lazy(() => import('@/pages/not-found'));
 
 // Simple redirect component
 function Redirect({ to }: { to: string }) {
@@ -36,33 +41,44 @@ function Redirect({ to }: { to: string }) {
 
 function Router() {
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-auto">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/discovery" component={() => <Redirect to="/" />} />
-            <Route path="/rfps" component={() => <Redirect to="/" />} />
-            <Route path="/rfps/:id" component={RFPDetails} />
-            <Route path="/scan-history" component={ScanHistory} />
-            <Route path="/portals" component={PortalSettings} />
-            <Route path="/proposals" component={Proposals} />
-            <Route path="/compliance" component={Compliance} />
-            <Route path="/submissions" component={Submissions} />
-            <Route path="/company-profiles" component={CompanyProfiles} />
-            <Route path="/portal-settings" component={PortalSettings} />
-            <Route path="/analytics" component={Analytics} />
-            <Route path="/ai-chat" component={AIChat} />
-            <Route path="/workflow-management" component={WorkflowManagement} />
-            <Route path="/agent-monitoring" component={AgentMonitoring} />
-            <Route path="/system-settings" component={SystemSettings} />
-            <Route component={NotFound} />
-          </Switch>
-        </main>
+    <ErrorBoundary>
+      <div className="flex h-screen">
+        <Sidebar />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <main className="flex-1 overflow-auto">
+            <Suspense fallback={<DashboardSkeleton />}>
+              <Switch>
+                <Route path="/" component={Dashboard} />
+                <Route
+                  path="/discovery"
+                  component={() => <Redirect to="/" />}
+                />
+                <Route path="/rfps" component={() => <Redirect to="/" />} />
+                <Route path="/rfps/:id" component={RFPDetails} />
+                <Route path="/scan-history" component={ScanHistory} />
+                <Route path="/portals" component={PortalSettings} />
+                <Route path="/proposals" component={Proposals} />
+                <Route path="/compliance" component={Compliance} />
+                <Route path="/submissions" component={Submissions} />
+                <Route path="/company-profiles" component={CompanyProfiles} />
+                <Route path="/portal-settings" component={PortalSettings} />
+                <Route path="/analytics" component={Analytics} />
+                <Route path="/ai-chat" component={AIChat} />
+                <Route
+                  path="/workflow-management"
+                  component={WorkflowManagement}
+                />
+                <Route path="/agent-monitoring" component={AgentMonitoring} />
+                <Route path="/safla-dashboard" component={SAFLADashboard} />
+                <Route path="/system-settings" component={SystemSettings} />
+                <Route component={NotFound} />
+              </Switch>
+            </Suspense>
+          </main>
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 
@@ -70,8 +86,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <RealtimeProvider showConnectionStatus={true}>
+          <Toaster />
+          <Router />
+        </RealtimeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

@@ -7,7 +7,13 @@ export { ServiceRegistry } from './core/ServiceRegistry';
 export { PortalDetectionService } from './portal/PortalDetectionService';
 
 // Authentication services
-export * from './authentication';
+export {
+  AuthenticationManager,
+  BaseAuthenticationStrategy,
+  BonfireHubAuthStrategy,
+  GenericFormAuthStrategy,
+  StagehandAuthStrategy,
+} from './authentication';
 
 // Agent management services
 export * from './agents';

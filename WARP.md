@@ -20,22 +20,22 @@ RFP Agent is an AI-powered automation platform that streamlines the Request for 
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
 # Development server (starts both client and server)
-npm run dev
+pnpmdev
 
 # Type checking
-npm run check
+pnpmcheck
 
 # Production build
-npm run build
+pnpmbuild
 
 # Production server
-npm start
+pnpm start
 
 # Database operations
-npm run db:push              # Push schema changes to database
+pnpmdb:push              # Push schema changes to database
 ```
 
 ### Environment Setup
@@ -247,7 +247,7 @@ The AI services require valid OpenAI API keys. Test AI functionality using the c
 - **Agent Coordination**: Agents communicate through the work item queue system
 - **Portal Authentication**: Store portal credentials securely in the portals table
 - **File Storage**: Configure Google Cloud Storage with proper ACL policies
-- **Database Migrations**: Use Drizzle Kit for schema changes (`npm run db:push`)
+- **Database Migrations**: Use Drizzle Kit for schema changes (`pnpmdb:push`)
 
 ## Performance Considerations
 

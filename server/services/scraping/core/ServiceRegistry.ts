@@ -14,15 +14,15 @@ import { sharedMemory } from '../../../../src/mastra/tools';
 export class ServiceRegistry {
   private static instance: ServiceRegistry;
 
-  private browserSessionManager: BrowserSessionManager;
-  private configurationService: ScrapingConfigurationService;
-  private portalDetectionService: PortalDetectionService;
-  private authenticationManager: AuthenticationManager;
-  private agentFactory: AgentFactory;
-  private agentRegistry: AgentRegistry;
-  private agentOrchestrator: AgentOrchestrator;
-  private portalAgentManager: PortalAgentManager;
-  private toolFactory: typeof ToolFactory;
+  private browserSessionManager!: BrowserSessionManager;
+  private configurationService!: ScrapingConfigurationService;
+  private portalDetectionService!: PortalDetectionService;
+  private authenticationManager!: AuthenticationManager;
+  private agentFactory!: AgentFactory;
+  private agentRegistry!: AgentRegistry;
+  private agentOrchestrator!: AgentOrchestrator;
+  private portalAgentManager!: PortalAgentManager;
+  private toolFactory!: typeof ToolFactory;
 
   private constructor() {
     this.initializeServices();
@@ -140,7 +140,7 @@ export class ServiceRegistry {
       agentRegistry: this.agentRegistry,
       agentOrchestrator: this.agentOrchestrator,
       portalAgentManager: this.portalAgentManager,
-      toolFactory: this.toolFactory
+      toolFactory: this.toolFactory,
     };
   }
 
@@ -151,57 +151,60 @@ export class ServiceRegistry {
     status: 'healthy' | 'degraded' | 'unhealthy';
     services: Record<string, { status: string; details?: string }>;
   }> {
-    const serviceChecks = {
-      browserSessionManager: { status: 'healthy' },
-      configurationService: { status: 'healthy' },
-      portalDetectionService: { status: 'healthy' },
-      authenticationManager: { status: 'healthy' },
-      agentFactory: { status: 'healthy' },
-      agentRegistry: { status: 'healthy' },
-      agentOrchestrator: { status: 'healthy' },
-      portalAgentManager: { status: 'healthy' },
-      toolFactory: { status: 'healthy' }
-    };
+    const serviceChecks: Record<string, { status: string; details?: string }> =
+      {
+        browserSessionManager: { status: 'healthy' },
+        configurationService: { status: 'healthy' },
+        portalDetectionService: { status: 'healthy' },
+        authenticationManager: { status: 'healthy' },
+        agentFactory: { status: 'healthy' },
+        agentRegistry: { status: 'healthy' },
+        agentOrchestrator: { status: 'healthy' },
+        portalAgentManager: { status: 'healthy' },
+        toolFactory: { status: 'healthy' },
+      };
 
     // Check browser session manager
     try {
       const stats = this.browserSessionManager.getSessionStats();
       serviceChecks.browserSessionManager = {
         status: 'healthy',
-        details: `${stats.total} active sessions`
+        details: `${stats.total} active sessions`,
       };
     } catch (error) {
       serviceChecks.browserSessionManager = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
     // Check portal detection service
     try {
-      const portalTypes = this.portalDetectionService.getRegisteredPortalTypes();
+      const portalTypes =
+        this.portalDetectionService.getRegisteredPortalTypes();
       serviceChecks.portalDetectionService = {
         status: 'healthy',
-        details: `${portalTypes.length} portal types registered`
+        details: `${portalTypes.length} portal types registered`,
       };
     } catch (error) {
       serviceChecks.portalDetectionService = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
     // Check configuration service
     try {
-      const supportedPortals = this.configurationService.getSupportedPortalTypes();
+      const supportedPortals =
+        this.configurationService.getSupportedPortalTypes();
       serviceChecks.configurationService = {
         status: 'healthy',
-        details: `${supportedPortals.length} portal configurations loaded`
+        details: `${supportedPortals.length} portal configurations loaded`,
       };
     } catch (error) {
       serviceChecks.configurationService = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
@@ -210,12 +213,12 @@ export class ServiceRegistry {
       const authStats = this.authenticationManager.getAuthStats();
       serviceChecks.authenticationManager = {
         status: 'healthy',
-        details: `${authStats.totalStrategies} authentication strategies available`
+        details: `${authStats.totalStrategies} authentication strategies available`,
       };
     } catch (error) {
       serviceChecks.authenticationManager = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
@@ -225,12 +228,12 @@ export class ServiceRegistry {
       const agentHealth = await this.agentRegistry.healthCheck();
       serviceChecks.agentRegistry = {
         status: agentHealth.status,
-        details: `${agentCount} agents registered, ${agentHealth.details.activeAgents} active`
+        details: `${agentCount} agents registered, ${agentHealth.details.activeAgents} active`,
       };
     } catch (error) {
       serviceChecks.agentRegistry = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
@@ -239,12 +242,12 @@ export class ServiceRegistry {
       const orchestratorHealth = await this.agentOrchestrator.healthCheck();
       serviceChecks.agentOrchestrator = {
         status: orchestratorHealth.status,
-        details: 'Agent orchestrator operational'
+        details: 'Agent orchestrator operational',
       };
     } catch (error) {
       serviceChecks.agentOrchestrator = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
@@ -253,30 +256,38 @@ export class ServiceRegistry {
       const supportedPortals = this.agentFactory.getSupportedPortalTypes();
       serviceChecks.agentFactory = {
         status: 'healthy',
-        details: `${supportedPortals.length} portal types supported`
+        details: `${supportedPortals.length} portal types supported`,
       };
     } catch (error) {
       serviceChecks.agentFactory = {
         status: 'unhealthy',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       };
     }
 
     // Portal agent manager is always healthy if it exists
     serviceChecks.portalAgentManager = {
       status: 'healthy',
-      details: 'Portal agent manager operational'
+      details: 'Portal agent manager operational',
     };
 
     // Determine overall status
-    const hasUnhealthy = Object.values(serviceChecks).some(check => check.status === 'unhealthy');
-    const hasDegraded = Object.values(serviceChecks).some(check => check.status === 'degraded');
+    const hasUnhealthy = Object.values(serviceChecks).some(
+      check => check.status === 'unhealthy'
+    );
+    const hasDegraded = Object.values(serviceChecks).some(
+      check => check.status === 'degraded'
+    );
 
-    const overallStatus = hasUnhealthy ? 'unhealthy' : hasDegraded ? 'degraded' : 'healthy';
+    const overallStatus = hasUnhealthy
+      ? 'unhealthy'
+      : hasDegraded
+        ? 'degraded'
+        : 'healthy';
 
     return {
       status: overallStatus,
-      services: serviceChecks
+      services: serviceChecks,
     };
   }
 

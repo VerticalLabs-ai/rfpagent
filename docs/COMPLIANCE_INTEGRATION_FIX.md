@@ -58,9 +58,9 @@ The compliance workflow was not automatically triggered when RFPs were discovere
 **Script Usage**:
 
 ```bash
-npm run batch-compliance 20          # Process up to 20 RFPs
-npm run batch-compliance 50 dry-run  # Show what would be processed
-npm run batch-compliance all         # Process all unprocessed RFPs
+pnpmbatch-compliance 20          # Process up to 20 RFPs
+pnpmbatch-compliance 50 dry-run  # Show what would be processed
+pnpmbatch-compliance all         # Process all unprocessed RFPs
 ```
 
 ### 4. Data Structure Fixes
@@ -85,7 +85,7 @@ npm run batch-compliance all         # Process all unprocessed RFPs
 **Test Usage**:
 
 ```bash
-npm run test-compliance
+pnpmtest-compliance
 ```
 
 ## Data Flow
@@ -189,7 +189,7 @@ All compliance operations are logged with structured information:
 **Issue**: Incorrect data structure in UI
 
 - **Check**: Verify AI service returns proper structure
-- **Check**: Run `npm run test-compliance` to verify data structures
+- **Check**: Run `pnpmtest-compliance` to verify data structures
 - **Solution**: Use refresh endpoint to regenerate compliance data
 
 **Issue**: Batch processing fails
@@ -234,13 +234,13 @@ All compliance operations are logged with structured information:
 
 ```bash
 # See what would be processed
-npm run batch-compliance 100 dry-run
+pnpmbatch-compliance 100 dry-run
 
 # Process up to 100 RFPs
-npm run batch-compliance 100
+pnpmbatch-compliance 100
 
 # Process all unprocessed RFPs
-npm run batch-compliance all
+pnpmbatch-compliance all
 ```
 
 ### API Usage
@@ -263,7 +263,7 @@ POST /api/compliance/batch-process
 ### Test System Health
 
 ```bash
-npm run test-compliance
+pnpmtest-compliance
 ```
 
 This fix ensures that all discovered RFPs automatically receive compliance analysis, and provides tools for managing existing RFPs that may have missed processing.

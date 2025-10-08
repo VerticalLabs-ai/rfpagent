@@ -6,6 +6,10 @@ vite.config.ts.*
 *.tar.gz
 .claude-flow
 
+# Package manager lock files
+package-lock.json
+yarn.lock
+
 # Playwright
 /test-results/
 /playwright-report/
@@ -14,3 +18,9 @@ vite.config.ts.*
 /playwright/.auth/
 
 .env
+
+# Coverage reports
+coverage/.env.local
+
+# Attached assets
+attached_assets/

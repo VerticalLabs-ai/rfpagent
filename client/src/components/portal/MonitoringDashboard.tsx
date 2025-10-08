@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { MetricsCard, LoadingCards } from "@/components/shared";
-import type { MonitoringStatus } from "./types";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MetricsCard, LoadingCards } from '@/components/shared';
+import type { MonitoringStatus } from './types';
 
 interface PortalMonitoringStatus {
   portalId: string;
@@ -20,14 +20,26 @@ interface MonitoringDashboardProps {
   onTriggerScan: (portalId: string) => void;
 }
 
-export function MonitoringDashboard({ monitoringStatus, isLoading, onTriggerScan }: MonitoringDashboardProps) {
+export function MonitoringDashboard({
+  monitoringStatus,
+  isLoading,
+  onTriggerScan,
+}: MonitoringDashboardProps) {
   if (isLoading || !monitoringStatus) {
     return <LoadingCards count={4} variant="grid" />;
   }
 
-  const activePortals = monitoringStatus.filter((portal) => portal.status === 'active');
-  const errorPortals = monitoringStatus.filter((portal) => portal.status === 'error');
-  const totalScans = monitoringStatus.reduce((sum, portal) => sum + (portal.scanFrequency ? 24 / portal.scanFrequency : 1), 0);
+  const activePortals = monitoringStatus.filter(
+    portal => portal.status === 'active'
+  );
+  const errorPortals = monitoringStatus.filter(
+    portal => portal.status === 'error'
+  );
+  const totalScans = monitoringStatus.reduce(
+    (sum, portal) =>
+      sum + (portal.scanFrequency ? 24 / portal.scanFrequency : 1),
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -84,28 +96,48 @@ export function MonitoringDashboard({ monitoringStatus, isLoading, onTriggerScan
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {monitoringStatus.map((portal) => (
-              <div key={portal.portalId} className="flex items-center justify-between p-4 border rounded-lg" data-testid={`monitoring-status-${portal.portalId}`}>
+            {monitoringStatus.map(portal => (
+              <div
+                key={portal.portalId}
+                className="flex items-center justify-between p-4 border rounded-lg"
+                data-testid={`monitoring-status-${portal.portalId}`}
+              >
                 <div className="flex items-center space-x-4">
-                  <div className={`w-3 h-3 rounded-full ${
-                    portal.status === 'active' ? 'bg-green-500' :
-                    portal.status === 'error' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`}></div>
+                  <div
+                    className={`w-3 h-3 rounded-full ${
+                      portal.status === 'active'
+                        ? 'bg-green-500'
+                        : portal.status === 'error'
+                          ? 'bg-red-500'
+                          : 'bg-yellow-500'
+                    }`}
+                  ></div>
                   <div>
-                    <h3 className="font-medium" data-testid={`portal-name-${portal.portalId}`}>
+                    <h3
+                      className="font-medium"
+                      data-testid={`portal-name-${portal.portalId}`}
+                    >
                       {portal.portalName}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Scans every {portal.scanFrequency}h • Last: {portal.lastScanned ? new Date(portal.lastScanned).toLocaleDateString() : 'Never'}
+                      Scans every {portal.scanFrequency}h • Last:{' '}
+                      {portal.lastScanned
+                        ? new Date(portal.lastScanned).toLocaleDateString()
+                        : 'Never'}
                     </p>
                     {portal.lastError && (
-                      <p className="text-sm text-red-600">Error: {portal.lastError}</p>
+                      <p className="text-sm text-red-600">
+                        Error: {portal.lastError}
+                      </p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {portal.errorCount > 0 && (
-                    <Badge variant="destructive" data-testid={`error-count-${portal.portalId}`}>
+                    <Badge
+                      variant="destructive"
+                      data-testid={`error-count-${portal.portalId}`}
+                    >
                       {portal.errorCount} errors
                     </Badge>
                   )}

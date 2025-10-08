@@ -13,7 +13,7 @@ router.get('/:scanId/status', async (req, res) => {
     const scan = scanManager.getScan(scanId);
 
     if (!scan) {
-      return res.status(404).json({ error: "Scan not found" });
+      return res.status(404).json({ error: 'Scan not found' });
     }
 
     res.json({
@@ -26,11 +26,13 @@ router.get('/:scanId/status', async (req, res) => {
       currentStep: scan.currentStep,
       discoveredRFPs: scan.discoveredRFPs,
       errors: scan.errors,
-      duration: scan.completedAt ? scan.completedAt.getTime() - scan.startedAt.getTime() : Date.now() - scan.startedAt.getTime()
+      duration: scan.completedAt
+        ? scan.completedAt.getTime() - scan.startedAt.getTime()
+        : Date.now() - scan.startedAt.getTime(),
     });
   } catch (error) {
-    console.error("Error fetching scan status:", error);
-    res.status(500).json({ error: "Failed to fetch scan status" });
+    console.error('Error fetching scan status:', error);
+    res.status(500).json({ error: 'Failed to fetch scan status' });
   }
 });
 
@@ -47,13 +49,13 @@ router.get('/active', async (req, res) => {
       startedAt: scan.startedAt,
       currentStep: scan.currentStep,
       discoveredRFPs: scan.discoveredRFPs.length,
-      errors: scan.errors.length
+      errors: scan.errors.length,
     }));
 
     res.json(activeScans);
   } catch (error) {
-    console.error("Error fetching active scans:", error);
-    res.status(500).json({ error: "Failed to fetch active scans" });
+    console.error('Error fetching active scans:', error);
+    res.status(500).json({ error: 'Failed to fetch active scans' });
   }
 });
 
@@ -83,7 +85,7 @@ router.get('/:scanId/details', async (req, res) => {
         errorCount: activeScan.errors.length,
         errors: activeScan.errors,
         discoveredRfps: activeScan.discoveredRFPs,
-        events: activeScan.events
+        events: activeScan.events,
       });
       return;
     }
@@ -91,14 +93,14 @@ router.get('/:scanId/details', async (req, res) => {
     // If not in active scans, try database (for historical scans)
     const scan = await storage.getScan(scanId);
     if (!scan) {
-      return res.status(404).json({ error: "Scan not found" });
+      return res.status(404).json({ error: 'Scan not found' });
     }
 
     const events = await storage.getScanEvents(scanId);
     res.json({ ...scan, events });
   } catch (error) {
-    console.error("Failed to get scan details:", error);
-    res.status(500).json({ error: "Failed to get scan details" });
+    console.error('Failed to get scan details:', error);
+    res.status(500).json({ error: 'Failed to get scan details' });
   }
 });
 

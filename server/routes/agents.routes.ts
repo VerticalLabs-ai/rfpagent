@@ -1,60 +1,70 @@
+import type { AgentMetricsTimeframe } from '@shared/api/agentMonitoring';
 import { Router } from 'express';
-import { aiAgentOrchestrator } from '../services/aiAgentOrchestrator';
-import { agentRegistryService } from '../services/agentRegistryService';
-import { workflowCoordinator } from '../services/workflowCoordinator';
+import { agentMonitoringService } from '../services/agentMonitoringService';
 
 const router = Router();
 
 /**
  * Get agent activity
  */
-router.get('/activity', async (req, res) => {
+router.get('/agent-activity', async (req, res) => {
   try {
-    const agentActivity = await aiAgentOrchestrator.getAgentActivity();
+    const agentActivity = await agentMonitoringService.getRecentActivity(25);
     res.json(agentActivity);
   } catch (error) {
-    console.error("Error fetching agent activity:", error);
-    res.status(500).json({ error: "Failed to fetch agent activity" });
+    console.error('Error fetching agent activity:', error);
+    res.status(500).json({ error: 'Failed to fetch agent activity' });
   }
 });
 
 /**
  * Get agent performance metrics
  */
-router.get('/performance', async (req, res) => {
+router.get('/agent-performance', async (req, res) => {
   try {
-    const { timeframe = "24h" } = req.query;
-    const performanceMetrics = await aiAgentOrchestrator.getPerformanceMetrics(timeframe as string);
+    const { timeframe = '24h' } = req.query;
+    const allowed: AgentMetricsTimeframe[] = ['24h', '7d', '30d'];
+    const safeTimeframe = allowed.includes(timeframe as AgentMetricsTimeframe)
+      ? (timeframe as AgentMetricsTimeframe)
+      : '24h';
+    const performanceMetrics =
+      await agentMonitoringService.getPerformanceMetrics(safeTimeframe);
     res.json(performanceMetrics);
   } catch (error) {
-    console.error("Error fetching agent performance:", error);
-    res.status(500).json({ error: "Failed to fetch agent performance" });
+    console.error('Error fetching agent performance:', error);
+    res.status(500).json({ error: 'Failed to fetch agent performance' });
   }
 });
 
 /**
  * Get agent coordination status
  */
-router.get('/coordination', async (req, res) => {
+router.get('/agent-coordination', async (req, res) => {
   try {
-    const coordinationStatus = await aiAgentOrchestrator.getCoordinationStatus();
+    const { limit } = req.query;
+    const size =
+      typeof limit === 'string' && !Number.isNaN(Number(limit))
+        ? Number(limit)
+        : 25;
+    const coordinationStatus =
+      await agentMonitoringService.getCoordinationEvents(size);
     res.json(coordinationStatus);
   } catch (error) {
-    console.error("Error fetching agent coordination:", error);
-    res.status(500).json({ error: "Failed to fetch agent coordination" });
+    console.error('Error fetching agent coordination:', error);
+    res.status(500).json({ error: 'Failed to fetch agent coordination' });
   }
 });
 
 /**
  * Get agent registry
  */
-router.get('/registry', async (req, res) => {
+router.get('/agent-registry', async (req, res) => {
   try {
-    const agentRegistry = await agentRegistryService.getAllAgents();
+    const agentRegistry = await agentMonitoringService.getRegistrySummary();
     res.json(agentRegistry);
   } catch (error) {
-    console.error("Error fetching agent registry:", error);
-    res.status(500).json({ error: "Failed to fetch agent registry" });
+    console.error('Error fetching agent registry:', error);
+    res.status(500).json({ error: 'Failed to fetch agent registry' });
   }
 });
 
@@ -63,18 +73,24 @@ router.get('/registry', async (req, res) => {
  */
 router.get('/work-items', async (req, res) => {
   try {
-    const { status, agentType, limit = "50" } = req.query;
-
-    const workItems = await workflowCoordinator.getWorkItems({
-      status: status as string,
-      agentType: agentType as string,
-      limit: parseInt(limit as string)
-    });
-
-    res.json(workItems);
+    const summary = await agentMonitoringService.getWorkItemSummary();
+    res.json(summary);
   } catch (error) {
-    console.error("Error fetching work items:", error);
-    res.status(500).json({ error: "Failed to fetch work items" });
+    console.error('Error fetching work items:', error);
+    res.status(500).json({ error: 'Failed to fetch work items' });
+  }
+});
+
+/**
+ * Get system health snapshot
+ */
+router.get('/system-health', async (req, res) => {
+  try {
+    const health = await agentMonitoringService.getSystemHealthSnapshot();
+    res.json(health);
+  } catch (error) {
+    console.error('Error fetching system health:', error);
+    res.status(500).json({ error: 'Failed to fetch system health' });
   }
 });
 

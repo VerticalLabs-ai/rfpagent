@@ -106,11 +106,11 @@ export interface ParsingAttempt {
     fileSize: number;
     mimeType: string;
     content: string;
-    metadata: any;
+    metadata: DocumentMetadata;
   };
 
   processing: {
-    identificationResults: any;
+    identificationResults: DocumentIdentificationResult;
     extractionResults: { [fieldName: string]: any };
     validationResults: { [fieldName: string]: any };
     postProcessingResults: any;
@@ -134,6 +134,93 @@ export interface ParsingAttempt {
   };
 }
 
+interface ValidationIssue {
+  type: string;
+  severity: ValidationRule['severity'];
+  message?: string;
+  rule?: string;
+}
+
+interface ValidationOutcome {
+  isValid: boolean;
+  confidence: number;
+  issues: ValidationIssue[];
+  correctedValue: unknown;
+}
+
+interface ValidationRuleResult {
+  valid: boolean;
+  issueType?: string;
+  message?: string;
+  correctedValue?: unknown;
+}
+
+interface ExtractedFieldResult {
+  value: unknown;
+  confidence: number;
+  method?: string;
+  validationIssues?: ValidationIssue[];
+  alternativeValues?: unknown[];
+  error?: string;
+  [key: string]: unknown;
+}
+
+type ExtractedFieldMap = Record<string, ExtractedFieldResult>;
+type ValidationResultMap = Record<string, ValidationOutcome>;
+
+type DocumentMetadata = {
+  fileName?: string;
+  mimeType?: string;
+  [key: string]: unknown;
+};
+
+interface DocumentIdentificationResult {
+  type: string;
+  domain: string;
+  confidence: number;
+  indicators: string[];
+}
+
+interface DocumentPattern {
+  type: string;
+  domain: string;
+  identification: {
+    filePatterns?: string[];
+    contentPatterns?: string[];
+    structuralMarkers?: string[];
+    confidenceThreshold?: number;
+  };
+  matchedIndicators?: string[];
+}
+
+interface AdaptationSuggestion {
+  type: string;
+  area: string;
+  suggestion: string;
+  confidence: number;
+  priority?: string;
+  timeframe?: string;
+  resources?: string[];
+}
+
+interface FeedbackPattern {
+  field: string;
+  issue: string;
+  correctedValue: unknown;
+}
+
+interface PerformanceSummary {
+  totalDocuments: number;
+  accuracy: number;
+  successRate: number;
+}
+
+interface ErrorPatternSummary {
+  type: string;
+  frequency: number;
+  percentage: number;
+}
+
 export class IntelligentDocumentProcessor {
   private static instance: IntelligentDocumentProcessor;
   private adaptationThreshold: number = 0.85; // Adapt when accuracy drops below 85%
@@ -142,9 +229,49 @@ export class IntelligentDocumentProcessor {
 
   public static getInstance(): IntelligentDocumentProcessor {
     if (!IntelligentDocumentProcessor.instance) {
-      IntelligentDocumentProcessor.instance = new IntelligentDocumentProcessor();
+      IntelligentDocumentProcessor.instance =
+        new IntelligentDocumentProcessor();
     }
     return IntelligentDocumentProcessor.instance;
+  }
+
+  private getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (typeof error === 'string') {
+      return error;
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+
+  private normalizeMetadata(metadata: unknown): DocumentMetadata {
+    if (!metadata || typeof metadata !== 'object') {
+      return {};
+    }
+
+    const record = metadata as Record<string, unknown>;
+    const normalized: DocumentMetadata = { ...record };
+
+    const rawFileName = record['fileName'];
+    if (typeof rawFileName === 'string') {
+      normalized.fileName = rawFileName;
+    } else if ('fileName' in normalized) {
+      delete normalized.fileName;
+    }
+
+    const rawMime = record['mimeType'];
+    if (typeof rawMime === 'string') {
+      normalized.mimeType = rawMime;
+    } else if ('mimeType' in normalized) {
+      delete normalized.mimeType;
+    }
+
+    return normalized;
   }
 
   // ============ INTELLIGENT PARSING ============
@@ -152,15 +279,27 @@ export class IntelligentDocumentProcessor {
   /**
    * Process document with adaptive intelligence
    */
-  async processDocumentIntelligently(documentId: string, content: string, metadata: any): Promise<any> {
+  async processDocumentIntelligently(
+    documentId: string,
+    content: string,
+    metadata: unknown
+  ): Promise<any> {
     try {
       console.log(`🧠 Processing document intelligently: ${documentId}`);
 
+      const normalizedMetadata = this.normalizeMetadata(metadata);
+
       // Identify document type and domain
-      const identification = await this.identifyDocument(content, metadata);
+      const identification = await this.identifyDocument(
+        content,
+        normalizedMetadata
+      );
 
       // Get or create parsing strategy
-      const strategy = await this.getParsingStrategy(identification.type, identification.domain);
+      const strategy = await this.getParsingStrategy(
+        identification.type,
+        identification.domain
+      );
 
       // Create parsing attempt record
       const attempt: ParsingAttempt = {
@@ -170,18 +309,18 @@ export class IntelligentDocumentProcessor {
         timestamp: new Date(),
         strategy: strategy.version,
         input: {
-          fileName: metadata.fileName || 'unknown',
+          fileName: normalizedMetadata.fileName || 'unknown',
           fileSize: content.length,
-          mimeType: metadata.mimeType || 'text/plain',
+          mimeType: normalizedMetadata.mimeType || 'text/plain',
           content,
-          metadata
+          metadata: normalizedMetadata,
         },
         processing: {
           identificationResults: identification,
           extractionResults: {},
           validationResults: {},
           postProcessingResults: {},
-          duration: 0
+          duration: 0,
         },
         outcome: {
           success: false,
@@ -189,15 +328,18 @@ export class IntelligentDocumentProcessor {
           confidence: 0,
           errors: [],
           warnings: [],
-          qualityScore: 0
-        }
+          qualityScore: 0,
+        },
       };
 
       const startTime = Date.now();
 
       try {
         // Extract fields using strategy
-        attempt.processing.extractionResults = await this.extractFields(content, strategy);
+        attempt.processing.extractionResults = await this.extractFields(
+          content,
+          strategy
+        );
 
         // Validate extracted data
         attempt.processing.validationResults = await this.validateExtractedData(
@@ -206,23 +348,26 @@ export class IntelligentDocumentProcessor {
         );
 
         // Post-process results
-        attempt.processing.postProcessingResults = await this.postProcessResults(
-          attempt.processing.extractionResults,
-          strategy
-        );
+        attempt.processing.postProcessingResults =
+          await this.postProcessResults(
+            attempt.processing.extractionResults,
+            strategy
+          );
 
         // Calculate outcome
         attempt.outcome = this.calculateOutcome(attempt.processing);
         attempt.processing.duration = Date.now() - startTime;
 
-        console.log(`✅ Document processed with ${(attempt.outcome.confidence * 100).toFixed(1)}% confidence`);
-
+        console.log(
+          `✅ Document processed with ${(attempt.outcome.confidence * 100).toFixed(1)}% confidence`
+        );
       } catch (error) {
         attempt.outcome.success = false;
+        const message = this.getErrorMessage(error);
         attempt.outcome.errors.push({
           type: 'processing_error',
-          message: error.message,
-          timestamp: new Date()
+          message,
+          timestamp: new Date(),
         });
         attempt.processing.duration = Date.now() - startTime;
 
@@ -241,17 +386,17 @@ export class IntelligentDocumentProcessor {
         metadata: {
           documentType: attempt.documentType,
           domain: attempt.domain,
-          strategy: attempt.strategy
-        }
+          strategy: attempt.strategy,
+        },
       };
-
     } catch (error) {
+      const message = this.getErrorMessage(error);
       console.error('❌ Failed to process document intelligently:', error);
       return {
         success: false,
-        error: error.message,
+        error: message,
         extractedData: {},
-        confidence: 0
+        confidence: 0,
       };
     }
   }
@@ -277,7 +422,7 @@ export class IntelligentDocumentProcessor {
         userCorrections: feedback.corrections || {},
         qualityRating: feedback.rating || 0,
         comments: feedback.comments || '',
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       // Analyze feedback for learning opportunities
@@ -296,7 +441,6 @@ export class IntelligentDocumentProcessor {
       await this.storeParsingAttempt(attempt);
 
       console.log(`✅ Feedback learning completed for document: ${documentId}`);
-
     } catch (error) {
       console.error('❌ Failed to learn from feedback:', error);
     }
@@ -305,7 +449,9 @@ export class IntelligentDocumentProcessor {
   /**
    * Analyze parsing performance and suggest improvements
    */
-  async analyzeParsingPerformance(timeframe: 'day' | 'week' | 'month' = 'week'): Promise<any> {
+  async analyzeParsingPerformance(
+    timeframe: 'day' | 'week' | 'month' = 'week'
+  ): Promise<any> {
     try {
       const endDate = new Date();
       const startDate = new Date();
@@ -322,7 +468,10 @@ export class IntelligentDocumentProcessor {
           break;
       }
 
-      const attempts = await this.getParsingAttemptsByDateRange(startDate, endDate);
+      const attempts = await this.getParsingAttemptsByDateRange(
+        startDate,
+        endDate
+      );
 
       const analysis = {
         totalDocuments: attempts.length,
@@ -330,15 +479,16 @@ export class IntelligentDocumentProcessor {
         performanceByType: this.analyzePerformanceByType(attempts),
         performanceByDomain: this.analyzePerformanceByDomain(attempts),
         errorAnalysis: this.analyzeErrors(attempts),
-        improvementOpportunities: this.identifyImprovementOpportunities(attempts),
-        strategyRecommendations: await this.generateStrategyRecommendations(attempts)
+        improvementOpportunities:
+          this.identifyImprovementOpportunities(attempts),
+        strategyRecommendations:
+          await this.generateStrategyRecommendations(attempts),
       };
 
       return analysis;
-
     } catch (error) {
       console.error('❌ Failed to analyze parsing performance:', error);
-      return { error: error.message };
+      return { error: this.getErrorMessage(error) };
     }
   }
 
@@ -347,12 +497,15 @@ export class IntelligentDocumentProcessor {
   /**
    * Intelligently identify document type and domain
    */
-  private async identifyDocument(content: string, metadata: any): Promise<any> {
-    const identification = {
+  private async identifyDocument(
+    content: string,
+    metadata: DocumentMetadata
+  ): Promise<DocumentIdentificationResult> {
+    const identification: DocumentIdentificationResult = {
       type: 'unknown',
       domain: 'general',
       confidence: 0,
-      indicators: []
+      indicators: [],
     };
 
     // Get known document patterns
@@ -371,7 +524,10 @@ export class IntelligentDocumentProcessor {
 
     // Use heuristics if no strong pattern match
     if (identification.confidence < 0.7) {
-      const heuristicResult = this.applyIdentificationHeuristics(content, metadata);
+      const heuristicResult = this.applyIdentificationHeuristics(
+        content,
+        metadata
+      );
       if (heuristicResult.confidence > identification.confidence) {
         Object.assign(identification, heuristicResult);
       }
@@ -383,7 +539,11 @@ export class IntelligentDocumentProcessor {
   /**
    * Test content against known document patterns
    */
-  private testDocumentPattern(content: string, metadata: any, pattern: any): number {
+  private testDocumentPattern(
+    content: string,
+    metadata: DocumentMetadata,
+    pattern: DocumentPattern
+  ): number {
     let score = 0;
     let totalTests = 0;
 
@@ -391,7 +551,7 @@ export class IntelligentDocumentProcessor {
     if (pattern.identification.filePatterns) {
       for (const filePattern of pattern.identification.filePatterns) {
         totalTests++;
-        if (this.testFilePattern(metadata.fileName || '', filePattern)) {
+        if (this.testFilePattern(metadata.fileName ?? '', filePattern)) {
           score += 0.3;
         }
       }
@@ -423,49 +583,67 @@ export class IntelligentDocumentProcessor {
   /**
    * Apply heuristic rules for document identification
    */
-  private applyIdentificationHeuristics(content: string, metadata: any): any {
-    const heuristics = {
+  private applyIdentificationHeuristics(
+    content: string,
+    _metadata: DocumentMetadata
+  ): DocumentIdentificationResult {
+    const heuristics: DocumentIdentificationResult = {
       type: 'unknown',
       domain: 'general',
       confidence: 0,
-      indicators: []
+      indicators: [],
     };
 
     const lowerContent = content.toLowerCase();
 
     // RFP/Solicitation heuristics
-    if (lowerContent.includes('request for proposal') ||
-        lowerContent.includes('rfp') ||
-        lowerContent.includes('solicitation')) {
+    if (
+      lowerContent.includes('request for proposal') ||
+      lowerContent.includes('rfp') ||
+      lowerContent.includes('solicitation')
+    ) {
       heuristics.type = 'rfp_document';
       heuristics.confidence = 0.8;
       heuristics.indicators.push('rfp_keywords');
     }
 
     // Contract heuristics
-    if (lowerContent.includes('contract') ||
-        lowerContent.includes('agreement') ||
-        lowerContent.includes('terms and conditions')) {
+    if (
+      lowerContent.includes('contract') ||
+      lowerContent.includes('agreement') ||
+      lowerContent.includes('terms and conditions')
+    ) {
       heuristics.type = 'contract';
       heuristics.confidence = 0.7;
       heuristics.indicators.push('contract_keywords');
     }
 
     // Technical document heuristics
-    if (lowerContent.includes('technical specification') ||
-        lowerContent.includes('requirements') ||
-        lowerContent.includes('architecture')) {
+    if (
+      lowerContent.includes('technical specification') ||
+      lowerContent.includes('requirements') ||
+      lowerContent.includes('architecture')
+    ) {
       heuristics.type = 'technical_document';
       heuristics.confidence = 0.6;
       heuristics.indicators.push('technical_keywords');
     }
 
     // Domain identification
-    if (lowerContent.includes('software') || lowerContent.includes('technology')) {
+    if (
+      lowerContent.includes('software') ||
+      lowerContent.includes('technology')
+    ) {
       heuristics.domain = 'technology';
-    } else if (lowerContent.includes('construction') || lowerContent.includes('building')) {
+    } else if (
+      lowerContent.includes('construction') ||
+      lowerContent.includes('building')
+    ) {
       heuristics.domain = 'construction';
-    } else if (lowerContent.includes('healthcare') || lowerContent.includes('medical')) {
+    } else if (
+      lowerContent.includes('healthcare') ||
+      lowerContent.includes('medical')
+    ) {
       heuristics.domain = 'healthcare';
     }
 
@@ -477,19 +655,29 @@ export class IntelligentDocumentProcessor {
   /**
    * Extract fields using adaptive strategy
    */
-  private async extractFields(content: string, strategy: DocumentParsingStrategy): Promise<any> {
-    const extractedFields = {};
+  private async extractFields(
+    content: string,
+    strategy: DocumentParsingStrategy
+  ): Promise<ExtractedFieldMap> {
+    const extractedFields: ExtractedFieldMap = {};
 
-    for (const [fieldName, fieldRules] of Object.entries(strategy.extractionRules)) {
+    for (const [fieldName, fieldRules] of Object.entries(
+      strategy.extractionRules
+    )) {
       try {
-        const fieldValue = await this.extractField(content, fieldName, fieldRules);
+        const fieldValue = await this.extractField(
+          content,
+          fieldName,
+          fieldRules
+        );
         extractedFields[fieldName] = fieldValue;
       } catch (error) {
-        console.warn(`Failed to extract field ${fieldName}:`, error.message);
+        const message = this.getErrorMessage(error);
+        console.warn(`Failed to extract field ${fieldName}:`, message);
         extractedFields[fieldName] = {
           value: null,
           confidence: 0,
-          error: error.message
+          error: message,
         };
       }
     }
@@ -500,8 +688,14 @@ export class IntelligentDocumentProcessor {
   /**
    * Extract individual field using multiple patterns
    */
-  private async extractField(content: string, fieldName: string, fieldRules: any): Promise<any> {
-    const results = [];
+  private async extractField(
+    content: string,
+    fieldName: string,
+    fieldRules: any
+  ): Promise<ExtractedFieldResult> {
+    const results: Array<
+      ExtractedFieldResult & { patternWeight: number; totalConfidence: number }
+    > = [];
 
     // Try each extraction pattern
     for (const pattern of fieldRules.patterns) {
@@ -511,11 +705,14 @@ export class IntelligentDocumentProcessor {
           results.push({
             ...result,
             patternWeight: pattern.weight,
-            totalConfidence: result.confidence * pattern.weight
+            totalConfidence: result.confidence * pattern.weight,
           });
         }
       } catch (error) {
-        console.warn(`Pattern failed for ${fieldName}:`, error.message);
+        console.warn(
+          `Pattern failed for ${fieldName}:`,
+          this.getErrorMessage(error)
+        );
       }
     }
 
@@ -541,14 +738,17 @@ export class IntelligentDocumentProcessor {
       confidence: bestResult.confidence * validationResult.confidence,
       method: bestResult.method,
       validationIssues: validationResult.issues || [],
-      alternativeValues: results.slice(1, 3).map(r => r.value)
+      alternativeValues: results.slice(1, 3).map(r => r.value),
     };
   }
 
   /**
    * Apply specific extraction pattern
    */
-  private async applyExtractionPattern(content: string, pattern: ExtractionPattern): Promise<any> {
+  private async applyExtractionPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): Promise<ExtractedFieldResult> {
     switch (pattern.type) {
       case 'regex':
         return this.applyRegexPattern(content, pattern);
@@ -568,7 +768,10 @@ export class IntelligentDocumentProcessor {
   /**
    * Apply regex extraction pattern
    */
-  private applyRegexPattern(content: string, pattern: ExtractionPattern): any {
+  private applyRegexPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): ExtractedFieldResult {
     try {
       const regex = new RegExp(pattern.pattern, 'gi');
       const matches = content.match(regex);
@@ -578,26 +781,32 @@ export class IntelligentDocumentProcessor {
           value: matches[0].trim(),
           confidence: pattern.confidence,
           method: 'regex',
-          allMatches: matches
+          allMatches: matches,
         };
       }
 
       return { value: null, confidence: 0, method: 'regex' };
     } catch (error) {
-      throw new Error(`Regex pattern failed: ${error.message}`);
+      throw new Error(`Regex pattern failed: ${this.getErrorMessage(error)}`);
     }
   }
 
   /**
    * Apply semantic pattern (keyword-based with context)
    */
-  private applySemanticPattern(content: string, pattern: ExtractionPattern): any {
+  private applySemanticPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): ExtractedFieldResult {
     try {
       const keywords = pattern.pattern.split('|');
       const contextWindow = 100; // Characters around keyword
 
       for (const keyword of keywords) {
-        const regex = new RegExp(`(.{0,${contextWindow}})${keyword}(.{0,${contextWindow}})`, 'gi');
+        const regex = new RegExp(
+          `(.{0,${contextWindow}})${keyword}(.{0,${contextWindow}})`,
+          'gi'
+        );
         const match = regex.exec(content);
 
         if (match) {
@@ -610,7 +819,7 @@ export class IntelligentDocumentProcessor {
               value: extractedValue,
               confidence: pattern.confidence * 0.8, // Slightly lower confidence for semantic
               method: 'semantic',
-              context: context
+              context: context,
             };
           }
         }
@@ -618,14 +827,19 @@ export class IntelligentDocumentProcessor {
 
       return { value: null, confidence: 0, method: 'semantic' };
     } catch (error) {
-      throw new Error(`Semantic pattern failed: ${error.message}`);
+      throw new Error(
+        `Semantic pattern failed: ${this.getErrorMessage(error)}`
+      );
     }
   }
 
   /**
    * Apply contextual pattern (multi-line analysis)
    */
-  private applyContextualPattern(content: string, pattern: ExtractionPattern): any {
+  private applyContextualPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): ExtractedFieldResult {
     try {
       const lines = content.split('\n');
       const contextRequirements = pattern.contextRequirements || [];
@@ -636,15 +850,22 @@ export class IntelligentDocumentProcessor {
         // Check if line matches pattern
         if (line.toLowerCase().includes(pattern.pattern.toLowerCase())) {
           // Check context requirements
-          const contextValid = this.validateContext(lines, i, contextRequirements);
+          const contextValid = this.validateContext(
+            lines,
+            i,
+            contextRequirements
+          );
 
           if (contextValid) {
-            const extractedValue = this.extractValueFromLine(line, pattern.pattern);
+            const extractedValue = this.extractValueFromLine(
+              line,
+              pattern.pattern
+            );
             return {
               value: extractedValue,
               confidence: pattern.confidence,
               method: 'contextual',
-              lineNumber: i + 1
+              lineNumber: i + 1,
             };
           }
         }
@@ -652,14 +873,19 @@ export class IntelligentDocumentProcessor {
 
       return { value: null, confidence: 0, method: 'contextual' };
     } catch (error) {
-      throw new Error(`Contextual pattern failed: ${error.message}`);
+      throw new Error(
+        `Contextual pattern failed: ${this.getErrorMessage(error)}`
+      );
     }
   }
 
   /**
    * Apply ML model pattern (placeholder for future ML integration)
    */
-  private applyMLModelPattern(content: string, pattern: ExtractionPattern): any {
+  private applyMLModelPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): ExtractedFieldResult {
     // Placeholder for ML model integration
     // This would use trained models for field extraction
 
@@ -667,14 +893,17 @@ export class IntelligentDocumentProcessor {
       value: null,
       confidence: 0,
       method: 'ml_model',
-      note: 'ML model integration not yet implemented'
+      note: 'ML model integration not yet implemented',
     };
   }
 
   /**
    * Apply XPath pattern (for structured documents)
    */
-  private applyXPathPattern(content: string, pattern: ExtractionPattern): any {
+  private applyXPathPattern(
+    content: string,
+    pattern: ExtractionPattern
+  ): ExtractedFieldResult {
     // Placeholder for XPath implementation
     // This would parse XML/HTML and apply XPath queries
 
@@ -682,7 +911,7 @@ export class IntelligentDocumentProcessor {
       value: null,
       confidence: 0,
       method: 'xpath',
-      note: 'XPath pattern not yet implemented'
+      note: 'XPath pattern not yet implemented',
     };
   }
 
@@ -691,8 +920,11 @@ export class IntelligentDocumentProcessor {
   /**
    * Validate extracted data using rules
    */
-  private async validateExtractedData(extractedData: any, strategy: DocumentParsingStrategy): Promise<any> {
-    const validationResults = {};
+  private async validateExtractedData(
+    extractedData: ExtractedFieldMap,
+    strategy: DocumentParsingStrategy
+  ): Promise<ValidationResultMap> {
+    const validationResults: ValidationResultMap = {};
 
     for (const [fieldName, fieldData] of Object.entries(extractedData)) {
       const fieldRules = strategy.extractionRules[fieldName];
@@ -711,12 +943,16 @@ export class IntelligentDocumentProcessor {
   /**
    * Validate individual field value
    */
-  private async validateFieldValue(value: any, fieldName: string, validationRules: ValidationRule[]): Promise<any> {
-    const result = {
+  private async validateFieldValue(
+    value: unknown,
+    fieldName: string,
+    validationRules: ValidationRule[]
+  ): Promise<ValidationOutcome> {
+    const result: ValidationOutcome = {
       isValid: true,
       confidence: 1.0,
       issues: [],
-      correctedValue: null
+      correctedValue: null,
     };
 
     if (!value) {
@@ -733,10 +969,10 @@ export class IntelligentDocumentProcessor {
         result.isValid = false;
         result.confidence *= 0.8; // Reduce confidence for each validation failure
         result.issues.push({
-          type: validationResult.issueType,
+          type: validationResult.issueType ?? 'validation_error',
           severity: rule.severity,
           message: validationResult.message,
-          rule: rule.rule
+          rule: rule.rule,
         });
 
         // Apply auto-correction if available
@@ -752,7 +988,10 @@ export class IntelligentDocumentProcessor {
   /**
    * Apply individual validation rule
    */
-  private applyValidationRule(value: any, rule: ValidationRule): any {
+  private applyValidationRule(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     try {
       switch (rule.type) {
         case 'format':
@@ -772,7 +1011,7 @@ export class IntelligentDocumentProcessor {
       return {
         valid: false,
         issueType: 'validation_error',
-        message: `Validation failed: ${error.message}`
+        message: `Validation failed: ${this.getErrorMessage(error)}`,
       };
     }
   }
@@ -780,8 +1019,11 @@ export class IntelligentDocumentProcessor {
   /**
    * Post-process extraction results
    */
-  private async postProcessResults(extractionResults: any, strategy: DocumentParsingStrategy): Promise<any> {
-    const processedResults = { ...extractionResults };
+  private async postProcessResults(
+    extractionResults: ExtractedFieldMap,
+    strategy: DocumentParsingStrategy
+  ): Promise<ExtractedFieldMap> {
+    const processedResults: ExtractedFieldMap = { ...extractionResults };
 
     for (const [fieldName, fieldData] of Object.entries(extractionResults)) {
       const fieldRules = strategy.extractionRules[fieldName];
@@ -792,7 +1034,10 @@ export class IntelligentDocumentProcessor {
             fieldRules.postProcessing
           );
         } catch (error) {
-          console.warn(`Post-processing failed for ${fieldName}:`, error.message);
+          console.warn(
+            `Post-processing failed for ${fieldName}:`,
+            this.getErrorMessage(error)
+          );
         }
       }
     }
@@ -803,8 +1048,11 @@ export class IntelligentDocumentProcessor {
   /**
    * Apply post-processing rules to field
    */
-  private async applyPostProcessing(fieldData: any, postProcessingRules: PostProcessingRule[]): Promise<any> {
-    let processedData = { ...fieldData };
+  private async applyPostProcessing(
+    fieldData: ExtractedFieldResult,
+    postProcessingRules: PostProcessingRule[]
+  ): Promise<ExtractedFieldResult> {
+    let processedData: ExtractedFieldResult = { ...fieldData };
 
     for (const rule of postProcessingRules) {
       switch (rule.type) {
@@ -818,7 +1066,10 @@ export class IntelligentDocumentProcessor {
           processedData = await this.enrichFieldValue(processedData, rule);
           break;
         case 'validate':
-          processedData = this.validateFieldValueInPostProcessing(processedData, rule);
+          processedData = this.validateFieldValueInPostProcessing(
+            processedData,
+            rule
+          );
           break;
         case 'correct':
           processedData = this.correctFieldValue(processedData, rule);
@@ -834,7 +1085,10 @@ export class IntelligentDocumentProcessor {
   /**
    * Get parsing strategy for document type and domain
    */
-  private async getParsingStrategy(documentType: string, domain: string): Promise<DocumentParsingStrategy> {
+  private async getParsingStrategy(
+    documentType: string,
+    domain: string
+  ): Promise<DocumentParsingStrategy> {
     const strategyKey = `${documentType}_${domain}`;
     let strategy = await this.loadParsingStrategy(strategyKey);
 
@@ -850,7 +1104,10 @@ export class IntelligentDocumentProcessor {
   /**
    * Create learning outcome from parsing attempt
    */
-  private createParsingLearningOutcome(attempt: ParsingAttempt, hasFeedback: boolean = false): any {
+  private createParsingLearningOutcome(
+    attempt: ParsingAttempt,
+    hasFeedback: boolean = false
+  ): any {
     return {
       type: 'document_parsing',
       rfpId: attempt.documentId,
@@ -860,20 +1117,20 @@ export class IntelligentDocumentProcessor {
         strategy: {
           documentType: attempt.documentType,
           domain: attempt.domain,
-          version: attempt.strategy
+          version: attempt.strategy,
         },
         conditions: {
           fileSize: attempt.input.fileSize,
           mimeType: attempt.input.mimeType,
-          hasStructure: this.hasStructuralContent(attempt.input.content)
+          hasStructure: this.hasStructuralContent(attempt.input.content),
         },
         inputs: {
           documentType: attempt.documentType,
           domain: attempt.domain,
-          content: attempt.input.content.substring(0, 1000) // Sample for analysis
+          content: attempt.input.content.substring(0, 1000), // Sample for analysis
         },
         expectedOutput: 'extracted_fields',
-        actualOutput: attempt.outcome.extractedFields
+        actualOutput: attempt.outcome.extractedFields,
       },
       outcome: {
         success: attempt.outcome.success,
@@ -881,18 +1138,21 @@ export class IntelligentDocumentProcessor {
           confidence: attempt.outcome.confidence,
           qualityScore: attempt.outcome.qualityScore,
           duration: attempt.processing.duration,
-          fieldsExtracted: Object.keys(attempt.outcome.extractedFields).length
+          fieldsExtracted: Object.keys(attempt.outcome.extractedFields).length,
         },
         feedback: hasFeedback ? attempt.feedback?.comments : undefined,
-        errorDetails: attempt.outcome.errors.length > 0 ? attempt.outcome.errors[0] : undefined,
-        improvementAreas: this.identifyParsingImprovements(attempt)
+        errorDetails:
+          attempt.outcome.errors.length > 0
+            ? attempt.outcome.errors[0]
+            : undefined,
+        improvementAreas: this.identifyParsingImprovements(attempt),
       },
       learnedPatterns: this.extractParsingPatterns(attempt),
       adaptations: this.suggestParsingAdaptations(attempt),
       confidenceScore: attempt.outcome.confidence,
       domain: attempt.domain,
       category: attempt.documentType,
-      timestamp: attempt.timestamp
+      timestamp: attempt.timestamp,
     };
   }
 
@@ -910,12 +1170,17 @@ export class IntelligentDocumentProcessor {
       title: `Parsing Attempt: ${attempt.documentType}`,
       content: attempt,
       importance: attempt.outcome.success ? 6 : 8,
-      tags: ['document_parsing', attempt.documentType, attempt.domain, attempt.outcome.success ? 'success' : 'failure'],
+      tags: [
+        'document_parsing',
+        attempt.documentType,
+        attempt.domain,
+        attempt.outcome.success ? 'success' : 'failure',
+      ],
       metadata: {
         documentId: attempt.documentId,
         confidence: attempt.outcome.confidence,
-        qualityScore: attempt.outcome.qualityScore
-      }
+        qualityScore: attempt.outcome.qualityScore,
+      },
     });
 
     // Create learning outcome
@@ -923,14 +1188,21 @@ export class IntelligentDocumentProcessor {
     await selfImprovingLearningService.recordLearningOutcome(learningOutcome);
 
     // Check if strategy needs adaptation
-    if (!attempt.outcome.success || attempt.outcome.confidence < this.adaptationThreshold) {
-      await this.adaptParsingStrategy(attempt.documentType, attempt.domain, 'low_performance');
+    if (
+      !attempt.outcome.success ||
+      attempt.outcome.confidence < this.adaptationThreshold
+    ) {
+      await this.adaptParsingStrategy(
+        attempt.documentType,
+        attempt.domain,
+        'low_performance'
+      );
     }
   }
 
   // ============ PRIVATE HELPER METHODS ============
 
-  private async getDocumentPatterns(): Promise<any[]> {
+  private async getDocumentPatterns(): Promise<DocumentPattern[]> {
     const knowledge = await agentMemoryService.getAgentKnowledge(
       'document-processor-specialist',
       'strategy',
@@ -938,7 +1210,27 @@ export class IntelligentDocumentProcessor {
       100
     );
 
-    return knowledge.map(k => k.content).filter(c => c.identification);
+    return knowledge
+      .map(entry => entry?.content)
+      .filter((content): content is DocumentPattern =>
+        this.isDocumentPattern(content)
+      );
+  }
+
+  private isDocumentPattern(value: unknown): value is DocumentPattern {
+    if (!value || typeof value !== 'object') {
+      return false;
+    }
+
+    const candidate = value as Record<string, unknown>;
+    const identification = candidate['identification'];
+
+    return (
+      typeof candidate['type'] === 'string' &&
+      typeof candidate['domain'] === 'string' &&
+      identification !== undefined &&
+      typeof identification === 'object'
+    );
   }
 
   private testFilePattern(fileName: string, pattern: string): boolean {
@@ -955,13 +1247,18 @@ export class IntelligentDocumentProcessor {
     return content.toLowerCase().includes(marker.toLowerCase());
   }
 
-  private extractValueFromContext(context: string, keyword: string): string | null {
+  private extractValueFromContext(
+    context: string,
+    keyword: string
+  ): string | null {
     // Extract value near keyword using heuristics
     const lines = context.split('\n');
     for (const line of lines) {
       if (line.toLowerCase().includes(keyword.toLowerCase())) {
         // Look for patterns like "keyword: value" or "keyword value"
-        const match = line.match(new RegExp(keyword + '\\s*[:\-]?\\s*([^\\n\\r,;]+)', 'i'));
+        const match = line.match(
+          new RegExp(keyword + '\\s*[:\-]?\\s*([^\\n\\r,;]+)', 'i')
+        );
         if (match && match[1]) {
           return match[1].trim();
         }
@@ -970,14 +1267,23 @@ export class IntelligentDocumentProcessor {
     return null;
   }
 
-  private validateContext(lines: string[], lineIndex: number, requirements: string[]): boolean {
+  private validateContext(
+    lines: string[],
+    lineIndex: number,
+    requirements: string[]
+  ): boolean {
     const contextWindow = 3; // Check 3 lines before and after
     const startIndex = Math.max(0, lineIndex - contextWindow);
     const endIndex = Math.min(lines.length - 1, lineIndex + contextWindow);
 
-    const contextContent = lines.slice(startIndex, endIndex + 1).join(' ').toLowerCase();
+    const contextContent = lines
+      .slice(startIndex, endIndex + 1)
+      .join(' ')
+      .toLowerCase();
 
-    return requirements.every(req => contextContent.includes(req.toLowerCase()));
+    return requirements.every(req =>
+      contextContent.includes(req.toLowerCase())
+    );
   }
 
   private extractValueFromLine(line: string, pattern: string): string | null {
@@ -989,33 +1295,41 @@ export class IntelligentDocumentProcessor {
     return line.trim();
   }
 
-  private validateFormat(value: any, rule: ValidationRule): any {
+  private validateFormat(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     try {
       const regex = new RegExp(rule.rule);
       const valid = regex.test(String(value));
 
       return {
         valid,
-        issueType: valid ? null : 'format_mismatch',
-        message: valid ? null : `Value does not match expected format: ${rule.rule}`
+        issueType: valid ? undefined : 'format_mismatch',
+        message: valid
+          ? undefined
+          : `Value does not match expected format: ${rule.rule}`,
       };
     } catch (error) {
       return {
         valid: false,
         issueType: 'validation_error',
-        message: `Format validation failed: ${error.message}`
+        message: `Format validation failed: ${this.getErrorMessage(error)}`,
       };
     }
   }
 
-  private validateRange(value: any, rule: ValidationRule): any {
+  private validateRange(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     try {
       const numValue = parseFloat(String(value));
       if (isNaN(numValue)) {
         return {
           valid: false,
           issueType: 'not_numeric',
-          message: 'Value is not numeric'
+          message: 'Value is not numeric',
         };
       }
 
@@ -1024,68 +1338,103 @@ export class IntelligentDocumentProcessor {
 
       return {
         valid,
-        issueType: valid ? null : 'out_of_range',
-        message: valid ? null : `Value ${numValue} is outside range [${min}, ${max}]`
+        issueType: valid ? undefined : 'out_of_range',
+        message: valid
+          ? undefined
+          : `Value ${numValue} is outside range [${min}, ${max}]`,
       };
     } catch (error) {
       return {
         valid: false,
         issueType: 'validation_error',
-        message: `Range validation failed: ${error.message}`
+        message: `Range validation failed: ${this.getErrorMessage(error)}`,
       };
     }
   }
 
-  private validateLookup(value: any, rule: ValidationRule): any {
+  private validateLookup(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     // Validate against lookup table
     const lookupValues = rule.rule.split('|').map(v => v.trim().toLowerCase());
     const valid = lookupValues.includes(String(value).toLowerCase());
 
     return {
       valid,
-      issueType: valid ? null : 'invalid_value',
-      message: valid ? null : `Value not in allowed list: ${rule.rule}`
+      issueType: valid ? undefined : 'invalid_value',
+      message: valid ? undefined : `Value not in allowed list: ${rule.rule}`,
     };
   }
 
-  private validateSemantic(value: any, rule: ValidationRule): any {
+  private validateSemantic(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     // Semantic validation (placeholder for more sophisticated logic)
     return { valid: true };
   }
 
-  private validateContextual(value: any, rule: ValidationRule): any {
+  private validateContextual(
+    value: unknown,
+    rule: ValidationRule
+  ): ValidationRuleResult {
     // Contextual validation (placeholder)
     return { valid: true };
   }
 
-  private formatFieldValue(fieldData: any, rule: PostProcessingRule): any {
+  private formatFieldValue(
+    fieldData: ExtractedFieldResult,
+    rule: PostProcessingRule
+  ): ExtractedFieldResult {
     // Apply formatting rules
     return fieldData;
   }
 
-  private normalizeFieldValue(fieldData: any, rule: PostProcessingRule): any {
+  private normalizeFieldValue(
+    fieldData: ExtractedFieldResult,
+    rule: PostProcessingRule
+  ): ExtractedFieldResult {
     // Apply normalization rules
     return fieldData;
   }
 
-  private async enrichFieldValue(fieldData: any, rule: PostProcessingRule): Promise<any> {
+  private async enrichFieldValue(
+    fieldData: ExtractedFieldResult,
+    rule: PostProcessingRule
+  ): Promise<ExtractedFieldResult> {
     // Apply enrichment rules
     return fieldData;
   }
 
-  private validateFieldValueInPostProcessing(fieldData: any, rule: PostProcessingRule): any {
+  private validateFieldValueInPostProcessing(
+    fieldData: ExtractedFieldResult,
+    rule: PostProcessingRule
+  ): ExtractedFieldResult {
     // Apply validation in post-processing
     return fieldData;
   }
 
-  private correctFieldValue(fieldData: any, rule: PostProcessingRule): any {
+  private correctFieldValue(
+    fieldData: ExtractedFieldResult,
+    rule: PostProcessingRule
+  ): ExtractedFieldResult {
     // Apply correction rules
     return fieldData;
   }
 
-  private calculateOutcome(processing: any): any {
-    const extractedFields = processing.extractionResults;
-    const validationResults = processing.validationResults;
+  private calculateOutcome(processing: any): {
+    success: boolean;
+    extractedFields: ExtractedFieldMap;
+    confidence: number;
+    errors: unknown[];
+    warnings: unknown[];
+    qualityScore: number;
+  } {
+    const extractedFields =
+      (processing.extractionResults as ExtractedFieldMap) || {};
+    const validationResults =
+      (processing.validationResults as ValidationResultMap) || {};
 
     let totalFields = 0;
     let successfulFields = 0;
@@ -1105,23 +1454,28 @@ export class IntelligentDocumentProcessor {
       }
     }
 
-    const success = successfulFields > 0 && (successfulFields / totalFields) > 0.5;
+    const success =
+      successfulFields > 0 && successfulFields / totalFields > 0.5;
     const confidence = totalFields > 0 ? totalConfidence / totalFields : 0;
     const quality = totalFields > 0 ? qualityScore / totalFields : 0;
 
     return {
       success,
       extractedFields: Object.fromEntries(
-        Object.entries(extractedFields).filter(([_, data]) => data.value !== null)
-      ),
+        Object.entries(extractedFields).filter(
+          ([_, data]) => data.value !== null
+        )
+      ) as ExtractedFieldMap,
       confidence,
       errors: [],
       warnings: [],
-      qualityScore: quality
+      qualityScore: quality,
     };
   }
 
-  private async loadParsingStrategy(strategyKey: string): Promise<DocumentParsingStrategy | null> {
+  private async loadParsingStrategy(
+    strategyKey: string
+  ): Promise<DocumentParsingStrategy | null> {
     const memory = await agentMemoryService.getMemoryByContext(
       'document-processor-specialist',
       `strategy_${strategyKey}`
@@ -1131,18 +1485,26 @@ export class IntelligentDocumentProcessor {
   }
 
   private needsStrategyUpdate(strategy: DocumentParsingStrategy): boolean {
-    const timeSinceUpdate = Date.now() - strategy.learningData.lastUpdated.getTime();
-    return timeSinceUpdate > this.strategyUpdateInterval ||
-           strategy.learningData.accuracyScore < this.adaptationThreshold;
+    const timeSinceUpdate =
+      Date.now() - strategy.learningData.lastUpdated.getTime();
+    return (
+      timeSinceUpdate > this.strategyUpdateInterval ||
+      strategy.learningData.accuracyScore < this.adaptationThreshold
+    );
   }
 
-  private async updateStrategy(strategy: DocumentParsingStrategy): Promise<void> {
+  private async updateStrategy(
+    strategy: DocumentParsingStrategy
+  ): Promise<void> {
     // Update strategy based on recent performance
     strategy.learningData.lastUpdated = new Date();
     await this.saveParsingStrategy(strategy);
   }
 
-  private async createDefaultStrategy(documentType: string, domain: string): Promise<DocumentParsingStrategy> {
+  private async createDefaultStrategy(
+    documentType: string,
+    domain: string
+  ): Promise<DocumentParsingStrategy> {
     const strategy: DocumentParsingStrategy = {
       documentType,
       domain,
@@ -1151,7 +1513,7 @@ export class IntelligentDocumentProcessor {
         filePatterns: this.getDefaultFilePatterns(documentType),
         contentPatterns: this.getDefaultContentPatterns(documentType),
         structuralMarkers: this.getDefaultStructuralMarkers(documentType),
-        confidenceThreshold: 0.7
+        confidenceThreshold: 0.7,
       },
       extractionRules: this.getDefaultExtractionRules(documentType, domain),
       learningData: {
@@ -1160,22 +1522,24 @@ export class IntelligentDocumentProcessor {
         successCount: 0,
         failureCount: 0,
         accuracyScore: 0.5,
-        adaptationHistory: []
+        adaptationHistory: [],
       },
       performance: {
         overallAccuracy: 0.5,
         fieldAccuracies: {},
         processingSpeed: 0,
         errorPatterns: [],
-        improvementAreas: []
-      }
+        improvementAreas: [],
+      },
     };
 
     await this.saveParsingStrategy(strategy);
     return strategy;
   }
 
-  private async saveParsingStrategy(strategy: DocumentParsingStrategy): Promise<void> {
+  private async saveParsingStrategy(
+    strategy: DocumentParsingStrategy
+  ): Promise<void> {
     const strategyKey = `${strategy.documentType}_${strategy.domain}`;
 
     await agentMemoryService.storeMemory({
@@ -1190,36 +1554,48 @@ export class IntelligentDocumentProcessor {
         documentType: strategy.documentType,
         domain: strategy.domain,
         version: strategy.version,
-        accuracy: strategy.performance.overallAccuracy
-      }
+        accuracy: strategy.performance.overallAccuracy,
+      },
     });
   }
 
   private getDefaultFilePatterns(documentType: string): string[] {
-    const patterns = {
-      'rfp_document': ['.*rfp.*', '.*solicitation.*', '.*proposal.*'],
-      'contract': ['.*contract.*', '.*agreement.*'],
-      'technical_document': ['.*spec.*', '.*technical.*', '.*requirements.*']
+    const patterns: Record<string, string[]> = {
+      rfp_document: ['.*rfp.*', '.*solicitation.*', '.*proposal.*'],
+      contract: ['.*contract.*', '.*agreement.*'],
+      technical_document: ['.*spec.*', '.*technical.*', '.*requirements.*'],
     };
 
     return patterns[documentType] || ['.*'];
   }
 
   private getDefaultContentPatterns(documentType: string): string[] {
-    const patterns = {
-      'rfp_document': ['request for proposal', 'rfp number', 'submission deadline'],
-      'contract': ['contract number', 'effective date', 'termination'],
-      'technical_document': ['specification', 'requirements', 'architecture']
+    const patterns: Record<string, string[]> = {
+      rfp_document: [
+        'request for proposal',
+        'rfp number',
+        'submission deadline',
+      ],
+      contract: ['contract number', 'effective date', 'termination'],
+      technical_document: ['specification', 'requirements', 'architecture'],
     };
 
     return patterns[documentType] || [];
   }
 
   private getDefaultStructuralMarkers(documentType: string): string[] {
-    const markers = {
-      'rfp_document': ['scope of work', 'evaluation criteria', 'submission requirements'],
-      'contract': ['terms and conditions', 'payment terms', 'deliverables'],
-      'technical_document': ['functional requirements', 'non-functional requirements', 'constraints']
+    const markers: Record<string, string[]> = {
+      rfp_document: [
+        'scope of work',
+        'evaluation criteria',
+        'submission requirements',
+      ],
+      contract: ['terms and conditions', 'payment terms', 'deliverables'],
+      technical_document: [
+        'functional requirements',
+        'non-functional requirements',
+        'constraints',
+      ],
     };
 
     return markers[documentType] || [];
@@ -1227,53 +1603,65 @@ export class IntelligentDocumentProcessor {
 
   private getDefaultExtractionRules(documentType: string, domain: string): any {
     // Return default extraction rules based on document type and domain
-    const rules = {
-      'rfp_document': {
-        'rfp_number': {
-          patterns: [{
-            type: 'regex',
-            pattern: 'rfp\\s*[#:]?\\s*([\\w\\-\\/]+)',
-            weight: 1.0,
-            confidence: 0.8
-          }],
-          validationRules: [{
-            type: 'format',
-            rule: '^[\\w\\-\\/]+$',
-            severity: 'warning',
-            confidence: 0.7
-          }],
-          postProcessing: [{
-            type: 'normalize',
-            operation: 'uppercase',
-            parameters: {},
-            confidence: 0.9
-          }],
+    const rules: Record<string, Record<string, unknown>> = {
+      rfp_document: {
+        rfp_number: {
+          patterns: [
+            {
+              type: 'regex',
+              pattern: 'rfp\\s*[#:]?\\s*([\\w\\-\\/]+)',
+              weight: 1.0,
+              confidence: 0.8,
+            },
+          ],
+          validationRules: [
+            {
+              type: 'format',
+              rule: '^[\\w\\-\\/]+$',
+              severity: 'warning',
+              confidence: 0.7,
+            },
+          ],
+          postProcessing: [
+            {
+              type: 'normalize',
+              operation: 'uppercase',
+              parameters: {},
+              confidence: 0.9,
+            },
+          ],
           reliability: 0.8,
-          lastSuccessful: new Date()
+          lastSuccessful: new Date(),
         },
-        'deadline': {
-          patterns: [{
-            type: 'semantic',
-            pattern: 'deadline|due date|submission date',
-            weight: 1.0,
-            confidence: 0.7
-          }],
-          validationRules: [{
-            type: 'format',
-            rule: '\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{4}',
-            severity: 'error',
-            confidence: 0.8
-          }],
-          postProcessing: [{
-            type: 'format',
-            operation: 'date_normalize',
-            parameters: { format: 'MM/DD/YYYY' },
-            confidence: 0.9
-          }],
+        deadline: {
+          patterns: [
+            {
+              type: 'semantic',
+              pattern: 'deadline|due date|submission date',
+              weight: 1.0,
+              confidence: 0.7,
+            },
+          ],
+          validationRules: [
+            {
+              type: 'format',
+              rule: '\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{4}',
+              severity: 'error',
+              confidence: 0.8,
+            },
+          ],
+          postProcessing: [
+            {
+              type: 'format',
+              operation: 'date_normalize',
+              parameters: { format: 'MM/DD/YYYY' },
+              confidence: 0.9,
+            },
+          ],
           reliability: 0.7,
-          lastSuccessful: new Date()
-        }
-      }
+          lastSuccessful: new Date(),
+        },
+      },
     };
 
     return rules[documentType] || {};
@@ -1281,14 +1669,16 @@ export class IntelligentDocumentProcessor {
 
   private hasStructuralContent(content: string): boolean {
     // Check if content has structural elements
-    return content.includes('<') || // HTML/XML
-           content.includes('{') || // JSON
-           content.includes('|') || // Tables
-           content.split('\n').length > 10; // Multi-line document
+    return (
+      content.includes('<') || // HTML/XML
+      content.includes('{') || // JSON
+      content.includes('|') || // Tables
+      content.split('\n').length > 10
+    ); // Multi-line document
   }
 
   private identifyParsingImprovements(attempt: ParsingAttempt): string[] {
-    const improvements = [];
+    const improvements: string[] = [];
 
     if (attempt.outcome.confidence < 0.7) {
       improvements.push('extraction_patterns');
@@ -1310,7 +1700,7 @@ export class IntelligentDocumentProcessor {
   }
 
   private extractParsingPatterns(attempt: ParsingAttempt): string[] {
-    const patterns = [];
+    const patterns: string[] = [];
 
     if (attempt.outcome.success) {
       patterns.push(`successful_parsing_${attempt.documentType}`);
@@ -1324,15 +1714,17 @@ export class IntelligentDocumentProcessor {
     return patterns;
   }
 
-  private suggestParsingAdaptations(attempt: ParsingAttempt): any[] {
-    const adaptations = [];
+  private suggestParsingAdaptations(
+    attempt: ParsingAttempt
+  ): AdaptationSuggestion[] {
+    const adaptations: AdaptationSuggestion[] = [];
 
     if (!attempt.outcome.success) {
       adaptations.push({
         type: 'pattern_adjustment',
         area: 'extraction_rules',
         suggestion: 'Review and update extraction patterns',
-        confidence: 0.7
+        confidence: 0.7,
       });
     }
 
@@ -1341,14 +1733,16 @@ export class IntelligentDocumentProcessor {
         type: 'strategy_overhaul',
         area: 'overall_approach',
         suggestion: 'Consider alternative extraction strategies',
-        confidence: 0.8
+        confidence: 0.8,
       });
     }
 
     return adaptations;
   }
 
-  private async getParsingAttempt(documentId: string): Promise<ParsingAttempt | null> {
+  private async getParsingAttempt(
+    documentId: string
+  ): Promise<ParsingAttempt | null> {
     const memory = await agentMemoryService.getMemoryByContext(
       'document-processor-specialist',
       `parsing_attempt_${documentId}`
@@ -1368,8 +1762,8 @@ export class IntelligentDocumentProcessor {
       tags: ['document_parsing', attempt.documentType, attempt.domain],
       metadata: {
         documentId: attempt.documentId,
-        hasFeedback: !!attempt.feedback
-      }
+        hasFeedback: !!attempt.feedback,
+      },
     });
   }
 
@@ -1384,25 +1778,34 @@ export class IntelligentDocumentProcessor {
       significant: correctionCount > 0 || qualityRating < 3,
       correctionCount,
       qualityRating,
-      patterns: this.identifyFeedbackPatterns(corrections)
+      patterns: this.identifyFeedbackPatterns(corrections),
     };
   }
 
-  private identifyFeedbackPatterns(corrections: any): any[] {
-    const patterns = [];
+  private identifyFeedbackPatterns(
+    corrections: Record<string, unknown>
+  ): FeedbackPattern[] {
+    const patterns: FeedbackPattern[] = [];
 
     for (const [fieldName, correction] of Object.entries(corrections)) {
       patterns.push({
         field: fieldName,
         issue: 'incorrect_extraction',
-        correctedValue: correction
+        correctedValue: correction,
       });
     }
 
     return patterns;
   }
 
-  private async updateStrategyFromFeedback(attempt: ParsingAttempt, insights: any): Promise<void> {
+  private async updateStrategyFromFeedback(
+    attempt: ParsingAttempt,
+    insights: {
+      patterns: FeedbackPattern[];
+      qualityRating: number;
+      correctionCount: number;
+    }
+  ): Promise<void> {
     const strategyKey = `${attempt.documentType}_${attempt.domain}`;
     const strategy = await this.loadParsingStrategy(strategyKey);
 
@@ -1436,31 +1839,46 @@ export class IntelligentDocumentProcessor {
       trigger: 'user_feedback',
       changes: insights.patterns,
       impactScore: insights.correctionCount / 10,
-      success: true
+      success: true,
     });
 
     await this.saveParsingStrategy(strategy);
   }
 
-  private createPatternFromCorrection(pattern: any): ExtractionPattern | null {
+  private createPatternFromCorrection(
+    pattern: FeedbackPattern
+  ): ExtractionPattern | null {
     // Create new extraction pattern based on user correction
     // This is a simplified implementation
     return {
       type: 'regex',
-      pattern: String(pattern.correctedValue).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+      pattern: String(pattern.correctedValue).replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      ),
       weight: 1.0,
       confidence: 0.8,
-      adaptiveModifications: [`corrected_from_feedback_${Date.now()}`]
+      adaptiveModifications: [`corrected_from_feedback_${Date.now()}`],
     };
   }
 
-  private calculateUpdatedAccuracy(currentAccuracy: number, feedbackScore: number): number {
+  private calculateUpdatedAccuracy(
+    currentAccuracy: number,
+    feedbackScore: number
+  ): number {
     // Weighted average with more recent feedback having higher impact
-    return (currentAccuracy * 0.8) + (feedbackScore * 0.2);
+    return currentAccuracy * 0.8 + feedbackScore * 0.2;
   }
 
-  private async getParsingAttemptsByDateRange(startDate: Date, endDate: Date): Promise<ParsingAttempt[]> {
-    const memories = await agentMemoryService.getAgentMemories('document-processor-specialist', 'episodic', 1000);
+  private async getParsingAttemptsByDateRange(
+    startDate: Date,
+    endDate: Date
+  ): Promise<ParsingAttempt[]> {
+    const memories = await agentMemoryService.getAgentMemories(
+      'document-processor-specialist',
+      'episodic',
+      1000
+    );
 
     return memories
       .filter(m => {
@@ -1473,51 +1891,76 @@ export class IntelligentDocumentProcessor {
   private calculateOverallAccuracy(attempts: ParsingAttempt[]): number {
     if (attempts.length === 0) return 0;
 
-    const totalAccuracy = attempts.reduce((sum, attempt) => sum + (attempt.outcome.confidence || 0), 0);
+    const totalAccuracy = attempts.reduce(
+      (sum, attempt) => sum + (attempt.outcome.confidence || 0),
+      0
+    );
     return totalAccuracy / attempts.length;
   }
 
-  private analyzePerformanceByType(attempts: ParsingAttempt[]): any {
-    const typeGroups = attempts.reduce((groups, attempt) => {
-      if (!groups[attempt.documentType]) groups[attempt.documentType] = [];
-      groups[attempt.documentType].push(attempt);
-      return groups;
-    }, {});
+  private analyzePerformanceByType(
+    attempts: ParsingAttempt[]
+  ): Record<string, PerformanceSummary> {
+    const typeGroups = attempts.reduce<Record<string, ParsingAttempt[]>>(
+      (groups, attempt) => {
+        if (!groups[attempt.documentType]) {
+          groups[attempt.documentType] = [];
+        }
+        groups[attempt.documentType].push(attempt);
+        return groups;
+      },
+      {}
+    );
 
-    const analysis = {};
+    const analysis: Record<string, PerformanceSummary> = {};
     for (const [type, typeAttempts] of Object.entries(typeGroups)) {
       analysis[type] = {
-        totalDocuments: (typeAttempts as ParsingAttempt[]).length,
-        accuracy: this.calculateOverallAccuracy(typeAttempts as ParsingAttempt[]),
-        successRate: (typeAttempts as ParsingAttempt[]).filter(a => a.outcome.success).length / (typeAttempts as ParsingAttempt[]).length
+        totalDocuments: typeAttempts.length,
+        accuracy: this.calculateOverallAccuracy(typeAttempts),
+        successRate:
+          typeAttempts.filter(a => a.outcome.success).length /
+          (typeAttempts.length || 1),
       };
     }
 
     return analysis;
   }
 
-  private analyzePerformanceByDomain(attempts: ParsingAttempt[]): any {
-    const domainGroups = attempts.reduce((groups, attempt) => {
-      if (!groups[attempt.domain]) groups[attempt.domain] = [];
-      groups[attempt.domain].push(attempt);
-      return groups;
-    }, {});
+  private analyzePerformanceByDomain(
+    attempts: ParsingAttempt[]
+  ): Record<string, PerformanceSummary> {
+    const domainGroups = attempts.reduce<Record<string, ParsingAttempt[]>>(
+      (groups, attempt) => {
+        if (!groups[attempt.domain]) {
+          groups[attempt.domain] = [];
+        }
+        groups[attempt.domain].push(attempt);
+        return groups;
+      },
+      {}
+    );
 
-    const analysis = {};
+    const analysis: Record<string, PerformanceSummary> = {};
     for (const [domain, domainAttempts] of Object.entries(domainGroups)) {
       analysis[domain] = {
-        totalDocuments: (domainAttempts as ParsingAttempt[]).length,
-        accuracy: this.calculateOverallAccuracy(domainAttempts as ParsingAttempt[]),
-        successRate: (domainAttempts as ParsingAttempt[]).filter(a => a.outcome.success).length / (domainAttempts as ParsingAttempt[]).length
+        totalDocuments: domainAttempts.length,
+        accuracy: this.calculateOverallAccuracy(domainAttempts),
+        successRate:
+          domainAttempts.filter(a => a.outcome.success).length /
+          (domainAttempts.length || 1),
       };
     }
 
     return analysis;
   }
 
-  private analyzeErrors(attempts: ParsingAttempt[]): any {
-    const errorCounts = {};
-    const errorPatterns = [];
+  private analyzeErrors(attempts: ParsingAttempt[]): {
+    totalErrors: number;
+    errorTypes: number;
+    patterns: ErrorPatternSummary[];
+  } {
+    const errorCounts: Record<string, number> = {};
+    const errorPatterns: ErrorPatternSummary[] = [];
 
     for (const attempt of attempts) {
       for (const error of attempt.outcome.errors) {
@@ -1529,19 +1972,24 @@ export class IntelligentDocumentProcessor {
       errorPatterns.push({
         type: errorType,
         frequency: count,
-        percentage: ((count as number) / attempts.length) * 100
+        percentage: (count / (attempts.length || 1)) * 100,
       });
     }
 
     return {
-      totalErrors: Object.values(errorCounts).reduce((sum, count) => sum + (count as number), 0),
+      totalErrors: Object.values(errorCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      ),
       errorTypes: Object.keys(errorCounts).length,
-      patterns: errorPatterns.sort((a, b) => b.frequency - a.frequency)
+      patterns: errorPatterns.sort((a, b) => b.frequency - a.frequency),
     };
   }
 
-  private identifyImprovementOpportunities(attempts: ParsingAttempt[]): string[] {
-    const opportunities = [];
+  private identifyImprovementOpportunities(
+    attempts: ParsingAttempt[]
+  ): string[] {
+    const opportunities: string[] = [];
 
     const overallAccuracy = this.calculateOverallAccuracy(attempts);
     if (overallAccuracy < 0.8) {
@@ -1561,15 +2009,20 @@ export class IntelligentDocumentProcessor {
     return opportunities;
   }
 
-  private async generateStrategyRecommendations(attempts: ParsingAttempt[]): Promise<string[]> {
-    const recommendations = [];
+  private async generateStrategyRecommendations(
+    attempts: ParsingAttempt[]
+  ): Promise<string[]> {
+    const recommendations: string[] = [];
 
     // Analyze patterns in failed attempts
     const failedAttempts = attempts.filter(a => !a.outcome.success);
     if (failedAttempts.length > 0) {
-      const commonFailureTypes = this.identifyCommonFailureTypes(failedAttempts);
+      const commonFailureTypes =
+        this.identifyCommonFailureTypes(failedAttempts);
       for (const failureType of commonFailureTypes) {
-        recommendations.push(`Address ${failureType} failure pattern through strategy updates`);
+        recommendations.push(
+          `Address ${failureType} failure pattern through strategy updates`
+        );
       }
     }
 
@@ -1577,29 +2030,39 @@ export class IntelligentDocumentProcessor {
     const typePerformance = this.analyzePerformanceByType(attempts);
     for (const [type, performance] of Object.entries(typePerformance)) {
       if ((performance as any).accuracy < 0.7) {
-        recommendations.push(`Improve extraction strategy for ${type} documents`);
+        recommendations.push(
+          `Improve extraction strategy for ${type} documents`
+        );
       }
     }
 
     return recommendations;
   }
 
-  private identifyCommonFailureTypes(failedAttempts: ParsingAttempt[]): string[] {
+  private identifyCommonFailureTypes(
+    failedAttempts: ParsingAttempt[]
+  ): string[] {
     const failureTypes = failedAttempts
       .flatMap(attempt => attempt.outcome.errors.map(error => error.type))
-      .reduce((counts, type) => {
+      .reduce<Record<string, number>>((counts, type) => {
         counts[type] = (counts[type] || 0) + 1;
         return counts;
       }, {});
 
     return Object.entries(failureTypes)
-      .filter(([_, count]) => (count as number) > 1)
-      .sort(([, a], [, b]) => (b as number) - (a as number))
+      .filter(([_, count]) => count > 1)
+      .sort(([, a], [, b]) => b - a)
       .map(([type, _]) => type);
   }
 
-  private async adaptParsingStrategy(documentType: string, domain: string, reason: string): Promise<void> {
-    console.log(`🔄 Adapting parsing strategy for ${documentType}/${domain}: ${reason}`);
+  private async adaptParsingStrategy(
+    documentType: string,
+    domain: string,
+    reason: string
+  ): Promise<void> {
+    console.log(
+      `🔄 Adapting parsing strategy for ${documentType}/${domain}: ${reason}`
+    );
 
     const strategy = await this.getParsingStrategy(documentType, domain);
 
@@ -1617,16 +2080,21 @@ export class IntelligentDocumentProcessor {
       trigger: reason,
       changes: adaptations,
       impactScore: 0.5,
-      success: true
+      success: true,
     });
 
     await this.saveParsingStrategy(strategy);
 
-    console.log(`✅ Applied ${adaptations.length} adaptations to parsing strategy`);
+    console.log(
+      `✅ Applied ${adaptations.length} adaptations to parsing strategy`
+    );
   }
 
-  private async generateParsingAdaptations(strategy: DocumentParsingStrategy, reason: string): Promise<any[]> {
-    const adaptations = [];
+  private async generateParsingAdaptations(
+    strategy: DocumentParsingStrategy,
+    reason: string
+  ): Promise<Record<string, unknown>[]> {
+    const adaptations: Array<Record<string, unknown>> = [];
 
     switch (reason) {
       case 'low_performance':
@@ -1634,7 +2102,7 @@ export class IntelligentDocumentProcessor {
         adaptations.push({
           type: 'confidence_adjustment',
           action: 'reduce_low_performers',
-          threshold: 0.5
+          threshold: 0.5,
         });
         break;
 
@@ -1643,7 +2111,7 @@ export class IntelligentDocumentProcessor {
         adaptations.push({
           type: 'validation_update',
           action: 'relax_rules',
-          severity: 'warning'
+          severity: 'warning',
         });
         break;
 
@@ -1651,7 +2119,7 @@ export class IntelligentDocumentProcessor {
         // Add user-suggested patterns
         adaptations.push({
           type: 'pattern_addition',
-          action: 'add_feedback_patterns'
+          action: 'add_feedback_patterns',
         });
         break;
     }
@@ -1659,7 +2127,10 @@ export class IntelligentDocumentProcessor {
     return adaptations;
   }
 
-  private async applyParsingAdaptation(strategy: DocumentParsingStrategy, adaptation: any): Promise<void> {
+  private async applyParsingAdaptation(
+    strategy: DocumentParsingStrategy,
+    adaptation: any
+  ): Promise<void> {
     switch (adaptation.type) {
       case 'confidence_adjustment':
         this.adjustPatternConfidences(strategy, adaptation);
@@ -1673,7 +2144,10 @@ export class IntelligentDocumentProcessor {
     }
   }
 
-  private adjustPatternConfidences(strategy: DocumentParsingStrategy, adaptation: any): void {
+  private adjustPatternConfidences(
+    strategy: DocumentParsingStrategy,
+    adaptation: any
+  ): void {
     for (const fieldRules of Object.values(strategy.extractionRules)) {
       fieldRules.patterns.forEach(pattern => {
         if (pattern.confidence < adaptation.threshold) {
@@ -1683,7 +2157,10 @@ export class IntelligentDocumentProcessor {
     }
   }
 
-  private updateValidationRules(strategy: DocumentParsingStrategy, adaptation: any): void {
+  private updateValidationRules(
+    strategy: DocumentParsingStrategy,
+    adaptation: any
+  ): void {
     for (const fieldRules of Object.values(strategy.extractionRules)) {
       fieldRules.validationRules.forEach(rule => {
         if (rule.severity === 'error' && adaptation.action === 'relax_rules') {
@@ -1693,10 +2170,14 @@ export class IntelligentDocumentProcessor {
     }
   }
 
-  private addNewPatterns(strategy: DocumentParsingStrategy, adaptation: any): void {
+  private addNewPatterns(
+    strategy: DocumentParsingStrategy,
+    adaptation: any
+  ): void {
     // Placeholder for adding new patterns based on adaptations
     console.log('Adding new patterns based on adaptation');
   }
 }
 
-export const intelligentDocumentProcessor = IntelligentDocumentProcessor.getInstance();
+export const intelligentDocumentProcessor =
+  IntelligentDocumentProcessor.getInstance();

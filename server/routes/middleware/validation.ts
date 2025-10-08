@@ -1,5 +1,20 @@
 import type { Request, Response, NextFunction } from 'express';
-import { z, type ZodSchema } from 'zod';
+import { z, type ZodSchema, type ZodObject } from 'zod';
+
+type UploadedFile = {
+  originalname?: string;
+  size: number;
+  [key: string]: unknown;
+};
+
+declare global {
+  namespace Express {
+    interface Request {
+      file?: UploadedFile;
+      files?: UploadedFile[] | Record<string, UploadedFile[]>;
+    }
+  }
+}
 
 /**
  * Request validation middleware factory
@@ -30,14 +45,28 @@ export const validateRequest = (
 export const commonSchemas = {
   // Pagination parameters
   pagination: z.object({
-    limit: z.string().transform(val => parseInt(val, 10)).pipe(z.number().min(1).max(100)).optional().default('50'),
-    offset: z.string().transform(val => parseInt(val, 10)).pipe(z.number().min(0)).optional().default('0'),
-    page: z.string().transform(val => parseInt(val, 10)).pipe(z.number().min(1)).optional()
+    limit: z
+      .string()
+      .transform(val => parseInt(val, 10))
+      .pipe(z.number().min(1).max(100))
+      .optional()
+      .default('50'),
+    offset: z
+      .string()
+      .transform(val => parseInt(val, 10))
+      .pipe(z.number().min(0))
+      .optional()
+      .default('0'),
+    page: z
+      .string()
+      .transform(val => parseInt(val, 10))
+      .pipe(z.number().min(1))
+      .optional(),
   }),
 
   // ID parameters
   id: z.object({
-    id: z.string().uuid('Invalid ID format')
+    id: z.string().uuid('Invalid ID format'),
   }),
 
   // Search parameters
@@ -45,33 +74,43 @@ export const commonSchemas = {
     q: z.string().min(1).max(100).optional(),
     filter: z.string().optional(),
     sort: z.enum(['asc', 'desc']).optional().default('desc'),
-    sortBy: z.string().optional()
+    sortBy: z.string().optional(),
   }),
 
   // Date range parameters
-  dateRange: z.object({
-    startDate: z.string().datetime().optional(),
-    endDate: z.string().datetime().optional()
-  }).refine(data => {
-    if (data.startDate && data.endDate) {
-      return new Date(data.startDate) <= new Date(data.endDate);
-    }
-    return true;
-  }, {
-    message: "Start date must be before end date"
-  }),
+  dateRange: z
+    .object({
+      startDate: z.string().datetime().optional(),
+      endDate: z.string().datetime().optional(),
+    })
+    .refine(
+      data => {
+        if (data.startDate && data.endDate) {
+          return new Date(data.startDate) <= new Date(data.endDate);
+        }
+        return true;
+      },
+      {
+        message: 'Start date must be before end date',
+      }
+    ),
 
   // Status parameters
   status: z.object({
-    status: z.enum(['active', 'inactive', 'pending', 'completed', 'failed']).optional()
-  })
+    status: z
+      .enum(['active', 'inactive', 'pending', 'completed', 'failed'])
+      .optional(),
+  }),
 };
 
 /**
  * Combine multiple validation schemas
  */
-export const combineSchemas = (...schemas: ZodSchema[]) => {
-  return schemas.reduce((acc, schema) => acc.merge(schema), z.object({}));
+export const combineSchemas = (...schemas: Array<ZodObject<any>>) => {
+  return schemas.reduce<ZodObject<any>>(
+    (acc, schema) => acc.merge(schema),
+    z.object({})
+  );
 };
 
 /**
@@ -85,16 +124,33 @@ export const validateFileUpload = (
     if (!req.file && !req.files) {
       return res.status(400).json({
         error: 'No file uploaded',
-        details: 'A file is required for this endpoint'
+        details: 'A file is required for this endpoint',
       });
     }
 
-    const file = req.file || (Array.isArray(req.files) ? req.files[0] : req.files);
+    const file = (() => {
+      if (req.file) {
+        return req.file;
+      }
+
+      if (Array.isArray(req.files)) {
+        return req.files[0];
+      }
+
+      if (req.files && typeof req.files === 'object') {
+        const firstEntry = Object.values(req.files)[0];
+        if (Array.isArray(firstEntry)) {
+          return firstEntry[0];
+        }
+      }
+
+      return undefined;
+    })();
 
     if (!file) {
       return res.status(400).json({
         error: 'Invalid file upload',
-        details: 'File data is missing or corrupted'
+        details: 'File data is missing or corrupted',
       });
     }
 
@@ -104,7 +160,7 @@ export const validateFileUpload = (
       return res.status(400).json({
         error: 'Invalid file type',
         details: `Allowed types: ${allowedTypes.join(', ')}`,
-        received: fileExtension
+        received: fileExtension,
       });
     }
 
@@ -113,7 +169,7 @@ export const validateFileUpload = (
       return res.status(400).json({
         error: 'File too large',
         details: `Maximum size: ${maxSizeBytes / (1024 * 1024)}MB`,
-        received: `${(file.size / (1024 * 1024)).toFixed(2)}MB`
+        received: `${(file.size / (1024 * 1024)).toFixed(2)}MB`,
       });
     }
 
@@ -125,10 +181,11 @@ export const validateFileUpload = (
  * Sanitize and validate session/request IDs
  */
 export const validateSessionId = z.object({
-  sessionId: z.string()
+  sessionId: z
+    .string()
     .min(10, 'Session ID too short')
     .max(100, 'Session ID too long')
-    .regex(/^[a-zA-Z0-9_-]+$/, 'Session ID contains invalid characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Session ID contains invalid characters'),
 });
 
 /**
@@ -141,7 +198,7 @@ export const portalSchemas = {
     type: z.enum(['municipal', 'federal', 'state', 'private']),
     enabled: z.boolean().optional().default(true),
     scanInterval: z.number().min(3600).max(86400).optional(), // 1 hour to 1 day
-    config: z.record(z.any()).optional()
+    config: z.record(z.any()).optional(),
   }),
 
   update: z.object({
@@ -150,8 +207,8 @@ export const portalSchemas = {
     type: z.enum(['municipal', 'federal', 'state', 'private']).optional(),
     enabled: z.boolean().optional(),
     scanInterval: z.number().min(3600).max(86400).optional(),
-    config: z.record(z.any()).optional()
-  })
+    config: z.record(z.any()).optional(),
+  }),
 };
 
 /**
@@ -161,12 +218,12 @@ export const rfpSchemas = {
   manual: z.object({
     url: z.string().url('Invalid URL format'),
     portalId: z.string().uuid('Invalid portal ID'),
-    additionalData: z.record(z.any()).optional()
+    additionalData: z.record(z.any()).optional(),
   }),
 
   filters: z.object({
     portal: z.string().optional(),
     status: z.enum(['active', 'closed', 'draft', 'cancelled']).optional(),
-    dateRange: commonSchemas.dateRange.optional()
-  })
+    dateRange: commonSchemas.dateRange.optional(),
+  }),
 };

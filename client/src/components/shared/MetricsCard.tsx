@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { ReactNode } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface MetricsCardProps {
   title: string;
@@ -17,12 +17,12 @@ export function MetricsCard({
   title,
   value,
   icon,
-  iconColor = "text-blue-600",
-  iconBgColor = "bg-blue-100 dark:bg-blue-900/20",
-  textColor = "text-blue-600",
+  iconColor = 'text-blue-600',
+  iconBgColor = 'bg-blue-100 dark:bg-blue-900/20',
+  textColor = 'text-blue-600',
   subtitle,
   testId,
-  children
+  children,
 }: MetricsCardProps) {
   return (
     <Card>
@@ -33,7 +33,10 @@ export function MetricsCard({
           </div>
           <div className="ml-4">
             <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className={`text-2xl font-bold ${textColor}`} data-testid={testId}>
+            <p
+              className={`text-2xl font-bold ${textColor}`}
+              data-testid={testId}
+            >
               {value}
             </p>
             {subtitle && (

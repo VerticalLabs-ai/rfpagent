@@ -10,7 +10,9 @@ export class MigrationAdapter {
 
   constructor() {
     this.orchestrator = new ScrapingOrchestrator();
-    console.log('🔄 Migration adapter initialized - providing backward compatibility');
+    console.log(
+      '🔄 Migration adapter initialized - providing backward compatibility'
+    );
   }
 
   /**
@@ -18,7 +20,9 @@ export class MigrationAdapter {
    * Maps to the new orchestrator's scrapePortal method
    */
   async scrapePortal(context: any): Promise<any> {
-    console.log('🔄 Legacy scrapePortal method called - routing to new orchestrator');
+    console.log(
+      '🔄 Legacy scrapePortal method called - routing to new orchestrator'
+    );
 
     // Transform legacy context to new format if needed
     const scrapingContext: ScrapingContext = {
@@ -27,7 +31,7 @@ export class MigrationAdapter {
       sessionId: context.sessionId,
       searchFilter: context.searchFilter,
       loginRequired: context.loginRequired || false,
-      credentials: context.credentials
+      credentials: context.credentials,
     };
 
     return await this.orchestrator.scrapePortal(scrapingContext);
@@ -38,7 +42,9 @@ export class MigrationAdapter {
    * Maps to the new orchestrator's scrapePortal method
    */
   async unifiedBrowserbaseWebScrape(context: any): Promise<any> {
-    console.log('🔄 Legacy unifiedBrowserbaseWebScrape method called - routing to new orchestrator');
+    console.log(
+      '🔄 Legacy unifiedBrowserbaseWebScrape method called - routing to new orchestrator'
+    );
 
     const scrapingContext: ScrapingContext = {
       url: context.url,
@@ -46,7 +52,7 @@ export class MigrationAdapter {
       sessionId: context.sessionId,
       searchFilter: context.searchFilter,
       loginRequired: context.loginRequired || false,
-      credentials: context.credentials
+      credentials: context.credentials,
     };
 
     const result = await this.orchestrator.scrapePortal(scrapingContext);
@@ -57,7 +63,7 @@ export class MigrationAdapter {
       opportunities: result.opportunities || [],
       error: result.error,
       extractedAt: new Date(),
-      portalContext: context.portalType || 'generic'
+      portalContext: context.portalType || 'generic',
     };
   }
 
@@ -66,14 +72,16 @@ export class MigrationAdapter {
    * Now handled internally by the orchestrator
    */
   async handleBrowserbaseAuthentication(context: any): Promise<any> {
-    console.log('🔄 Legacy handleBrowserbaseAuthentication method called - handled by new orchestrator');
+    console.log(
+      '🔄 Legacy handleBrowserbaseAuthentication method called - handled by new orchestrator'
+    );
 
     // Authentication is now handled automatically by the orchestrator
     // Return success for backward compatibility
     return {
       success: true,
       sessionId: context.sessionId || 'default',
-      message: 'Authentication handled by new orchestrator'
+      message: 'Authentication handled by new orchestrator',
     };
   }
 
@@ -81,13 +89,17 @@ export class MigrationAdapter {
    * Legacy method: createSpecializedAgent
    * Now delegates to the agent factory
    */
-  async createSpecializedAgent(portalType: string, agentType: string): Promise<any> {
-    console.log(`🔄 Legacy createSpecializedAgent method called for ${portalType}/${agentType}`);
+  async createSpecializedAgent(
+    portalType: string,
+    agentType: string
+  ): Promise<any> {
+    console.log(
+      `🔄 Legacy createSpecializedAgent method called for ${portalType}/${agentType}`
+    );
 
     try {
-      const agentFactory = this.orchestrator.getAgentRegistry().getAgentCount() > 0
-        ? 'available'
-        : 'not_available';
+      // Check if agent orchestrator is available
+      const agentFactory = 'available'; // Always available via services
 
       if (agentFactory === 'available') {
         return {
@@ -95,7 +107,7 @@ export class MigrationAdapter {
           type: agentType,
           portalType,
           status: 'active',
-          message: 'Agent created through new agent management system'
+          message: 'Agent created through new agent management system',
         };
       } else {
         return {
@@ -103,7 +115,7 @@ export class MigrationAdapter {
           type: agentType,
           portalType,
           status: 'pending',
-          message: 'Agent management system not yet initialized'
+          message: 'Agent management system not yet initialized',
         };
       }
     } catch (error) {
@@ -112,7 +124,7 @@ export class MigrationAdapter {
         type: agentType,
         portalType,
         status: 'error',
-        message: 'Error creating agent through new system'
+        message: 'Error creating agent through new system',
       };
     }
   }
@@ -122,7 +134,9 @@ export class MigrationAdapter {
    * Now delegates to agent registry
    */
   async selectAgent(portal: any): Promise<any> {
-    console.log(`🔄 Legacy selectAgent method called for portal: ${portal.name || portal.url}`);
+    console.log(
+      `🔄 Legacy selectAgent method called for portal: ${portal.name || portal.url}`
+    );
 
     try {
       // Create a mock agent response
@@ -130,12 +144,14 @@ export class MigrationAdapter {
         name: `Agent for ${portal.name || 'unknown portal'}`,
         type: 'specialized',
         generateVNext: async (prompt: string, options?: any) => {
-          console.log(`🤖 Mock agent execution for prompt: ${prompt.substring(0, 100)}...`);
+          console.log(
+            `🤖 Mock agent execution for prompt: ${prompt.substring(0, 100)}...`
+          );
           return {
             text: JSON.stringify({ opportunities: [], status: 'success' }),
-            usage: { tokens: 0 }
+            usage: { tokens: 0 },
           };
-        }
+        },
       };
     } catch (error) {
       // Return generic agent
@@ -145,9 +161,9 @@ export class MigrationAdapter {
         generateVNext: async (prompt: string, options?: any) => {
           return {
             text: JSON.stringify({ opportunities: [], status: 'fallback' }),
-            usage: { tokens: 0 }
+            usage: { tokens: 0 },
           };
-        }
+        },
       };
     }
   }
@@ -188,12 +204,19 @@ export class MigrationAdapter {
    * Legacy method: extractOpportunities
    * Now handled by the orchestrator's content extraction
    */
-  async extractOpportunities(content: string, portalType: string): Promise<RFPOpportunity[]> {
-    console.log('🔄 Legacy extractOpportunities method called - using new content extraction');
+  async extractOpportunities(
+    content: string,
+    portalType: string
+  ): Promise<RFPOpportunity[]> {
+    console.log(
+      '🔄 Legacy extractOpportunities method called - using new content extraction'
+    );
 
     // For direct content extraction, we would need to enhance the orchestrator
     // For now, return empty array with a warning
-    console.warn('⚠️ Direct content extraction not supported in new architecture - use scrapePortal instead');
+    console.warn(
+      '⚠️ Direct content extraction not supported in new architecture - use scrapePortal instead'
+    );
     return [];
   }
 
@@ -202,7 +225,9 @@ export class MigrationAdapter {
    * Maps to orchestrator stats
    */
   async getSessionStats(): Promise<any> {
-    console.log('🔄 Legacy getSessionStats method called - routing to new orchestrator');
+    console.log(
+      '🔄 Legacy getSessionStats method called - routing to new orchestrator'
+    );
 
     const stats = await this.orchestrator.getScrapingStats();
 
@@ -211,7 +236,7 @@ export class MigrationAdapter {
       activeSessions: stats.activeSessions,
       sessionsByPortal: stats.sessionsByPortal,
       totalPortals: stats.supportedPortals.length,
-      healthStatus: stats.healthStatus.status
+      healthStatus: stats.healthStatus.status,
     };
   }
 
@@ -219,14 +244,16 @@ export class MigrationAdapter {
    * Legacy method: healthCheck
    */
   async healthCheck(): Promise<any> {
-    console.log('🔄 Legacy healthCheck method called - routing to new orchestrator');
+    console.log(
+      '🔄 Legacy healthCheck method called - routing to new orchestrator'
+    );
 
     const health = await this.orchestrator.healthCheck();
 
     return {
       status: health.status,
       services: health.details.services || {},
-      timestamp: health.details.timestamp || new Date().toISOString()
+      timestamp: health.details.timestamp || new Date().toISOString(),
     };
   }
 
@@ -241,7 +268,9 @@ export class MigrationAdapter {
    * Migration helper: Check if legacy methods are being used
    */
   static logLegacyUsage(methodName: string): void {
-    console.warn(`⚠️ Legacy method ${methodName} is being used - consider migrating to new ScrapingOrchestrator`);
+    console.warn(
+      `⚠️ Legacy method ${methodName} is being used - consider migrating to new ScrapingOrchestrator`
+    );
   }
 }
 

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type JwtPayload } from 'jsonwebtoken';
 
 /**
  * Authentication middleware
@@ -27,14 +27,18 @@ declare global {
 /**
  * JWT authentication middleware
  */
-export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateJWT = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
     return res.status(401).json({
       error: 'Authentication required',
-      details: 'Access token is missing'
+      details: 'Access token is missing',
     });
   }
 
@@ -44,19 +48,34 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
       throw new Error('JWT_SECRET not configured');
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload | string;
+    const payload = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+
+    if (
+      typeof payload.id !== 'string' ||
+      typeof payload.email !== 'string' ||
+      typeof payload.role !== 'string'
+    ) {
+      throw new Error('Invalid token payload');
+    }
+
     req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      permissions: decoded.permissions || []
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      permissions: Array.isArray(payload.permissions)
+        ? (payload.permissions as string[])
+        : [],
     };
 
     next();
   } catch (error) {
     return res.status(403).json({
       error: 'Invalid token',
-      details: 'The provided token is invalid or expired'
+      details:
+        error instanceof Error
+          ? error.message
+          : 'The provided token is invalid or expired',
     });
   }
 };
@@ -64,7 +83,11 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
 /**
  * Optional JWT authentication (allows both authenticated and unauthenticated requests)
  */
-export const optionalJWT = (req: Request, res: Response, next: NextFunction) => {
+export const optionalJWT = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const authHeader = req.headers.authorization;
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -78,16 +101,29 @@ export const optionalJWT = (req: Request, res: Response, next: NextFunction) => 
       return next(); // Continue without authentication if not configured
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as any;
+    const decoded = jwt.verify(token, jwtSecret) as JwtPayload | string;
+    const payload = typeof decoded === 'string' ? JSON.parse(decoded) : decoded;
+
+    if (
+      typeof payload.id !== 'string' ||
+      typeof payload.email !== 'string' ||
+      typeof payload.role !== 'string'
+    ) {
+      throw new Error('Invalid token payload');
+    }
+
     req.user = {
-      id: decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-      permissions: decoded.permissions || []
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+      permissions: Array.isArray(payload.permissions)
+        ? (payload.permissions as string[])
+        : [],
     };
   } catch (error) {
     // Invalid token, but continue without authentication
-    console.warn('Invalid JWT token provided:', error.message);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    console.warn('Invalid JWT token provided:', message);
   }
 
   next();
@@ -96,13 +132,17 @@ export const optionalJWT = (req: Request, res: Response, next: NextFunction) => 
 /**
  * API Key authentication middleware
  */
-export const authenticateAPIKey = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateAPIKey = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const apiKey = req.headers['x-api-key'] as string;
 
   if (!apiKey) {
     return res.status(401).json({
       error: 'API key required',
-      details: 'X-API-Key header is missing'
+      details: 'X-API-Key header is missing',
     });
   }
 
@@ -112,20 +152,20 @@ export const authenticateAPIKey = (req: Request, res: Response, next: NextFuncti
     [process.env.INTERNAL_SERVICE_KEY || '']: {
       id: 'internal-service',
       name: 'Internal Service',
-      permissions: ['*']
+      permissions: ['*'],
     },
     [process.env.WEBHOOK_API_KEY || '']: {
       id: 'webhook-service',
       name: 'Webhook Service',
-      permissions: ['webhooks:receive', 'portals:update']
-    }
+      permissions: ['webhooks:receive', 'portals:update'],
+    },
   };
 
   const keyData = validApiKeys[apiKey];
   if (!keyData) {
     return res.status(403).json({
       error: 'Invalid API key',
-      details: 'The provided API key is not valid'
+      details: 'The provided API key is not valid',
     });
   }
 
@@ -141,7 +181,7 @@ export const requireRole = (allowedRoles: string[]) => {
     if (!req.user) {
       return res.status(401).json({
         error: 'Authentication required',
-        details: 'User authentication is required for this endpoint'
+        details: 'User authentication is required for this endpoint',
       });
     }
 
@@ -149,7 +189,7 @@ export const requireRole = (allowedRoles: string[]) => {
       return res.status(403).json({
         error: 'Insufficient permissions',
         details: `This endpoint requires one of the following roles: ${allowedRoles.join(', ')}`,
-        userRole: req.user.role
+        userRole: req.user.role,
       });
     }
 
@@ -168,7 +208,11 @@ export const requirePermission = (permission: string) => {
     }
 
     // Check API key permissions
-    if (req.apiKey && (req.apiKey.permissions.includes('*') || req.apiKey.permissions.includes(permission))) {
+    if (
+      req.apiKey &&
+      (req.apiKey.permissions.includes('*') ||
+        req.apiKey.permissions.includes(permission))
+    ) {
       return next();
     }
 
@@ -176,7 +220,7 @@ export const requirePermission = (permission: string) => {
       error: 'Insufficient permissions',
       details: `This endpoint requires the '${permission}' permission`,
       userPermissions: req.user?.permissions || [],
-      apiKeyPermissions: req.apiKey?.permissions || []
+      apiKeyPermissions: req.apiKey?.permissions || [],
     });
   };
 };
@@ -184,13 +228,17 @@ export const requirePermission = (permission: string) => {
 /**
  * Internal service authentication (for service-to-service communication)
  */
-export const authenticateInternalService = (req: Request, res: Response, next: NextFunction) => {
+export const authenticateInternalService = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   const internalKey = req.headers['x-internal-service'] as string;
 
   if (!internalKey || internalKey !== process.env.INTERNAL_SERVICE_KEY) {
     return res.status(403).json({
       error: 'Internal service authentication failed',
-      details: 'Invalid or missing internal service key'
+      details: 'Invalid or missing internal service key',
     });
   }
 
@@ -199,7 +247,7 @@ export const authenticateInternalService = (req: Request, res: Response, next: N
     id: 'internal-service',
     email: 'internal@service.local',
     role: 'internal',
-    permissions: ['*']
+    permissions: ['*'],
   };
 
   next();
@@ -208,7 +256,11 @@ export const authenticateInternalService = (req: Request, res: Response, next: N
 /**
  * Development-only authentication bypass
  */
-export const devAuthBypass = (req: Request, res: Response, next: NextFunction) => {
+export const devAuthBypass = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   if (process.env.NODE_ENV !== 'development') {
     return next();
   }
@@ -218,7 +270,7 @@ export const devAuthBypass = (req: Request, res: Response, next: NextFunction) =
       id: 'dev-user',
       email: 'dev@example.com',
       role: 'admin',
-      permissions: ['*']
+      permissions: ['*'],
     };
   }
 

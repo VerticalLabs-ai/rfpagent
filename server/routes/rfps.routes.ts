@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
@@ -176,7 +177,8 @@ router.post('/:id/documents', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    const objectPath = objectStorageService.normalizeObjectEntityPath(documentURL);
+    const objectPath =
+      objectStorageService.normalizeObjectEntityPath(documentURL);
 
     const document = await storage.createDocument({
       rfpId: id,
@@ -211,26 +213,44 @@ router.post('/manual', async (req, res) => {
       });
     }
 
-    console.log(`📝 Processing manual RFP submission: ${validationResult.data.url}`);
+    console.log(
+      `📝 Processing manual RFP submission: ${validationResult.data.url}`
+    );
 
-    const result = await manualRfpService.processManualRfp(validationResult.data);
+    // Start processing asynchronously and return sessionId immediately
+    const sessionId = randomUUID();
 
-    if (result.success) {
-      // Create audit log for manual RFP addition
-      await storage.createAuditLog({
-        entityType: 'rfp',
-        entityId: result.rfpId!,
-        action: 'created_manually',
-        details: {
-          url: validationResult.data.url,
-          userNotes: validationResult.data.userNotes,
-        },
+    // Return sessionId immediately so frontend can connect to progress stream
+    res.status(202).json({
+      success: true,
+      sessionId,
+      message:
+        'RFP processing started. Connect to the progress stream for updates.',
+    });
+
+    // Process asynchronously in the background
+    manualRfpService
+      .processManualRfp({ ...validationResult.data, sessionId })
+      .then(async result => {
+        if (result.success && result.rfpId) {
+          // Create audit log for manual RFP addition
+          await storage.createAuditLog({
+            entityType: 'rfp',
+            entityId: result.rfpId,
+            action: 'created_manually',
+            details: {
+              url: validationResult.data.url,
+              userNotes: validationResult.data.userNotes,
+            },
+          });
+          console.log(`✅ Manual RFP processing completed: ${result.rfpId}`);
+        } else {
+          console.error(`❌ Manual RFP processing failed: ${result.error}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error in background RFP processing:', error);
       });
-
-      res.status(201).json(result);
-    } else {
-      res.status(400).json(result);
-    }
   } catch (error) {
     console.error('Error processing manual RFP:', error);
     res.status(500).json({
@@ -341,13 +361,18 @@ router.post('/:id/download-documents', async (req, res) => {
           });
           savedDocuments.push(savedDoc);
         } catch (error) {
-          console.error(`Failed to save document ${doc.name} to database:`, error);
+          console.error(
+            `Failed to save document ${doc.name} to database:`,
+            error
+          );
         }
       }
     }
 
     // Update RFP status
-    const successCount = results.filter((d) => d.downloadStatus === 'completed').length;
+    const successCount = results.filter(
+      d => d.downloadStatus === 'completed'
+    ).length;
     await storage.updateRFP(id, {
       status: successCount > 0 ? 'parsing' : 'open',
       progress: successCount > 0 ? 40 : 20,
@@ -442,7 +467,7 @@ router.post('/:id/rescrape', async (req, res) => {
       ];
 
       const isAllowed = allowedDomains.some(
-        (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
+        domain => hostname === domain || hostname.endsWith(`.${domain}`)
       );
 
       if (!isAllowed) {
@@ -466,7 +491,10 @@ router.post('/:id/rescrape', async (req, res) => {
     console.log(`🤖 Using Mastra service for re-scraping RFP ${id}`);
 
     // Use enhanced scraping with proper RFP ID preservation
-    const scrapingResult = await mastraService.enhancedScrapeFromUrl(targetUrl, id);
+    const scrapingResult = await mastraService.enhancedScrapeFromUrl(
+      targetUrl,
+      id
+    );
 
     if (!scrapingResult || !scrapingResult.success) {
       return res.status(400).json({

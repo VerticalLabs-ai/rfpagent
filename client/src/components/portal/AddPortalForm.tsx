@@ -1,11 +1,18 @@
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPortalSchema } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import type { PortalFormData } from "./types";
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertPortalSchema } from '@shared/schema';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import type { PortalFormData } from './types';
 
 interface AddPortalFormProps {
   onSubmit: (data: PortalFormData) => void;
@@ -15,18 +22,22 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
   const form = useForm<PortalFormData>({
     resolver: zodResolver(insertPortalSchema),
     defaultValues: {
-      name: "",
-      url: "",
+      name: '',
+      url: '',
       loginRequired: false,
-      username: "",
-      password: "",
-      status: "active",
+      username: '',
+      password: '',
+      status: 'active',
     },
   });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" data-testid="add-portal-form">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-4"
+        data-testid="add-portal-form"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -34,7 +45,11 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
             <FormItem>
               <FormLabel>Portal Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Bonfire Hub" {...field} data-testid="portal-name-input" />
+                <Input
+                  placeholder="e.g. Bonfire Hub"
+                  {...field}
+                  data-testid="portal-name-input"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -48,7 +63,11 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
             <FormItem>
               <FormLabel>Portal URL</FormLabel>
               <FormControl>
-                <Input placeholder="https://..." {...field} data-testid="portal-url-input" />
+                <Input
+                  placeholder="https://..."
+                  {...field}
+                  data-testid="portal-url-input"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -77,7 +96,7 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
           )}
         />
 
-        {form.watch("loginRequired") && (
+        {form.watch('loginRequired') && (
           <>
             <FormField
               control={form.control}
@@ -86,7 +105,11 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input {...field} value={field.value || ""} data-testid="portal-username-input" />
+                    <Input
+                      {...field}
+                      value={field.value || ''}
+                      data-testid="portal-username-input"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -100,7 +123,12 @@ export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} value={field.value || ""} data-testid="portal-password-input" />
+                    <Input
+                      type="password"
+                      {...field}
+                      value={field.value || ''}
+                      data-testid="portal-password-input"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

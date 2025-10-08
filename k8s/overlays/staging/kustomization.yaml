@@ -1,0 +1,40 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: rfp-agent-staging
+
+bases:
+  - ../../base
+
+commonLabels:
+  environment: staging
+
+replicas:
+  - name: rfp-agent
+    count: 3
+
+images:
+  - name: ghcr.io/mgunnin/rfpagent
+    newTag: develop
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/minReplicas
+        value: 3
+      - op: replace
+        path: /spec/maxReplicas
+        value: 5
+    target:
+      kind: HorizontalPodAutoscaler
+      name: rfp-agent-hpa
+
+  - patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: staging.rfpagent.app
+      - op: remove
+        path: /spec/rules/1
+    target:
+      kind: Ingress
+      name: rfp-agent-ingress

@@ -1,6 +1,10 @@
+packages:
+  - '.'
+
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - bufferutil
   - esbuild
   - protobufjs
   - puppeteer
+  - unrs-resolver

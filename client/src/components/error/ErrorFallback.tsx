@@ -1,6 +1,6 @@
-import React from "react";
-import { ErrorInfo } from "react";
-import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react";
+import React from 'react';
+import { ErrorInfo } from 'react';
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -8,7 +8,11 @@ interface ErrorFallbackProps {
   onReset: () => void;
 }
 
-export function ErrorFallback({ error, errorInfo, onReset }: ErrorFallbackProps) {
+export function ErrorFallback({
+  error,
+  errorInfo,
+  onReset,
+}: ErrorFallbackProps) {
   const isDevelopment = import.meta.env.DEV;
 
   const handleReportError = () => {
@@ -18,7 +22,7 @@ export function ErrorFallback({ error, errorInfo, onReset }: ErrorFallbackProps)
       componentStack: errorInfo?.componentStack,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-      url: window.location.href
+      url: window.location.href,
     };
 
     console.error('Error Report:', errorReport);
@@ -41,7 +45,8 @@ export function ErrorFallback({ error, errorInfo, onReset }: ErrorFallbackProps)
             Something went wrong
           </h1>
           <p className="text-gray-600 mb-6">
-            We're sorry, but something unexpected happened. Please try refreshing the page or go back to the home page.
+            We're sorry, but something unexpected happened. Please try
+            refreshing the page or go back to the home page.
           </p>
         </div>
 

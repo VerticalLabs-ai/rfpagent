@@ -25,9 +25,9 @@
   --ring: hsl(221.74, 13.14%, 34.31%);
   --chart-1: hsl(203.8863, 88.2845%, 53.1373%);
   --chart-2: hsl(159.7826, 100%, 36.0784%);
-  --chart-3: hsl(42.0290, 92.8251%, 56.2745%);
+  --chart-3: hsl(42.029, 92.8251%, 56.2745%);
   --chart-4: hsl(147.1429, 78.5047%, 41.9608%);
-  --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
+  --chart-5: hsl(341.4894, 75.2%, 50.9804%);
   --sidebar: hsl(45, 25%, 97%);
   --sidebar-foreground: hsl(20, 14%, 17%);
   --sidebar-primary: hsl(9, 75%, 61%);
@@ -40,14 +40,19 @@
   --font-serif: Inter;
   --font-mono: Architects Daughter;
   --radius: 0.4rem;
-  --shadow-2xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 1px 2px -1px hsl(9, 75%, 61% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 1px 2px -1px hsl(9, 75%, 61% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 2px 4px -1px hsl(9, 75%, 61% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 4px 6px -1px hsl(9, 75%, 61% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 8px 10px -1px hsl(9, 75%, 61% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
+  --shadow-2xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0);
+  --shadow-xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0);
+  --shadow-sm:
+    0px 2px 0px 0px hsl(9, 75%, 61% / 0), 0px 1px 2px -1px hsl(9, 75%, 61% / 0);
+  --shadow:
+    0px 2px 0px 0px hsl(9, 75%, 61% / 0), 0px 1px 2px -1px hsl(9, 75%, 61% / 0);
+  --shadow-md:
+    0px 2px 0px 0px hsl(9, 75%, 61% / 0), 0px 2px 4px -1px hsl(9, 75%, 61% / 0);
+  --shadow-lg:
+    0px 2px 0px 0px hsl(9, 75%, 61% / 0), 0px 4px 6px -1px hsl(9, 75%, 61% / 0);
+  --shadow-xl:
+    0px 2px 0px 0px hsl(9, 75%, 61% / 0), 0px 8px 10px -1px hsl(9, 75%, 61% / 0);
+  --shadow-2xl: 0px 2px 0px 0px hsl(9, 75%, 61% / 0);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 }
@@ -82,9 +87,9 @@
   --sidebar-ring: hsl(9, 75%, 61%);
   --chart-1: hsl(203.8863, 88.2845%, 53.1373%);
   --chart-2: hsl(159.7826, 100%, 36.0784%);
-  --chart-3: hsl(42.0290, 92.8251%, 56.2745%);
+  --chart-3: hsl(42.029, 92.8251%, 56.2745%);
   --chart-4: hsl(147.1429, 78.5047%, 41.9608%);
-  --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
+  --chart-5: hsl(341.4894, 75.2%, 50.9804%);
 }
 
 @layer base {
@@ -141,8 +146,18 @@
   @apply opacity-0 animate-in slide-in-from-left-2 duration-500;
 }
 
-.activity-item:nth-child(1) { animation-delay: 0ms; }
-.activity-item:nth-child(2) { animation-delay: 100ms; }
-.activity-item:nth-child(3) { animation-delay: 200ms; }
-.activity-item:nth-child(4) { animation-delay: 300ms; }
-.activity-item:nth-child(5) { animation-delay: 400ms; }
+.activity-item:nth-child(1) {
+  animation-delay: 0ms;
+}
+.activity-item:nth-child(2) {
+  animation-delay: 100ms;
+}
+.activity-item:nth-child(3) {
+  animation-delay: 200ms;
+}
+.activity-item:nth-child(4) {
+  animation-delay: 300ms;
+}
+.activity-item:nth-child(5) {
+  animation-delay: 400ms;
+}

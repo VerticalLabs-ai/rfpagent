@@ -1,16 +1,21 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface LoadingCardsProps {
   count?: number;
-  variant?: "grid" | "list";
+  variant?: 'grid' | 'list';
   cardHeight?: string;
 }
 
-export function LoadingCards({ count = 3, variant = "grid", cardHeight = "h-48" }: LoadingCardsProps) {
-  const containerClass = variant === "grid"
-    ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    : "space-y-4";
+export function LoadingCards({
+  count = 3,
+  variant = 'grid',
+  cardHeight = 'h-48',
+}: LoadingCardsProps) {
+  const containerClass =
+    variant === 'grid'
+      ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
+      : 'space-y-4';
 
   return (
     <div className={containerClass}>

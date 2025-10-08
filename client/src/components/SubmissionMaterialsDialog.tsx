@@ -13,7 +13,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { RFPProcessingProgressModal } from './RFPProcessingProgress';
-import { Plus, Trash2, DollarSign, FileText, CheckSquare, Settings } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  DollarSign,
+  FileText,
+  CheckSquare,
+  Settings,
+} from 'lucide-react';
 
 interface PricingItem {
   name: string;
@@ -35,11 +42,13 @@ export function SubmissionMaterialsDialog({
   rfpId,
   open,
   onOpenChange,
-  onComplete
+  onComplete,
 }: SubmissionMaterialsDialogProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('settings');
-  const [progressSessionId, setProgressSessionId] = useState<string | null>(null);
+  const [progressSessionId, setProgressSessionId] = useState<string | null>(
+    null
+  );
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
 
   // Form state
@@ -51,11 +60,18 @@ export function SubmissionMaterialsDialog({
 
   // Pricing data state
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([
-    { name: 'Water Bottles', category: 'Beverages', unitPrice: 4.50, unit: 'case', margin: 40, notes: 'Example: Water bottles at $4.50 per case' }
+    {
+      name: 'Water Bottles',
+      category: 'Beverages',
+      unitPrice: 4.5,
+      unit: 'case',
+      margin: 40,
+      notes: 'Example: Water bottles at $4.50 per case',
+    },
   ]);
   const [defaultMargin, setDefaultMargin] = useState(40);
-  const [laborRate, setLaborRate] = useState(75.00);
-  const [overheadRate, setOverheadRate] = useState(25.00);
+  const [laborRate, setLaborRate] = useState(75.0);
+  const [overheadRate, setOverheadRate] = useState(25.0);
 
   // Fetch company profiles for selection
   const { data: companyProfiles } = useQuery({
@@ -70,10 +86,14 @@ export function SubmissionMaterialsDialog({
   // Mutation for generating submission materials
   const generateMaterialsMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest('POST', `/api/proposals/${rfpId}/submission-materials`, data);
+      const response = await apiRequest(
+        'POST',
+        `/api/proposals/${rfpId}/submission-materials`,
+        data
+      );
       return await response.json();
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       console.log('Submission materials generation response:', data);
 
       if (data.success && data.data.sessionId) {
@@ -83,41 +103,52 @@ export function SubmissionMaterialsDialog({
         onOpenChange(false);
 
         toast({
-          title: "Submission Materials Generation Started",
-          description: "AI agents are creating your complete submission package. You can track progress in real-time.",
+          title: 'Submission Materials Generation Started',
+          description:
+            'AI agents are creating your complete submission package. You can track progress in real-time.',
         });
       } else {
         toast({
-          title: "Generation Failed",
-          description: data.error || "Failed to start submission materials generation.",
-          variant: "destructive",
+          title: 'Generation Failed',
+          description:
+            data.error || 'Failed to start submission materials generation.',
+          variant: 'destructive',
         });
       }
     },
     onError: (error: any) => {
       toast({
-        title: "Generation Failed",
-        description: error?.message || "Failed to generate submission materials. Please try again.",
-        variant: "destructive",
+        title: 'Generation Failed',
+        description:
+          error?.message ||
+          'Failed to generate submission materials. Please try again.',
+        variant: 'destructive',
       });
     },
   });
 
   const addPricingItem = () => {
-    setPricingItems([...pricingItems, {
-      name: '',
-      category: '',
-      unitPrice: 0,
-      unit: '',
-      margin: defaultMargin
-    }]);
+    setPricingItems([
+      ...pricingItems,
+      {
+        name: '',
+        category: '',
+        unitPrice: 0,
+        unit: '',
+        margin: defaultMargin,
+      },
+    ]);
   };
 
   const removePricingItem = (index: number) => {
     setPricingItems(pricingItems.filter((_, i) => i !== index));
   };
 
-  const updatePricingItem = (index: number, field: keyof PricingItem, value: any) => {
+  const updatePricingItem = (
+    index: number,
+    field: keyof PricingItem,
+    value: any
+  ) => {
     const updated = pricingItems.map((item, i) =>
       i === index ? { ...item, [field]: value } : item
     );
@@ -131,12 +162,12 @@ export function SubmissionMaterialsDialog({
         items: pricingItems.filter(item => item.name && item.unitPrice > 0),
         defaultMargin,
         laborRate,
-        overheadRate
+        overheadRate,
       },
       generateCompliance,
       generatePricing,
       autoSubmit,
-      customInstructions: customInstructions || undefined
+      customInstructions: customInstructions || undefined,
     };
 
     generateMaterialsMutation.mutate(requestData);
@@ -171,7 +202,7 @@ export function SubmissionMaterialsDialog({
                     <select
                       id="company-profile"
                       value={companyProfileId}
-                      onChange={(e) => setCompanyProfileId(e.target.value)}
+                      onChange={e => setCompanyProfileId(e.target.value)}
                       className="w-full mt-1 p-2 border rounded-md"
                     >
                       <option value="">Use Default Profile</option>
@@ -190,7 +221,9 @@ export function SubmissionMaterialsDialog({
                         checked={generateCompliance}
                         onCheckedChange={setGenerateCompliance}
                       />
-                      <Label htmlFor="generate-compliance">Generate Compliance Checklist</Label>
+                      <Label htmlFor="generate-compliance">
+                        Generate Compliance Checklist
+                      </Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -199,7 +232,9 @@ export function SubmissionMaterialsDialog({
                         checked={generatePricing}
                         onCheckedChange={setGeneratePricing}
                       />
-                      <Label htmlFor="generate-pricing">Generate Pricing Tables</Label>
+                      <Label htmlFor="generate-pricing">
+                        Generate Pricing Tables
+                      </Label>
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -208,17 +243,21 @@ export function SubmissionMaterialsDialog({
                         checked={autoSubmit}
                         onCheckedChange={setAutoSubmit}
                       />
-                      <Label htmlFor="auto-submit">Auto-Submit When Ready</Label>
+                      <Label htmlFor="auto-submit">
+                        Auto-Submit When Ready
+                      </Label>
                     </div>
                   </div>
 
                   <div>
-                    <Label htmlFor="custom-instructions">Custom Instructions</Label>
+                    <Label htmlFor="custom-instructions">
+                      Custom Instructions
+                    </Label>
                     <Textarea
                       id="custom-instructions"
                       placeholder="Add any special requirements, emphasis points, or custom instructions for the AI agents..."
                       value={customInstructions}
-                      onChange={(e) => setCustomInstructions(e.target.value)}
+                      onChange={e => setCustomInstructions(e.target.value)}
                       className="mt-1"
                       rows={3}
                     />
@@ -243,7 +282,7 @@ export function SubmissionMaterialsDialog({
                         id="default-margin"
                         type="number"
                         value={defaultMargin}
-                        onChange={(e) => setDefaultMargin(Number(e.target.value))}
+                        onChange={e => setDefaultMargin(Number(e.target.value))}
                         min="0"
                         max="100"
                       />
@@ -254,7 +293,7 @@ export function SubmissionMaterialsDialog({
                         id="labor-rate"
                         type="number"
                         value={laborRate}
-                        onChange={(e) => setLaborRate(Number(e.target.value))}
+                        onChange={e => setLaborRate(Number(e.target.value))}
                         min="0"
                         step="0.01"
                       />
@@ -265,7 +304,7 @@ export function SubmissionMaterialsDialog({
                         id="overhead-rate"
                         type="number"
                         value={overheadRate}
-                        onChange={(e) => setOverheadRate(Number(e.target.value))}
+                        onChange={e => setOverheadRate(Number(e.target.value))}
                         min="0"
                         step="0.01"
                       />
@@ -285,13 +324,18 @@ export function SubmissionMaterialsDialog({
 
                     <div className="space-y-3">
                       {pricingItems.map((item, index) => (
-                        <div key={index} className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg">
+                        <div
+                          key={index}
+                          className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg"
+                        >
                           <div className="col-span-3">
                             <Label className="text-xs">Item Name</Label>
                             <Input
                               placeholder="e.g., Water Bottles"
                               value={item.name}
-                              onChange={(e) => updatePricingItem(index, 'name', e.target.value)}
+                              onChange={e =>
+                                updatePricingItem(index, 'name', e.target.value)
+                              }
                             />
                           </div>
                           <div className="col-span-2">
@@ -299,7 +343,13 @@ export function SubmissionMaterialsDialog({
                             <Input
                               placeholder="e.g., Beverages"
                               value={item.category}
-                              onChange={(e) => updatePricingItem(index, 'category', e.target.value)}
+                              onChange={e =>
+                                updatePricingItem(
+                                  index,
+                                  'category',
+                                  e.target.value
+                                )
+                              }
                             />
                           </div>
                           <div className="col-span-2">
@@ -308,7 +358,13 @@ export function SubmissionMaterialsDialog({
                               type="number"
                               placeholder="4.50"
                               value={item.unitPrice || ''}
-                              onChange={(e) => updatePricingItem(index, 'unitPrice', Number(e.target.value))}
+                              onChange={e =>
+                                updatePricingItem(
+                                  index,
+                                  'unitPrice',
+                                  Number(e.target.value)
+                                )
+                              }
                               min="0"
                               step="0.01"
                             />
@@ -318,7 +374,9 @@ export function SubmissionMaterialsDialog({
                             <Input
                               placeholder="case"
                               value={item.unit}
-                              onChange={(e) => updatePricingItem(index, 'unit', e.target.value)}
+                              onChange={e =>
+                                updatePricingItem(index, 'unit', e.target.value)
+                              }
                             />
                           </div>
                           <div className="col-span-1">
@@ -326,7 +384,13 @@ export function SubmissionMaterialsDialog({
                             <Input
                               type="number"
                               value={item.margin || defaultMargin}
-                              onChange={(e) => updatePricingItem(index, 'margin', Number(e.target.value))}
+                              onChange={e =>
+                                updatePricingItem(
+                                  index,
+                                  'margin',
+                                  Number(e.target.value)
+                                )
+                              }
                               min="0"
                               max="100"
                             />
@@ -336,7 +400,13 @@ export function SubmissionMaterialsDialog({
                             <Input
                               placeholder="Optional notes"
                               value={item.notes || ''}
-                              onChange={(e) => updatePricingItem(index, 'notes', e.target.value)}
+                              onChange={e =>
+                                updatePricingItem(
+                                  index,
+                                  'notes',
+                                  e.target.value
+                                )
+                              }
                             />
                           </div>
                           <div className="col-span-1">
@@ -357,7 +427,9 @@ export function SubmissionMaterialsDialog({
                       <div className="text-center py-8 text-muted-foreground">
                         <DollarSign className="w-8 h-8 mx-auto mb-2" />
                         <p>No pricing items added yet</p>
-                        <p className="text-sm">Add items to generate accurate pricing tables</p>
+                        <p className="text-sm">
+                          Add items to generate accurate pricing tables
+                        </p>
                       </div>
                     )}
                   </div>
@@ -382,20 +454,38 @@ export function SubmissionMaterialsDialog({
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Company Profile:</span>
-                          <span className="font-medium">{companyProfileId ? 'Custom Profile' : 'Default Profile'}</span>
+                          <span className="text-muted-foreground">
+                            Company Profile:
+                          </span>
+                          <span className="font-medium">
+                            {companyProfileId
+                              ? 'Custom Profile'
+                              : 'Default Profile'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Generate Compliance:</span>
-                          <span className="font-medium">{generateCompliance ? 'Yes' : 'No'}</span>
+                          <span className="text-muted-foreground">
+                            Generate Compliance:
+                          </span>
+                          <span className="font-medium">
+                            {generateCompliance ? 'Yes' : 'No'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Generate Pricing:</span>
-                          <span className="font-medium">{generatePricing ? 'Yes' : 'No'}</span>
+                          <span className="text-muted-foreground">
+                            Generate Pricing:
+                          </span>
+                          <span className="font-medium">
+                            {generatePricing ? 'Yes' : 'No'}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Auto-Submit:</span>
-                          <span className="font-medium">{autoSubmit ? 'Yes' : 'No'}</span>
+                          <span className="text-muted-foreground">
+                            Auto-Submit:
+                          </span>
+                          <span className="font-medium">
+                            {autoSubmit ? 'Yes' : 'No'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -406,19 +496,29 @@ export function SubmissionMaterialsDialog({
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Items configured:</span>
-                          <span className="font-medium">{pricingItems.length}</span>
+                          <span className="text-muted-foreground">
+                            Items configured:
+                          </span>
+                          <span className="font-medium">
+                            {pricingItems.length}
+                          </span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Default Margin:</span>
+                          <span className="text-muted-foreground">
+                            Default Margin:
+                          </span>
                           <span className="font-medium">{defaultMargin}%</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Labor Rate:</span>
+                          <span className="text-muted-foreground">
+                            Labor Rate:
+                          </span>
                           <span className="font-medium">${laborRate}/hour</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Overhead Rate:</span>
+                          <span className="text-muted-foreground">
+                            Overhead Rate:
+                          </span>
                           <span className="font-medium">{overheadRate}%</span>
                         </div>
                       </div>
@@ -518,8 +618,9 @@ export function SubmissionMaterialsDialog({
             }
 
             toast({
-              title: "Submission Materials Complete",
-              description: "Your complete submission package has been generated and is ready for review.",
+              title: 'Submission Materials Complete',
+              description:
+                'Your complete submission package has been generated and is ready for review.',
             });
           }}
           onError={(error: string) => {
@@ -527,9 +628,9 @@ export function SubmissionMaterialsDialog({
             setProgressSessionId(null);
 
             toast({
-              title: "Generation Failed",
+              title: 'Generation Failed',
               description: error,
-              variant: "destructive",
+              variant: 'destructive',
             });
           }}
         />

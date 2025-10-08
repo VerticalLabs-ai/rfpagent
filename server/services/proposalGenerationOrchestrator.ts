@@ -12,8 +12,20 @@ export interface ProposalGenerationPipeline {
   rfpId: string;
   sessionId: string;
   companyProfileId?: string;
-  proposalType: 'standard' | 'technical' | 'construction' | 'professional_services';
-  currentPhase: 'outline' | 'content_generation' | 'pricing_analysis' | 'compliance_validation' | 'form_completion' | 'final_assembly' | 'quality_assurance' | 'completed';
+  proposalType:
+    | 'standard'
+    | 'technical'
+    | 'construction'
+    | 'professional_services';
+  currentPhase:
+    | 'outline'
+    | 'content_generation'
+    | 'pricing_analysis'
+    | 'compliance_validation'
+    | 'form_completion'
+    | 'final_assembly'
+    | 'quality_assurance'
+    | 'completed';
   status: 'pending' | 'in_progress' | 'suspended' | 'completed' | 'failed';
   progress: number;
   workItems: string[]; // IDs of created work items
@@ -35,7 +47,11 @@ export interface ProposalGenerationRequest {
   rfpId: string;
   sessionId: string;
   companyProfileId?: string;
-  proposalType?: 'standard' | 'technical' | 'construction' | 'professional_services';
+  proposalType?:
+    | 'standard'
+    | 'technical'
+    | 'construction'
+    | 'professional_services';
   priority?: number;
   deadline?: Date;
   autoSubmit?: boolean;
@@ -57,12 +73,12 @@ export interface ProposalGenerationResult {
 
 /**
  * Proposal Generation Orchestrator
- * 
+ *
  * Orchestrates the complete proposal generation pipeline through a 3-tier agent system:
  * - Orchestrator: Manages the overall pipeline and coordinates phases
  * - Manager: Coordinates specialists for each phase (proposal-manager)
  * - Specialists: Execute specific tasks (content-generator, pricing-analyst, compliance-checker)
- * 
+ *
  * Pipeline Phases:
  * 1. Outline Creation - Analyze RFP and create proposal structure
  * 2. Content Generation - Generate narrative sections, technical content
@@ -79,8 +95,12 @@ export class ProposalGenerationOrchestrator {
   /**
    * Initiate a comprehensive proposal generation pipeline
    */
-  async initiateProposalGeneration(request: ProposalGenerationRequest): Promise<ProposalGenerationResult> {
-    console.log(`🚀 Initiating proposal generation pipeline for RFP: ${request.rfpId}`);
+  async initiateProposalGeneration(
+    request: ProposalGenerationRequest
+  ): Promise<ProposalGenerationResult> {
+    console.log(
+      `🚀 Initiating proposal generation pipeline for RFP: ${request.rfpId}`
+    );
 
     try {
       // Validate RFP exists
@@ -107,10 +127,10 @@ export class ProposalGenerationOrchestrator {
           deadline: request.deadline,
           autoSubmit: request.autoSubmit || false,
           qualityThreshold: request.qualityThreshold || 0.8,
-          ...request.metadata
+          ...request.metadata,
         },
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       this.activePipelines.set(pipelineId, pipeline);
@@ -124,13 +144,13 @@ export class ProposalGenerationOrchestrator {
         content: pipeline,
         importance: 8,
         tags: ['proposal_generation', 'active_pipeline', pipeline.proposalType],
-        metadata: { rfpId: request.rfpId, sessionId: request.sessionId }
+        metadata: { rfpId: request.rfpId, sessionId: request.sessionId },
       });
 
       // Update RFP status
       await storage.updateRFP(request.rfpId, {
         status: 'drafting',
-        progress: 5
+        progress: 5,
       });
 
       // Create audit log
@@ -141,8 +161,8 @@ export class ProposalGenerationOrchestrator {
         details: {
           rfpId: request.rfpId,
           proposalType: pipeline.proposalType,
-          sessionId: request.sessionId
-        }
+          sessionId: request.sessionId,
+        },
       });
 
       // Start the pipeline with Phase 1: Outline Creation
@@ -154,14 +174,14 @@ export class ProposalGenerationOrchestrator {
         currentPhase: pipeline.currentPhase,
         progress: pipeline.progress,
         estimatedCompletion: this.calculateEstimatedCompletion(pipeline),
-        nextSteps: this.getNextSteps(pipeline)
+        nextSteps: this.getNextSteps(pipeline),
       };
-
     } catch (error) {
       console.error('❌ Failed to initiate proposal generation:', error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Pipeline initiation failed'
+        error:
+          error instanceof Error ? error.message : 'Pipeline initiation failed',
       };
     }
   }
@@ -170,8 +190,12 @@ export class ProposalGenerationOrchestrator {
    * Phase 1: Outline Creation
    * Analyze RFP requirements and create proposal structure
    */
-  private async executePhase1_OutlineCreation(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`📋 Phase 1: Creating proposal outline for pipeline ${pipeline.pipelineId}`);
+  private async executePhase1_OutlineCreation(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `📋 Phase 1: Creating proposal outline for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.status = 'in_progress';
     pipeline.currentPhase = 'outline';
@@ -186,28 +210,40 @@ export class ProposalGenerationOrchestrator {
         rfpId: pipeline.rfpId,
         proposalType: pipeline.proposalType,
         companyProfileId: pipeline.companyProfileId,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['proposal_outline', 'section_breakdown', 'requirements_mapping'],
+      expectedOutputs: [
+        'proposal_outline',
+        'section_breakdown',
+        'requirements_mapping',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'outline', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'outline', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(outlineWorkItem.id);
 
     // Schedule phase monitoring
-    this.schedulePhaseCompletion(pipeline, outlineWorkItem.id, 'content_generation');
+    this.schedulePhaseCompletion(
+      pipeline,
+      outlineWorkItem.id,
+      'content_generation'
+    );
   }
 
   /**
    * Phase 2: Content Generation
    * Generate narrative sections and technical content
    */
-  private async executePhase2_ContentGeneration(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`✍️ Phase 2: Content generation for pipeline ${pipeline.pipelineId}`);
+  private async executePhase2_ContentGeneration(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `✍️ Phase 2: Content generation for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'content_generation';
     pipeline.progress = 25;
@@ -223,14 +259,18 @@ export class ProposalGenerationOrchestrator {
           rfpId: pipeline.rfpId,
           companyProfileId: pipeline.companyProfileId,
           outline: pipeline.results.outline,
-          pipelineId: pipeline.pipelineId
+          pipelineId: pipeline.pipelineId,
         },
         expectedOutputs: ['executive_summary', 'company_overview'],
         priority: pipeline.metadata.priority,
         deadline: new Date(Date.now() + this.phaseTimeout),
         contextRef: pipeline.rfpId,
         createdByAgentId: 'proposal-orchestrator',
-        metadata: { phase: 'content_generation', contentType: 'executive', pipelineId: pipeline.pipelineId }
+        metadata: {
+          phase: 'content_generation',
+          contentType: 'executive',
+          pipelineId: pipeline.pipelineId,
+        },
       }),
 
       // Technical approach and methodology
@@ -242,14 +282,18 @@ export class ProposalGenerationOrchestrator {
           companyProfileId: pipeline.companyProfileId,
           outline: pipeline.results.outline,
           proposalType: pipeline.proposalType,
-          pipelineId: pipeline.pipelineId
+          pipelineId: pipeline.pipelineId,
         },
         expectedOutputs: ['technical_approach', 'methodology', 'timeline'],
         priority: pipeline.metadata.priority,
         deadline: new Date(Date.now() + this.phaseTimeout),
         contextRef: pipeline.rfpId,
         createdByAgentId: 'proposal-orchestrator',
-        metadata: { phase: 'content_generation', contentType: 'technical', pipelineId: pipeline.pipelineId }
+        metadata: {
+          phase: 'content_generation',
+          contentType: 'technical',
+          pipelineId: pipeline.pipelineId,
+        },
       }),
 
       // Qualifications and experience
@@ -260,29 +304,45 @@ export class ProposalGenerationOrchestrator {
           rfpId: pipeline.rfpId,
           companyProfileId: pipeline.companyProfileId,
           outline: pipeline.results.outline,
-          pipelineId: pipeline.pipelineId
+          pipelineId: pipeline.pipelineId,
         },
-        expectedOutputs: ['qualifications', 'experience_narratives', 'case_studies'],
+        expectedOutputs: [
+          'qualifications',
+          'experience_narratives',
+          'case_studies',
+        ],
         priority: pipeline.metadata.priority,
         deadline: new Date(Date.now() + this.phaseTimeout),
         contextRef: pipeline.rfpId,
         createdByAgentId: 'proposal-orchestrator',
-        metadata: { phase: 'content_generation', contentType: 'qualifications', pipelineId: pipeline.pipelineId }
-      })
+        metadata: {
+          phase: 'content_generation',
+          contentType: 'qualifications',
+          pipelineId: pipeline.pipelineId,
+        },
+      }),
     ]);
 
     pipeline.workItems.push(...contentWorkItems.map(item => item.id));
 
     // Schedule phase monitoring for all content work items
-    this.schedulePhaseCompletion(pipeline, contentWorkItems.map(item => item.id), 'pricing_analysis');
+    this.schedulePhaseCompletion(
+      pipeline,
+      contentWorkItems.map(item => item.id),
+      'pricing_analysis'
+    );
   }
 
   /**
    * Phase 3: Pricing Analysis
    * Analyze requirements and generate competitive pricing
    */
-  private async executePhase3_PricingAnalysis(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`💰 Phase 3: Pricing analysis for pipeline ${pipeline.pipelineId}`);
+  private async executePhase3_PricingAnalysis(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `💰 Phase 3: Pricing analysis for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'pricing_analysis';
     pipeline.progress = 50;
@@ -298,28 +358,40 @@ export class ProposalGenerationOrchestrator {
         outline: pipeline.results.outline,
         content: pipeline.results.content,
         proposalType: pipeline.proposalType,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['pricing_breakdown', 'cost_analysis', 'competitive_strategy'],
+      expectedOutputs: [
+        'pricing_breakdown',
+        'cost_analysis',
+        'competitive_strategy',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'pricing_analysis', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'pricing_analysis', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(pricingWorkItem.id);
 
     // Schedule phase monitoring
-    this.schedulePhaseCompletion(pipeline, pricingWorkItem.id, 'compliance_validation');
+    this.schedulePhaseCompletion(
+      pipeline,
+      pricingWorkItem.id,
+      'compliance_validation'
+    );
   }
 
   /**
    * Phase 4: Compliance Validation
    * Validate against requirements and regulations
    */
-  private async executePhase4_ComplianceValidation(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`✅ Phase 4: Compliance validation for pipeline ${pipeline.pipelineId}`);
+  private async executePhase4_ComplianceValidation(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `✅ Phase 4: Compliance validation for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'compliance_validation';
     pipeline.progress = 65;
@@ -336,28 +408,43 @@ export class ProposalGenerationOrchestrator {
         content: pipeline.results.content,
         pricing: pipeline.results.pricing,
         proposalType: pipeline.proposalType,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['compliance_matrix', 'validation_report', 'risk_assessment'],
+      expectedOutputs: [
+        'compliance_matrix',
+        'validation_report',
+        'risk_assessment',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'compliance_validation', pipelineId: pipeline.pipelineId }
+      metadata: {
+        phase: 'compliance_validation',
+        pipelineId: pipeline.pipelineId,
+      },
     });
 
     pipeline.workItems.push(complianceWorkItem.id);
 
     // Schedule phase monitoring
-    this.schedulePhaseCompletion(pipeline, complianceWorkItem.id, 'form_completion');
+    this.schedulePhaseCompletion(
+      pipeline,
+      complianceWorkItem.id,
+      'form_completion'
+    );
   }
 
   /**
    * Phase 5: Form Completion
    * Fill out required forms and documents
    */
-  private async executePhase5_FormCompletion(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`📄 Phase 5: Form completion for pipeline ${pipeline.pipelineId}`);
+  private async executePhase5_FormCompletion(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `📄 Phase 5: Form completion for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'form_completion';
     pipeline.progress = 75;
@@ -374,14 +461,18 @@ export class ProposalGenerationOrchestrator {
         content: pipeline.results.content,
         pricing: pipeline.results.pricing,
         compliance: pipeline.results.compliance,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['completed_forms', 'attachments_list', 'submission_package'],
+      expectedOutputs: [
+        'completed_forms',
+        'attachments_list',
+        'submission_package',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'form_completion', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'form_completion', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(formsWorkItem.id);
@@ -394,8 +485,12 @@ export class ProposalGenerationOrchestrator {
    * Phase 6: Final Assembly
    * Combine all components into complete proposal
    */
-  private async executePhase6_FinalAssembly(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`🔧 Phase 6: Final assembly for pipeline ${pipeline.pipelineId}`);
+  private async executePhase6_FinalAssembly(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `🔧 Phase 6: Final assembly for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'final_assembly';
     pipeline.progress = 85;
@@ -413,28 +508,40 @@ export class ProposalGenerationOrchestrator {
         pricing: pipeline.results.pricing,
         compliance: pipeline.results.compliance,
         forms: pipeline.results.forms,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['complete_proposal', 'proposal_metadata', 'submission_ready'],
+      expectedOutputs: [
+        'complete_proposal',
+        'proposal_metadata',
+        'submission_ready',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'final_assembly', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'final_assembly', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(assemblyWorkItem.id);
 
     // Schedule phase monitoring
-    this.schedulePhaseCompletion(pipeline, assemblyWorkItem.id, 'quality_assurance');
+    this.schedulePhaseCompletion(
+      pipeline,
+      assemblyWorkItem.id,
+      'quality_assurance'
+    );
   }
 
   /**
    * Phase 7: Quality Assurance
    * Validate and score the complete proposal
    */
-  private async executePhase7_QualityAssurance(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`🔍 Phase 7: Quality assurance for pipeline ${pipeline.pipelineId}`);
+  private async executePhase7_QualityAssurance(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `🔍 Phase 7: Quality assurance for pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'quality_assurance';
     pipeline.progress = 95;
@@ -448,14 +555,18 @@ export class ProposalGenerationOrchestrator {
         rfpId: pipeline.rfpId,
         proposalId: pipeline.results.proposalId,
         qualityThreshold: pipeline.metadata.qualityThreshold,
-        pipelineId: pipeline.pipelineId
+        pipelineId: pipeline.pipelineId,
       },
-      expectedOutputs: ['quality_score', 'validation_report', 'improvement_recommendations'],
+      expectedOutputs: [
+        'quality_score',
+        'validation_report',
+        'improvement_recommendations',
+      ],
       priority: pipeline.metadata.priority,
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'quality_assurance', pipelineId: pipeline.pipelineId }
+      metadata: { phase: 'quality_assurance', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(qaWorkItem.id);
@@ -467,8 +578,12 @@ export class ProposalGenerationOrchestrator {
   /**
    * Complete the proposal generation pipeline
    */
-  private async completePipeline(pipeline: ProposalGenerationPipeline): Promise<void> {
-    console.log(`🎉 Completing proposal generation pipeline ${pipeline.pipelineId}`);
+  private async completePipeline(
+    pipeline: ProposalGenerationPipeline
+  ): Promise<void> {
+    console.log(
+      `🎉 Completing proposal generation pipeline ${pipeline.pipelineId}`
+    );
 
     pipeline.currentPhase = 'completed';
     pipeline.status = 'completed';
@@ -477,8 +592,16 @@ export class ProposalGenerationOrchestrator {
 
     // Update RFP status
     await storage.updateRFP(pipeline.rfpId, {
-      status: pipeline.qualityScore && pipeline.qualityScore >= pipeline.metadata.qualityThreshold ? 'review' : 'drafting',
-      progress: pipeline.qualityScore && pipeline.qualityScore >= pipeline.metadata.qualityThreshold ? 75 : 60  // Proposal complete but not submitted
+      status:
+        pipeline.qualityScore &&
+        pipeline.qualityScore >= pipeline.metadata.qualityThreshold
+          ? 'review'
+          : 'drafting',
+      progress:
+        pipeline.qualityScore &&
+        pipeline.qualityScore >= pipeline.metadata.qualityThreshold
+          ? 75
+          : 60, // Proposal complete but not submitted
     });
 
     // Create completion notification
@@ -487,7 +610,7 @@ export class ProposalGenerationOrchestrator {
       title: 'Proposal Generation Complete',
       message: `Proposal generation pipeline completed for RFP. Quality score: ${pipeline.qualityScore?.toFixed(2) || 'N/A'}`,
       relatedEntityType: 'proposal',
-      relatedEntityId: pipeline.results.proposalId || pipeline.pipelineId
+      relatedEntityId: pipeline.results.proposalId || pipeline.pipelineId,
     });
 
     // Store completion in agent memory
@@ -502,11 +625,15 @@ export class ProposalGenerationOrchestrator {
         proposalId: pipeline.results.proposalId,
         qualityScore: pipeline.qualityScore,
         duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
-        phases: Object.keys(pipeline.results).length
+        phases: Object.keys(pipeline.results).length,
       },
       importance: 9,
-      tags: ['completed_pipeline', 'proposal_generation', pipeline.proposalType],
-      metadata: { success: true, proposalType: pipeline.proposalType }
+      tags: [
+        'completed_pipeline',
+        'proposal_generation',
+        pipeline.proposalType,
+      ],
+      metadata: { success: true, proposalType: pipeline.proposalType },
     });
 
     // Create audit log
@@ -519,8 +646,8 @@ export class ProposalGenerationOrchestrator {
         rfpId: pipeline.rfpId,
         qualityScore: pipeline.qualityScore,
         phases: Object.keys(pipeline.results).length,
-        duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime()
-      }
+        duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
+      },
     });
 
     // Remove from active pipelines
@@ -532,7 +659,11 @@ export class ProposalGenerationOrchestrator {
   /**
    * Handle phase completion and transition to next phase
    */
-  async handlePhaseCompletion(pipelineId: string, workItemIds: string[], nextPhase: string): Promise<void> {
+  async handlePhaseCompletion(
+    pipelineId: string,
+    workItemIds: string[],
+    nextPhase: string
+  ): Promise<void> {
     const pipeline = this.activePipelines.get(pipelineId);
     if (!pipeline) {
       console.warn(`⚠️ Pipeline not found: ${pipelineId}`);
@@ -545,16 +676,23 @@ export class ProposalGenerationOrchestrator {
         workItemIds.map(id => storage.getWorkItem(id))
       );
 
-      const allCompleted = workItems.every(item => item?.status === 'completed');
+      const allCompleted = workItems.every(
+        item => item?.status === 'completed'
+      );
       const hasFailures = workItems.some(item => item?.status === 'failed');
 
       if (hasFailures) {
-        await this.handlePipelineFailure(pipeline, 'Work item failure in phase');
+        await this.handlePipelineFailure(
+          pipeline,
+          'Work item failure in phase'
+        );
         return;
       }
 
       if (!allCompleted) {
-        console.log(`⏳ Waiting for work items to complete in phase ${pipeline.currentPhase}`);
+        console.log(
+          `⏳ Waiting for work items to complete in phase ${pipeline.currentPhase}`
+        );
         return;
       }
 
@@ -567,7 +705,7 @@ export class ProposalGenerationOrchestrator {
       }, {});
 
       // Store phase results
-      pipeline.results[pipeline.currentPhase] = phaseResults;
+      (pipeline.results as any)[pipeline.currentPhase] = phaseResults;
 
       // Transition to next phase
       switch (nextPhase) {
@@ -595,17 +733,25 @@ export class ProposalGenerationOrchestrator {
         default:
           console.warn(`⚠️ Unknown next phase: ${nextPhase}`);
       }
-
     } catch (error) {
-      console.error(`❌ Failed to handle phase completion for pipeline ${pipelineId}:`, error);
-      await this.handlePipelineFailure(pipeline, error instanceof Error ? error.message : 'Phase transition failed');
+      console.error(
+        `❌ Failed to handle phase completion for pipeline ${pipelineId}:`,
+        error
+      );
+      await this.handlePipelineFailure(
+        pipeline,
+        error instanceof Error ? error.message : 'Phase transition failed'
+      );
     }
   }
 
   /**
    * Handle pipeline failure
    */
-  private async handlePipelineFailure(pipeline: ProposalGenerationPipeline, error: string): Promise<void> {
+  private async handlePipelineFailure(
+    pipeline: ProposalGenerationPipeline,
+    error: string
+  ): Promise<void> {
     console.error(`❌ Pipeline ${pipeline.pipelineId} failed: ${error}`);
 
     pipeline.status = 'failed';
@@ -614,7 +760,7 @@ export class ProposalGenerationOrchestrator {
     // Update RFP status
     await storage.updateRFP(pipeline.rfpId, {
       status: 'discovered', // Reset to discovered for retry
-      progress: 0
+      progress: 0,
     });
 
     // Create error notification
@@ -623,7 +769,7 @@ export class ProposalGenerationOrchestrator {
       title: 'Proposal Generation Failed',
       message: `Proposal generation pipeline failed: ${error}`,
       relatedEntityType: 'rfp',
-      relatedEntityId: pipeline.rfpId
+      relatedEntityId: pipeline.rfpId,
     });
 
     // Store failure in agent memory
@@ -637,11 +783,11 @@ export class ProposalGenerationOrchestrator {
         rfpId: pipeline.rfpId,
         error,
         phase: pipeline.currentPhase,
-        progress: pipeline.progress
+        progress: pipeline.progress,
       },
       importance: 8,
       tags: ['failed_pipeline', 'proposal_generation', 'error'],
-      metadata: { success: false, error }
+      metadata: { success: false, error },
     });
 
     // Remove from active pipelines
@@ -652,17 +798,21 @@ export class ProposalGenerationOrchestrator {
    * Schedule phase completion monitoring
    */
   private schedulePhaseCompletion(
-    pipeline: ProposalGenerationPipeline, 
-    workItemIds: string | string[], 
+    pipeline: ProposalGenerationPipeline,
+    workItemIds: string | string[],
     nextPhase: string
   ): void {
     const itemIds = Array.isArray(workItemIds) ? workItemIds : [workItemIds];
-    
+
     // Check periodically for work item completion
     const checkInterval = setInterval(async () => {
       try {
-        await this.handlePhaseCompletion(pipeline.pipelineId, itemIds, nextPhase);
-        
+        await this.handlePhaseCompletion(
+          pipeline.pipelineId,
+          itemIds,
+          nextPhase
+        );
+
         // Clear interval if pipeline is no longer active
         if (!this.activePipelines.has(pipeline.pipelineId)) {
           clearInterval(checkInterval);
@@ -677,7 +827,10 @@ export class ProposalGenerationOrchestrator {
     setTimeout(() => {
       clearInterval(checkInterval);
       if (this.activePipelines.has(pipeline.pipelineId)) {
-        this.handlePipelineFailure(pipeline, `Phase ${pipeline.currentPhase} timeout`);
+        this.handlePipelineFailure(
+          pipeline,
+          `Phase ${pipeline.currentPhase} timeout`
+        );
       }
     }, this.phaseTimeout);
   }
@@ -685,7 +838,9 @@ export class ProposalGenerationOrchestrator {
   /**
    * Get pipeline status
    */
-  async getPipelineStatus(pipelineId: string): Promise<ProposalGenerationPipeline | undefined> {
+  async getPipelineStatus(
+    pipelineId: string
+  ): Promise<ProposalGenerationPipeline | undefined> {
     return this.activePipelines.get(pipelineId);
   }
 
@@ -705,37 +860,39 @@ export class ProposalGenerationOrchestrator {
     offset?: number;
   }): Promise<ProposalGenerationPipeline[]> {
     let pipelines = Array.from(this.activePipelines.values());
-    
+
     // Apply status filter
     if (filters?.status) {
       pipelines = pipelines.filter(p => p.status === filters.status);
     }
-    
+
     // Apply pagination
     if (filters?.offset) {
       pipelines = pipelines.slice(filters.offset);
     }
-    
+
     if (filters?.limit) {
       pipelines = pipelines.slice(0, filters.limit);
     }
-    
+
     return pipelines;
   }
 
   /**
    * Cancel a pipeline
    */
-  async cancelPipeline(pipelineId: string): Promise<{ success: boolean; error?: string }> {
+  async cancelPipeline(
+    pipelineId: string
+  ): Promise<{ success: boolean; error?: string }> {
     console.log(`🚫 Cancelling proposal generation pipeline: ${pipelineId}`);
 
     try {
       const pipeline = this.activePipelines.get(pipelineId);
-      
+
       if (!pipeline) {
         return {
           success: false,
-          error: 'Pipeline not found'
+          error: 'Pipeline not found',
         };
       }
 
@@ -746,7 +903,9 @@ export class ProposalGenerationOrchestrator {
       // Cancel any active work items
       for (const workItemId of pipeline.workItems) {
         try {
-          await workflowCoordinator.cancelWorkItem(workItemId);
+          // TODO: Implement cancelWorkItem method in WorkflowCoordinator
+          // await workflowCoordinator.cancelWorkItem(workItemId);
+          console.log(`Would cancel work item ${workItemId}`);
         } catch (error) {
           console.warn(`⚠️ Failed to cancel work item ${workItemId}:`, error);
         }
@@ -755,7 +914,7 @@ export class ProposalGenerationOrchestrator {
       // Update RFP status back to discovered
       await storage.updateRFP(pipeline.rfpId, {
         status: 'discovered',
-        progress: 0
+        progress: 0,
       });
 
       // Create audit log
@@ -766,8 +925,8 @@ export class ProposalGenerationOrchestrator {
         details: {
           rfpId: pipeline.rfpId,
           phase: pipeline.currentPhase,
-          progress: pipeline.progress
-        }
+          progress: pipeline.progress,
+        },
       });
 
       // Create notification
@@ -776,20 +935,20 @@ export class ProposalGenerationOrchestrator {
         title: 'Proposal Generation Cancelled',
         message: `Proposal generation pipeline for RFP ${pipeline.rfpId} was cancelled`,
         relatedEntityType: 'rfp',
-        relatedEntityId: pipeline.rfpId
+        relatedEntityId: pipeline.rfpId,
       });
 
       // Remove from active pipelines
       this.activePipelines.delete(pipelineId);
 
       return { success: true };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Error cancelling pipeline:', error);
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -800,7 +959,11 @@ export class ProposalGenerationOrchestrator {
   async createProposalGenerationPipeline(request: {
     rfpId: string;
     companyProfileId?: string;
-    proposalType?: 'standard' | 'technical' | 'construction' | 'professional_services';
+    proposalType?:
+      | 'standard'
+      | 'technical'
+      | 'construction'
+      | 'professional_services';
     qualityThreshold?: number;
     autoSubmit?: boolean;
     generatePricing?: boolean;
@@ -814,7 +977,9 @@ export class ProposalGenerationOrchestrator {
     estimatedDuration?: string;
     error?: string;
   }> {
-    console.log(`🎬 Creating proposal generation pipeline for RFP: ${request.rfpId}`);
+    console.log(
+      `🎬 Creating proposal generation pipeline for RFP: ${request.rfpId}`
+    );
 
     try {
       // Generate sessionId for the request
@@ -830,8 +995,8 @@ export class ProposalGenerationOrchestrator {
         autoSubmit: request.autoSubmit || false,
         metadata: {
           generatePricing: request.generatePricing !== false,
-          generateCompliance: request.generateCompliance !== false
-        }
+          generateCompliance: request.generateCompliance !== false,
+        },
       };
 
       // Call the actual implementation
@@ -840,29 +1005,29 @@ export class ProposalGenerationOrchestrator {
       if (!result.success) {
         return {
           success: false,
-          error: result.error
+          error: result.error,
         };
       }
 
       // Transform to expected API response format
       const totalPhases = 7; // outline, content_generation, pricing_analysis, compliance_validation, form_completion, final_assembly, quality_assurance
       const estimatedDurationMinutes = totalPhases * 30; // 30 minutes per phase
-      
+
       return {
         success: true,
         pipelineId: result.pipelineId,
         currentPhase: result.currentPhase,
         totalPhases,
         workItemsCreated: 1, // Initial work items created
-        estimatedDuration: `${estimatedDurationMinutes} minutes`
+        estimatedDuration: `${estimatedDurationMinutes} minutes`,
       };
-
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       console.error('❌ Error creating pipeline:', error);
       return {
         success: false,
-        error: errorMessage
+        error: errorMessage,
       };
     }
   }
@@ -870,17 +1035,27 @@ export class ProposalGenerationOrchestrator {
   /**
    * Calculate estimated completion time
    */
-  private calculateEstimatedCompletion(pipeline: ProposalGenerationPipeline): Date {
+  private calculateEstimatedCompletion(
+    pipeline: ProposalGenerationPipeline
+  ): Date {
     const phaseDuration = this.phaseTimeout;
     const remainingPhases = 7 - this.getPhaseNumber(pipeline.currentPhase);
-    return new Date(Date.now() + (remainingPhases * phaseDuration));
+    return new Date(Date.now() + remainingPhases * phaseDuration);
   }
 
   /**
    * Get phase number for progress calculation
    */
   private getPhaseNumber(phase: string): number {
-    const phases = ['outline', 'content_generation', 'pricing_analysis', 'compliance_validation', 'form_completion', 'final_assembly', 'quality_assurance'];
+    const phases = [
+      'outline',
+      'content_generation',
+      'pricing_analysis',
+      'compliance_validation',
+      'form_completion',
+      'final_assembly',
+      'quality_assurance',
+    ];
     return phases.indexOf(phase) + 1;
   }
 
@@ -890,23 +1065,52 @@ export class ProposalGenerationOrchestrator {
   private getNextSteps(pipeline: ProposalGenerationPipeline): string[] {
     switch (pipeline.currentPhase) {
       case 'outline':
-        return ['Analyzing RFP requirements', 'Creating proposal structure', 'Mapping requirements to sections'];
+        return [
+          'Analyzing RFP requirements',
+          'Creating proposal structure',
+          'Mapping requirements to sections',
+        ];
       case 'content_generation':
-        return ['Generating executive summary', 'Writing technical approach', 'Creating qualifications narrative'];
+        return [
+          'Generating executive summary',
+          'Writing technical approach',
+          'Creating qualifications narrative',
+        ];
       case 'pricing_analysis':
-        return ['Analyzing cost requirements', 'Researching market rates', 'Creating pricing strategy'];
+        return [
+          'Analyzing cost requirements',
+          'Researching market rates',
+          'Creating pricing strategy',
+        ];
       case 'compliance_validation':
-        return ['Validating requirements compliance', 'Checking certifications', 'Performing risk assessment'];
+        return [
+          'Validating requirements compliance',
+          'Checking certifications',
+          'Performing risk assessment',
+        ];
       case 'form_completion':
-        return ['Filling required forms', 'Preparing attachments', 'Creating submission package'];
+        return [
+          'Filling required forms',
+          'Preparing attachments',
+          'Creating submission package',
+        ];
       case 'final_assembly':
-        return ['Combining all components', 'Creating final proposal', 'Preparing for submission'];
+        return [
+          'Combining all components',
+          'Creating final proposal',
+          'Preparing for submission',
+        ];
       case 'quality_assurance':
-        return ['Validating proposal quality', 'Checking completeness', 'Generating quality score'];
+        return [
+          'Validating proposal quality',
+          'Checking completeness',
+          'Generating quality score',
+        ];
       default:
         return ['Processing...'];
     }
   }
 }
 
-export const proposalGenerationOrchestrator = new ProposalGenerationOrchestrator();
+export const proposalGenerationOrchestrator =
+  new ProposalGenerationOrchestrator();

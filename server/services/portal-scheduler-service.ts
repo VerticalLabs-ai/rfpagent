@@ -1,7 +1,10 @@
-import cron from 'node-cron';
-import { PortalMonitoringService, PortalScanResult } from './portal-monitoring-service';
+import * as cron from 'node-cron';
+import {
+  PortalMonitoringService,
+  PortalScanResult,
+} from './portal-monitoring-service';
 import { IStorage } from '../storage';
-import { Portal } from '@shared/schema';
+import { Portal, PublicPortal } from '@shared/schema';
 
 export interface ScheduledJob {
   portalId: string;
@@ -16,7 +19,7 @@ export interface ScheduledJob {
 export class PortalSchedulerService {
   private jobs: Map<string, ScheduledJob> = new Map();
   private globalScanJob?: cron.ScheduledTask;
-  
+
   constructor(
     private storage: IStorage,
     private monitoringService: PortalMonitoringService
@@ -27,21 +30,22 @@ export class PortalSchedulerService {
    */
   async initialize(): Promise<void> {
     console.log('Initializing Portal Scheduler Service...');
-    
+
     try {
       // Load all active portals and create individual schedules
       const activePortals = await this.storage.getActivePortals();
-      
+
       for (const portal of activePortals) {
         await this.schedulePortalMonitoring(portal);
       }
 
       // Set up global scan job (runs every 6 hours as a backup)
       this.scheduleGlobalScan();
-      
-      console.log(`Portal Scheduler initialized with ${activePortals.length} portals`);
+
+      console.log(
+        `Portal Scheduler initialized with ${activePortals.length} portals`
+      );
       console.log('Scheduled jobs:', Array.from(this.jobs.keys()));
-      
     } catch (error) {
       console.error('Failed to initialize Portal Scheduler:', error);
       throw error;
@@ -51,7 +55,7 @@ export class PortalSchedulerService {
   /**
    * Schedule monitoring for a specific portal based on its scan frequency
    */
-  async schedulePortalMonitoring(portal: Portal): Promise<void> {
+  async schedulePortalMonitoring(portal: PublicPortal): Promise<void> {
     try {
       // Remove existing job if it exists
       if (this.jobs.has(portal.id)) {
@@ -60,17 +64,21 @@ export class PortalSchedulerService {
 
       // Create cron expression based on portal's scan frequency (hours)
       const cronExpression = this.createCronExpression(portal.scanFrequency);
-      
-      console.log(`Scheduling portal "${portal.name}" with frequency: every ${portal.scanFrequency} hours (${cronExpression})`);
+
+      console.log(
+        `Scheduling portal "${portal.name}" with frequency: every ${portal.scanFrequency} hours (${cronExpression})`
+      );
 
       // Create and start the scheduled task
-      const task = cron.schedule(cronExpression, async () => {
-        await this.executePortalScan(portal.id, portal.name);
-      }, {
-        scheduled: true,
-        name: `portal-monitor-${portal.id}`,
-        timezone: 'America/Chicago' // iByte is in Texas
-      });
+      const task = cron.schedule(
+        cronExpression,
+        async () => {
+          await this.executePortalScan(portal.id, portal.name);
+        },
+        {
+          timezone: 'America/Chicago', // iByte is in Texas
+        }
+      );
 
       // Store job info
       const scheduledJob: ScheduledJob = {
@@ -83,9 +91,10 @@ export class PortalSchedulerService {
       };
 
       this.jobs.set(portal.id, scheduledJob);
-      
-      console.log(`Successfully scheduled portal monitoring for: ${portal.name}`);
-      
+
+      console.log(
+        `Successfully scheduled portal monitoring for: ${portal.name}`
+      );
     } catch (error) {
       console.error(`Failed to schedule portal ${portal.name}:`, error);
     }
@@ -94,13 +103,18 @@ export class PortalSchedulerService {
   /**
    * Execute portal scan and handle results
    */
-  private async executePortalScan(portalId: string, portalName: string): Promise<void> {
+  private async executePortalScan(
+    portalId: string,
+    portalName: string
+  ): Promise<void> {
     const startTime = new Date();
-    console.log(`[SCHEDULER] Starting scheduled scan for portal: ${portalName}`);
+    console.log(
+      `[SCHEDULER] Starting scheduled scan for portal: ${portalName}`
+    );
 
     try {
       const result = await this.monitoringService.scanPortal(portalId);
-      
+
       // Update job last run time
       const job = this.jobs.get(portalId);
       if (job) {
@@ -124,10 +138,9 @@ export class PortalSchedulerService {
       if (result.discoveredRFPs.length > 0) {
         await this.handleNewDiscoveries(portalId, portalName, result);
       }
-
     } catch (error) {
       console.error(`[SCHEDULER] Failed to scan portal ${portalName}:`, error);
-      
+
       // Create error notification
       await this.storage.createNotification({
         type: 'discovery',
@@ -143,7 +156,11 @@ export class PortalSchedulerService {
   /**
    * Handle scan errors by creating notifications and updating portal status
    */
-  private async handleScanErrors(portalId: string, portalName: string, result: PortalScanResult): Promise<void> {
+  private async handleScanErrors(
+    portalId: string,
+    portalName: string,
+    result: PortalScanResult
+  ): Promise<void> {
     try {
       await this.storage.createNotification({
         type: 'discovery',
@@ -161,12 +178,17 @@ export class PortalSchedulerService {
   /**
    * Handle new RFP discoveries by creating notifications
    */
-  private async handleNewDiscoveries(portalId: string, portalName: string, result: PortalScanResult): Promise<void> {
+  private async handleNewDiscoveries(
+    portalId: string,
+    portalName: string,
+    result: PortalScanResult
+  ): Promise<void> {
     try {
       const count = result.discoveredRFPs.length;
-      const message = count === 1 
-        ? `Found 1 new RFP on portal "${portalName}": ${result.discoveredRFPs[0].title}`
-        : `Found ${count} new RFPs on portal "${portalName}"`;
+      const message =
+        count === 1
+          ? `Found 1 new RFP on portal "${portalName}": ${result.discoveredRFPs[0].title}`
+          : `Found ${count} new RFPs on portal "${portalName}"`;
 
       await this.storage.createNotification({
         type: 'discovery',
@@ -186,32 +208,39 @@ export class PortalSchedulerService {
    */
   private scheduleGlobalScan(): void {
     // Run every 6 hours as a backup to individual portal schedules
-    this.globalScanJob = cron.schedule('0 */6 * * *', async () => {
-      console.log('[SCHEDULER] Running global portal scan...');
-      try {
-        const results = await this.monitoringService.scanAllPortals();
-        const totalNewRFPs = results.reduce((sum, result) => sum + result.discoveredRFPs.length, 0);
-        const failedScans = results.filter(result => !result.success).length;
-        
-        console.log(`[SCHEDULER] Global scan completed: ${totalNewRFPs} new RFPs, ${failedScans} failed scans`);
-        
-        // Create summary notification if there are significant results
-        if (totalNewRFPs > 0 || failedScans > 0) {
-          await this.storage.createNotification({
-            type: 'discovery',
-            title: 'Global Portal Scan Summary',
-            message: `Global scan completed: ${totalNewRFPs} new RFPs discovered across ${results.length} portals. ${failedScans} portals had errors.`,
-            isRead: false,
-          });
+    this.globalScanJob = cron.schedule(
+      '0 */6 * * *',
+      async () => {
+        console.log('[SCHEDULER] Running global portal scan...');
+        try {
+          const results = await this.monitoringService.scanAllPortals();
+          const totalNewRFPs = results.reduce(
+            (sum, result) => sum + result.discoveredRFPs.length,
+            0
+          );
+          const failedScans = results.filter(result => !result.success).length;
+
+          console.log(
+            `[SCHEDULER] Global scan completed: ${totalNewRFPs} new RFPs, ${failedScans} failed scans`
+          );
+
+          // Create summary notification if there are significant results
+          if (totalNewRFPs > 0 || failedScans > 0) {
+            await this.storage.createNotification({
+              type: 'discovery',
+              title: 'Global Portal Scan Summary',
+              message: `Global scan completed: ${totalNewRFPs} new RFPs discovered across ${results.length} portals. ${failedScans} portals had errors.`,
+              isRead: false,
+            });
+          }
+        } catch (error) {
+          console.error('[SCHEDULER] Global scan failed:', error);
         }
-      } catch (error) {
-        console.error('[SCHEDULER] Global scan failed:', error);
+      },
+      {
+        timezone: 'America/Chicago',
       }
-    }, {
-      scheduled: true,
-      name: 'global-portal-scan',
-      timezone: 'America/Chicago'
-    });
+    );
 
     console.log('Global portal scan scheduled (every 6 hours)');
   }
@@ -228,7 +257,7 @@ export class PortalSchedulerService {
       return `0 */${frequencyHours} * * *`;
     } else if (frequencyHours <= 12) {
       // Twice daily
-      return '0 6,18 * * *'; 
+      return '0 6,18 * * *';
     } else {
       // Once daily at 6 AM
       return '0 6 * * *';
@@ -240,9 +269,9 @@ export class PortalSchedulerService {
    */
   private getNextRun(cronExpression: string): Date | undefined {
     try {
-      const task = cron.schedule(cronExpression, () => {}, { scheduled: false });
+      const task = cron.schedule(cronExpression, () => {}, {});
       // This is a simplified approach - in production you'd use a proper cron parser
-      return new Date(Date.now() + (60 * 60 * 1000)); // Approximate next hour
+      return new Date(Date.now() + 60 * 60 * 1000); // Approximate next hour
     } catch (error) {
       console.error('Failed to calculate next run time:', error);
       return undefined;
@@ -261,7 +290,6 @@ export class PortalSchedulerService {
 
       await this.schedulePortalMonitoring(portal);
       console.log(`Updated schedule for portal: ${portal.name}`);
-      
     } catch (error) {
       console.error(`Failed to update schedule for portal ${portalId}:`, error);
       throw error;
@@ -332,7 +360,7 @@ export class PortalSchedulerService {
    */
   shutdown(): void {
     console.log('Shutting down Portal Scheduler Service...');
-    
+
     // Stop all individual portal jobs
     for (const [portalId, job] of this.jobs.entries()) {
       try {

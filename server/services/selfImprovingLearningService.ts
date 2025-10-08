@@ -16,7 +16,13 @@ import { nanoid } from 'nanoid';
 
 export interface LearningOutcome {
   id?: string;
-  type: 'proposal_success' | 'proposal_failure' | 'portal_navigation' | 'document_parsing' | 'compliance_check' | 'market_analysis';
+  type:
+    | 'proposal_success'
+    | 'proposal_failure'
+    | 'portal_navigation'
+    | 'document_parsing'
+    | 'compliance_check'
+    | 'market_analysis';
   rfpId?: string;
   portalId?: string;
   agentId: string;
@@ -123,7 +129,8 @@ export class SelfImprovingLearningService {
 
   public static getInstance(): SelfImprovingLearningService {
     if (!SelfImprovingLearningService.instance) {
-      SelfImprovingLearningService.instance = new SelfImprovingLearningService();
+      SelfImprovingLearningService.instance =
+        new SelfImprovingLearningService();
     }
     return SelfImprovingLearningService.instance;
   }
@@ -137,7 +144,9 @@ export class SelfImprovingLearningService {
     if (!this.learningEnabled) return;
 
     try {
-      console.log(`📊 Recording learning outcome: ${outcome.type} for agent ${outcome.agentId}`);
+      console.log(
+        `📊 Recording learning outcome: ${outcome.type} for agent ${outcome.agentId}`
+      );
 
       // Store the outcome in agent memory
       await agentMemoryService.storeMemory({
@@ -155,15 +164,20 @@ export class SelfImprovingLearningService {
           category: outcome.category,
           confidenceScore: outcome.confidenceScore,
           learnedPatterns: outcome.learnedPatterns || [],
-          adaptations: outcome.adaptations || []
+          adaptations: outcome.adaptations || [],
         },
         importance: outcome.outcome.success ? 8 : 9, // Failures are slightly more important for learning
-        tags: [outcome.type, outcome.domain, outcome.category, outcome.outcome.success ? 'success' : 'failure'],
+        tags: [
+          outcome.type,
+          outcome.domain,
+          outcome.category,
+          outcome.outcome.success ? 'success' : 'failure',
+        ],
         metadata: {
           rfpId: outcome.rfpId,
           portalId: outcome.portalId,
-          processingTime: Date.now()
-        }
+          processingTime: Date.now(),
+        },
       });
 
       // Learn from the outcome
@@ -173,7 +187,7 @@ export class SelfImprovingLearningService {
         success: outcome.outcome.success,
         rfpId: outcome.rfpId,
         category: outcome.category,
-        domain: outcome.domain
+        domain: outcome.domain,
       });
 
       // Trigger specific learning processes based on outcome type
@@ -182,7 +196,9 @@ export class SelfImprovingLearningService {
       // Update performance metrics
       await this.updatePerformanceMetrics(outcome);
 
-      console.log(`✅ Learning outcome recorded and processed for ${outcome.agentId}`);
+      console.log(
+        `✅ Learning outcome recorded and processed for ${outcome.agentId}`
+      );
     } catch (error) {
       console.error('❌ Failed to record learning outcome:', error);
     }
@@ -191,7 +207,9 @@ export class SelfImprovingLearningService {
   /**
    * Process outcome-specific learning patterns
    */
-  private async processOutcomeSpecificLearning(outcome: LearningOutcome): Promise<void> {
+  private async processOutcomeSpecificLearning(
+    outcome: LearningOutcome
+  ): Promise<void> {
     switch (outcome.type) {
       case 'proposal_success':
       case 'proposal_failure':
@@ -223,11 +241,9 @@ export class SelfImprovingLearningService {
     try {
       // Get the RFP and proposal details
       const rfp = await storage.getRFP(outcome.rfpId);
-      const proposals = await storage.getProposalsByRFP(outcome.rfpId);
+      const proposal = await storage.getProposalByRFP(outcome.rfpId);
 
-      if (!rfp || proposals.length === 0) return;
-
-      const proposal = proposals[0]; // Most recent proposal
+      if (!rfp || !proposal) return;
 
       // Extract strategy patterns
       const strategy = this.extractProposalStrategy(rfp, proposal, outcome);
@@ -237,12 +253,20 @@ export class SelfImprovingLearningService {
 
       // If failure, analyze what went wrong
       if (!outcome.outcome.success && outcome.outcome.feedback) {
-        await this.analyzeProposalFailure(rfp, proposal, outcome.outcome.feedback);
+        await this.analyzeProposalFailure(
+          rfp,
+          proposal,
+          outcome.outcome.feedback
+        );
       }
 
       // Learn pricing patterns
       if (outcome.context.strategy?.pricing) {
-        await this.learnPricingPatterns(rfp, outcome.context.strategy.pricing, outcome.outcome.success);
+        await this.learnPricingPatterns(
+          rfp,
+          outcome.context.strategy.pricing,
+          outcome.outcome.success
+        );
       }
 
       console.log(`💡 Learned from proposal outcome for RFP: ${rfp.title}`);
@@ -254,7 +278,11 @@ export class SelfImprovingLearningService {
   /**
    * Extract proposal strategy from successful/failed submissions
    */
-  private extractProposalStrategy(rfp: any, proposal: any, outcome: LearningOutcome): ProposalStrategy {
+  private extractProposalStrategy(
+    rfp: any,
+    proposal: any,
+    outcome: LearningOutcome
+  ): ProposalStrategy {
     return {
       domain: rfp.agency || 'unknown',
       rfpType: this.categorizeRFP(rfp),
@@ -263,22 +291,23 @@ export class SelfImprovingLearningService {
           narrativeStyle: this.analyzeNarrativeStyle(proposal.narratives),
           technicalDepth: this.analyzeTechnicalDepth(proposal.content),
           complianceApproach: this.analyzeComplianceApproach(proposal),
-          structuralElements: this.analyzeStructure(proposal)
+          structuralElements: this.analyzeStructure(proposal),
         },
         pricingStrategy: {
-          approach: outcome.context.strategy?.pricing?.approach || 'competitive',
+          approach:
+            outcome.context.strategy?.pricing?.approach || 'competitive',
           margin: outcome.context.strategy?.pricing?.margin || 0.15,
-          breakdown: outcome.context.strategy?.pricing?.breakdown || 'standard'
+          breakdown: outcome.context.strategy?.pricing?.breakdown || 'standard',
         },
         complianceApproach: {
           thoroughness: this.analyzeComplianceThoroughness(proposal),
-          riskMitigation: this.analyzeRiskMitigation(proposal)
+          riskMitigation: this.analyzeRiskMitigation(proposal),
         },
         narrativeStyle: {
           tone: this.analyzeProposalTone(proposal),
           length: this.analyzeContentLength(proposal),
-          focusAreas: this.identifyFocusAreas(proposal)
-        }
+          focusAreas: this.identifyFocusAreas(proposal),
+        },
       },
       outcomes: {
         totalSubmissions: 1,
@@ -286,16 +315,22 @@ export class SelfImprovingLearningService {
         losses: outcome.outcome.success ? 0 : 1,
         winRate: outcome.outcome.success ? 1.0 : 0.0,
         averageScore: outcome.outcome.metrics?.score || 0,
-        feedbackPatterns: outcome.outcome.feedback ? [outcome.outcome.feedback] : []
+        feedbackPatterns: outcome.outcome.feedback
+          ? [outcome.outcome.feedback]
+          : [],
       },
-      optimizations: []
+      optimizations: [],
     };
   }
 
   /**
    * Analyze proposal failure patterns
    */
-  private async analyzeProposalFailure(rfp: any, proposal: any, feedback: string): Promise<void> {
+  private async analyzeProposalFailure(
+    rfp: any,
+    proposal: any,
+    feedback: string
+  ): Promise<void> {
     const failurePatterns = this.identifyFailurePatterns(feedback);
 
     // Store failure analysis as knowledge
@@ -310,12 +345,12 @@ export class SelfImprovingLearningService {
         failurePatterns,
         feedback,
         proposalStructure: this.analyzeStructure(proposal),
-        proposedFixes: this.suggestImprovements(failurePatterns)
+        proposedFixes: this.suggestImprovements(failurePatterns),
       },
       confidenceScore: 0.8,
       sourceType: 'feedback',
       sourceId: rfp.id,
-      tags: ['failure_analysis', rfp.agency, 'improvement']
+      tags: ['failure_analysis', rfp.agency, 'improvement'],
     });
   }
 
@@ -344,7 +379,10 @@ export class SelfImprovingLearningService {
 
       // Learn from timing patterns
       if (outcome.outcome.metrics?.duration) {
-        await this.learnTimingPatterns(portal, outcome.outcome.metrics.duration);
+        await this.learnTimingPatterns(
+          portal,
+          outcome.outcome.metrics.duration
+        );
       }
 
       console.log(`🧭 Learned from portal navigation: ${portal.name}`);
@@ -356,32 +394,42 @@ export class SelfImprovingLearningService {
   /**
    * Extract portal navigation strategy
    */
-  private extractPortalStrategy(portal: any, outcome: LearningOutcome): PortalStrategy {
+  private extractPortalStrategy(
+    portal: any,
+    outcome: LearningOutcome
+  ): PortalStrategy {
     return {
       portalId: portal.id,
       portalName: portal.name,
       strategy: {
         navigationPattern: outcome.context.strategy?.navigationPattern || {},
-        selectors: outcome.context.strategy?.selectors || portal.selectors || {},
+        selectors:
+          outcome.context.strategy?.selectors || portal.selectors || {},
         waitTimes: outcome.context.strategy?.waitTimes || { default: 3000 },
         errorHandling: outcome.context.strategy?.errorHandling || {},
-        authenticationSteps: outcome.context.strategy?.authenticationSteps || {}
+        authenticationSteps:
+          outcome.context.strategy?.authenticationSteps || {},
       },
       performance: {
         successRate: outcome.outcome.success ? 1.0 : 0.0,
         averageTime: outcome.outcome.metrics?.duration || 0,
         errorCount: outcome.outcome.success ? 0 : 1,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       },
-      adaptations: []
+      adaptations: [],
     };
   }
 
   /**
    * Analyze navigation failures to improve strategies
    */
-  private async analyzeNavigationFailure(portal: any, outcome: LearningOutcome): Promise<void> {
-    const errorAnalysis = this.analyzeNavigationError(outcome.outcome.errorDetails);
+  private async analyzeNavigationFailure(
+    portal: any,
+    outcome: LearningOutcome
+  ): Promise<void> {
+    const errorAnalysis = this.analyzeNavigationError(
+      outcome.outcome.errorDetails
+    );
 
     // Store navigation failure analysis
     await agentMemoryService.storeKnowledge({
@@ -396,12 +444,12 @@ export class SelfImprovingLearningService {
         errorAnalysis,
         originalStrategy: outcome.context.strategy,
         suggestedFixes: this.suggestNavigationFixes(errorAnalysis),
-        fallbackStrategies: this.generateFallbackStrategies(portal)
+        fallbackStrategies: this.generateFallbackStrategies(portal),
       },
       confidenceScore: 0.7,
       sourceType: 'experience',
       sourceId: portal.id,
-      tags: ['navigation_failure', 'portal_optimization', portal.name]
+      tags: ['navigation_failure', 'portal_optimization', portal.name],
     });
   }
 
@@ -426,7 +474,9 @@ export class SelfImprovingLearningService {
         await this.analyzeParsingFailure(outcome);
       }
 
-      console.log(`📄 Learned from document parsing: ${documentType} in ${domain}`);
+      console.log(
+        `📄 Learned from document parsing: ${documentType} in ${domain}`
+      );
     } catch (error) {
       console.error('❌ Failed to learn from parsing outcome:', error);
     }
@@ -443,19 +493,23 @@ export class SelfImprovingLearningService {
         identifiers: outcome.context.strategy?.identifiers || [],
         extractionRules: outcome.context.strategy?.extractionRules || {},
         validationRules: outcome.context.strategy?.validationRules || {},
-        postProcessing: outcome.context.strategy?.postProcessing || {}
+        postProcessing: outcome.context.strategy?.postProcessing || {},
       },
       accuracy: {
         successRate: outcome.outcome.success ? 1.0 : 0.0,
-        commonErrors: outcome.outcome.errorDetails ? [outcome.outcome.errorDetails.message] : [],
-        improvementSuggestions: outcome.outcome.improvementAreas || []
+        commonErrors: outcome.outcome.errorDetails
+          ? [outcome.outcome.errorDetails.message]
+          : [],
+        improvementSuggestions: outcome.outcome.improvementAreas || [],
       },
-      versions: [{
-        version: '1.0',
-        timestamp: new Date(),
-        changes: ['Initial pattern'],
-        performanceChange: 0
-      }]
+      versions: [
+        {
+          version: '1.0',
+          timestamp: new Date(),
+          changes: ['Initial pattern'],
+          performanceChange: 0,
+        },
+      ],
     };
   }
 
@@ -464,13 +518,20 @@ export class SelfImprovingLearningService {
   /**
    * Update portal strategy based on outcomes
    */
-  private async updatePortalStrategy(strategy: PortalStrategy, success: boolean): Promise<void> {
+  private async updatePortalStrategy(
+    strategy: PortalStrategy,
+    success: boolean
+  ): Promise<void> {
     // Get existing strategy
     const existingStrategy = await this.getPortalStrategy(strategy.portalId);
 
     if (existingStrategy) {
       // Update performance metrics
-      const updatedStrategy = this.mergePortalStrategies(existingStrategy, strategy, success);
+      const updatedStrategy = this.mergePortalStrategies(
+        existingStrategy,
+        strategy,
+        success
+      );
 
       // Check if adaptation is needed
       if (this.shouldAdaptPortalStrategy(updatedStrategy)) {
@@ -486,7 +547,10 @@ export class SelfImprovingLearningService {
   /**
    * Update proposal strategy based on outcomes
    */
-  private async updateProposalStrategy(strategy: ProposalStrategy, success: boolean): Promise<void> {
+  private async updateProposalStrategy(
+    strategy: ProposalStrategy,
+    success: boolean
+  ): Promise<void> {
     const key = `${strategy.domain}_${strategy.rfpType}`;
     const existing = await this.getProposalStrategy(key);
 
@@ -515,7 +579,7 @@ export class SelfImprovingLearningService {
         timestamp: new Date(),
         change: 'Increased wait times by 50%',
         reason: 'Low success rate suggests timing issues',
-        performanceImpact: 0
+        performanceImpact: 0,
       });
 
       // Increase wait times
@@ -530,28 +594,35 @@ export class SelfImprovingLearningService {
         timestamp: new Date(),
         change: 'Updated backup selectors',
         reason: 'High error count suggests selector instability',
-        performanceImpact: 0
+        performanceImpact: 0,
       });
     }
 
     strategy.adaptations.push(...adaptations);
 
-    console.log(`🔄 Adapted portal strategy for ${strategy.portalName}: ${adaptations.length} changes`);
+    console.log(
+      `🔄 Adapted portal strategy for ${strategy.portalName}: ${adaptations.length} changes`
+    );
   }
 
   /**
    * Adapt proposal strategy based on success patterns
    */
-  private async adaptProposalStrategy(strategy: ProposalStrategy): Promise<void> {
+  private async adaptProposalStrategy(
+    strategy: ProposalStrategy
+  ): Promise<void> {
     const adaptations = [];
 
     // Adapt based on win rate
-    if (strategy.outcomes.winRate < 0.3 && strategy.outcomes.totalSubmissions > 3) {
+    if (
+      strategy.outcomes.winRate < 0.3 &&
+      strategy.outcomes.totalSubmissions > 3
+    ) {
       adaptations.push({
         timestamp: new Date(),
         change: 'Adjusted narrative style to be more conservative',
         rationale: 'Low win rate suggests approach may be too aggressive',
-        expectedImpact: 0.15
+        expectedImpact: 0.15,
       });
 
       // Adjust strategy
@@ -559,20 +630,28 @@ export class SelfImprovingLearningService {
     }
 
     // Adapt pricing if consistently losing
-    if (strategy.outcomes.losses > strategy.outcomes.wins && strategy.outcomes.totalSubmissions > 2) {
+    if (
+      strategy.outcomes.losses > strategy.outcomes.wins &&
+      strategy.outcomes.totalSubmissions > 2
+    ) {
       adaptations.push({
         timestamp: new Date(),
         change: 'Reduced margin by 2% to be more competitive',
         rationale: 'More losses than wins suggests pricing may be too high',
-        expectedImpact: 0.1
+        expectedImpact: 0.1,
       });
 
-      strategy.strategy.pricingStrategy.margin = Math.max(0.05, strategy.strategy.pricingStrategy.margin - 0.02);
+      strategy.strategy.pricingStrategy.margin = Math.max(
+        0.05,
+        strategy.strategy.pricingStrategy.margin - 0.02
+      );
     }
 
     strategy.optimizations.push(...adaptations);
 
-    console.log(`💰 Adapted proposal strategy for ${strategy.domain}/${strategy.rfpType}: ${adaptations.length} changes`);
+    console.log(
+      `💰 Adapted proposal strategy for ${strategy.domain}/${strategy.rfpType}: ${adaptations.length} changes`
+    );
   }
 
   // ============ PERFORMANCE MONITORING & METRICS ============
@@ -580,7 +659,9 @@ export class SelfImprovingLearningService {
   /**
    * Update performance metrics based on outcomes
    */
-  private async updatePerformanceMetrics(outcome: LearningOutcome): Promise<void> {
+  private async updatePerformanceMetrics(
+    outcome: LearningOutcome
+  ): Promise<void> {
     await agentMemoryService.recordPerformanceMetric(
       outcome.agentId,
       `${outcome.type}_success_rate`,
@@ -589,7 +670,7 @@ export class SelfImprovingLearningService {
         entityType: outcome.type,
         entityId: outcome.rfpId || outcome.portalId,
         domain: outcome.domain,
-        category: outcome.category
+        category: outcome.category,
       }
     );
 
@@ -600,7 +681,7 @@ export class SelfImprovingLearningService {
         outcome.outcome.metrics.duration,
         {
           entityType: outcome.type,
-          entityId: outcome.rfpId || outcome.portalId
+          entityId: outcome.rfpId || outcome.portalId,
         }
       );
     }
@@ -612,7 +693,7 @@ export class SelfImprovingLearningService {
         outcome.outcome.metrics.score,
         {
           entityType: outcome.type,
-          entityId: outcome.rfpId || outcome.portalId
+          entityId: outcome.rfpId || outcome.portalId,
         }
       );
     }
@@ -625,13 +706,19 @@ export class SelfImprovingLearningService {
     const recommendations = [];
 
     // Get recent performance metrics
-    const performance = await agentMemoryService.getAgentPerformanceSummary(agentId);
+    const performance =
+      await agentMemoryService.getAgentPerformanceSummary(agentId);
 
     // Get recent failures for pattern analysis
-    const recentMemories = await agentMemoryService.getAgentMemories(agentId, 'episodic', 50);
-    const failures = recentMemories.filter(m =>
-      m.content.success === false &&
-      Date.now() - new Date(m.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000 // Last 7 days
+    const recentMemories = await agentMemoryService.getAgentMemories(
+      agentId,
+      'episodic',
+      50
+    );
+    const failures = recentMemories.filter(
+      m =>
+        m.content.success === false &&
+        Date.now() - new Date(m.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000 // Last 7 days
     );
 
     // Analyze failure patterns
@@ -643,7 +730,7 @@ export class SelfImprovingLearningService {
         title: 'Recurring Failure Pattern Detected',
         description: `Identified ${patterns.length} failure patterns in recent activities`,
         patterns,
-        suggestedActions: this.suggestActionsForPatterns(patterns)
+        suggestedActions: this.suggestActionsForPatterns(patterns),
       });
     }
 
@@ -654,7 +741,11 @@ export class SelfImprovingLearningService {
         priority: 'medium',
         title: 'Low Success Rate',
         description: `Success rate of ${(performance.success_rate * 100).toFixed(1)}% is below optimal`,
-        suggestedActions: ['Review recent failures', 'Update strategies', 'Increase validation steps']
+        suggestedActions: [
+          'Review recent failures',
+          'Update strategies',
+          'Increase validation steps',
+        ],
       });
     }
 
@@ -684,11 +775,15 @@ export class SelfImprovingLearningService {
    */
   private async consolidateAgentMemories(agentId: string): Promise<void> {
     // Get episodic memories older than consolidation interval
-    const oldMemories = await agentMemoryService.getAgentMemories(agentId, 'episodic', 1000);
+    const oldMemories = await agentMemoryService.getAgentMemories(
+      agentId,
+      'episodic',
+      1000
+    );
     const cutoff = Date.now() - this.memoryConsolidationInterval;
 
-    const memoriesToConsolidate = oldMemories.filter(m =>
-      new Date(m.createdAt).getTime() < cutoff
+    const memoriesToConsolidate = oldMemories.filter(
+      m => new Date(m.createdAt).getTime() < cutoff
     );
 
     if (memoriesToConsolidate.length < 10) return; // Not enough to consolidate
@@ -707,11 +802,13 @@ export class SelfImprovingLearningService {
         content: pattern.content,
         confidenceScore: pattern.confidence,
         sourceType: 'experience',
-        tags: pattern.tags
+        tags: pattern.tags,
       });
     }
 
-    console.log(`📚 Consolidated ${memoriesToConsolidate.length} memories into ${patterns.length} patterns for ${agentId}`);
+    console.log(
+      `📚 Consolidated ${memoriesToConsolidate.length} memories into ${patterns.length} patterns for ${agentId}`
+    );
   }
 
   /**
@@ -730,7 +827,7 @@ export class SelfImprovingLearningService {
       enabled: this.learningEnabled,
       adaptationThreshold: this.adaptationThreshold,
       memoryConsolidationInterval: this.memoryConsolidationInterval,
-      version: '1.0.0'
+      version: '1.0.0',
     };
   }
 
@@ -738,17 +835,28 @@ export class SelfImprovingLearningService {
 
   private categorizeRFP(rfp: any): string {
     const title = (rfp.title || '').toLowerCase();
-    if (title.includes('technology') || title.includes('software') || title.includes('it')) return 'technology';
-    if (title.includes('construction') || title.includes('building')) return 'construction';
-    if (title.includes('consulting') || title.includes('advisory')) return 'consulting';
-    if (title.includes('maintenance') || title.includes('support')) return 'maintenance';
+    if (
+      title.includes('technology') ||
+      title.includes('software') ||
+      title.includes('it')
+    )
+      return 'technology';
+    if (title.includes('construction') || title.includes('building'))
+      return 'construction';
+    if (title.includes('consulting') || title.includes('advisory'))
+      return 'consulting';
+    if (title.includes('maintenance') || title.includes('support'))
+      return 'maintenance';
     return 'general';
   }
 
   private analyzeNarrativeStyle(narratives: any[]): string {
     if (!narratives || narratives.length === 0) return 'standard';
 
-    const totalLength = narratives.reduce((sum, n) => sum + (n?.length || 0), 0);
+    const totalLength = narratives.reduce(
+      (sum, n) => sum + (n?.length || 0),
+      0
+    );
     const avgLength = totalLength / narratives.length;
 
     if (avgLength > 1000) return 'detailed';
@@ -760,7 +868,13 @@ export class SelfImprovingLearningService {
     if (!content) return 'basic';
 
     const contentStr = JSON.stringify(content).toLowerCase();
-    const technicalTerms = ['architecture', 'methodology', 'framework', 'protocol', 'implementation'];
+    const technicalTerms = [
+      'architecture',
+      'methodology',
+      'framework',
+      'protocol',
+      'implementation',
+    ];
     const matches = technicalTerms.filter(term => contentStr.includes(term));
 
     if (matches.length > 3) return 'deep';
@@ -777,10 +891,10 @@ export class SelfImprovingLearningService {
   private analyzeStructure(proposal: any): any {
     return {
       sections: proposal.narratives?.length || 0,
-      hasExecutiveSummary: !!(proposal.content?.executive_summary),
-      hasTechnicalApproach: !!(proposal.content?.technical_approach),
-      hasQualifications: !!(proposal.content?.qualifications),
-      hasPricing: !!(proposal.pricingTables)
+      hasExecutiveSummary: !!proposal.content?.executive_summary,
+      hasTechnicalApproach: !!proposal.content?.technical_approach,
+      hasQualifications: !!proposal.content?.qualifications,
+      hasPricing: !!proposal.pricingTables,
     };
   }
 
@@ -793,8 +907,8 @@ export class SelfImprovingLearningService {
   }
 
   private analyzeRiskMitigation(proposal: any): string {
-    const hasRiskSection = !!(proposal.content?.risk_mitigation);
-    const hasContingency = !!(proposal.content?.contingency_plans);
+    const hasRiskSection = !!proposal.content?.risk_mitigation;
+    const hasContingency = !!proposal.content?.contingency_plans;
 
     if (hasRiskSection && hasContingency) return 'comprehensive';
     if (hasRiskSection || hasContingency) return 'basic';
@@ -805,8 +919,10 @@ export class SelfImprovingLearningService {
     // Simple heuristic based on content analysis
     const content = JSON.stringify(proposal.content || {}).toLowerCase();
 
-    if (content.includes('innovative') || content.includes('cutting-edge')) return 'aggressive';
-    if (content.includes('proven') || content.includes('established')) return 'conservative';
+    if (content.includes('innovative') || content.includes('cutting-edge'))
+      return 'aggressive';
+    if (content.includes('proven') || content.includes('established'))
+      return 'conservative';
     return 'balanced';
   }
 
@@ -834,10 +950,23 @@ export class SelfImprovingLearningService {
     const patterns = [];
     const lowerFeedback = feedback.toLowerCase();
 
-    if (lowerFeedback.includes('price') || lowerFeedback.includes('cost')) patterns.push('pricing_issues');
-    if (lowerFeedback.includes('technical') || lowerFeedback.includes('approach')) patterns.push('technical_deficiency');
-    if (lowerFeedback.includes('experience') || lowerFeedback.includes('qualification')) patterns.push('qualification_concerns');
-    if (lowerFeedback.includes('compliance') || lowerFeedback.includes('requirement')) patterns.push('compliance_gaps');
+    if (lowerFeedback.includes('price') || lowerFeedback.includes('cost'))
+      patterns.push('pricing_issues');
+    if (
+      lowerFeedback.includes('technical') ||
+      lowerFeedback.includes('approach')
+    )
+      patterns.push('technical_deficiency');
+    if (
+      lowerFeedback.includes('experience') ||
+      lowerFeedback.includes('qualification')
+    )
+      patterns.push('qualification_concerns');
+    if (
+      lowerFeedback.includes('compliance') ||
+      lowerFeedback.includes('requirement')
+    )
+      patterns.push('compliance_gaps');
 
     return patterns;
   }
@@ -845,10 +974,14 @@ export class SelfImprovingLearningService {
   private suggestImprovements(patterns: string[]): string[] {
     const suggestions = [];
 
-    if (patterns.includes('pricing_issues')) suggestions.push('Review pricing strategy and market rates');
-    if (patterns.includes('technical_deficiency')) suggestions.push('Enhance technical sections with more detail');
-    if (patterns.includes('qualification_concerns')) suggestions.push('Strengthen team qualifications and past performance');
-    if (patterns.includes('compliance_gaps')) suggestions.push('Improve compliance checking and requirement coverage');
+    if (patterns.includes('pricing_issues'))
+      suggestions.push('Review pricing strategy and market rates');
+    if (patterns.includes('technical_deficiency'))
+      suggestions.push('Enhance technical sections with more detail');
+    if (patterns.includes('qualification_concerns'))
+      suggestions.push('Strengthen team qualifications and past performance');
+    if (patterns.includes('compliance_gaps'))
+      suggestions.push('Improve compliance checking and requirement coverage');
 
     return suggestions;
   }
@@ -858,9 +991,12 @@ export class SelfImprovingLearningService {
 
     const message = errorDetails.message || '';
 
-    if (message.includes('timeout')) return { type: 'timing', severity: 'medium' };
-    if (message.includes('not found') || message.includes('selector')) return { type: 'selector', severity: 'high' };
-    if (message.includes('auth') || message.includes('login')) return { type: 'authentication', severity: 'high' };
+    if (message.includes('timeout'))
+      return { type: 'timing', severity: 'medium' };
+    if (message.includes('not found') || message.includes('selector'))
+      return { type: 'selector', severity: 'high' };
+    if (message.includes('auth') || message.includes('login'))
+      return { type: 'authentication', severity: 'high' };
 
     return { type: 'unknown', severity: 'medium' };
   }
@@ -873,10 +1009,18 @@ export class SelfImprovingLearningService {
         fixes.push('Increase wait times', 'Add explicit waits for elements');
         break;
       case 'selector':
-        fixes.push('Update selectors', 'Add fallback selectors', 'Use more robust targeting');
+        fixes.push(
+          'Update selectors',
+          'Add fallback selectors',
+          'Use more robust targeting'
+        );
         break;
       case 'authentication':
-        fixes.push('Review login process', 'Check credentials', 'Verify 2FA handling');
+        fixes.push(
+          'Review login process',
+          'Check credentials',
+          'Verify 2FA handling'
+        );
         break;
       default:
         fixes.push('Add error handling', 'Implement retry logic');
@@ -890,51 +1034,72 @@ export class SelfImprovingLearningService {
       {
         name: 'Increased Wait Times',
         description: 'Double all wait times for more reliable navigation',
-        modifications: { waitTimes: 'double' }
+        modifications: { waitTimes: 'double' },
       },
       {
         name: 'Alternative Selectors',
         description: 'Use backup selectors for critical elements',
-        modifications: { selectors: 'backup' }
-      }
+        modifications: { selectors: 'backup' },
+      },
     ];
   }
 
-  private mergePortalStrategies(existing: PortalStrategy, newStrategy: PortalStrategy, success: boolean): PortalStrategy {
+  private mergePortalStrategies(
+    existing: PortalStrategy,
+    newStrategy: PortalStrategy,
+    success: boolean
+  ): PortalStrategy {
     // Update performance metrics
-    const totalAttempts = existing.performance.errorCount + existing.performance.successRate;
-    const newSuccessRate = ((existing.performance.successRate * totalAttempts) + (success ? 1 : 0)) / (totalAttempts + 1);
+    const totalAttempts =
+      existing.performance.errorCount + existing.performance.successRate;
+    const newSuccessRate =
+      (existing.performance.successRate * totalAttempts + (success ? 1 : 0)) /
+      (totalAttempts + 1);
 
     return {
       ...existing,
       performance: {
         successRate: newSuccessRate,
-        averageTime: (existing.performance.averageTime + newStrategy.performance.averageTime) / 2,
+        averageTime:
+          (existing.performance.averageTime +
+            newStrategy.performance.averageTime) /
+          2,
         errorCount: existing.performance.errorCount + (success ? 0 : 1),
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       },
       strategy: {
         ...existing.strategy,
-        ...newStrategy.strategy // Merge strategies, preferring newer ones
-      }
+        ...newStrategy.strategy, // Merge strategies, preferring newer ones
+      },
     };
   }
 
-  private mergeProposalStrategies(existing: ProposalStrategy, newStrategy: ProposalStrategy, success: boolean): ProposalStrategy {
+  private mergeProposalStrategies(
+    existing: ProposalStrategy,
+    newStrategy: ProposalStrategy,
+    success: boolean
+  ): ProposalStrategy {
     return {
       ...existing,
       outcomes: {
         totalSubmissions: existing.outcomes.totalSubmissions + 1,
         wins: existing.outcomes.wins + (success ? 1 : 0),
         losses: existing.outcomes.losses + (success ? 0 : 1),
-        winRate: (existing.outcomes.wins + (success ? 1 : 0)) / (existing.outcomes.totalSubmissions + 1),
-        averageScore: (existing.outcomes.averageScore + newStrategy.outcomes.averageScore) / 2,
-        feedbackPatterns: [...existing.outcomes.feedbackPatterns, ...newStrategy.outcomes.feedbackPatterns]
+        winRate:
+          (existing.outcomes.wins + (success ? 1 : 0)) /
+          (existing.outcomes.totalSubmissions + 1),
+        averageScore:
+          (existing.outcomes.averageScore + newStrategy.outcomes.averageScore) /
+          2,
+        feedbackPatterns: [
+          ...existing.outcomes.feedbackPatterns,
+          ...newStrategy.outcomes.feedbackPatterns,
+        ],
       },
       strategy: {
         ...existing.strategy,
-        ...newStrategy.strategy
-      }
+        ...newStrategy.strategy,
+      },
     };
   }
 
@@ -943,11 +1108,20 @@ export class SelfImprovingLearningService {
   }
 
   private shouldAdaptProposalStrategy(strategy: ProposalStrategy): boolean {
-    return strategy.outcomes.winRate < this.adaptationThreshold && strategy.outcomes.totalSubmissions > 2;
+    return (
+      strategy.outcomes.winRate < this.adaptationThreshold &&
+      strategy.outcomes.totalSubmissions > 2
+    );
   }
 
-  private async getPortalStrategy(portalId: string): Promise<PortalStrategy | null> {
-    const knowledge = await agentMemoryService.getAgentKnowledge('portal-navigation-specialist', 'strategy', portalId);
+  private async getPortalStrategy(
+    portalId: string
+  ): Promise<PortalStrategy | null> {
+    const knowledge = await agentMemoryService.getAgentKnowledge(
+      'portal-navigation-specialist',
+      'strategy',
+      portalId
+    );
     return knowledge.length > 0 ? knowledge[0].content : null;
   }
 
@@ -961,16 +1135,25 @@ export class SelfImprovingLearningService {
       content: strategy,
       confidenceScore: strategy.performance.successRate,
       sourceType: 'experience',
-      tags: ['portal_strategy', strategy.portalName]
+      tags: ['portal_strategy', strategy.portalName],
     });
   }
 
-  private async getProposalStrategy(key: string): Promise<ProposalStrategy | null> {
-    const knowledge = await agentMemoryService.getAgentKnowledge('proposal-generation-specialist', 'strategy', key);
+  private async getProposalStrategy(
+    key: string
+  ): Promise<ProposalStrategy | null> {
+    const knowledge = await agentMemoryService.getAgentKnowledge(
+      'proposal-generation-specialist',
+      'strategy',
+      key
+    );
     return knowledge.length > 0 ? knowledge[0].content : null;
   }
 
-  private async storeProposalStrategy(key: string, strategy: ProposalStrategy): Promise<void> {
+  private async storeProposalStrategy(
+    key: string,
+    strategy: ProposalStrategy
+  ): Promise<void> {
     await agentMemoryService.storeKnowledge({
       agentId: 'proposal-generation-specialist',
       knowledgeType: 'strategy',
@@ -980,11 +1163,15 @@ export class SelfImprovingLearningService {
       content: strategy,
       confidenceScore: strategy.outcomes.winRate,
       sourceType: 'experience',
-      tags: ['proposal_strategy', strategy.domain, strategy.rfpType]
+      tags: ['proposal_strategy', strategy.domain, strategy.rfpType],
     });
   }
 
-  private async learnPricingPatterns(rfp: any, pricingStrategy: any, success: boolean): Promise<void> {
+  private async learnPricingPatterns(
+    rfp: any,
+    pricingStrategy: any,
+    success: boolean
+  ): Promise<void> {
     await agentMemoryService.storeKnowledge({
       agentId: 'pricing-analysis-specialist',
       knowledgeType: 'pricing_data',
@@ -997,16 +1184,18 @@ export class SelfImprovingLearningService {
         pricingStrategy,
         success,
         agency: rfp.agency,
-        category: this.categorizeRFP(rfp)
+        category: this.categorizeRFP(rfp),
       },
       confidenceScore: success ? 0.8 : 0.6,
       sourceType: 'experience',
       sourceId: rfp.id,
-      tags: ['pricing', rfp.agency, success ? 'win' : 'loss']
+      tags: ['pricing', rfp.agency, success ? 'win' : 'loss'],
     });
   }
 
-  private async learnFromComplianceOutcome(outcome: LearningOutcome): Promise<void> {
+  private async learnFromComplianceOutcome(
+    outcome: LearningOutcome
+  ): Promise<void> {
     // Learn compliance patterns
     await agentMemoryService.storeKnowledge({
       agentId: outcome.agentId,
@@ -1018,15 +1207,21 @@ export class SelfImprovingLearningService {
         action: outcome.context.action,
         strategy: outcome.context.strategy,
         outcome: outcome.outcome,
-        patterns: outcome.learnedPatterns || []
+        patterns: outcome.learnedPatterns || [],
       },
       confidenceScore: outcome.confidenceScore,
       sourceType: 'experience',
-      tags: ['compliance', outcome.domain, outcome.outcome.success ? 'pass' : 'fail']
+      tags: [
+        'compliance',
+        outcome.domain,
+        outcome.outcome.success ? 'pass' : 'fail',
+      ],
     });
   }
 
-  private async learnFromMarketAnalysis(outcome: LearningOutcome): Promise<void> {
+  private async learnFromMarketAnalysis(
+    outcome: LearningOutcome
+  ): Promise<void> {
     // Learn market patterns
     await agentMemoryService.storeKnowledge({
       agentId: outcome.agentId,
@@ -1038,22 +1233,30 @@ export class SelfImprovingLearningService {
         analysis: outcome.context.strategy,
         outcome: outcome.outcome,
         marketConditions: outcome.context.conditions,
-        insights: outcome.learnedPatterns || []
+        insights: outcome.learnedPatterns || [],
       },
       confidenceScore: outcome.confidenceScore,
       sourceType: 'research',
-      tags: ['market_analysis', outcome.domain]
+      tags: ['market_analysis', outcome.domain],
     });
   }
 
-  private async updateParsingPattern(pattern: ParsingPattern, success: boolean): Promise<void> {
+  private async updateParsingPattern(
+    pattern: ParsingPattern,
+    success: boolean
+  ): Promise<void> {
     const key = `${pattern.documentType}_${pattern.domain}`;
     const existing = await this.getParsingPattern(key);
 
     if (existing) {
       // Update accuracy metrics
-      const totalAttempts = existing.accuracy.successRate > 0 ? 1 / existing.accuracy.successRate : 1;
-      const newSuccessRate = ((existing.accuracy.successRate * totalAttempts) + (success ? 1 : 0)) / (totalAttempts + 1);
+      const totalAttempts =
+        existing.accuracy.successRate > 0
+          ? 1 / existing.accuracy.successRate
+          : 1;
+      const newSuccessRate =
+        (existing.accuracy.successRate * totalAttempts + (success ? 1 : 0)) /
+        (totalAttempts + 1);
 
       existing.accuracy.successRate = newSuccessRate;
       if (!success && pattern.accuracy.commonErrors.length > 0) {
@@ -1067,11 +1270,18 @@ export class SelfImprovingLearningService {
   }
 
   private async getParsingPattern(key: string): Promise<ParsingPattern | null> {
-    const knowledge = await agentMemoryService.getAgentKnowledge('document-processor-specialist', 'strategy', key);
+    const knowledge = await agentMemoryService.getAgentKnowledge(
+      'document-processor-specialist',
+      'strategy',
+      key
+    );
     return knowledge.length > 0 ? knowledge[0].content : null;
   }
 
-  private async storeParsingPattern(key: string, pattern: ParsingPattern): Promise<void> {
+  private async storeParsingPattern(
+    key: string,
+    pattern: ParsingPattern
+  ): Promise<void> {
     await agentMemoryService.storeKnowledge({
       agentId: 'document-processor-specialist',
       knowledgeType: 'strategy',
@@ -1081,7 +1291,7 @@ export class SelfImprovingLearningService {
       content: pattern,
       confidenceScore: pattern.accuracy.successRate,
       sourceType: 'experience',
-      tags: ['parsing_pattern', pattern.documentType, pattern.domain]
+      tags: ['parsing_pattern', pattern.documentType, pattern.domain],
     });
   }
 
@@ -1090,7 +1300,7 @@ export class SelfImprovingLearningService {
       errorType: outcome.outcome.errorDetails?.type || 'unknown',
       errorMessage: outcome.outcome.errorDetails?.message || '',
       documentType: outcome.context.inputs?.documentType,
-      suggestedFixes: outcome.outcome.improvementAreas || []
+      suggestedFixes: outcome.outcome.improvementAreas || [],
     };
 
     await agentMemoryService.storeKnowledge({
@@ -1102,7 +1312,7 @@ export class SelfImprovingLearningService {
       content: errorAnalysis,
       confidenceScore: 0.7,
       sourceType: 'feedback',
-      tags: ['parsing_error', errorAnalysis.documentType, 'improvement']
+      tags: ['parsing_error', errorAnalysis.documentType, 'improvement'],
     });
   }
 
@@ -1118,12 +1328,13 @@ export class SelfImprovingLearningService {
     }, {});
 
     for (const [type, typeFailures] of Object.entries(failureGroups)) {
-      if ((typeFailures as any[]).length > 2) { // Pattern if 3+ failures of same type
+      if ((typeFailures as any[]).length > 2) {
+        // Pattern if 3+ failures of same type
         patterns.push({
           type,
           frequency: (typeFailures as any[]).length,
           commonErrors: this.extractCommonErrors(typeFailures as any[]),
-          timeframe: this.getTimeframe(typeFailures as any[])
+          timeframe: this.getTimeframe(typeFailures as any[]),
         });
       }
     }
@@ -1151,7 +1362,7 @@ export class SelfImprovingLearningService {
     const dates = failures.map(f => new Date(f.createdAt));
     return {
       start: new Date(Math.min(...dates.map(d => d.getTime()))),
-      end: new Date(Math.max(...dates.map(d => d.getTime())))
+      end: new Date(Math.max(...dates.map(d => d.getTime()))),
     };
   }
 
@@ -1190,8 +1401,12 @@ export class SelfImprovingLearningService {
     }, {});
 
     for (const [domain, domainMemories] of Object.entries(domainGroups)) {
-      const successfulMemories = (domainMemories as any[]).filter(m => m.content.success);
-      const failedMemories = (domainMemories as any[]).filter(m => !m.content.success);
+      const successfulMemories = (domainMemories as any[]).filter(
+        m => m.content.success
+      );
+      const failedMemories = (domainMemories as any[]).filter(
+        m => !m.content.success
+      );
 
       if (successfulMemories.length > 3) {
         patterns.push({
@@ -1202,10 +1417,10 @@ export class SelfImprovingLearningService {
           content: {
             successFactors: this.extractSuccessFactors(successfulMemories),
             frequency: successfulMemories.length,
-            timeframe: this.getTimeframe(successfulMemories)
+            timeframe: this.getTimeframe(successfulMemories),
           },
           confidence: 0.8,
-          tags: [domain, 'success_pattern', 'consolidated']
+          tags: [domain, 'success_pattern', 'consolidated'],
         });
       }
 
@@ -1218,10 +1433,10 @@ export class SelfImprovingLearningService {
           content: {
             failureFactors: this.extractFailureFactors(failedMemories),
             frequency: failedMemories.length,
-            timeframe: this.getTimeframe(failedMemories)
+            timeframe: this.getTimeframe(failedMemories),
           },
           confidence: 0.7,
-          tags: [domain, 'failure_pattern', 'consolidated']
+          tags: [domain, 'failure_pattern', 'consolidated'],
         });
       }
     }
@@ -1242,7 +1457,7 @@ export class SelfImprovingLearningService {
       factors.push({
         type: 'strategy',
         commonElements: this.findCommonElements(strategies),
-        frequency: strategies.length
+        frequency: strategies.length,
       });
     }
 
@@ -1262,7 +1477,7 @@ export class SelfImprovingLearningService {
       factors.push({
         type: 'error_pattern',
         commonErrors: this.extractCommonErrors(errors),
-        frequency: errors.length
+        frequency: errors.length,
       });
     }
 
@@ -1274,10 +1489,10 @@ export class SelfImprovingLearningService {
     if (objects.length === 0) return {};
 
     const commonKeys = Object.keys(objects[0]).filter(key =>
-      objects.every(obj => obj.hasOwnProperty(key))
+      objects.every(obj => Object.hasOwn(obj, key))
     );
 
-    const common = {};
+    const common: Record<string, any> = {};
     for (const key of commonKeys) {
       const values = objects.map(obj => obj[key]);
       const uniqueValues = [...new Set(values)];
@@ -1293,7 +1508,10 @@ export class SelfImprovingLearningService {
     return common;
   }
 
-  private async learnTimingPatterns(portal: any, duration: number): Promise<void> {
+  private async learnTimingPatterns(
+    portal: any,
+    duration: number
+  ): Promise<void> {
     await agentMemoryService.storeKnowledge({
       agentId: 'portal-navigation-specialist',
       knowledgeType: 'strategy',
@@ -1305,14 +1523,15 @@ export class SelfImprovingLearningService {
         portalName: portal.name,
         duration,
         timestamp: new Date(),
-        portalUrl: portal.url
+        portalUrl: portal.url,
       },
       confidenceScore: 0.6,
       sourceType: 'experience',
       sourceId: portal.id,
-      tags: ['timing', 'navigation', portal.name]
+      tags: ['timing', 'navigation', portal.name],
     });
   }
 }
 
-export const selfImprovingLearningService = SelfImprovingLearningService.getInstance();
+export const selfImprovingLearningService =
+  SelfImprovingLearningService.getInstance();

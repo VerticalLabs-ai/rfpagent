@@ -14,7 +14,11 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from SAM.gov content
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🏛️ Starting SAM.gov content extraction for ${url}`);
 
@@ -39,14 +43,15 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(`🏛️ SAM.gov extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`);
+      console.log(
+        `🏛️ SAM.gov extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
+      );
 
       return this.removeDuplicates(filteredOpportunities);
-
     } catch (error) {
       console.error(`❌ SAM.gov content extraction failed for ${url}:`, error);
       return [];
@@ -76,11 +81,16 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from search result pages
    */
-  private extractSearchResults($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractSearchResults(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // SAM.gov search result selectors
-    $('.opportunity-row, .search-result, [class*="opportunity"], [data-testid*="opportunity"]').each((_, element) => {
+    $(
+      '.opportunity-row, .search-result, [class*="opportunity"], [data-testid*="opportunity"]'
+    ).each((_, element) => {
       const $row = $(element);
 
       const title = this.extractTitle($row);
@@ -95,19 +105,15 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       if (title && (link || solicitationNumber)) {
         opportunities.push({
           title: this.cleanText(title),
-          description: description ? this.cleanText(description) : undefined,
+          description: description ? this.cleanText(description) : '',
           agency: agency ? this.cleanText(agency) : undefined,
           deadline: this.parseDate(deadline),
-          url: link,
+          url: link || '',
           link: link,
           category: this.inferCategoryFromSAM(title, solicitationNumber),
           estimatedValue: this.extractEstimatedValue($row),
           confidence: 0.8,
-          // SAM.gov specific fields
-          solicitationNumber,
-          setAside,
-          naicsCode
-        });
+        } as any);
         console.log(`✅ SAM.gov search result found: ${title}`);
       }
     });
@@ -118,7 +124,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from detail pages
    */
-  private extractDetailPages($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractDetailPages(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Check if this is a detail page
@@ -126,10 +135,12 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.opportunity-detail',
       '.solicitation-detail',
       '[class*="detail-page"]',
-      '[data-testid*="detail"]'
+      '[data-testid*="detail"]',
     ];
 
-    const isDetailPage = detailPageSelectors.some(selector => $(selector).length > 0);
+    const isDetailPage = detailPageSelectors.some(
+      selector => $(selector).length > 0
+    );
 
     if (isDetailPage) {
       const title = this.extractDetailTitle($);
@@ -142,16 +153,14 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       if (title) {
         opportunities.push({
           title: this.cleanText(title),
-          description: description ? this.cleanText(description) : undefined,
+          description: description ? this.cleanText(description) : '',
           agency: agency ? this.cleanText(agency) : undefined,
           deadline: this.parseDate(deadline),
-          url: baseUrl,
+          url: baseUrl || '',
           link: baseUrl,
           category: this.inferCategoryFromSAM(title, solicitationNumber),
           confidence: 0.9,
-          solicitationNumber,
-          pointOfContact
-        });
+        } as any);
         console.log(`✅ SAM.gov detail page found: ${title}`);
       }
     }
@@ -162,7 +171,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from listing pages
    */
-  private extractListingPages($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractListingPages(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Generic opportunity listings
@@ -177,11 +189,12 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
         if (title && !opportunities.some(opp => opp.title === title)) {
           opportunities.push({
             title,
-            description: text.length > 200 ? text.substring(0, 200) + '...' : text,
+            description:
+              text.length > 200 ? text.substring(0, 200) + '...' : text,
             url: link,
             link: link,
             category: this.inferCategoryFromText(text),
-            confidence: 0.6
+            confidence: 0.6,
           });
           console.log(`✅ SAM.gov listing found: ${title}`);
         }
@@ -198,10 +211,12 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     const selectors = [
       '.opportunity-title',
       '.title',
-      'h2', 'h3', 'h4',
+      'h2',
+      'h3',
+      'h4',
       '[class*="title"]',
       '[data-testid*="title"]',
-      'a[href*="opportunity"]'
+      'a[href*="opportunity"]',
     ];
 
     for (const selector of selectors) {
@@ -223,7 +238,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.description',
       '.summary',
       '[class*="description"]',
-      'p'
+      'p',
     ];
 
     for (const selector of selectors) {
@@ -245,7 +260,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.department',
       '.office',
       '[class*="agency"]',
-      '[class*="department"]'
+      '[class*="department"]',
     ];
 
     for (const selector of selectors) {
@@ -268,7 +283,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.deadline',
       '.submission-date',
       '[class*="due"]',
-      '[class*="deadline"]'
+      '[class*="deadline"]',
     ];
 
     for (const selector of selectors) {
@@ -284,7 +299,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract link from search result row
    */
-  private extractLink($row: cheerio.Cheerio<cheerio.Element>, baseUrl: string): string | undefined {
+  private extractLink(
+    $row: cheerio.Cheerio<cheerio.Element>,
+    baseUrl: string
+  ): string | undefined {
     const link = $row.find('a').first().attr('href');
     return this.validateAndFixSourceUrl(link, baseUrl);
   }
@@ -292,13 +310,15 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract solicitation number
    */
-  private extractSolicitationNumber($row: cheerio.Cheerio<cheerio.Element>): string | undefined {
+  private extractSolicitationNumber(
+    $row: cheerio.Cheerio<cheerio.Element>
+  ): string | undefined {
     const text = $row.text();
     const patterns = [
       /Solicitation\s*[#:]?\s*([A-Z0-9\-_]+)/i,
       /Sol[#:]?\s*([A-Z0-9\-_]+)/i,
       /Number[#:]?\s*([A-Z0-9\-_]+)/i,
-      /\b([A-Z]{2,}\d{2,}[\w\-]*)\b/
+      /\b([A-Z]{2,}\d{2,}[\w\-]*)\b/,
     ];
 
     for (const pattern of patterns) {
@@ -314,7 +334,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract set-aside information
    */
-  private extractSetAside($row: cheerio.Cheerio<cheerio.Element>): string | undefined {
+  private extractSetAside(
+    $row: cheerio.Cheerio<cheerio.Element>
+  ): string | undefined {
     const text = $row.text().toLowerCase();
     const setAsideTypes = [
       'small business',
@@ -323,7 +345,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       'hubzone',
       'sdvosb',
       '8(a)',
-      'unrestricted'
+      'unrestricted',
     ];
 
     for (const type of setAsideTypes) {
@@ -338,7 +360,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract NAICS code
    */
-  private extractNAICSCode($row: cheerio.Cheerio<cheerio.Element>): string | undefined {
+  private extractNAICSCode(
+    $row: cheerio.Cheerio<cheerio.Element>
+  ): string | undefined {
     const text = $row.text();
     const naicsMatch = text.match(/NAICS[:\s]*(\d{6})/i);
     return naicsMatch ? naicsMatch[1] : undefined;
@@ -347,7 +371,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract estimated value
    */
-  private extractEstimatedValue($row: cheerio.Cheerio<cheerio.Element>): string | undefined {
+  private extractEstimatedValue(
+    $row: cheerio.Cheerio<cheerio.Element>
+  ): string | undefined {
     const text = $row.text();
     return this.extractCurrencyValue(text);
   }
@@ -359,8 +385,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     const selectors = [
       '.opportunity-title',
       '.solicitation-title',
-      'h1', 'h2',
-      '[class*="title"]'
+      'h1',
+      'h2',
+      '[class*="title"]',
     ];
 
     for (const selector of selectors) {
@@ -381,7 +408,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.opportunity-description',
       '.description',
       '.overview',
-      '[class*="description"]'
+      '[class*="description"]',
     ];
 
     for (const selector of selectors) {
@@ -402,7 +429,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.contracting-office',
       '.agency',
       '.department',
-      '[class*="agency"]'
+      '[class*="agency"]',
     ];
 
     for (const selector of selectors) {
@@ -423,7 +450,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.response-date',
       '.submission-deadline',
       '.due-date',
-      '[class*="deadline"]'
+      '[class*="deadline"]',
     ];
 
     for (const selector of selectors) {
@@ -439,7 +466,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract solicitation number from detail page
    */
-  private extractDetailSolicitationNumber($: cheerio.CheerioAPI): string | undefined {
+  private extractDetailSolicitationNumber(
+    $: cheerio.CheerioAPI
+  ): string | undefined {
     const text = $('body').text();
     return this.extractSolicitationNumber($({ text: () => text } as any));
   }
@@ -452,7 +481,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       '.point-of-contact',
       '.contact',
       '.contracting-officer',
-      '[class*="contact"]'
+      '[class*="contact"]',
     ];
 
     for (const selector of selectors) {
@@ -469,14 +498,21 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
    * Extract generic title
    */
   private extractGenericTitle($item: cheerio.Cheerio<cheerio.Element>): string {
-    const title = $item.find('h1, h2, h3, h4, .title, [class*="title"]').first().text().trim();
+    const title = $item
+      .find('h1, h2, h3, h4, .title, [class*="title"]')
+      .first()
+      .text()
+      .trim();
     return title || $item.text().trim().substring(0, 100);
   }
 
   /**
    * Extract generic link
    */
-  private extractGenericLink($item: cheerio.Cheerio<cheerio.Element>, baseUrl: string): string | undefined {
+  private extractGenericLink(
+    $item: cheerio.Cheerio<cheerio.Element>,
+    baseUrl: string
+  ): string | undefined {
     const link = $item.find('a').first().attr('href');
     return this.validateAndFixSourceUrl(link, baseUrl);
   }
@@ -484,7 +520,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Infer category from SAM.gov specific information
    */
-  private inferCategoryFromSAM(title: string, solicitationNumber?: string): string | undefined {
+  private inferCategoryFromSAM(
+    title: string,
+    solicitationNumber?: string
+  ): string | undefined {
     const text = (title + ' ' + (solicitationNumber || '')).toLowerCase();
 
     if (text.includes('rfp')) return 'Request for Proposal';
@@ -538,11 +577,12 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     }
 
     // Boost score for proper federal agencies
-    if (opportunity.agency && (
-      opportunity.agency.includes('Department') ||
-      opportunity.agency.includes('Agency') ||
-      opportunity.agency.includes('Administration')
-    )) {
+    if (
+      opportunity.agency &&
+      (opportunity.agency.includes('Department') ||
+        opportunity.agency.includes('Agency') ||
+        opportunity.agency.includes('Administration'))
+    ) {
       score += 0.1;
     }
 

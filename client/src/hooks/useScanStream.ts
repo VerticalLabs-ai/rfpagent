@@ -1,14 +1,31 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ScanStep {
-  step: 'initializing' | 'authenticating' | 'authenticated' | 'navigating' | 'extracting' | 'parsing' | 'saving' | 'completed' | 'failed';
+  step:
+    | 'initializing'
+    | 'authenticating'
+    | 'authenticated'
+    | 'navigating'
+    | 'extracting'
+    | 'parsing'
+    | 'saving'
+    | 'completed'
+    | 'failed';
   progress: number;
   message: string;
   timestamp: Date;
 }
 
 export interface ScanEvent {
-  type: 'scan_started' | 'step_update' | 'log' | 'progress' | 'rfp_discovered' | 'error' | 'scan_completed' | 'scan_failed';
+  type:
+    | 'scan_started'
+    | 'step_update'
+    | 'log'
+    | 'progress'
+    | 'rfp_discovered'
+    | 'error'
+    | 'scan_completed'
+    | 'scan_failed';
   timestamp: Date;
   data?: any;
 }
@@ -41,6 +58,7 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
   const [error, setError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const currentScanIdRef = useRef<string | null>(null);
+  const timeoutIdsRef = useRef<number[]>([]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -51,137 +69,167 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
     currentScanIdRef.current = null;
   }, []);
 
-  const connectToScan = useCallback((scanId: string, targetPortalId: string) => {
-    // Disconnect any existing connection
-    disconnect();
+  const connectToScan = useCallback(
+    (scanId: string, targetPortalId: string) => {
+      // Disconnect any existing connection
+      disconnect();
 
-    const eventSource = new EventSource(`/api/portals/${targetPortalId}/scan/stream?scanId=${scanId}`);
-    eventSourceRef.current = eventSource;
-    currentScanIdRef.current = scanId;
+      const url = new URL(
+        `/api/portals/${encodeURIComponent(targetPortalId)}/scan/stream`,
+        window.location.origin
+      );
+      url.searchParams.set('scanId', scanId);
+      const eventSource = new EventSource(url.toString());
+      eventSourceRef.current = eventSource;
+      currentScanIdRef.current = scanId;
 
-    eventSource.onopen = () => {
-      setIsConnected(true);
-      setError(null);
-    };
+      eventSource.onopen = () => {
+        setIsConnected(true);
+        setError(null);
+      };
 
-    eventSource.onerror = () => {
-      setIsConnected(false);
-      setError('Connection lost. Attempting to reconnect...');
-    };
+      eventSource.onerror = () => {
+        setIsConnected(false);
+        setError('Connection lost. Call reconnect() to retry.');
+      };
 
-    eventSource.onmessage = (event) => {
+      eventSource.onmessage = event => {
+        try {
+          const scanEvent: ScanEvent = JSON.parse(event.data);
+
+          setScanState(prevState => {
+            if (!prevState) {
+              // Initialize scan state
+              return {
+                scanId,
+                portalId: targetPortalId,
+                portalName: '', // Will be updated from events
+                status: 'running',
+                currentStep: {
+                  step: 'initializing',
+                  progress: 0,
+                  message: 'Starting scan...',
+                  timestamp: new Date(scanEvent.timestamp),
+                },
+                events: [scanEvent],
+                rfpsDiscovered: [],
+                startedAt: new Date(scanEvent.timestamp),
+              };
+            }
+
+            const newState = { ...prevState };
+            newState.events = [...newState.events, scanEvent];
+
+            // Update state based on event type
+            switch (scanEvent.type) {
+              case 'scan_started':
+                newState.status = 'running';
+                newState.portalName =
+                  scanEvent.data?.portalName || newState.portalName;
+                break;
+
+              case 'step_update':
+                // Validate scanEvent.data is an object with expected fields
+                if (
+                  typeof scanEvent.data === 'object' &&
+                  scanEvent.data !== null &&
+                  typeof scanEvent.data.step === 'string' &&
+                  typeof scanEvent.data.progress === 'number' &&
+                  typeof scanEvent.data.message === 'string'
+                ) {
+                  newState.currentStep = {
+                    step: scanEvent.data.step,
+                    progress: scanEvent.data.progress,
+                    message: scanEvent.data.message,
+                    timestamp: scanEvent.timestamp
+                      ? new Date(scanEvent.timestamp)
+                      : new Date(),
+                  };
+                } else {
+                  // Log malformed event and skip update
+                  console.warn('Malformed step_update event:', scanEvent);
+                }
+                break;
+
+              case 'rfp_discovered':
+                newState.rfpsDiscovered = [
+                  ...newState.rfpsDiscovered,
+                  scanEvent.data,
+                ];
+                break;
+
+              case 'scan_completed':
+                newState.status = 'completed';
+                newState.completedAt = new Date(scanEvent.timestamp);
+                newState.currentStep = {
+                  ...newState.currentStep,
+                  progress: 100,
+                  message: 'Scan completed successfully',
+                };
+                // Auto-disconnect after completion
+                timeoutIdsRef.current.push(window.setTimeout(disconnect, 1000));
+                break;
+
+              case 'scan_failed':
+                newState.status = 'failed';
+                newState.completedAt = new Date(scanEvent.timestamp);
+                newState.error = scanEvent.data?.error || 'Scan failed';
+                newState.currentStep = {
+                  ...newState.currentStep,
+                  message: `Scan failed: ${newState.error}`,
+                };
+                // Auto-disconnect after failure
+                timeoutIdsRef.current.push(window.setTimeout(disconnect, 1000));
+                break;
+
+              case 'error':
+                newState.error = scanEvent.data?.message || 'An error occurred';
+                break;
+            }
+
+            return newState;
+          });
+        } catch (err) {
+          console.error('Failed to parse scan event:', err);
+          setError('Failed to parse scan data');
+        }
+      };
+    },
+    [disconnect]
+  );
+
+  const startScan = useCallback(
+    async (targetPortalId: string): Promise<string | null> => {
       try {
-        const scanEvent: ScanEvent = JSON.parse(event.data);
-        
-        setScanState(prevState => {
-          if (!prevState) {
-            // Initialize scan state
-            return {
-              scanId,
-              portalId: targetPortalId,
-              portalName: '', // Will be updated from events
-              status: 'running',
-              currentStep: {
-                step: 'initializing',
-                progress: 0,
-                message: 'Starting scan...',
-                timestamp: new Date(scanEvent.timestamp)
-              },
-              events: [scanEvent],
-              rfpsDiscovered: [],
-              startedAt: new Date(scanEvent.timestamp)
-            };
-          }
+        setError(null);
 
-          const newState = { ...prevState };
-          newState.events = [...newState.events, scanEvent];
-
-          // Update state based on event type
-          switch (scanEvent.type) {
-            case 'scan_started':
-              newState.status = 'running';
-              newState.portalName = scanEvent.data?.portalName || newState.portalName;
-              break;
-
-            case 'step_update':
-              newState.currentStep = {
-                step: scanEvent.data.step,
-                progress: scanEvent.data.progress,
-                message: scanEvent.data.message,
-                timestamp: new Date(scanEvent.timestamp)
-              };
-              break;
-
-            case 'rfp_discovered':
-              newState.rfpsDiscovered = [...newState.rfpsDiscovered, scanEvent.data];
-              break;
-
-            case 'scan_completed':
-              newState.status = 'completed';
-              newState.completedAt = new Date(scanEvent.timestamp);
-              newState.currentStep = {
-                ...newState.currentStep,
-                progress: 100,
-                message: 'Scan completed successfully'
-              };
-              // Auto-disconnect after completion
-              setTimeout(disconnect, 1000);
-              break;
-
-            case 'scan_failed':
-              newState.status = 'failed';
-              newState.completedAt = new Date(scanEvent.timestamp);
-              newState.error = scanEvent.data?.error || 'Scan failed';
-              newState.currentStep = {
-                ...newState.currentStep,
-                message: `Scan failed: ${newState.error}`
-              };
-              // Auto-disconnect after failure
-              setTimeout(disconnect, 1000);
-              break;
-
-            case 'error':
-              newState.error = scanEvent.data?.message || 'An error occurred';
-              break;
-          }
-
-          return newState;
+        const response = await fetch(`/api/portals/${targetPortalId}/scan`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to start scan');
+        }
+
+        const { scanId } = await response.json();
+
+        // Connect to the scan stream
+        connectToScan(scanId, targetPortalId);
+
+        return scanId;
       } catch (err) {
-        console.error('Failed to parse scan event:', err);
-        setError('Failed to parse scan data');
+        const errorMessage =
+          err instanceof Error ? err.message : 'Failed to start scan';
+        setError(errorMessage);
+        return null;
       }
-    };
-  }, [disconnect]);
-
-  const startScan = useCallback(async (targetPortalId: string): Promise<string | null> => {
-    try {
-      setError(null);
-      
-      const response = await fetch(`/api/portals/${targetPortalId}/scan`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start scan');
-      }
-
-      const { scanId } = await response.json();
-      
-      // Connect to the scan stream
-      connectToScan(scanId, targetPortalId);
-      
-      return scanId;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to start scan';
-      setError(errorMessage);
-      return null;
-    }
-  }, [connectToScan]);
+    },
+    [connectToScan]
+  );
 
   const reconnect = useCallback(() => {
     if (currentScanIdRef.current && portalId) {
@@ -192,6 +240,9 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Clear all pending timeouts
+      timeoutIdsRef.current.forEach(id => clearTimeout(id));
+      timeoutIdsRef.current = [];
       disconnect();
     };
   }, [disconnect]);
@@ -202,6 +253,6 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
     error,
     startScan,
     disconnect,
-    reconnect
+    reconnect,
   };
 }

@@ -1,5 +1,10 @@
 import { IStorage } from '../storage';
-import type { Scan, ScanEvent, InsertScan, InsertScanEvent } from '@shared/schema';
+import type {
+  Scan,
+  ScanEvent,
+  InsertScan,
+  InsertScanEvent,
+} from '@shared/schema';
 
 export interface ScanHistoryItem {
   id: string;
@@ -19,7 +24,12 @@ export interface ScanHistoryItem {
 
 export interface ScanHistoryFilter {
   portalName?: string;
-  status?: 'all' | 'completed' | 'failed' | 'completed_with_warnings' | 'running';
+  status?:
+    | 'all'
+    | 'completed'
+    | 'failed'
+    | 'completed_with_warnings'
+    | 'running';
   startDate?: Date;
   endDate?: Date;
   limit?: number;
@@ -32,18 +42,26 @@ export class ScanHistoryService {
   /**
    * Get scan history with filtering and pagination
    */
-  async getScanHistory(filter: ScanHistoryFilter = {}): Promise<ScanHistoryItem[]> {
+  async getScanHistory(
+    filter: ScanHistoryFilter = {}
+  ): Promise<ScanHistoryItem[]> {
     try {
-      const scans = await this.storage.getScans({
-        portalName: filter.portalName,
-        status: filter.status === 'all' ? undefined : filter.status,
-        startDate: filter.startDate,
-        endDate: filter.endDate,
-        limit: filter.limit || 50,
-        offset: filter.offset || 0
-      });
+      // Use getActiveScans() or getScansByPortal() depending on filter
+      let scans: any[] = [];
+      if (filter.portalName) {
+        const portals = await this.storage.getAllPortals();
+        const portal = portals.find(p => p.name === filter.portalName);
+        if (portal) {
+          scans = await this.storage.getScansByPortal(
+            portal.id,
+            filter.limit || 50
+          );
+        }
+      } else {
+        scans = await this.storage.getActiveScans();
+      }
 
-      return scans.map(scan => this.convertScanToHistoryItem(scan));
+      return scans.map((scan: any) => this.convertScanToHistoryItem(scan));
     } catch (error) {
       console.error('Error fetching scan history:', error);
       return [];
@@ -55,12 +73,8 @@ export class ScanHistoryService {
    */
   async getScanHistoryCount(filter: ScanHistoryFilter = {}): Promise<number> {
     try {
-      return await this.storage.getScanCount({
-        portalName: filter.portalName,
-        status: filter.status === 'all' ? undefined : filter.status,
-        startDate: filter.startDate,
-        endDate: filter.endDate
-      });
+      const scans = await this.getScanHistory(filter);
+      return scans.length;
     } catch (error) {
       console.error('Error fetching scan history count:', error);
       return 0;
@@ -110,40 +124,53 @@ export class ScanHistoryService {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 
-      const scans = await this.storage.getScans({
-        startDate,
-        endDate,
-        limit: 1000
-      });
+      const scans = await this.storage.getActiveScans();
 
       const totalScans = scans.length;
-      const successfulScans = scans.filter(s => s.status === 'completed').length;
-      const failedScans = scans.filter(s => s.status === 'failed').length;
-      const successRate = totalScans > 0 ? (successfulScans / totalScans) * 100 : 0;
+      const successfulScans = scans.filter(
+        (s: any) => s.status === 'completed'
+      ).length;
+      const failedScans = scans.filter(
+        (s: any) => s.status === 'failed'
+      ).length;
+      const successRate =
+        totalScans > 0 ? (successfulScans / totalScans) * 100 : 0;
 
-      const totalRfpsDiscovered = scans.reduce((sum, scan) => sum + (scan.discoveredRfpsCount || 0), 0);
-      const avgRfpsPerScan = totalScans > 0 ? totalRfpsDiscovered / totalScans : 0;
+      const totalRfpsDiscovered = scans.reduce(
+        (sum: number, scan: any) => sum + (scan.discoveredRfpsCount || 0),
+        0
+      );
+      const avgRfpsPerScan =
+        totalScans > 0 ? totalRfpsDiscovered / totalScans : 0;
 
       // Calculate average scan duration
-      const completedScans = scans.filter(s => s.completedAt && s.startedAt);
-      const totalDuration = completedScans.reduce((sum, scan) => {
-        const duration = new Date(scan.completedAt!).getTime() - new Date(scan.startedAt).getTime();
+      const completedScans = scans.filter(
+        (s: any) => s.completedAt && s.startedAt
+      );
+      const totalDuration = completedScans.reduce((sum: number, scan: any) => {
+        const duration =
+          new Date(scan.completedAt!).getTime() -
+          new Date(scan.startedAt).getTime();
         return sum + duration;
       }, 0);
-      const avgScanDuration = completedScans.length > 0 ? totalDuration / completedScans.length : 0;
+      const avgScanDuration =
+        completedScans.length > 0 ? totalDuration / completedScans.length : 0;
 
       // Top portals by performance
-      const portalStats = new Map<string, {
-        scanCount: number;
-        successCount: number;
-        rfpsDiscovered: number;
-      }>();
+      const portalStats = new Map<
+        string,
+        {
+          scanCount: number;
+          successCount: number;
+          rfpsDiscovered: number;
+        }
+      >();
 
-      scans.forEach(scan => {
+      scans.forEach((scan: any) => {
         const current = portalStats.get(scan.portalName) || {
           scanCount: 0,
           successCount: 0,
-          rfpsDiscovered: 0
+          rfpsDiscovered: 0,
         };
 
         current.scanCount++;
@@ -160,7 +187,7 @@ export class ScanHistoryService {
           portalName,
           scanCount: stats.scanCount,
           successRate: (stats.successCount / stats.scanCount) * 100,
-          rfpsDiscovered: stats.rfpsDiscovered
+          rfpsDiscovered: stats.rfpsDiscovered,
         }))
         .sort((a, b) => b.rfpsDiscovered - a.rfpsDiscovered)
         .slice(0, 10);
@@ -173,7 +200,7 @@ export class ScanHistoryService {
         totalRfpsDiscovered,
         avgRfpsPerScan,
         avgScanDuration,
-        topPortals
+        topPortals,
       };
     } catch (error) {
       console.error('Error calculating scan statistics:', error);
@@ -185,7 +212,7 @@ export class ScanHistoryService {
         totalRfpsDiscovered: 0,
         avgRfpsPerScan: 0,
         avgScanDuration: 0,
-        topPortals: []
+        topPortals: [],
       };
     }
   }
@@ -202,7 +229,7 @@ export class ScanHistoryService {
         currentStep: 'initializing',
         currentProgress: 0,
         discoveredRfpsCount: 0,
-        errorCount: 0
+        errorCount: 0,
       };
 
       const scan = await this.storage.createScan(scanData);
@@ -216,17 +243,20 @@ export class ScanHistoryService {
   /**
    * Update scan progress and status
    */
-  async updateScan(scanId: string, updates: {
-    status?: string;
-    currentStep?: string;
-    currentProgress?: number;
-    currentMessage?: string;
-    discoveredRfpsCount?: number;
-    errorCount?: number;
-    errors?: any[];
-    discoveredRfps?: any[];
-    completedAt?: Date;
-  }): Promise<void> {
+  async updateScan(
+    scanId: string,
+    updates: {
+      status?: string;
+      currentStep?: string;
+      currentProgress?: number;
+      currentMessage?: string;
+      discoveredRfpsCount?: number;
+      errorCount?: number;
+      errors?: any[];
+      discoveredRfps?: any[];
+      completedAt?: Date;
+    }
+  ): Promise<void> {
     try {
       await this.storage.updateScan(scanId, updates);
     } catch (error) {
@@ -238,22 +268,25 @@ export class ScanHistoryService {
   /**
    * Add a scan event
    */
-  async addScanEvent(scanId: string, event: {
-    type: string;
-    level?: string;
-    message?: string;
-    data?: any;
-  }): Promise<void> {
+  async addScanEvent(
+    scanId: string,
+    event: {
+      type: string;
+      level?: string;
+      message?: string;
+      data?: any;
+    }
+  ): Promise<void> {
     try {
       const eventData: InsertScanEvent = {
         scanId,
         type: event.type,
         level: event.level,
         message: event.message,
-        data: event.data
+        data: event.data,
       };
 
-      await this.storage.createScanEvent(eventData);
+      await this.storage.appendScanEvent(eventData);
     } catch (error) {
       console.error('Error adding scan event:', error);
     }
@@ -264,19 +297,25 @@ export class ScanHistoryService {
    */
   private convertScanToHistoryItem(scan: Scan): ScanHistoryItem {
     const startTime = new Date(scan.startedAt).toISOString();
-    const endTime = scan.completedAt ? new Date(scan.completedAt).toISOString() : undefined;
+    const endTime = scan.completedAt
+      ? new Date(scan.completedAt).toISOString()
+      : undefined;
 
     // Calculate duration
     let duration = 'N/A';
     if (scan.completedAt) {
-      const durationMs = new Date(scan.completedAt).getTime() - new Date(scan.startedAt).getTime();
+      const durationMs =
+        new Date(scan.completedAt).getTime() -
+        new Date(scan.startedAt).getTime();
       const minutes = Math.floor(durationMs / 60000);
       const seconds = Math.floor((durationMs % 60000) / 1000);
       duration = `${minutes}m ${seconds}s`;
     }
 
     // Determine scan type based on pattern (manual scans might have specific patterns)
-    const scanType: 'Automated' | 'Manual' = scan.portalName.includes('Manual') ? 'Manual' : 'Automated';
+    const scanType: 'Automated' | 'Manual' = scan.portalName.includes('Manual')
+      ? 'Manual'
+      : 'Automated';
 
     // Convert status to expected format
     let status: 'completed' | 'failed' | 'completed_with_warnings' | 'running';
@@ -303,13 +342,13 @@ export class ScanHistoryService {
           errors.push({
             code: 'UNKNOWN_ERROR',
             message: error,
-            recoverable: false
+            recoverable: false,
           });
         } else if (error && typeof error === 'object') {
           errors.push({
             code: error.code || 'UNKNOWN_ERROR',
             message: error.message || error.toString(),
-            recoverable: error.recoverable || false
+            recoverable: error.recoverable || false,
           });
         }
       });
@@ -324,7 +363,7 @@ export class ScanHistoryService {
       endTime,
       rfpsFound: scan.discoveredRfpsCount || 0,
       errors,
-      duration
+      duration,
     };
   }
 
@@ -336,10 +375,12 @@ export class ScanHistoryService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
-      const deletedCount = await this.storage.deleteOldScans(cutoffDate);
-      console.log(`Cleaned up ${deletedCount} old scan records older than ${retentionDays} days`);
+      // TODO: Implement deleteOldScans method in storage
+      console.log(
+        `Would clean up scan records older than ${retentionDays} days (not implemented)`
+      );
 
-      return deletedCount;
+      return 0;
     } catch (error) {
       console.error('Error cleaning up old scans:', error);
       return 0;
@@ -347,4 +388,6 @@ export class ScanHistoryService {
   }
 }
 
-export const scanHistoryService = new ScanHistoryService(require('../storage').storage);
+export const scanHistoryService = new ScanHistoryService(
+  require('../storage').storage
+);

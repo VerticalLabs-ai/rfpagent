@@ -1,6 +1,6 @@
-import { storage } from "../storage"
-import { agentMemoryService } from "./agentMemoryService"
-import { selfImprovingLearningService } from "./selfImprovingLearningService"
+import { storage } from '../storage';
+import { agentMemoryService } from './agentMemoryService';
+import { selfImprovingLearningService } from './selfImprovingLearningService';
 
 /**
  * Proposal Outcome Tracker Service
@@ -10,73 +10,73 @@ import { selfImprovingLearningService } from "./selfImprovingLearningService"
  */
 
 export interface ProposalOutcome {
-  id?: string
-  proposalId: string
-  rfpId: string
-  submissionId?: string
+  id?: string;
+  proposalId: string;
+  rfpId: string;
+  submissionId?: string;
   status:
-    | "submitted"
-    | "under_review"
-    | "rejected"
-    | "awarded"
-    | "lost"
-    | "withdrawn"
+    | 'submitted'
+    | 'under_review'
+    | 'rejected'
+    | 'awarded'
+    | 'lost'
+    | 'withdrawn';
   outcomeDetails: {
-    awardDate?: Date
-    rejectionReason?: string
-    score?: number
-    feedback?: string
+    awardDate?: Date;
+    rejectionReason?: string;
+    score?: number;
+    feedback?: string;
     competitorInfo?: {
-      winningBidder?: string
-      winningAmount?: number
-      totalBidders?: number
-    }
+      winningBidder?: string;
+      winningAmount?: number;
+      totalBidders?: number;
+    };
     evaluationCriteria?: {
-      technical?: number
-      price?: number
-      experience?: number
-      overall?: number
-    }
-  }
+      technical?: number;
+      price?: number;
+      experience?: number;
+      overall?: number;
+    };
+  };
   learningData: {
-    strategiesUsed: any
-    marketConditions: any
-    competitiveFactors: any
-    internalFactors: any
-  }
-  followUpActions?: string[]
-  timestamp: Date
+    strategiesUsed: any;
+    marketConditions: any;
+    competitiveFactors: any;
+    internalFactors: any;
+  };
+  followUpActions?: string[];
+  timestamp: Date;
 }
 
 export interface BiddingCompetition {
-  rfpId: string
-  agency: string
-  estimatedValue: number
-  actualValue?: number
-  totalBidders: number
+  rfpId: string;
+  agency: string;
+  estimatedValue: number;
+  actualValue?: number;
+  totalBidders: number;
   bidders: Array<{
-    name: string
-    bidAmount?: number
-    isWinner: boolean
-    isUs: boolean
-  }>
+    name: string;
+    bidAmount?: number;
+    isWinner: boolean;
+    isUs: boolean;
+  }>;
   marketAnalysis: {
-    competitiveness: "low" | "medium" | "high"
-    priceVariance: number
-    strategicImportance: "low" | "medium" | "high"
-  }
+    competitiveness: 'low' | 'medium' | 'high';
+    priceVariance: number;
+    strategicImportance: 'low' | 'medium' | 'high';
+  };
 }
 
 export class ProposalOutcomeTracker {
-  private static instance: ProposalOutcomeTracker
-  private outcomePollInterval: number = 7 * 24 * 60 * 60 * 1000 // 7 days
-  private followUpEnabled: boolean = true
+  private static instance: ProposalOutcomeTracker;
+  private outcomePollInterval: number = 7 * 24 * 60 * 60 * 1000; // 7 days
+  private followUpEnabled: boolean = true;
 
   public static getInstance(): ProposalOutcomeTracker {
     if (!ProposalOutcomeTracker.instance) {
-      ProposalOutcomeTracker.instance = new ProposalOutcomeTracker()
+      ProposalOutcomeTracker.instance = new ProposalOutcomeTracker();
     }
-    return ProposalOutcomeTracker.instance
+    return ProposalOutcomeTracker.instance;
   }
 
   // ============ OUTCOME TRACKING ============
@@ -88,18 +88,18 @@ export class ProposalOutcomeTracker {
     try {
       console.log(
         `📊 Recording proposal outcome: ${outcome.status} for proposal ${outcome.proposalId}`
-      )
+      );
 
       // Store outcome in database
-      await this.storeOutcome(outcome)
+      await this.storeOutcome(outcome);
 
       // Get related proposal and RFP data
-      const proposal = await storage.getProposal(outcome.proposalId)
-      const rfp = await storage.getRFP(outcome.rfpId)
+      const proposal = await storage.getProposal(outcome.proposalId);
+      const rfp = await storage.getRFP(outcome.rfpId);
 
       if (!proposal || !rfp) {
-        console.error("❌ Could not find proposal or RFP for outcome tracking")
-        return
+        console.error('❌ Could not find proposal or RFP for outcome tracking');
+        return;
       }
 
       // Create learning outcome for the self-improving system
@@ -107,29 +107,29 @@ export class ProposalOutcomeTracker {
         outcome,
         proposal,
         rfp
-      )
+      );
 
       // Record learning outcome
-      await selfImprovingLearningService.recordLearningOutcome(learningOutcome)
+      await selfImprovingLearningService.recordLearningOutcome(learningOutcome);
 
       // Update RFP status based on outcome
-      await this.updateRFPStatus(rfp, outcome.status)
+      await this.updateRFPStatus(rfp, outcome.status);
 
       // Generate follow-up actions if enabled
       if (this.followUpEnabled) {
-        await this.generateFollowUpActions(outcome, proposal, rfp)
+        await this.generateFollowUpActions(outcome, proposal, rfp);
       }
 
       // Update competitive intelligence if we have competitor data
       if (outcome.outcomeDetails.competitorInfo) {
-        await this.updateCompetitiveIntelligence(rfp, outcome)
+        await this.updateCompetitiveIntelligence(rfp, outcome);
       }
 
       console.log(
         `✅ Proposal outcome recorded and learning triggered for ${outcome.proposalId}`
-      )
+      );
     } catch (error) {
-      console.error("❌ Failed to record proposal outcome:", error)
+      console.error('❌ Failed to record proposal outcome:', error);
     }
   }
 
@@ -140,24 +140,24 @@ export class ProposalOutcomeTracker {
     proposalId: string
   ): Promise<ProposalOutcome | null> {
     try {
-      const proposal = await storage.getProposal(proposalId)
-      if (!proposal) return null
+      const proposal = await storage.getProposal(proposalId);
+      if (!proposal) return null;
 
-      const submission = await storage.getSubmissionByProposal(proposalId)
-      if (!submission) return null
+      const submission = await storage.getSubmissionByProposal(proposalId);
+      if (!submission) return null;
 
       // Check if we already have an outcome for this proposal
-      const existingOutcome = await this.getProposalOutcome(proposalId)
+      const existingOutcome = await this.getProposalOutcome(proposalId);
       if (
         existingOutcome &&
-        existingOutcome.status !== "submitted" &&
-        existingOutcome.status !== "under_review"
+        existingOutcome.status !== 'submitted' &&
+        existingOutcome.status !== 'under_review'
       ) {
-        return existingOutcome
+        return existingOutcome;
       }
 
       // Poll for outcome updates (this would integrate with portal monitoring)
-      const outcomeData = await this.pollForOutcome(submission)
+      const outcomeData = await this.pollForOutcome(submission);
 
       if (outcomeData) {
         const outcome: ProposalOutcome = {
@@ -175,16 +175,16 @@ export class ProposalOutcomeTracker {
             internalFactors: this.analyzeInternalFactors(proposal),
           },
           timestamp: new Date(),
-        }
+        };
 
-        await this.recordProposalOutcome(outcome)
-        return outcome
+        await this.recordProposalOutcome(outcome);
+        return outcome;
       }
 
-      return null
+      return null;
     } catch (error) {
-      console.error("❌ Failed to track proposal status:", error)
-      return null
+      console.error('❌ Failed to track proposal status:', error);
+      return null;
     }
   }
 
@@ -192,28 +192,28 @@ export class ProposalOutcomeTracker {
    * Analyze proposal performance patterns
    */
   async analyzeProposalPerformance(
-    timeframe: "week" | "month" | "quarter" | "year" = "month"
+    timeframe: 'week' | 'month' | 'quarter' | 'year' = 'month'
   ): Promise<any> {
     try {
-      const endDate = new Date()
-      const startDate = new Date()
+      const endDate = new Date();
+      const startDate = new Date();
 
       switch (timeframe) {
-        case "week":
-          startDate.setDate(endDate.getDate() - 7)
-          break
-        case "month":
-          startDate.setMonth(endDate.getMonth() - 1)
-          break
-        case "quarter":
-          startDate.setMonth(endDate.getMonth() - 3)
-          break
-        case "year":
-          startDate.setFullYear(endDate.getFullYear() - 1)
-          break
+        case 'week':
+          startDate.setDate(endDate.getDate() - 7);
+          break;
+        case 'month':
+          startDate.setMonth(endDate.getMonth() - 1);
+          break;
+        case 'quarter':
+          startDate.setMonth(endDate.getMonth() - 3);
+          break;
+        case 'year':
+          startDate.setFullYear(endDate.getFullYear() - 1);
+          break;
       }
 
-      const outcomes = await this.getOutcomesByDateRange(startDate, endDate)
+      const outcomes = await this.getOutcomesByDateRange(startDate, endDate);
 
       const analysis = {
         totalProposals: outcomes.length,
@@ -224,12 +224,12 @@ export class ProposalOutcomeTracker {
         trendAnalysis: this.analyzeTrends(outcomes),
         improvementAreas: await this.identifyImprovementAreas(outcomes),
         recommendations: await this.generateRecommendations(outcomes),
-      }
+      };
 
-      return analysis
+      return analysis;
     } catch (error) {
-      console.error("❌ Failed to analyze proposal performance:", error)
-      return null
+      console.error('❌ Failed to analyze proposal performance:', error);
+      return null;
     }
   }
 
@@ -242,8 +242,8 @@ export class ProposalOutcomeTracker {
     rfp: any,
     outcome: ProposalOutcome
   ): Promise<void> {
-    const competitorInfo = outcome.outcomeDetails.competitorInfo
-    if (!competitorInfo) return
+    const competitorInfo = outcome.outcomeDetails.competitorInfo;
+    if (!competitorInfo) return;
 
     try {
       // Store competitive data
@@ -255,9 +255,9 @@ export class ProposalOutcomeTracker {
         totalBidders: competitorInfo.totalBidders || 1,
         bidders: [
           {
-            name: "Our Company",
+            name: 'Our Company',
             bidAmount: this.extractOurBidAmount(outcome),
-            isWinner: outcome.status === "awarded",
+            isWinner: outcome.status === 'awarded',
             isUs: true,
           },
         ],
@@ -266,43 +266,43 @@ export class ProposalOutcomeTracker {
             competitorInfo.totalBidders || 1
           ),
           priceVariance: this.calculatePriceVariance(
-            rfp.estimatedValue,
-            competitorInfo.winningAmount
+            rfp.estimatedValue ? parseFloat(rfp.estimatedValue) : 0,
+            competitorInfo.winningAmount || 0
           ),
           strategicImportance: this.assessStrategicImportance(rfp),
         },
-      }
+      };
 
       // Add winner info if available
       if (
         competitorInfo.winningBidder &&
-        competitorInfo.winningBidder !== "Our Company"
+        competitorInfo.winningBidder !== 'Our Company'
       ) {
         competitionData.bidders.push({
           name: competitorInfo.winningBidder,
           bidAmount: competitorInfo.winningAmount,
           isWinner: true,
           isUs: false,
-        })
+        });
       }
 
       // Store as knowledge for future bidding decisions
       await agentMemoryService.storeKnowledge({
-        agentId: "market-research-analyst",
-        knowledgeType: "market_insight",
+        agentId: 'market-research-analyst',
+        knowledgeType: 'market_insight',
         domain: rfp.agency,
         title: `Competition Analysis: ${rfp.title}`,
         description: `Competitive intelligence from ${rfp.agency} bidding`,
         content: competitionData,
         confidenceScore: 0.8,
-        sourceType: "experience",
+        sourceType: 'experience',
         sourceId: rfp.id,
-        tags: ["competition", "bidding", rfp.agency],
-      })
+        tags: ['competition', 'bidding', rfp.agency],
+      });
 
-      console.log(`🎯 Updated competitive intelligence for ${rfp.agency}`)
+      console.log(`🎯 Updated competitive intelligence for ${rfp.agency}`);
     } catch (error) {
-      console.error("❌ Failed to update competitive intelligence:", error)
+      console.error('❌ Failed to update competitive intelligence:', error);
     }
   }
 
@@ -316,24 +316,24 @@ export class ProposalOutcomeTracker {
     try {
       // Get historical competitive data
       const insights = await agentMemoryService.getAgentKnowledge(
-        "market-research-analyst",
-        "market_insight",
+        'market-research-analyst',
+        'market_insight',
         agency,
         20
-      )
+      );
 
       const competitionData = insights
-        .map((insight) => JSON.parse(insight.content as string))
-        .filter((content) => content.bidders && content.totalBidders)
+        .map(insight => JSON.parse(insight.content as string))
+        .filter(content => content.bidders && content.totalBidders);
 
       if (competitionData.length === 0) {
         return {
           agency,
           hasData: false,
           recommendations: [
-            "Insufficient historical data - proceed with conservative strategy",
+            'Insufficient historical data - proceed with conservative strategy',
           ],
-        }
+        };
       }
 
       const analysis = {
@@ -353,12 +353,16 @@ export class ProposalOutcomeTracker {
         },
         commonCompetitors: this.identifyCommonCompetitors(competitionData),
         recommendations: this.generateBiddingRecommendations(competitionData),
-      }
+      };
 
-      return analysis
+      return analysis;
     } catch (error) {
-      console.error("❌ Failed to get competitive insights:", error)
-      return { agency, hasData: false, error: error.message }
+      console.error('❌ Failed to get competitive insights:', error);
+      return {
+        agency,
+        hasData: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
   }
 
@@ -372,47 +376,47 @@ export class ProposalOutcomeTracker {
     proposal: any,
     rfp: any
   ): Promise<void> {
-    const actions = []
+    const actions = [];
 
     switch (outcome.status) {
-      case "awarded":
-        actions.push("Send thank you message to client")
-        actions.push("Begin project transition planning")
-        actions.push("Document winning strategy for future use")
-        actions.push("Analyze why this proposal won for pattern learning")
-        break
+      case 'awarded':
+        actions.push('Send thank you message to client');
+        actions.push('Begin project transition planning');
+        actions.push('Document winning strategy for future use');
+        actions.push('Analyze why this proposal won for pattern learning');
+        break;
 
-      case "rejected":
-      case "lost":
-        actions.push("Request detailed feedback from client")
-        actions.push("Analyze competitor advantages")
-        actions.push("Update bidding strategy based on loss")
-        actions.push("Consider relationship building opportunities")
-        break
+      case 'rejected':
+      case 'lost':
+        actions.push('Request detailed feedback from client');
+        actions.push('Analyze competitor advantages');
+        actions.push('Update bidding strategy based on loss');
+        actions.push('Consider relationship building opportunities');
+        break;
 
-      case "under_review":
-        actions.push("Monitor review process and timeline")
-        actions.push("Prepare for potential follow-up questions")
-        actions.push("Research decision makers and process")
-        break
+      case 'under_review':
+        actions.push('Monitor review process and timeline');
+        actions.push('Prepare for potential follow-up questions');
+        actions.push('Research decision makers and process');
+        break;
     }
 
     // Store follow-up actions
-    outcome.followUpActions = actions
+    outcome.followUpActions = actions;
 
     // Create work items for critical follow-ups
-    if (outcome.status === "lost" || outcome.status === "rejected") {
-      await this.createFeedbackRequestWorkItem(outcome, rfp)
+    if (outcome.status === 'lost' || outcome.status === 'rejected') {
+      await this.createFeedbackRequestWorkItem(outcome, rfp);
     }
 
     // Create notification for team
     await storage.createNotification({
-      type: outcome.status === "awarded" ? "approval" : "compliance",
+      type: outcome.status === 'awarded' ? 'approval' : 'compliance',
       title: `Proposal ${outcome.status}: ${rfp.title}`,
-      message: `Follow-up actions generated: ${actions.join(", ")}`,
-      relatedEntityType: "proposal",
+      message: `Follow-up actions generated: ${actions.join(', ')}`,
+      relatedEntityType: 'proposal',
       relatedEntityId: outcome.proposalId,
-    })
+    });
   }
 
   /**
@@ -424,8 +428,8 @@ export class ProposalOutcomeTracker {
   ): Promise<void> {
     try {
       await storage.createWorkItem({
-        sessionId: "system-generated",
-        taskType: "feedback_request",
+        sessionId: 'system-generated',
+        taskType: 'feedback_request',
         inputs: {
           proposalId: outcome.proposalId,
           rfpId: outcome.rfpId,
@@ -433,21 +437,21 @@ export class ProposalOutcomeTracker {
           contactInfo: rfp.contactInfo,
           outcomeDetails: outcome.outcomeDetails,
         },
-        expectedOutputs: ["client_feedback", "improvement_insights"],
+        expectedOutputs: ['client_feedback', 'improvement_insights'],
         priority: 7, // High priority for learning
         deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days
-        createdByAgentId: "proposal-outcome-tracker",
+        createdByAgentId: 'proposal-outcome-tracker',
         metadata: {
-          type: "learning_opportunity",
-          category: "feedback_collection",
+          type: 'learning_opportunity',
+          category: 'feedback_collection',
         },
-      })
+      });
 
       console.log(
         `📝 Created feedback request work item for lost proposal: ${outcome.proposalId}`
-      )
+      );
     } catch (error) {
-      console.error("❌ Failed to create feedback request work item:", error)
+      console.error('❌ Failed to create feedback request work item:', error);
     }
   }
 
@@ -460,11 +464,11 @@ export class ProposalOutcomeTracker {
   ): Promise<any> {
     return {
       type:
-        outcome.status === "awarded" ? "proposal_success" : "proposal_failure",
+        outcome.status === 'awarded' ? 'proposal_success' : 'proposal_failure',
       rfpId: rfp.id,
-      agentId: "proposal-generation-specialist",
+      agentId: 'proposal-generation-specialist',
       context: {
-        action: "proposal_submission",
+        action: 'proposal_submission',
         strategy: outcome.learningData.strategiesUsed,
         conditions: outcome.learningData.marketConditions,
         inputs: {
@@ -473,11 +477,11 @@ export class ProposalOutcomeTracker {
           estimatedValue: rfp.estimatedValue,
           proposalContent: proposal.content,
         },
-        expectedOutput: "win_contract",
+        expectedOutput: 'win_contract',
         actualOutput: outcome.status,
       },
       outcome: {
-        success: outcome.status === "awarded",
+        success: outcome.status === 'awarded',
         metrics: {
           score: outcome.outcomeDetails.score,
           duration: this.calculateProposalDuration(proposal),
@@ -488,12 +492,12 @@ export class ProposalOutcomeTracker {
           outcome.outcomeDetails.feedback ||
           outcome.outcomeDetails.rejectionReason,
         errorDetails:
-          outcome.status !== "awarded"
+          outcome.status !== 'awarded'
             ? {
-                type: "proposal_rejected",
+                type: 'proposal_rejected',
                 message:
                   outcome.outcomeDetails.rejectionReason ||
-                  "Proposal not selected",
+                  'Proposal not selected',
               }
             : undefined,
         improvementAreas: this.identifyProposalImprovementAreas(outcome),
@@ -504,14 +508,14 @@ export class ProposalOutcomeTracker {
       domain: rfp.agency,
       category: this.categorizeRFP(rfp),
       timestamp: outcome.timestamp,
-    }
+    };
   }
 
   private extractStrategiesUsed(proposal: any): any {
     return {
       contentApproach: {
         narrativeStyle:
-          proposal.narratives?.length > 0 ? "detailed" : "standard",
+          proposal.narratives?.length > 0 ? 'detailed' : 'standard',
         technicalDepth: this.assessTechnicalDepth(proposal.content),
         structuralApproach: this.analyzeProposalStructure(proposal),
       },
@@ -524,31 +528,40 @@ export class ProposalOutcomeTracker {
         thoroughness: proposal.metadata?.complianceScore || 0.8,
         riskMitigation: this.assessRiskMitigation(proposal),
       },
-    }
+    };
   }
 
   private async analyzeMarketConditions(rfpId: string): Promise<any> {
-    const rfp = await storage.getRFP(rfpId)
-    const historicalBids = await storage.getHistoricalBidsByAgency(rfp.agency)
+    const rfp = await storage.getRFP(rfpId);
+    if (!rfp) {
+      return {
+        agencyHistory: 0,
+        averageCompetition: 0,
+        marketTrends: [],
+        seasonality: 'unknown',
+      };
+    }
+
+    const historicalBids = await storage.getHistoricalBidsByAgency(rfp.agency);
 
     return {
       agencyHistory: historicalBids.length,
       averageCompetition: this.calculateAverageCompetition(historicalBids),
       marketTrends: this.analyzeMarketTrends(historicalBids),
-      seasonality: this.analyzeSeasonality(rfp.deadline),
-    }
+      seasonality: this.analyzeSeasonality(rfp.deadline || new Date()),
+    };
   }
 
   private analyzeInternalFactors(proposal: any): any {
     return {
-      resourceUtilization: "optimal", // Would be calculated from actual resource data
+      resourceUtilization: 'optimal', // Would be calculated from actual resource data
       teamExperience: this.assessTeamExperience(proposal),
       timeAllocation: this.calculateTimeAllocation(proposal),
       qualityMetrics: {
         complianceScore: proposal.metadata?.complianceScore || 0.8,
         contentQuality: proposal.metadata?.qualityScore || 0.8,
       },
-    }
+    };
   }
 
   private async pollForOutcome(submission: any): Promise<any | null> {
@@ -559,35 +572,35 @@ export class ProposalOutcomeTracker {
     // 2. Parse award announcements
     // 3. Monitor for feedback or rejection notices
 
-    return null
+    return null;
   }
 
   private async storeOutcome(outcome: ProposalOutcome): Promise<void> {
     // Store outcome in agent memory for persistence
     await agentMemoryService.storeMemory({
-      agentId: "proposal-outcome-tracker",
-      memoryType: "episodic",
+      agentId: 'proposal-outcome-tracker',
+      memoryType: 'episodic',
       contextKey: `outcome_${outcome.proposalId}`,
       title: `Proposal Outcome: ${outcome.status}`,
       content: outcome,
-      importance: outcome.status === "awarded" ? 9 : 8,
-      tags: [outcome.status, "proposal_outcome"],
+      importance: outcome.status === 'awarded' ? 9 : 8,
+      tags: [outcome.status, 'proposal_outcome'],
       metadata: {
         proposalId: outcome.proposalId,
         rfpId: outcome.rfpId,
         timestamp: outcome.timestamp,
       },
-    })
+    });
   }
 
   private async getProposalOutcome(
     proposalId: string
   ): Promise<ProposalOutcome | null> {
     const memory = await agentMemoryService.getMemoryByContext(
-      "proposal-outcome-tracker",
+      'proposal-outcome-tracker',
       `outcome_${proposalId}`
-    )
-    return memory ? (memory.content as ProposalOutcome) : null
+    );
+    return memory ? (memory.content as ProposalOutcome) : null;
   }
 
   private async getOutcomesByDateRange(
@@ -595,48 +608,51 @@ export class ProposalOutcomeTracker {
     endDate: Date
   ): Promise<ProposalOutcome[]> {
     const memories = await agentMemoryService.getAgentMemories(
-      "proposal-outcome-tracker",
-      "episodic",
+      'proposal-outcome-tracker',
+      'episodic',
       1000
-    )
+    );
 
     return memories
-      .filter((m) => {
-        const timestamp = new Date(m.content.timestamp)
-        return timestamp >= startDate && timestamp <= endDate
+      .filter(m => {
+        const timestamp = new Date(m.content.timestamp);
+        return timestamp >= startDate && timestamp <= endDate;
       })
-      .map((m) => m.content)
+      .map(m => m.content);
   }
 
   private calculateWinRate(outcomes: ProposalOutcome[]): number {
-    if (outcomes.length === 0) return 0
-    const wins = outcomes.filter((o) => o.status === "awarded").length
-    return wins / outcomes.length
+    if (outcomes.length === 0) return 0;
+    const wins = outcomes.filter(o => o.status === 'awarded').length;
+    return wins / outcomes.length;
   }
 
   private calculateAverageScore(outcomes: ProposalOutcome[]): number {
     const scoresAvailable = outcomes.filter(
-      (o) => o.outcomeDetails.score !== undefined
-    )
-    if (scoresAvailable.length === 0) return 0
+      o => o.outcomeDetails.score !== undefined
+    );
+    if (scoresAvailable.length === 0) return 0;
 
     const totalScore = scoresAvailable.reduce(
       (sum, o) => sum + (o.outcomeDetails.score || 0),
       0
-    )
-    return totalScore / scoresAvailable.length
+    );
+    return totalScore / scoresAvailable.length;
   }
 
   private analyzePerformanceByAgency(outcomes: ProposalOutcome[]): any {
-    const agencyGroups = outcomes.reduce((groups, outcome) => {
-      // Get agency from RFP data (would need to fetch RFP)
-      const agency = "unknown" // Placeholder
-      if (!groups[agency]) groups[agency] = []
-      groups[agency].push(outcome)
-      return groups
-    }, {})
+    const agencyGroups = outcomes.reduce(
+      (groups: Record<string, ProposalOutcome[]>, outcome) => {
+        // Get agency from RFP data (would need to fetch RFP)
+        const agency = 'unknown'; // Placeholder
+        if (!groups[agency]) groups[agency] = [];
+        groups[agency].push(outcome);
+        return groups;
+      },
+      {}
+    );
 
-    const analysis = {}
+    const analysis: Record<string, any> = {};
     for (const [agency, agencyOutcomes] of Object.entries(agencyGroups)) {
       analysis[agency] = {
         totalProposals: (agencyOutcomes as ProposalOutcome[]).length,
@@ -644,30 +660,30 @@ export class ProposalOutcomeTracker {
         averageScore: this.calculateAverageScore(
           agencyOutcomes as ProposalOutcome[]
         ),
-      }
+      };
     }
 
-    return analysis
+    return analysis;
   }
 
   private analyzePerformanceByCategory(outcomes: ProposalOutcome[]): any {
     // Similar to analyzePerformanceByAgency but group by RFP category
-    return {}
+    return {};
   }
 
   private analyzeTrends(outcomes: ProposalOutcome[]): any {
     // Sort by timestamp and analyze trends over time
     const sortedOutcomes = outcomes.sort(
       (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
-    )
+    );
 
     // Calculate monthly win rates
-    const monthlyData = {}
+    const monthlyData: Record<string, { total: number; wins: number }> = {};
     for (const outcome of sortedOutcomes) {
-      const month = outcome.timestamp.toISOString().substring(0, 7) // YYYY-MM
-      if (!monthlyData[month]) monthlyData[month] = { total: 0, wins: 0 }
-      monthlyData[month].total++
-      if (outcome.status === "awarded") monthlyData[month].wins++
+      const month = outcome.timestamp.toISOString().substring(0, 7); // YYYY-MM
+      if (!monthlyData[month]) monthlyData[month] = { total: 0, wins: 0 };
+      monthlyData[month].total++;
+      if (outcome.status === 'awarded') monthlyData[month].wins++;
     }
 
     const trends = Object.entries(monthlyData).map(
@@ -676,222 +692,226 @@ export class ProposalOutcomeTracker {
         winRate: data.wins / data.total,
         totalProposals: data.total,
       })
-    )
+    );
 
-    return trends
+    return trends;
   }
 
   private async identifyImprovementAreas(
     outcomes: ProposalOutcome[]
   ): Promise<string[]> {
-    const areas = []
+    const areas = [];
     const lostProposals = outcomes.filter(
-      (o) => o.status === "rejected" || o.status === "lost"
-    )
+      o => o.status === 'rejected' || o.status === 'lost'
+    );
 
     if (lostProposals.length > outcomes.length * 0.5) {
-      areas.push("Overall win rate needs improvement")
+      areas.push('Overall win rate needs improvement');
     }
 
     // Analyze feedback patterns
     const feedbackPatterns = lostProposals
-      .map((o) => o.outcomeDetails.feedback || o.outcomeDetails.rejectionReason)
-      .filter(Boolean)
+      .map(o => o.outcomeDetails.feedback || o.outcomeDetails.rejectionReason)
+      .filter((f): f is string => typeof f === 'string');
 
-    if (feedbackPatterns.some((f) => f.toLowerCase().includes("price"))) {
-      areas.push("Pricing strategy may need adjustment")
+    if (feedbackPatterns.some(f => f.toLowerCase().includes('price'))) {
+      areas.push('Pricing strategy may need adjustment');
     }
 
-    if (feedbackPatterns.some((f) => f.toLowerCase().includes("technical"))) {
-      areas.push("Technical approach could be strengthened")
+    if (feedbackPatterns.some(f => f.toLowerCase().includes('technical'))) {
+      areas.push('Technical approach could be strengthened');
     }
 
-    return areas
+    return areas;
   }
 
   private async generateRecommendations(
     outcomes: ProposalOutcome[]
   ): Promise<string[]> {
-    const recommendations = []
-    const winRate = this.calculateWinRate(outcomes)
+    const recommendations = [];
+    const winRate = this.calculateWinRate(outcomes);
 
     if (winRate < 0.3) {
       recommendations.push(
-        "Consider fundamental strategy review - win rate is below industry average"
-      )
+        'Consider fundamental strategy review - win rate is below industry average'
+      );
     } else if (winRate < 0.5) {
       recommendations.push(
-        "Focus on improving proposal quality and competitive positioning"
-      )
+        'Focus on improving proposal quality and competitive positioning'
+      );
     }
 
-    const averageScore = this.calculateAverageScore(outcomes)
+    const averageScore = this.calculateAverageScore(outcomes);
     if (averageScore > 0 && averageScore < 70) {
       recommendations.push(
-        "Work on improving proposal scores through better requirement addressing"
-      )
+        'Work on improving proposal scores through better requirement addressing'
+      );
     }
 
-    return recommendations
+    return recommendations;
   }
 
   private extractOurBidAmount(outcome: ProposalOutcome): number {
     // Extract our bid amount from proposal data
     return (
       outcome.learningData.strategiesUsed?.pricingStrategy?.totalAmount || 0
-    )
+    );
   }
 
   private assessCompetitiveness(
     totalBidders: number
-  ): "low" | "medium" | "high" {
-    if (totalBidders <= 3) return "low"
-    if (totalBidders <= 6) return "medium"
-    return "high"
+  ): 'low' | 'medium' | 'high' {
+    if (totalBidders <= 3) return 'low';
+    if (totalBidders <= 6) return 'medium';
+    return 'high';
   }
 
   private calculatePriceVariance(estimated: number, actual: number): number {
-    if (!estimated || !actual) return 0
-    return Math.abs(actual - estimated) / estimated
+    if (!estimated || !actual) return 0;
+    return Math.abs(actual - estimated) / estimated;
   }
 
-  private assessStrategicImportance(rfp: any): "low" | "medium" | "high" {
-    const value = rfp.estimatedValue || 0
-    if (value > 1000000) return "high"
-    if (value > 100000) return "medium"
-    return "low"
+  private assessStrategicImportance(rfp: any): 'low' | 'medium' | 'high' {
+    const value = rfp.estimatedValue || 0;
+    if (value > 1000000) return 'high';
+    if (value > 100000) return 'medium';
+    return 'low';
   }
 
   private calculateAgencyWinRate(competitionData: any[]): number {
-    const ourWins = competitionData.filter((data) =>
-      data.bidders.some((bidder) => bidder.isUs && bidder.isWinner)
-    ).length
+    const ourWins = competitionData.filter(data =>
+      data.bidders.some((bidder: any) => bidder.isUs && bidder.isWinner)
+    ).length;
 
-    return competitionData.length > 0 ? ourWins / competitionData.length : 0
+    return competitionData.length > 0 ? ourWins / competitionData.length : 0;
   }
 
   private calculateAverageCompetitiveness(competitionData: any[]): string {
     const levels = competitionData.map(
-      (data) => data.marketAnalysis.competitiveness
-    )
+      data => data.marketAnalysis.competitiveness
+    );
     const counts = levels.reduce((acc, level) => {
-      acc[level] = (acc[level] || 0) + 1
-      return acc
-    }, {})
+      acc[level] = (acc[level] || 0) + 1;
+      return acc;
+    }, {});
 
-    return Object.keys(counts).reduce((a, b) => (counts[a] > counts[b] ? a : b))
+    return Object.keys(counts).reduce((a, b) =>
+      counts[a] > counts[b] ? a : b
+    );
   }
 
   private calculateAveragePriceVariance(competitionData: any[]): number {
     const variances = competitionData
-      .map((data) => data.marketAnalysis.priceVariance)
-      .filter((v) => v !== undefined)
+      .map(data => data.marketAnalysis.priceVariance)
+      .filter(v => v !== undefined);
 
     return variances.length > 0
       ? variances.reduce((sum, v) => sum + v, 0) / variances.length
-      : 0
+      : 0;
   }
 
   private suggestPricingStrategy(competitionData: any[]): string {
-    const avgVariance = this.calculateAveragePriceVariance(competitionData)
-    const winRate = this.calculateAgencyWinRate(competitionData)
+    const avgVariance = this.calculateAveragePriceVariance(competitionData);
+    const winRate = this.calculateAgencyWinRate(competitionData);
 
     if (winRate < 0.3 && avgVariance > 0.1) {
-      return "Consider more aggressive pricing - current approach may be too conservative"
+      return 'Consider more aggressive pricing - current approach may be too conservative';
     } else if (winRate > 0.7) {
-      return "Current pricing strategy appears effective - maintain approach"
+      return 'Current pricing strategy appears effective - maintain approach';
     } else {
-      return "Moderate adjustment needed - analyze specific competitor patterns"
+      return 'Moderate adjustment needed - analyze specific competitor patterns';
     }
   }
 
   private identifyCommonCompetitors(competitionData: any[]): string[] {
     const competitors = competitionData
-      .flatMap((data) => data.bidders.filter((b) => !b.isUs).map((b) => b.name))
-      .filter(Boolean)
+      .flatMap(data =>
+        data.bidders.filter((b: any) => !b.isUs).map((b: any) => b.name)
+      )
+      .filter(Boolean);
 
     const counts = competitors.reduce((acc, competitor) => {
-      acc[competitor] = (acc[competitor] || 0) + 1
-      return acc
-    }, {})
+      acc[competitor] = (acc[competitor] || 0) + 1;
+      return acc;
+    }, {});
 
     return Object.entries(counts)
       .filter(([_, count]) => (count as number) > 1)
       .sort(([, a], [, b]) => (b as number) - (a as number))
       .slice(0, 5)
-      .map(([competitor, _]) => competitor)
+      .map(([competitor, _]) => competitor);
   }
 
   private generateBiddingRecommendations(competitionData: any[]): string[] {
-    const recommendations = []
-    const winRate = this.calculateAgencyWinRate(competitionData)
+    const recommendations = [];
+    const winRate = this.calculateAgencyWinRate(competitionData);
     const avgCompetitors =
       competitionData.reduce((sum, data) => sum + data.totalBidders, 0) /
-      competitionData.length
+      competitionData.length;
 
     if (avgCompetitors > 6) {
       recommendations.push(
-        "High competition environment - focus on differentiation and value proposition"
-      )
+        'High competition environment - focus on differentiation and value proposition'
+      );
     }
 
     if (winRate < 0.3) {
-      recommendations.push("Low win rate suggests need for strategy revision")
+      recommendations.push('Low win rate suggests need for strategy revision');
     }
 
-    const commonCompetitors = this.identifyCommonCompetitors(competitionData)
+    const commonCompetitors = this.identifyCommonCompetitors(competitionData);
     if (commonCompetitors.length > 0) {
       recommendations.push(
         `Focus on competitive analysis of: ${commonCompetitors
           .slice(0, 3)
-          .join(", ")}`
-      )
+          .join(', ')}`
+      );
     }
 
-    return recommendations
+    return recommendations;
   }
 
   private categorizeRFP(rfp: any): string {
-    const title = (rfp.title || "").toLowerCase()
+    const title = (rfp.title || '').toLowerCase();
     if (
-      title.includes("technology") ||
-      title.includes("software") ||
-      title.includes("it")
+      title.includes('technology') ||
+      title.includes('software') ||
+      title.includes('it')
     )
-      return "technology"
-    if (title.includes("construction") || title.includes("building"))
-      return "construction"
-    if (title.includes("consulting") || title.includes("advisory"))
-      return "consulting"
-    return "general"
+      return 'technology';
+    if (title.includes('construction') || title.includes('building'))
+      return 'construction';
+    if (title.includes('consulting') || title.includes('advisory'))
+      return 'consulting';
+    return 'general';
   }
 
   private calculateProposalDuration(proposal: any): number {
-    const generated = new Date(proposal.generatedAt)
-    const submitted = new Date(proposal.updatedAt)
-    return submitted.getTime() - generated.getTime()
+    const generated = new Date(proposal.generatedAt);
+    const submitted = new Date(proposal.updatedAt);
+    return submitted.getTime() - generated.getTime();
   }
 
   private identifyProposalImprovementAreas(outcome: ProposalOutcome): string[] {
-    const areas = []
+    const areas = [];
 
     if (outcome.outcomeDetails.evaluationCriteria) {
-      const criteria = outcome.outcomeDetails.evaluationCriteria
+      const criteria = outcome.outcomeDetails.evaluationCriteria;
       if (criteria.technical && criteria.technical < 70)
-        areas.push("technical_approach")
-      if (criteria.price && criteria.price < 70) areas.push("pricing_strategy")
+        areas.push('technical_approach');
+      if (criteria.price && criteria.price < 70) areas.push('pricing_strategy');
       if (criteria.experience && criteria.experience < 70)
-        areas.push("qualifications")
+        areas.push('qualifications');
     }
 
     if (outcome.outcomeDetails.rejectionReason) {
-      const reason = outcome.outcomeDetails.rejectionReason.toLowerCase()
-      if (reason.includes("price")) areas.push("pricing_competitiveness")
-      if (reason.includes("technical")) areas.push("technical_solution")
-      if (reason.includes("experience")) areas.push("past_performance")
+      const reason = outcome.outcomeDetails.rejectionReason.toLowerCase();
+      if (reason.includes('price')) areas.push('pricing_competitiveness');
+      if (reason.includes('technical')) areas.push('technical_solution');
+      if (reason.includes('experience')) areas.push('past_performance');
     }
 
-    return areas
+    return areas;
   }
 
   private extractLearnedPatterns(
@@ -899,23 +919,23 @@ export class ProposalOutcomeTracker {
     proposal: any,
     rfp: any
   ): string[] {
-    const patterns = []
+    const patterns = [];
 
-    if (outcome.status === "awarded") {
-      patterns.push(`successful_strategy_${rfp.agency}`)
-      patterns.push(`winning_approach_${this.categorizeRFP(rfp)}`)
+    if (outcome.status === 'awarded') {
+      patterns.push(`successful_strategy_${rfp.agency}`);
+      patterns.push(`winning_approach_${this.categorizeRFP(rfp)}`);
     } else {
-      patterns.push(`failed_strategy_${rfp.agency}`)
+      patterns.push(`failed_strategy_${rfp.agency}`);
       if (outcome.outcomeDetails.rejectionReason) {
         patterns.push(
           `rejection_pattern_${outcome.outcomeDetails.rejectionReason
             .toLowerCase()
-            .replace(/\s+/g, "_")}`
-        )
+            .replace(/\s+/g, '_')}`
+        );
       }
     }
 
-    return patterns
+    return patterns;
   }
 
   private suggestAdaptations(
@@ -923,75 +943,78 @@ export class ProposalOutcomeTracker {
     proposal: any,
     rfp: any
   ): any[] {
-    const adaptations = []
+    const adaptations = [];
 
-    if (outcome.status !== "awarded") {
+    if (outcome.status !== 'awarded') {
       adaptations.push({
-        type: "strategy_adjustment",
-        area: "overall_approach",
+        type: 'strategy_adjustment',
+        area: 'overall_approach',
         suggestion:
-          "Review and update proposal generation strategy based on outcome",
+          'Review and update proposal generation strategy based on outcome',
         confidence: 0.7,
-      })
+      });
 
-      if (outcome.outcomeDetails.evaluationCriteria?.price < 70) {
+      if (
+        outcome.outcomeDetails.evaluationCriteria?.price &&
+        outcome.outcomeDetails.evaluationCriteria.price < 70
+      ) {
         adaptations.push({
-          type: "pricing_adjustment",
-          area: "pricing_strategy",
-          suggestion: "Consider more competitive pricing approach",
+          type: 'pricing_adjustment',
+          area: 'pricing_strategy',
+          suggestion: 'Consider more competitive pricing approach',
           confidence: 0.8,
-        })
+        });
       }
     }
 
-    return adaptations
+    return adaptations;
   }
 
   private calculateOutcomeConfidence(outcome: ProposalOutcome): number {
-    let confidence = 0.5
+    let confidence = 0.5;
 
     // Increase confidence if we have detailed feedback
-    if (outcome.outcomeDetails.feedback) confidence += 0.2
-    if (outcome.outcomeDetails.evaluationCriteria) confidence += 0.2
-    if (outcome.outcomeDetails.competitorInfo) confidence += 0.1
+    if (outcome.outcomeDetails.feedback) confidence += 0.2;
+    if (outcome.outcomeDetails.evaluationCriteria) confidence += 0.2;
+    if (outcome.outcomeDetails.competitorInfo) confidence += 0.1;
 
-    return Math.min(confidence, 1.0)
+    return Math.min(confidence, 1.0);
   }
 
   private updateRFPStatus(rfp: any, outcomeStatus: string): Promise<any> {
-    let rfpStatus = rfp.status
+    let rfpStatus = rfp.status;
 
     switch (outcomeStatus) {
-      case "awarded":
-        rfpStatus = "won"
-        break
-      case "rejected":
-      case "lost":
-        rfpStatus = "lost"
-        break
-      case "withdrawn":
-        rfpStatus = "withdrawn"
-        break
+      case 'awarded':
+        rfpStatus = 'won';
+        break;
+      case 'rejected':
+      case 'lost':
+        rfpStatus = 'lost';
+        break;
+      case 'withdrawn':
+        rfpStatus = 'withdrawn';
+        break;
     }
 
-    return storage.updateRFP(rfp.id, { status: rfpStatus })
+    return storage.updateRFP(rfp.id, { status: rfpStatus });
   }
 
   private assessTechnicalDepth(content: any): string {
-    if (!content) return "basic"
-    const contentStr = JSON.stringify(content).toLowerCase()
+    if (!content) return 'basic';
+    const contentStr = JSON.stringify(content).toLowerCase();
     const technicalTerms = [
-      "architecture",
-      "methodology",
-      "framework",
-      "implementation",
-    ]
-    const matches = technicalTerms.filter((term) => contentStr.includes(term))
+      'architecture',
+      'methodology',
+      'framework',
+      'implementation',
+    ];
+    const matches = technicalTerms.filter(term => contentStr.includes(term));
     return matches.length > 2
-      ? "deep"
+      ? 'deep'
       : matches.length > 0
-      ? "moderate"
-      : "basic"
+        ? 'moderate'
+        : 'basic';
   }
 
   private analyzeProposalStructure(proposal: any): any {
@@ -1001,33 +1024,33 @@ export class ProposalOutcomeTracker {
       hasTechnicalApproach: !!proposal.content?.technical_approach,
       hasQualifications: !!proposal.content?.qualifications,
       attachmentCount: proposal.attachments?.length || 0,
-    }
+    };
   }
 
   private determinePricingApproach(proposal: any): string {
-    const margin = proposal.estimatedMargin || 0.15
-    if (margin < 0.1) return "aggressive"
-    if (margin > 0.2) return "conservative"
-    return "competitive"
+    const margin = proposal.estimatedMargin || 0.15;
+    if (margin < 0.1) return 'aggressive';
+    if (margin > 0.2) return 'conservative';
+    return 'competitive';
   }
 
   private assessPricingCompetitiveness(proposal: any): string {
     // This would compare against market rates
-    return "moderate"
+    return 'moderate';
   }
 
   private assessRiskMitigation(proposal: any): string {
-    const hasRiskSection = !!proposal.content?.risk_mitigation
-    const hasContingency = !!proposal.content?.contingency_plans
+    const hasRiskSection = !!proposal.content?.risk_mitigation;
+    const hasContingency = !!proposal.content?.contingency_plans;
 
-    if (hasRiskSection && hasContingency) return "comprehensive"
-    if (hasRiskSection || hasContingency) return "basic"
-    return "minimal"
+    if (hasRiskSection && hasContingency) return 'comprehensive';
+    if (hasRiskSection || hasContingency) return 'basic';
+    return 'minimal';
   }
 
   private calculateAverageCompetition(historicalBids: any[]): number {
     // Calculate average number of bidders from historical data
-    return historicalBids.length > 0 ? 4 : 3 // Default estimate
+    return historicalBids.length > 0 ? 4 : 3; // Default estimate
   }
 
   private analyzeMarketTrends(historicalBids: any[]): any {
@@ -1036,29 +1059,29 @@ export class ProposalOutcomeTracker {
       averageValue:
         historicalBids.reduce((sum, bid) => sum + (bid.bidAmount || 0), 0) /
         Math.max(historicalBids.length, 1),
-      trend: "stable", // Would analyze actual trends
-    }
+      trend: 'stable', // Would analyze actual trends
+    };
   }
 
   private analyzeSeasonality(deadline: Date): string {
-    const month = deadline.getMonth()
-    if (month >= 8 && month <= 11) return "fiscal_year_end" // Sept-Dec
-    if (month >= 5 && month <= 7) return "summer_season" // Jun-Aug
-    return "regular"
+    const month = deadline.getMonth();
+    if (month >= 8 && month <= 11) return 'fiscal_year_end'; // Sept-Dec
+    if (month >= 5 && month <= 7) return 'summer_season'; // Jun-Aug
+    return 'regular';
   }
 
   private assessTeamExperience(proposal: any): string {
     // Would assess based on team qualifications in proposal
-    return "experienced"
+    return 'experienced';
   }
 
   private calculateTimeAllocation(proposal: any): any {
     return {
-      preparationTime: "adequate",
-      resourcesAllocated: "optimal",
-      rushStatus: "normal",
-    }
+      preparationTime: 'adequate',
+      resourcesAllocated: 'optimal',
+      rushStatus: 'normal',
+    };
   }
 }
 
-export const proposalOutcomeTracker = ProposalOutcomeTracker.getInstance()
+export const proposalOutcomeTracker = ProposalOutcomeTracker.getInstance();

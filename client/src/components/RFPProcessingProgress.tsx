@@ -39,7 +39,7 @@ export function RFPProcessingProgressModal({
   onOpenChange,
   onComplete,
   onError,
-  endpoint
+  endpoint,
 }: RFPProcessingProgressProps) {
   const [progress, setProgress] = useState<RFPProcessingProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -71,7 +71,7 @@ export function RFPProcessingProgressModal({
           setIsConnected(true);
         };
 
-        eventSource.onmessage = (event) => {
+        eventSource.onmessage = event => {
           if (isCleaningUp) return;
 
           try {
@@ -84,7 +84,11 @@ export function RFPProcessingProgressModal({
                 break;
 
               case 'progress':
-                console.log('📡 Progress update received:', data.data?.status, data.data?.currentStep);
+                console.log(
+                  '📡 Progress update received:',
+                  data.data?.status,
+                  data.data?.currentStep
+                );
                 setProgress(data.data);
                 break;
 
@@ -114,7 +118,7 @@ export function RFPProcessingProgressModal({
           }
         };
 
-        eventSource.onerror = (error) => {
+        eventSource.onerror = error => {
           console.error('📡 SSE connection error:', error);
           setIsConnected(false);
 
@@ -124,7 +128,10 @@ export function RFPProcessingProgressModal({
           }
 
           // Only attempt reconnection if not cleaning up and connection is closed
-          if (!isCleaningUp && (!eventSource || eventSource.readyState === EventSource.CLOSED)) {
+          if (
+            !isCleaningUp &&
+            (!eventSource || eventSource.readyState === EventSource.CLOSED)
+          ) {
             console.log('📡 Connection closed, will retry in 2 seconds...');
             reconnectTimer = setTimeout(() => {
               if (!isCleaningUp) {
@@ -194,8 +201,7 @@ export function RFPProcessingProgressModal({
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            🔄
-            Processing RFP
+            🔄 Processing RFP
           </DialogTitle>
         </DialogHeader>
 
@@ -205,9 +211,13 @@ export function RFPProcessingProgressModal({
             <CardContent className="py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`}></div>
+                  <div
+                    className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`}
+                  ></div>
                   <span className="text-sm text-muted-foreground">
-                    {isConnected ? 'Connected to progress stream' : 'Connecting to progress stream...'}
+                    {isConnected
+                      ? 'Connected to progress stream'
+                      : 'Connecting to progress stream...'}
                   </span>
                 </div>
                 {!isConnected && (
@@ -243,7 +253,13 @@ export function RFPProcessingProgressModal({
               <Card>
                 <CardContent className="py-4 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Badge variant={progress.status === 'completed' ? 'default' : 'secondary'}>
+                    <Badge
+                      variant={
+                        progress.status === 'completed'
+                          ? 'default'
+                          : 'secondary'
+                      }
+                    >
                       {progress.status}
                     </Badge>
                     {progress.rfpId && (
@@ -253,7 +269,9 @@ export function RFPProcessingProgressModal({
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-card-foreground">Processing URL:</p>
+                    <p className="text-sm font-medium text-card-foreground">
+                      Processing URL:
+                    </p>
                     <p className="text-sm text-muted-foreground break-all">
                       {progress.url}
                     </p>
@@ -272,19 +290,30 @@ export function RFPProcessingProgressModal({
                       key={index}
                       className="flex items-start gap-3 p-3 rounded-md border bg-card transition-all"
                     >
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
-                        step.status === 'completed' ? 'bg-green-500 text-white' :
-                        step.status === 'in_progress' ? 'bg-blue-500 text-white' :
-                        step.status === 'failed' ? 'bg-red-500 text-white' :
-                        'bg-gray-200 text-gray-500'
-                      }`}>
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                          step.status === 'completed'
+                            ? 'bg-green-500 text-white'
+                            : step.status === 'in_progress'
+                              ? 'bg-blue-500 text-white'
+                              : step.status === 'failed'
+                                ? 'bg-red-500 text-white'
+                                : 'bg-gray-200 text-gray-500'
+                        }`}
+                      >
                         {getStepIcon(step.status)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h5 className="font-medium text-sm text-foreground">{step.step}</h5>
+                          <h5 className="font-medium text-sm text-foreground">
+                            {step.step}
+                          </h5>
                           <Badge
-                            variant={step.status === 'completed' ? 'default' : 'secondary'}
+                            variant={
+                              step.status === 'completed'
+                                ? 'default'
+                                : 'secondary'
+                            }
                             className="text-xs"
                           >
                             {step.status}
@@ -313,10 +342,14 @@ export function RFPProcessingProgressModal({
               {progress.error && (
                 <Card className="border-red-200 bg-red-50 dark:bg-red-950/50 dark:border-red-800">
                   <CardHeader>
-                    <CardTitle className="text-lg text-red-800 dark:text-red-200">Error</CardTitle>
+                    <CardTitle className="text-lg text-red-800 dark:text-red-200">
+                      Error
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-red-700 dark:text-red-300">{progress.error}</p>
+                    <p className="text-sm text-red-700 dark:text-red-300">
+                      {progress.error}
+                    </p>
                   </CardContent>
                 </Card>
               )}

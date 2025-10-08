@@ -14,7 +14,11 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from HTML content using generic patterns
    */
-  async extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]> {
+  async extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
     try {
       console.log(`🔍 Starting HTML content extraction for ${url}`);
 
@@ -47,14 +51,15 @@ export class HTMLContentExtractor extends BaseContentExtractor {
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(opp =>
-        (opp.confidence || 0) >= minConfidence
+      const filteredOpportunities = opportunities.filter(
+        opp => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(`🔍 HTML extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`);
+      console.log(
+        `🔍 HTML extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
+      );
 
       return this.removeDuplicates(filteredOpportunities);
-
     } catch (error) {
       console.error(`❌ HTML content extraction failed for ${url}:`, error);
       return [];
@@ -79,7 +84,10 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract using semantic HTML patterns
    */
-  private extractSemantic($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractSemantic(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Look for semantic structures
@@ -88,10 +96,16 @@ export class HTMLContentExtractor extends BaseContentExtractor {
       const text = this.cleanText($section.text());
 
       if (this.hasRFPKeywords(text) && text.length > 50) {
-        const opportunity = this.extractOpportunityFromElement($section, baseUrl, 'semantic');
+        const opportunity = this.extractOpportunityFromElement(
+          $section,
+          baseUrl,
+          'semantic'
+        );
         if (opportunity) {
           opportunities.push(opportunity);
-          console.log(`✅ HTML semantic opportunity found: ${opportunity.title}`);
+          console.log(
+            `✅ HTML semantic opportunity found: ${opportunity.title}`
+          );
         }
       }
     });
@@ -102,12 +116,15 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from table structures
    */
-  private extractFromTables($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromTables(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('table').each((_, table) => {
       const $table = $(table);
-      const headers = this.extractTableHeaders($table);
+      const headers = this.extractTableHeaders($table, $);
 
       $table.find('tbody tr, tr').each((index, row) => {
         if (index === 0 && headers.length > 0) return; // Skip header row
@@ -116,10 +133,17 @@ export class HTMLContentExtractor extends BaseContentExtractor {
         const cells = $row.find('td, th');
 
         if (cells.length >= 2) {
-          const opportunity = this.extractOpportunityFromTableRow($row, headers, baseUrl);
+          const opportunity = this.extractOpportunityFromTableRow(
+            $row,
+            headers,
+            baseUrl,
+            $
+          );
           if (opportunity) {
             opportunities.push(opportunity);
-            console.log(`✅ HTML table opportunity found: ${opportunity.title}`);
+            console.log(
+              `✅ HTML table opportunity found: ${opportunity.title}`
+            );
           }
         }
       });
@@ -131,7 +155,10 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities from list structures
    */
-  private extractFromLists($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromLists(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     $('ul, ol').each((_, list) => {
@@ -142,7 +169,11 @@ export class HTMLContentExtractor extends BaseContentExtractor {
         const text = this.cleanText($item.text());
 
         if (this.hasRFPKeywords(text) && text.length > 30) {
-          const opportunity = this.extractOpportunityFromElement($item, baseUrl, 'list');
+          const opportunity = this.extractOpportunityFromElement(
+            $item,
+            baseUrl,
+            'list'
+          );
           if (opportunity && !this.isDuplicate(opportunity, opportunities)) {
             opportunities.push(opportunity);
             console.log(`✅ HTML list opportunity found: ${opportunity.title}`);
@@ -157,7 +188,10 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities by following links with RFP-related patterns
    */
-  private extractFromLinks($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromLinks(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Target links with RFP-related text or URLs
@@ -167,12 +201,17 @@ export class HTMLContentExtractor extends BaseContentExtractor {
       const linkText = this.cleanText($link.text());
       const parentText = this.cleanText($link.parent().text());
 
-      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      if (!href || href.startsWith('#') || href.startsWith('javascript:'))
+        return;
 
       const combinedText = `${linkText} ${parentText}`;
 
       if (this.hasRFPKeywords(combinedText) || this.isRFPUrl(href)) {
-        const opportunity = this.createOpportunityFromLink($link, href, baseUrl);
+        const opportunity = this.createOpportunityFromLink(
+          $link,
+          href,
+          baseUrl
+        );
         if (opportunity && !this.isDuplicate(opportunity, opportunities)) {
           opportunities.push(opportunity);
           console.log(`✅ HTML link opportunity found: ${opportunity.title}`);
@@ -186,16 +225,30 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities based on CSS classes
    */
-  private extractFromClasses($: cheerio.CheerioAPI, baseUrl: string): RFPOpportunity[] {
+  private extractFromClasses(
+    $: cheerio.CheerioAPI,
+    baseUrl: string
+  ): RFPOpportunity[] {
     const opportunities: RFPOpportunity[] = [];
 
     // Common class patterns for opportunities
     const classSelectors = [
-      '.opportunity', '.rfp', '.bid', '.procurement', '.solicitation',
-      '.tender', '.contract', '.quote', '.proposal',
-      '[class*="opportunity"]', '[class*="rfp"]', '[class*="bid"]',
-      '[class*="procurement"]', '[class*="solicitation"]',
-      '[class*="tender"]', '[class*="contract"]'
+      '.opportunity',
+      '.rfp',
+      '.bid',
+      '.procurement',
+      '.solicitation',
+      '.tender',
+      '.contract',
+      '.quote',
+      '.proposal',
+      '[class*="opportunity"]',
+      '[class*="rfp"]',
+      '[class*="bid"]',
+      '[class*="procurement"]',
+      '[class*="solicitation"]',
+      '[class*="tender"]',
+      '[class*="contract"]',
     ];
 
     classSelectors.forEach(selector => {
@@ -204,10 +257,16 @@ export class HTMLContentExtractor extends BaseContentExtractor {
         const text = this.cleanText($element.text());
 
         if (text.length > 30) {
-          const opportunity = this.extractOpportunityFromElement($element, baseUrl, 'class');
+          const opportunity = this.extractOpportunityFromElement(
+            $element,
+            baseUrl,
+            'class'
+          );
           if (opportunity && !this.isDuplicate(opportunity, opportunities)) {
             opportunities.push(opportunity);
-            console.log(`✅ HTML class-based opportunity found: ${opportunity.title}`);
+            console.log(
+              `✅ HTML class-based opportunity found: ${opportunity.title}`
+            );
           }
         }
       });
@@ -219,13 +278,18 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Extract table headers for better column mapping
    */
-  private extractTableHeaders($table: cheerio.Cheerio<cheerio.Element>): string[] {
+  private extractTableHeaders(
+    $table: cheerio.Cheerio<cheerio.Element>,
+    $: cheerio.CheerioAPI
+  ): string[] {
     const headers: string[] = [];
 
-    $table.find('thead th, tr:first-child th, tr:first-child td').each((_, header) => {
-      const headerText = this.cleanText($(header).text()).toLowerCase();
-      headers.push(headerText);
-    });
+    $table
+      .find('thead th, tr:first-child th, tr:first-child td')
+      .each((_, header) => {
+        const headerText = this.cleanText($(header).text()).toLowerCase();
+        headers.push(headerText);
+      });
 
     return headers;
   }
@@ -236,7 +300,8 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   private extractOpportunityFromTableRow(
     $row: cheerio.Cheerio<cheerio.Element>,
     headers: string[],
-    baseUrl: string
+    baseUrl: string,
+    $: cheerio.CheerioAPI
   ): RFPOpportunity | null {
     const cells = $row.find('td, th');
     const rowText = this.cleanText($row.text());
@@ -259,13 +324,38 @@ export class HTMLContentExtractor extends BaseContentExtractor {
       const headerText = headers[index] || '';
 
       // Determine field based on header text or content
-      if (this.isHeaderMatch(headerText, ['title', 'name', 'opportunity', 'subject', 'description'])) {
+      if (
+        this.isHeaderMatch(headerText, [
+          'title',
+          'name',
+          'opportunity',
+          'subject',
+          'description',
+        ])
+      ) {
         title = title || cellText;
-      } else if (this.isHeaderMatch(headerText, ['description', 'details', 'summary'])) {
+      } else if (
+        this.isHeaderMatch(headerText, ['description', 'details', 'summary'])
+      ) {
         description = description || cellText;
-      } else if (this.isHeaderMatch(headerText, ['agency', 'department', 'organization', 'entity'])) {
+      } else if (
+        this.isHeaderMatch(headerText, [
+          'agency',
+          'department',
+          'organization',
+          'entity',
+        ])
+      ) {
         agency = agency || cellText;
-      } else if (this.isHeaderMatch(headerText, ['deadline', 'due', 'date', 'closes', 'expir'])) {
+      } else if (
+        this.isHeaderMatch(headerText, [
+          'deadline',
+          'due',
+          'date',
+          'closes',
+          'expir',
+        ])
+      ) {
         deadline = deadline || cellText;
       }
 
@@ -291,13 +381,13 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title,
-      description: description || undefined,
+      description: description || '',
       agency: agency || undefined,
       deadline: this.parseDate(deadline),
-      url: this.validateAndFixSourceUrl(link, baseUrl),
+      url: this.validateAndFixSourceUrl(link, baseUrl) || '',
       link: this.validateAndFixSourceUrl(link, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
-      confidence: 0.5
+      confidence: 0.5,
     };
   }
 
@@ -318,14 +408,22 @@ export class HTMLContentExtractor extends BaseContentExtractor {
     // Extract title from headings or strong text
     let title = $element.find('h1, h2, h3, h4, h5, h6').first().text().trim();
     if (!title) {
-      title = $element.find('strong, b, .title, [class*="title"]').first().text().trim();
+      title = $element
+        .find('strong, b, .title, [class*="title"]')
+        .first()
+        .text()
+        .trim();
     }
     if (!title) {
       title = text.substring(0, 100).replace(/\n.*$/, '').trim();
     }
 
     // Extract description
-    let description = $element.find('p, .description, [class*="description"]').first().text().trim();
+    let description = $element
+      .find('p, .description, [class*="description"]')
+      .first()
+      .text()
+      .trim();
     if (!description || description === title) {
       description = text.length > 200 ? text.substring(0, 200) + '...' : text;
     }
@@ -343,13 +441,13 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title: this.cleanText(title),
-      description: description ? this.cleanText(description) : undefined,
+      description: description ? this.cleanText(description) : '',
       agency: agency || undefined,
       deadline: this.parseDate(deadline),
-      url: this.validateAndFixSourceUrl(link, baseUrl),
+      url: this.validateAndFixSourceUrl(link, baseUrl) || '',
       link: this.validateAndFixSourceUrl(link, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
-      confidence: source === 'semantic' ? 0.7 : source === 'class' ? 0.6 : 0.5
+      confidence: source === 'semantic' ? 0.7 : source === 'class' ? 0.6 : 0.5,
     };
   }
 
@@ -363,10 +461,14 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   ): RFPOpportunity | null {
     const linkText = this.cleanText($link.text());
     const parentText = this.cleanText($link.parent().text());
-    const containerText = this.cleanText($link.closest('div, li, td, section').text());
+    const containerText = this.cleanText(
+      $link.closest('div, li, td, section').text()
+    );
 
-    const title = linkText.length > 10 ? linkText : parentText.substring(0, 100);
-    const description = containerText.length > linkText.length ? containerText : parentText;
+    const title =
+      linkText.length > 10 ? linkText : parentText.substring(0, 100);
+    const description =
+      containerText.length > linkText.length ? containerText : parentText;
 
     if (!title || title.length < 5) {
       return null;
@@ -374,11 +476,11 @@ export class HTMLContentExtractor extends BaseContentExtractor {
 
     return {
       title,
-      description: description !== title ? description : undefined,
-      url: this.validateAndFixSourceUrl(href, baseUrl),
+      description: description !== title ? description : '',
+      url: this.validateAndFixSourceUrl(href, baseUrl) || '',
       link: this.validateAndFixSourceUrl(href, baseUrl),
       category: this.inferCategoryFromText(title + ' ' + description),
-      confidence: 0.4
+      confidence: 0.4,
     };
   }
 
@@ -394,8 +496,15 @@ export class HTMLContentExtractor extends BaseContentExtractor {
    */
   private isRFPUrl(url: string): boolean {
     const rfpPatterns = [
-      'rfp', 'bid', 'procurement', 'solicitation', 'tender',
-      'opportunity', 'contract', 'proposal', 'quote'
+      'rfp',
+      'bid',
+      'procurement',
+      'solicitation',
+      'tender',
+      'opportunity',
+      'contract',
+      'proposal',
+      'quote',
     ];
 
     const lowerUrl = url.toLowerCase();
@@ -410,7 +519,7 @@ export class HTMLContentExtractor extends BaseContentExtractor {
       /(\d{1,2}\/\d{1,2}\/\d{2,4})/,
       /(\d{1,2}-\d{1,2}-\d{2,4})/,
       /(\w+\s+\d{1,2},?\s+\d{4})/,
-      /(\d{1,2}\s+\w+\s+\d{4})/
+      /(\d{1,2}\s+\w+\s+\d{4})/,
     ];
 
     for (const pattern of datePatterns) {
@@ -430,7 +539,7 @@ export class HTMLContentExtractor extends BaseContentExtractor {
     const agencyPatterns = [
       /(?:agency|department|office|bureau|administration|commission)[:\s]+([^.\n]+)/i,
       /(?:city|county|state|federal)\s+of\s+([^.\n]+)/i,
-      /([^.\n]*(?:city|county|state|department|agency|office)[^.\n]*)/i
+      /([^.\n]*(?:city|county|state|department|agency|office)[^.\n]*)/i,
     ];
 
     for (const pattern of agencyPatterns) {
@@ -449,10 +558,17 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   private inferCategoryFromText(text: string): string | undefined {
     const lowerText = text.toLowerCase();
 
-    if (lowerText.includes('rfp') || lowerText.includes('request for proposal')) return 'Request for Proposal';
-    if (lowerText.includes('ifb') || lowerText.includes('invitation for bid')) return 'Invitation for Bid';
-    if (lowerText.includes('rfq') || lowerText.includes('request for quote')) return 'Request for Quote';
-    if (lowerText.includes('rfi') || lowerText.includes('request for information')) return 'Request for Information';
+    if (lowerText.includes('rfp') || lowerText.includes('request for proposal'))
+      return 'Request for Proposal';
+    if (lowerText.includes('ifb') || lowerText.includes('invitation for bid'))
+      return 'Invitation for Bid';
+    if (lowerText.includes('rfq') || lowerText.includes('request for quote'))
+      return 'Request for Quote';
+    if (
+      lowerText.includes('rfi') ||
+      lowerText.includes('request for information')
+    )
+      return 'Request for Information';
     if (lowerText.includes('solicitation')) return 'Solicitation';
     if (lowerText.includes('procurement')) return 'Procurement';
     if (lowerText.includes('tender')) return 'Tender';
@@ -464,10 +580,14 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Check if opportunity is duplicate
    */
-  private isDuplicate(opportunity: RFPOpportunity, opportunities: RFPOpportunity[]): boolean {
-    return opportunities.some(existing =>
-      existing.title?.toLowerCase() === opportunity.title?.toLowerCase() ||
-      (existing.url && opportunity.url && existing.url === opportunity.url)
+  private isDuplicate(
+    opportunity: RFPOpportunity,
+    opportunities: RFPOpportunity[]
+  ): boolean {
+    return opportunities.some(
+      existing =>
+        existing.title?.toLowerCase() === opportunity.title?.toLowerCase() ||
+        (existing.url && opportunity.url && existing.url === opportunity.url)
     );
   }
 

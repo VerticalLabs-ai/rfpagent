@@ -2,7 +2,10 @@
 export { AuthenticationManager } from './AuthenticationManager';
 
 // Base strategy interface and abstract class
-export { AuthenticationStrategy, BaseAuthenticationStrategy } from './strategies/AuthenticationStrategy';
+export {
+  AuthenticationStrategy,
+  BaseAuthenticationStrategy,
+} from './strategies/AuthenticationStrategy';
 
 // Concrete strategy implementations
 export { BonfireHubAuthStrategy } from './strategies/BonfireHubAuthStrategy';

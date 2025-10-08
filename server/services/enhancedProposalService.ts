@@ -1,15 +1,35 @@
 import { storage } from '../storage';
-import { documentIntelligenceService, type DocumentAnalysisResult, type FormField, type HumanOversightItem } from './documentIntelligenceService';
+import {
+  documentIntelligenceService,
+  type DocumentAnalysisResult,
+  type FormField,
+  type HumanOversightItem,
+} from './documentIntelligenceService';
 import { AIProposalService } from './ai-proposal-service';
 import { submissionMaterialsService } from './submissionMaterialsService';
-import type { RFP, CompanyProfile } from '@shared/schema';
-import { nanoid } from 'nanoid';
+import type {
+  RFP,
+  CompanyProfile,
+  SubmissionLifecycleData,
+} from '@shared/schema';
 
 export interface ProposalGenerationRequest {
   rfpId: string;
   companyProfileId?: string;
   generatePricing: boolean;
   autoSubmit: boolean;
+}
+
+export interface AutoSubmissionResult {
+  status:
+    | 'pipeline_started'
+    | 'pipeline_failed'
+    | 'submission_error'
+    | 'waiting_for_human_review';
+  submissionId?: string;
+  pipelineId?: string;
+  error?: string;
+  reason?: string;
 }
 
 export interface ProposalGenerationResult {
@@ -25,6 +45,7 @@ export interface ProposalGenerationResult {
     strategy: string;
     confidenceLevel: number;
   };
+  autoSubmissionResult?: AutoSubmissionResult | null;
 }
 
 export class EnhancedProposalService {
@@ -37,8 +58,12 @@ export class EnhancedProposalService {
   /**
    * Generate comprehensive proposal with intelligent document processing
    */
-  async generateProposal(request: ProposalGenerationRequest): Promise<ProposalGenerationResult> {
-    console.log(`🚀 Starting enhanced proposal generation for RFP: ${request.rfpId}`);
+  async generateProposal(
+    request: ProposalGenerationRequest
+  ): Promise<ProposalGenerationResult> {
+    console.log(
+      `🚀 Starting enhanced proposal generation for RFP: ${request.rfpId}`
+    );
 
     // Get RFP details
     const rfp = await storage.getRFP(request.rfpId);
@@ -49,14 +74,17 @@ export class EnhancedProposalService {
     // Update RFP status to indicate generation in progress
     await storage.updateRFP(request.rfpId, {
       status: 'drafting',
-      progress: 20
+      progress: 20,
     });
 
     console.log(`📊 Analyzing RFP documents for intelligent processing...`);
 
     // Step 1: Analyze all documents to identify fillable fields and requirements
-    const documentAnalysis = await documentIntelligenceService.analyzeRFPDocuments(request.rfpId);
-    console.log(`Found ${documentAnalysis.formFields.length} form fields and ${documentAnalysis.humanOversightItems.length} human oversight items`);
+    const documentAnalysis =
+      await documentIntelligenceService.analyzeRFPDocuments(request.rfpId);
+    console.log(
+      `Found ${documentAnalysis.formFields.length} form fields and ${documentAnalysis.humanOversightItems.length} human oversight items`
+    );
 
     await storage.updateRFP(request.rfpId, { progress: 40 });
 
@@ -72,7 +100,11 @@ export class EnhancedProposalService {
 
     // Step 3: Generate AI proposal content for narrative sections
     console.log(`🤖 Generating AI proposal content...`);
-    const proposalContent = await this.generateNarrativeContent(rfp, documentAnalysis, request.companyProfileId);
+    const proposalContent = await this.generateNarrativeContent(
+      rfp,
+      documentAnalysis,
+      request.companyProfileId
+    );
 
     await storage.updateRFP(request.rfpId, { progress: 80 });
 
@@ -81,15 +113,27 @@ export class EnhancedProposalService {
       rfpId: request.rfpId,
       content: proposalContent,
       forms: filledForms,
-      pricingTables: documentAnalysis.competitiveBidAnalysis ? [{
-        bidAmount: documentAnalysis.competitiveBidAnalysis.suggestedBidAmount,
-        strategy: documentAnalysis.competitiveBidAnalysis.pricingStrategy,
-        confidence: documentAnalysis.competitiveBidAnalysis.confidenceLevel,
-        research: documentAnalysis.competitiveBidAnalysis.marketResearch
-      }] : null,
-      estimatedMargin: documentAnalysis.competitiveBidAnalysis ? 
-        (((documentAnalysis.competitiveBidAnalysis.suggestedBidAmount * 0.15) / documentAnalysis.competitiveBidAnalysis.suggestedBidAmount * 100)).toString() : null,
-      status: 'draft'
+      pricingTables: documentAnalysis.competitiveBidAnalysis
+        ? [
+            {
+              bidAmount:
+                documentAnalysis.competitiveBidAnalysis.suggestedBidAmount,
+              strategy: documentAnalysis.competitiveBidAnalysis.pricingStrategy,
+              confidence:
+                documentAnalysis.competitiveBidAnalysis.confidenceLevel,
+              research: documentAnalysis.competitiveBidAnalysis.marketResearch,
+            },
+          ]
+        : null,
+      estimatedMargin: documentAnalysis.competitiveBidAnalysis
+        ? (
+            ((documentAnalysis.competitiveBidAnalysis.suggestedBidAmount *
+              0.15) /
+              documentAnalysis.competitiveBidAnalysis.suggestedBidAmount) *
+            100
+          ).toString()
+        : null,
+      status: 'draft',
     });
 
     // Step 5: Create audit log
@@ -101,12 +145,15 @@ export class EnhancedProposalService {
         formFieldsCount: filledForms.length,
         humanItemsCount: documentAnalysis.humanOversightItems.length,
         hasPricing: !!documentAnalysis.competitiveBidAnalysis,
-        estimatedTime: documentAnalysis.estimatedCompletionTime
-      }
+        estimatedTime: documentAnalysis.estimatedCompletionTime,
+      },
     });
 
     // Step 6: Create notifications for human action items
-    await this.createHumanOversightNotifications(documentAnalysis.humanOversightItems, request.rfpId);
+    await this.createHumanOversightNotifications(
+      documentAnalysis.humanOversightItems,
+      request.rfpId
+    );
 
     // Step 7: Determine next steps and readiness
     const { nextSteps, readyForSubmission } = this.determineNextSteps(
@@ -118,51 +165,75 @@ export class EnhancedProposalService {
     // Update RFP status with appropriate progress
     await storage.updateRFP(request.rfpId, {
       status: readyForSubmission ? 'review' : 'drafting',
-      progress: readyForSubmission ? 75 : 60  // Proposal generated but not submitted
+      progress: readyForSubmission ? 75 : 60, // Proposal generated but not submitted
     });
 
     console.log(`✅ Proposal generation completed for RFP: ${rfp.title}`);
 
     // Step 8: Auto-submit if enabled and proposal is ready
-    let submissionResult: any = null;
+    let submissionResult: AutoSubmissionResult | null = null;
     if (request.autoSubmit && readyForSubmission) {
-      console.log(`🚀 Auto-submit enabled and proposal ready - triggering submission pipeline...`);
-      
+      console.log(
+        `🚀 Auto-submit enabled and proposal ready - triggering submission pipeline...`
+      );
+
       try {
         // Import singleton submissionService to avoid duplicate instantiation
-        const { submissionService } = await import("./submissionService");
+        const { submissionService } = await import('./submissionService');
+
+        if (!rfp.portalId) {
+          throw new Error('RFP portal is not configured for auto submission');
+        }
+
+        const portal = await storage.getPortal(rfp.portalId);
+        if (!portal) {
+          throw new Error(
+            `Portal not found for auto submission: ${rfp.portalId}`
+          );
+        }
+
+        const deadlineIso = rfp.deadline
+          ? new Date(rfp.deadline).toISOString()
+          : undefined;
 
         // Create submission record
+        const submissionLifecycleData: SubmissionLifecycleData = {
+          autoGenerated: true,
+          triggeredBy: 'proposal_generation',
+          companyProfileId: request.companyProfileId,
+          deadline: deadlineIso,
+        };
+
         const submission = await storage.createSubmission({
           proposalId: proposal.id,
           rfpId: request.rfpId,
+          portalId: portal.id,
           status: 'pending',
-          submitToPortal: true,
-          deadline: rfp.deadline ? new Date(rfp.deadline) : undefined,
-          metadata: {
-            autoGenerated: true,
-            triggeredBy: 'proposal_generation',
-            companyProfileId: request.companyProfileId
-          }
+          submissionData: submissionLifecycleData,
         });
 
         // Trigger submission pipeline
-        const submissionPipelineResult = await submissionService.submitProposal(submission.id, {
-          priority: 8, // High priority for auto-submit
-          deadline: rfp.deadline ? new Date(rfp.deadline) : undefined,
-          metadata: {
-            autoGenerated: true,
-            proposalId: proposal.id,
-            rfpId: request.rfpId
+        const submissionPipelineResult = await submissionService.submitProposal(
+          submission.id,
+          {
+            priority: 8, // High priority for auto-submit
+            deadline: rfp.deadline ? new Date(rfp.deadline) : undefined,
+            metadata: {
+              autoGenerated: true,
+              proposalId: proposal.id,
+              rfpId: request.rfpId,
+            },
           }
-        });
+        );
 
         if (submissionPipelineResult.success) {
-          console.log(`✅ Auto-submission pipeline started successfully for proposal: ${proposal.id}`);
+          console.log(
+            `✅ Auto-submission pipeline started successfully for proposal: ${proposal.id}`
+          );
           submissionResult = {
             submissionId: submission.id,
             pipelineId: submissionPipelineResult.pipelineId,
-            status: 'pipeline_started'
+            status: 'pipeline_started',
           };
 
           // Create audit log for auto-submission
@@ -173,43 +244,49 @@ export class EnhancedProposalService {
             details: {
               submissionId: submission.id,
               pipelineId: submissionPipelineResult.pipelineId,
-              triggeredBy: 'autoSubmit_flag'
-            }
+              triggeredBy: 'autoSubmit_flag',
+            },
           });
 
           // Update proposal status to indicate submission in progress (NOT submitted yet)
           await storage.updateProposal(proposal.id, {
             status: 'submission_in_progress',
-            submissionId: submission.id
           });
-
         } else {
-          console.error(`❌ Auto-submission pipeline failed to start: ${submissionPipelineResult.error}`);
+          console.error(
+            `❌ Auto-submission pipeline failed to start: ${submissionPipelineResult.error}`
+          );
           submissionResult = {
             submissionId: submission.id,
             status: 'pipeline_failed',
-            error: submissionPipelineResult.error
+            error: submissionPipelineResult.error,
           };
 
           // Update submission status to failed
+          const failedSubmissionData: SubmissionLifecycleData = {
+            ...(submission.submissionData ?? {}),
+            lastError: submissionPipelineResult.error,
+            lastErrorAt: new Date().toISOString(),
+          };
           await storage.updateSubmission(submission.id, {
             status: 'failed',
-            error: submissionPipelineResult.error
+            submissionData: failedSubmissionData,
           });
         }
-
       } catch (error) {
         console.error(`❌ Error during auto-submission:`, error);
         submissionResult = {
           status: 'submission_error',
-          error: error instanceof Error ? error.message : 'Unknown error'
+          error: error instanceof Error ? error.message : 'Unknown error',
         };
       }
     } else if (request.autoSubmit && !readyForSubmission) {
-      console.log(`⚠️ Auto-submit enabled but proposal not ready - requires human intervention`);
+      console.log(
+        `⚠️ Auto-submit enabled but proposal not ready - requires human intervention`
+      );
       submissionResult = {
         status: 'waiting_for_human_review',
-        reason: 'Proposal requires human oversight items to be completed'
+        reason: 'Proposal requires human oversight items to be completed',
       };
     }
 
@@ -221,12 +298,16 @@ export class EnhancedProposalService {
       nextSteps,
       readyForSubmission,
       estimatedCompletionTime: documentAnalysis.estimatedCompletionTime,
-      competitiveBidSummary: documentAnalysis.competitiveBidAnalysis ? {
-        recommendedBid: documentAnalysis.competitiveBidAnalysis.suggestedBidAmount,
-        strategy: documentAnalysis.competitiveBidAnalysis.pricingStrategy,
-        confidenceLevel: documentAnalysis.competitiveBidAnalysis.confidenceLevel
-      } : undefined,
-      autoSubmissionResult: submissionResult
+      competitiveBidSummary: documentAnalysis.competitiveBidAnalysis
+        ? {
+            recommendedBid:
+              documentAnalysis.competitiveBidAnalysis.suggestedBidAmount,
+            strategy: documentAnalysis.competitiveBidAnalysis.pricingStrategy,
+            confidenceLevel:
+              documentAnalysis.competitiveBidAnalysis.confidenceLevel,
+          }
+        : undefined,
+      autoSubmissionResult: submissionResult,
     };
   }
 
@@ -246,7 +327,9 @@ export class EnhancedProposalService {
     proposalId?: string;
     error?: string;
   }> {
-    console.log(`🚀 Starting Mastra-powered enhanced proposal generation for RFP: ${params.rfpId}`);
+    console.log(
+      `🚀 Starting Mastra-powered enhanced proposal generation for RFP: ${params.rfpId}`
+    );
 
     try {
       // Get RFP details
@@ -258,34 +341,43 @@ export class EnhancedProposalService {
       // Update RFP status to indicate generation in progress
       await storage.updateRFP(params.rfpId, {
         status: 'drafting',
-        progress: 10
+        progress: 10,
       });
 
-      console.log(`🤖 Delegating to Mastra submission materials service with latest agents...`);
+      console.log(
+        `🤖 Delegating to Mastra submission materials service with latest agents...`
+      );
 
       // Get the first available company profile if none specified
       let companyProfileId = params.companyProfileId;
       if (!companyProfileId) {
-        console.log('⚠️ No company profile specified, getting first available profile...');
+        console.log(
+          '⚠️ No company profile specified, getting first available profile...'
+        );
         const profiles = await storage.getAllCompanyProfiles();
         if (profiles.length === 0) {
-          throw new Error('No company profiles found. Please create a company profile first.');
+          throw new Error(
+            'No company profiles found. Please create a company profile first.'
+          );
         }
         companyProfileId = profiles[0].id;
-        console.log(`✅ Using company profile: ${companyProfileId} (${profiles[0].companyName})`);
+        console.log(
+          `✅ Using company profile: ${companyProfileId} (${profiles[0].companyName})`
+        );
       }
 
       // Use the submission materials service which has proper Mastra integration
       // This service uses the 3-tier agentic system with 14+ agents
-      const result = await submissionMaterialsService.generateSubmissionMaterials({
-        rfpId: params.rfpId,
-        sessionId: params.sessionId,
-        companyProfileId,
-        materialTypes: ['technical_proposal', 'cost_proposal'],
-        generateCompliance: true,
-        autoSubmit: false,
-        ...params.options
-      });
+      const result =
+        await submissionMaterialsService.generateSubmissionMaterials({
+          rfpId: params.rfpId,
+          sessionId: params.sessionId,
+          companyProfileId,
+          materialTypes: ['technical_proposal', 'cost_proposal'],
+          generateCompliance: true,
+          autoSubmit: false,
+          ...params.options,
+        });
 
       if (result.success) {
         console.log(`✅ Mastra proposal generation completed successfully`);
@@ -296,14 +388,15 @@ export class EnhancedProposalService {
         // Update RFP progress to completed
         await storage.updateRFP(params.rfpId, {
           status: 'review',
-          progress: 85
+          progress: 85,
         });
 
         return {
           success: true,
           sessionId: params.sessionId,
-          message: 'Enhanced proposal generated successfully using Mastra agentic system',
-          proposalId: proposal?.id
+          message:
+            'Enhanced proposal generated successfully using Mastra agentic system',
+          proposalId: proposal?.id,
         };
       } else {
         console.error(`❌ Mastra proposal generation failed:`, result.error);
@@ -311,31 +404,30 @@ export class EnhancedProposalService {
         // Update RFP status to indicate failure
         await storage.updateRFP(params.rfpId, {
           status: 'draft',
-          progress: 0
+          progress: 0,
         });
 
         return {
           success: false,
           sessionId: params.sessionId,
           message: 'Enhanced proposal generation failed',
-          error: result.error
+          error: result.error,
         };
       }
-
     } catch (error) {
       console.error(`💥 Error in enhanced proposal generation:`, error);
 
       // Update RFP status to indicate failure
       await storage.updateRFP(params.rfpId, {
         status: 'draft',
-        progress: 0
+        progress: 0,
       });
 
       return {
         success: false,
         sessionId: params.sessionId,
         message: 'Enhanced proposal generation failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -360,33 +452,47 @@ export class EnhancedProposalService {
     // Build context from document analysis
     const analysisContext = {
       formFieldsCount: documentAnalysis.formFields.length,
-      requiresSignature: documentAnalysis.humanOversightItems.some(item => item.type === 'signature'),
-      requiresPayment: documentAnalysis.humanOversightItems.some(item => item.type === 'payment'),
-      hasPricingRequirements: documentAnalysis.formFields.some(field => field.category === 'pricing'),
-      technicalRequirements: documentAnalysis.formFields.filter(field => field.category === 'technical').length,
-      complianceRequirements: documentAnalysis.formFields.filter(field => field.category === 'compliance').length
+      requiresSignature: documentAnalysis.humanOversightItems.some(
+        item => item.type === 'signature'
+      ),
+      requiresPayment: documentAnalysis.humanOversightItems.some(
+        item => item.type === 'payment'
+      ),
+      hasPricingRequirements: documentAnalysis.formFields.some(
+        field => field.category === 'pricing'
+      ),
+      technicalRequirements: documentAnalysis.formFields.filter(
+        field => field.category === 'technical'
+      ).length,
+      complianceRequirements: documentAnalysis.formFields.filter(
+        field => field.category === 'compliance'
+      ).length,
     };
 
     // Generate proposal using existing AI service with enhanced context
     const rfpText = `${rfp.title}\n${rfp.description || ''}\nAgency: ${rfp.agency}`;
-    
+
     try {
-      const aiAnalysis = await this.aiProposalService.analyzeRFPDocument(rfpText);
-      
+      const aiAnalysis =
+        await this.aiProposalService.analyzeRFPDocument(rfpText);
+
       let proposalContent;
       if (companyProfile) {
         // Get additional company data for mapping
-        const certifications = await storage.getCompanyCertifications(companyProfile.id);
+        const certifications = await storage.getCompanyCertifications(
+          companyProfile.id
+        );
         const insurance = await storage.getCompanyInsurance(companyProfile.id);
         const contacts = await storage.getCompanyContacts(companyProfile.id);
-        
-        const companyMapping = await this.aiProposalService.mapCompanyDataToRequirements(
-          aiAnalysis, 
-          companyProfile, 
-          certifications, 
-          insurance, 
-          contacts
-        );
+
+        const companyMapping =
+          await this.aiProposalService.mapCompanyDataToRequirements(
+            aiAnalysis,
+            companyProfile,
+            certifications,
+            insurance,
+            contacts
+          );
         proposalContent = await this.aiProposalService.generateProposalContent(
           aiAnalysis,
           companyMapping,
@@ -411,9 +517,10 @@ export class EnhancedProposalService {
             yearEstablished: 2020,
             numberOfEmployees: 10,
             annualRevenue: 1000000,
-            businessDescription: 'Leading provider of technology and consulting services',
+            businessDescription:
+              'Leading provider of technology and consulting services',
             createdAt: new Date(),
-            updatedAt: new Date()
+            updatedAt: new Date(),
           },
           relevantCertifications: [
             {
@@ -426,8 +533,8 @@ export class EnhancedProposalService {
               expirationDate: new Date('2026-01-01'),
               isActive: true,
               createdAt: new Date(),
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           ],
           applicableInsurance: [
             {
@@ -441,8 +548,8 @@ export class EnhancedProposalService {
               expirationDate: new Date('2025-01-01'),
               isActive: true,
               createdAt: new Date(),
-              updatedAt: new Date()
-            }
+              updatedAt: new Date(),
+            },
           ],
           assignedContacts: [
             {
@@ -458,27 +565,27 @@ export class EnhancedProposalService {
                 emailAddress: 'jane.doe@ibyte.com',
                 isPrimary: true,
                 createdAt: new Date(),
-                updatedAt: new Date()
+                updatedAt: new Date(),
               },
-              reason: 'Primary business contact'
-            }
+              reason: 'Primary business contact',
+            },
           ],
           businessClassifications: {
             naics: ['541511', '541512'],
             nigp: ['925-20', '960-50'],
-            categories: ['Technology Services', 'Consulting']
+            categories: ['Technology Services', 'Consulting'],
           },
           socioEconomicQualifications: {
             smallBusiness: true,
             womanOwned: true,
             minorityOwned: false,
             veteranOwned: false,
-            hubZone: false
-          }
+            hubZone: false,
+          },
         };
         proposalContent = await this.aiProposalService.generateProposalContent(
           aiAnalysis,
-          defaultMapping,
+          defaultMapping as any,
           rfpText
         );
       }
@@ -487,20 +594,22 @@ export class EnhancedProposalService {
         ...proposalContent,
         analysisContext,
         generatedAt: new Date().toISOString(),
-        processingInstructions: documentAnalysis.processingInstructions
+        processingInstructions: documentAnalysis.processingInstructions,
       };
     } catch (error) {
       console.error('Error generating AI narrative content:', error);
-      
+
       // Return basic content if AI fails
       return {
         executiveSummary: `iByte Enterprises LLC is pleased to submit our proposal for ${rfp.title}.`,
-        technicalApproach: 'We will provide comprehensive services as outlined in the RFP requirements.',
+        technicalApproach:
+          'We will provide comprehensive services as outlined in the RFP requirements.',
         timeline: 'Project timeline will be established upon contract award.',
-        qualifications: 'iByte Enterprises LLC is a certified woman-owned business with extensive experience in construction and technology services.',
+        qualifications:
+          'iByte Enterprises LLC is a certified woman-owned business with extensive experience in construction and technology services.',
         analysisContext,
         generatedAt: new Date().toISOString(),
-        processingInstructions: documentAnalysis.processingInstructions
+        processingInstructions: documentAnalysis.processingInstructions,
       };
     }
   }
@@ -518,7 +627,7 @@ export class EnhancedProposalService {
         title: `Human Action Required: ${item.type.replace('_', ' ').toUpperCase()}`,
         message: `${item.description}. Estimated time: ${item.estimatedTime}. Urgency: ${item.urgency.toUpperCase()}`,
         relatedEntityType: 'rfp',
-        relatedEntityId: rfpId
+        relatedEntityId: rfpId,
       });
     }
   }
@@ -535,39 +644,58 @@ export class EnhancedProposalService {
     let readyForSubmission = true;
 
     // Check for unfilled required fields
-    const unfilledRequired = filledForms.filter(field => field.required && !field.value && field.type !== 'signature');
+    const unfilledRequired = filledForms.filter(
+      field => field.required && !field.value && field.type !== 'signature'
+    );
     if (unfilledRequired.length > 0) {
-      nextSteps.push(`Review and complete ${unfilledRequired.length} required form fields`);
+      nextSteps.push(
+        `Review and complete ${unfilledRequired.length} required form fields`
+      );
       readyForSubmission = false;
     }
 
     // Check for human oversight items
-    const highPriorityItems = humanItems.filter(item => item.urgency === 'high');
+    const highPriorityItems = humanItems.filter(
+      item => item.urgency === 'high'
+    );
     if (highPriorityItems.length > 0) {
-      nextSteps.push(`Complete ${highPriorityItems.length} high-priority human action items`);
+      nextSteps.push(
+        `Complete ${highPriorityItems.length} high-priority human action items`
+      );
       readyForSubmission = false;
     }
 
-    const mediumPriorityItems = humanItems.filter(item => item.urgency === 'medium');
+    const mediumPriorityItems = humanItems.filter(
+      item => item.urgency === 'medium'
+    );
     if (mediumPriorityItems.length > 0) {
-      nextSteps.push(`Complete ${mediumPriorityItems.length} medium-priority human action items`);
+      nextSteps.push(
+        `Complete ${mediumPriorityItems.length} medium-priority human action items`
+      );
     }
 
     // Check pricing completeness
-    if (competitiveBidAnalysis && competitiveBidAnalysis.confidenceLevel < 0.7) {
+    if (
+      competitiveBidAnalysis &&
+      competitiveBidAnalysis.confidenceLevel < 0.7
+    ) {
       nextSteps.push('Review and validate competitive pricing analysis');
       readyForSubmission = false;
     }
 
     // Check for signatures needed
-    const signaturesNeeded = humanItems.filter(item => item.type === 'signature').length;
+    const signaturesNeeded = humanItems.filter(
+      item => item.type === 'signature'
+    ).length;
     if (signaturesNeeded > 0) {
       nextSteps.push(`Obtain ${signaturesNeeded} required signature(s)`);
       readyForSubmission = false;
     }
 
     // Check for payments needed
-    const paymentsNeeded = humanItems.filter(item => item.type === 'payment').length;
+    const paymentsNeeded = humanItems.filter(
+      item => item.type === 'payment'
+    ).length;
     if (paymentsNeeded > 0) {
       nextSteps.push(`Process ${paymentsNeeded} required payment(s)`);
       readyForSubmission = false;
@@ -612,7 +740,7 @@ export class EnhancedProposalService {
       isGenerating: rfp.status === 'drafting',
       progress: rfp.progress,
       currentStep,
-      hasProposal
+      hasProposal,
     };
   }
 }

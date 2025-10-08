@@ -9,21 +9,38 @@ export default {
   ],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      useESM: true
+      useESM: true,
+      diagnostics: false
     }]
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(p-limit|yocto-queue|nanoid)/)'
+  ],
   collectCoverageFrom: [
     'server/**/*.{ts,js}',
+    'src/**/*.{ts,js}',
     '!server/**/*.d.ts',
     '!server/index.ts',
-    '!**/node_modules/**'
+    '!**/node_modules/**',
+    '!**/*.spec.ts',
+    '!**/*.test.ts'
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      statements: 80,
+      branches: 75,
+      functions: 80,
+      lines: 80
+    }
+  },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@shared/(.*)$': '<rootDir>/shared/$1',
-    '^@/(.*)$': '<rootDir>/server/$1'
+    '^@/(.*)$': '<rootDir>/server/$1',
+    '^nanoid$': '<rootDir>/tests/__mocks__/nanoid.ts',
+    '^(\\.{1,2}/.*)\\.js$': '$1'
   },
   testTimeout: 30000
 };

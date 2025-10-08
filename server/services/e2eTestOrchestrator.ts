@@ -1,7 +1,7 @@
 /**
  * Phase 11: E2E Test Orchestrator
  * Comprehensive end-to-end validation and testing service for the RFP automation system
- * 
+ *
  * This orchestrator executes full RFP discovery-to-submission workflows to validate:
  * - Complete workflow phase transitions
  * - Data persistence across all entities
@@ -104,61 +104,87 @@ export class E2ETestOrchestrator {
       {
         id: 'complete-rfp-lifecycle',
         name: 'Complete RFP Lifecycle Test',
-        description: 'End-to-end validation of the complete RFP automation workflow from discovery to submission',
-        phases: ['discovery', 'analysis', 'generation', 'submission', 'monitoring'],
+        description:
+          'End-to-end validation of the complete RFP automation workflow from discovery to submission',
+        phases: [
+          'discovery',
+          'analysis',
+          'generation',
+          'submission',
+          'monitoring',
+        ],
         expectedDuration: 30,
         testData: {
           portalUrl: 'https://test-rfp-portal.example.com',
           rfpTitle: 'E2E Test RFP - Software Development Services',
           agency: 'Test Government Agency',
           deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-          estimatedValue: 500000
-        }
+          estimatedValue: 500000,
+        },
       },
       {
         id: '3-tier-agent-coordination',
         name: '3-Tier Agent System Validation',
-        description: 'Validate proper coordination between Orchestrator, Manager, and Specialist agents',
+        description:
+          'Validate proper coordination between Orchestrator, Manager, and Specialist agents',
         phases: ['discovery', 'analysis'],
         expectedDuration: 15,
         testData: {
-          workItemTypes: ['document_parsing', 'compliance_check', 'risk_assessment'],
-          agentCapabilities: ['text_analysis', 'data_extraction', 'validation']
-        }
+          workItemTypes: [
+            'document_parsing',
+            'compliance_check',
+            'risk_assessment',
+          ],
+          agentCapabilities: ['text_analysis', 'data_extraction', 'validation'],
+        },
       },
       {
         id: 'error-recovery-validation',
         name: 'Error Handling & Recovery Test',
-        description: 'Test system resilience with failure scenarios and recovery mechanisms',
+        description:
+          'Test system resilience with failure scenarios and recovery mechanisms',
         phases: ['discovery', 'analysis'],
         expectedDuration: 20,
         testData: {
           simulateFailures: true,
-          failureTypes: ['api_timeout', 'parsing_error', 'agent_unavailable', 'database_error']
-        }
+          failureTypes: [
+            'api_timeout',
+            'parsing_error',
+            'agent_unavailable',
+            'database_error',
+          ],
+        },
       },
       {
         id: 'performance-load-test',
         name: 'Performance & Load Validation',
-        description: 'Test system performance with concurrent workflows and high load',
+        description:
+          'Test system performance with concurrent workflows and high load',
         phases: ['discovery', 'analysis'],
         expectedDuration: 25,
         testData: {
           concurrentWorkflows: 5,
           loadTestDuration: 10, // minutes
-          targetThroughput: 10 // requests per minute
-        }
+          targetThroughput: 10, // requests per minute
+        },
       },
       {
         id: 'integration-validation',
         name: 'External Integration Test',
-        description: 'Validate all external service integrations work correctly',
+        description:
+          'Validate all external service integrations work correctly',
         phases: ['discovery', 'analysis', 'generation', 'submission'],
         expectedDuration: 35,
         testData: {
-          testIntegrations: ['openai', 'stagehand', 'gcs', 'sendgrid', 'mastra']
-        }
-      }
+          testIntegrations: [
+            'openai',
+            'stagehand',
+            'gcs',
+            'sendgrid',
+            'mastra',
+          ],
+        },
+      },
     ];
   }
 
@@ -178,7 +204,7 @@ export class E2ETestOrchestrator {
       phases: scenario.phases.map(phase => ({
         phase,
         status: 'pending',
-        validations: []
+        validations: [],
       })),
       overallResults: {
         totalValidations: 0,
@@ -192,11 +218,11 @@ export class E2ETestOrchestrator {
           throughput: 0,
           errorRate: 0,
           memoryUsage: 0,
-          cpuUsage: 0
+          cpuUsage: 0,
         },
-        dataIntegrityScore: 0
+        dataIntegrityScore: 0,
       },
-      recommendations: []
+      recommendations: [],
     };
 
     this.activeTests.set(testId, testResult);
@@ -206,15 +232,19 @@ export class E2ETestOrchestrator {
       console.error(`E2E Test ${testId} failed:`, error);
       testResult.status = 'failed';
       testResult.endTime = new Date();
-      testResult.duration = testResult.endTime.getTime() - testResult.startTime.getTime();
+      testResult.duration =
+        testResult.endTime.getTime() - testResult.startTime.getTime();
     });
 
     return testId;
   }
 
-  async runTestScenario(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async runTestScenario(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const testResult = this.activeTests.get(testId)!;
-    
+
     try {
       console.log(`🧪 Starting E2E test scenario: ${scenario.name}`);
 
@@ -231,24 +261,29 @@ export class E2ETestOrchestrator {
 
       testResult.status = 'passed';
       testResult.endTime = new Date();
-      testResult.duration = testResult.endTime.getTime() - testResult.startTime.getTime();
+      testResult.duration =
+        testResult.endTime.getTime() - testResult.startTime.getTime();
 
       console.log(`✅ E2E test scenario completed: ${scenario.name}`);
-
     } catch (error) {
       console.error(`❌ E2E test scenario failed: ${scenario.name}`, error);
       testResult.status = 'failed';
       testResult.endTime = new Date();
-      testResult.duration = testResult.endTime.getTime() - testResult.startTime.getTime();
+      testResult.duration =
+        testResult.endTime.getTime() - testResult.startTime.getTime();
     }
   }
 
   // ==================== PHASE-SPECIFIC VALIDATION ====================
 
-  async executePhaseTest(testId: string, phase: string, scenario: E2ETestScenario): Promise<void> {
+  async executePhaseTest(
+    testId: string,
+    phase: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const testResult = this.activeTests.get(testId)!;
     const phaseResult = testResult.phases.find(p => p.phase === phase)!;
-    
+
     phaseResult.status = 'running';
     phaseResult.startTime = new Date();
 
@@ -277,18 +312,24 @@ export class E2ETestOrchestrator {
 
       phaseResult.status = 'passed';
       phaseResult.endTime = new Date();
-      phaseResult.duration = phaseResult.endTime.getTime() - phaseResult.startTime!.getTime();
-
+      phaseResult.duration =
+        phaseResult.endTime.getTime() - phaseResult.startTime!.getTime();
     } catch (error) {
       console.error(`Phase test failed: ${phase}`, error);
       phaseResult.status = 'failed';
       phaseResult.endTime = new Date();
-      phaseResult.duration = phaseResult.endTime.getTime() - phaseResult.startTime!.getTime();
-      phaseResult.errors = [error instanceof Error ? error.message : String(error)];
+      phaseResult.duration =
+        phaseResult.endTime.getTime() - phaseResult.startTime!.getTime();
+      phaseResult.errors = [
+        error instanceof Error ? error.message : String(error),
+      ];
     }
   }
 
-  async testDiscoveryPhase(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async testDiscoveryPhase(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -297,21 +338,26 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `E2E Test Portal ${testId}`,
         url: scenario.testData.portalUrl || 'https://test-portal.example.com',
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
         scanFrequency: 24,
-        status: 'active' as const
+        status: 'active' as const,
       };
 
       const portal = await this.storage.createPortal(portalData);
-      
+
       validations.push({
         name: 'Portal Creation',
         status: portal ? 'passed' : 'failed',
-        message: portal ? 'Portal successfully created' : 'Failed to create portal',
+        message: portal
+          ? 'Portal successfully created'
+          : 'Failed to create portal',
         expectedValue: 'Portal object',
-        actualValue: portal ? 'Created' : 'null'
+        actualValue: portal ? 'Created' : 'null',
       });
 
       // Test 2: RFP Discovery Simulation
@@ -322,23 +368,31 @@ export class E2ETestOrchestrator {
           agency: scenario.testData.agency || 'Test Agency',
           portalId: portal.id,
           sourceUrl: `${scenario.testData.portalUrl}/rfp-${testId}`,
-          deadline: scenario.testData.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          deadline:
+            scenario.testData.deadline ||
+            new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
           estimatedValue: scenario.testData.estimatedValue || 100000,
           status: 'discovered' as const,
-          requirements: ['Software development', 'Cloud hosting', 'Security compliance'],
+          requirements: [
+            'Software development',
+            'Cloud hosting',
+            'Security compliance',
+          ],
           complianceItems: ['FISMA', 'Section 508'],
           riskFlags: [],
-          progress: 10
+          progress: 10,
         };
 
         const rfp = await this.storage.createRFP(rfpData);
-        
+
         validations.push({
           name: 'RFP Discovery',
           status: rfp ? 'passed' : 'failed',
-          message: rfp ? 'RFP successfully discovered and stored' : 'Failed to create RFP',
+          message: rfp
+            ? 'RFP successfully discovered and stored'
+            : 'Failed to create RFP',
           expectedValue: 'RFP object',
-          actualValue: rfp ? 'Created' : 'null'
+          actualValue: rfp ? 'Created' : 'null',
         });
 
         // Test 3: Workflow State Creation
@@ -348,38 +402,46 @@ export class E2ETestOrchestrator {
             currentPhase: 'discovery' as const,
             status: 'in_progress' as const,
             metadata: { testId, phase: 'discovery' },
-            phaseHistory: [{
-              phase: 'discovery',
-              status: 'in_progress',
-              timestamp: new Date(),
-              duration: 0
-            }]
+            phaseHistory: [
+              {
+                phase: 'discovery',
+                status: 'in_progress',
+                timestamp: new Date(),
+                duration: 0,
+              },
+            ],
           };
 
-          const workflowState = await this.storage.createWorkflowState(workflowStateData);
-          
+          const workflowState =
+            await this.storage.createWorkflowState(workflowStateData);
+
           validations.push({
             name: 'Workflow State Initialization',
             status: workflowState ? 'passed' : 'failed',
-            message: workflowState ? 'Workflow state successfully initialized' : 'Failed to create workflow state',
+            message: workflowState
+              ? 'Workflow state successfully initialized'
+              : 'Failed to create workflow state',
             expectedValue: 'WorkflowState object',
-            actualValue: workflowState ? 'Created' : 'null'
+            actualValue: workflowState ? 'Created' : 'null',
           });
         }
       }
-
     } catch (error) {
       validations.push({
         name: 'Discovery Phase Execution',
         status: 'failed',
         message: `Discovery phase failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful completion',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
     }
 
     // Test 4: Data Persistence Validation
-    const persistenceValidation = await this.validateDataPersistence(['portals', 'rfps', 'workflow_states']);
+    const persistenceValidation = await this.validateDataPersistence([
+      'portals',
+      'rfps',
+      'workflow_states',
+    ]);
     validations.push(persistenceValidation);
 
     // Test 5: Agent Coordination Check
@@ -395,7 +457,10 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testAnalysisPhase(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async testAnalysisPhase(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -411,7 +476,8 @@ export class E2ETestOrchestrator {
           filename: `${testId}-test-document.pdf`,
           fileType: 'application/pdf',
           objectPath: `/test-docs/${testId}-test-document.pdf`,
-          extractedText: 'This is test extracted text from the RFP document for E2E validation.',
+          extractedText:
+            'This is test extracted text from the RFP document for E2E validation.',
           parsedData: {
             sections: ['introduction', 'requirements', 'terms'],
             requirements: ['Software development', 'Cloud hosting'],
@@ -420,19 +486,21 @@ export class E2ETestOrchestrator {
               compliance_score: 0.85,
               risk_level: 'medium',
               complexity: 'moderate',
-              estimated_effort: '6 months'
-            }
-          }
+              estimated_effort: '6 months',
+            },
+          },
         };
 
         const document = await this.storage.createDocument(documentData);
-        
+
         validations.push({
           name: 'Document Analysis',
           status: document ? 'passed' : 'failed',
-          message: document ? 'Document successfully analyzed and stored' : 'Failed to analyze document',
+          message: document
+            ? 'Document successfully analyzed and stored'
+            : 'Failed to analyze document',
           expectedValue: 'Document object with analysis',
-          actualValue: document ? 'Created with analysis' : 'null'
+          actualValue: document ? 'Created with analysis' : 'null',
         });
 
         // Test 2: RFP Status Update
@@ -442,15 +510,20 @@ export class E2ETestOrchestrator {
             progress: 30,
             requirements: documentData.parsedData.requirements,
             complianceItems: ['FISMA', 'Section 508', 'NIST'],
-            riskFlags: documentData.analysisResults.risk_level === 'high' ? ['high_risk'] : []
+            riskFlags:
+              documentData.parsedData.analysisResults.risk_level === 'high'
+                ? ['high_risk']
+                : [],
           });
 
           validations.push({
             name: 'RFP Status Update',
             status: updatedRFP ? 'passed' : 'failed',
-            message: updatedRFP ? 'RFP status successfully updated' : 'Failed to update RFP',
+            message: updatedRFP
+              ? 'RFP status successfully updated'
+              : 'Failed to update RFP',
             expectedValue: 'analyzing status',
-            actualValue: updatedRFP?.status || 'unknown'
+            actualValue: updatedRFP?.status || 'unknown',
           });
         }
       } else {
@@ -459,17 +532,16 @@ export class E2ETestOrchestrator {
           status: 'failed',
           message: 'Could not find test RFP for analysis phase',
           expectedValue: 'RFP object',
-          actualValue: 'null'
+          actualValue: 'null',
         });
       }
-
     } catch (error) {
       validations.push({
         name: 'Analysis Phase Execution',
         status: 'failed',
         message: `Analysis phase failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful completion',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
     }
 
@@ -489,7 +561,10 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testGenerationPhase(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async testGenerationPhase(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -503,13 +578,18 @@ export class E2ETestOrchestrator {
         const proposalData = {
           rfpId: testRFP.id,
           title: `Proposal for ${testRFP.title}`,
-          executiveSummary: 'This is a test executive summary for E2E validation.',
-          technicalApproach: 'Our technical approach involves modern software development practices.',
+          executiveSummary:
+            'This is a test executive summary for E2E validation.',
+          technicalApproach:
+            'Our technical approach involves modern software development practices.',
           timeline: '6 months development timeline with iterative delivery.',
           budget: testRFP.estimatedValue || 500000,
-          teamComposition: 'Senior developers, project manager, QA specialists.',
-          riskMitigation: 'Comprehensive risk mitigation strategies implemented.',
-          complianceStatement: 'Full compliance with all specified requirements.',
+          teamComposition:
+            'Senior developers, project manager, QA specialists.',
+          riskMitigation:
+            'Comprehensive risk mitigation strategies implemented.',
+          complianceStatement:
+            'Full compliance with all specified requirements.',
           status: 'draft' as const,
           content: {
             generatedSections: {
@@ -519,32 +599,34 @@ export class E2ETestOrchestrator {
               budget_breakdown: true,
               team_qualifications: true,
               risk_management: true,
-              compliance_matrix: true
+              compliance_matrix: true,
             },
-            qualityScore: 0.87
-          }
+            qualityScore: 0.87,
+          },
         };
 
         const proposal = await this.storage.createProposal(proposalData);
-        
+
         validations.push({
           name: 'Proposal Generation',
           status: proposal ? 'passed' : 'failed',
-          message: proposal ? 'Proposal successfully generated' : 'Failed to generate proposal',
+          message: proposal
+            ? 'Proposal successfully generated'
+            : 'Failed to generate proposal',
           expectedValue: 'Proposal object',
           actualValue: proposal ? 'Created' : 'null',
-          duration: Date.now() - startTime
+          duration: Date.now() - startTime,
         });
 
         // Test 2: Quality Assessment
-        const qualityScore = proposal?.content?.qualityScore || 0;
+        const qualityScore = (proposal?.content as any)?.qualityScore || 0;
         if (proposal && qualityScore >= 0.8) {
           validations.push({
             name: 'Proposal Quality Assessment',
             status: 'passed',
             message: `Proposal quality score: ${qualityScore}`,
             expectedValue: '≥ 0.8',
-            actualValue: qualityScore
+            actualValue: qualityScore,
           });
         } else {
           validations.push({
@@ -552,14 +634,14 @@ export class E2ETestOrchestrator {
             status: 'failed',
             message: 'Proposal quality below acceptable threshold',
             expectedValue: '≥ 0.8',
-            actualValue: qualityScore
+            actualValue: qualityScore,
           });
         }
 
         // Test 3: RFP Status Update to Generation Phase
         const updatedRFP = await this.storage.updateRFP(testRFP.id, {
           status: 'generating',
-          progress: 70
+          progress: 70,
         });
 
         validations.push({
@@ -567,26 +649,24 @@ export class E2ETestOrchestrator {
           status: updatedRFP?.status === 'generating' ? 'passed' : 'failed',
           message: `RFP status: ${updatedRFP?.status}`,
           expectedValue: 'generating',
-          actualValue: updatedRFP?.status || 'unknown'
+          actualValue: updatedRFP?.status || 'unknown',
         });
-
       } else {
         validations.push({
           name: 'Test RFP Retrieval for Generation',
           status: 'failed',
           message: 'Could not find test RFP for generation phase',
           expectedValue: 'RFP object',
-          actualValue: 'null'
+          actualValue: 'null',
         });
       }
-
     } catch (error) {
       validations.push({
         name: 'Generation Phase Execution',
         status: 'failed',
         message: `Generation phase failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful completion',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
     }
 
@@ -598,7 +678,10 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testSubmissionPhase(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async testSubmissionPhase(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -624,26 +707,29 @@ export class E2ETestOrchestrator {
               metadata: {
                 testId,
                 portalId: testRFP.portalId,
-                submissionType: 'e2e_test'
-              }
+                submissionType: 'e2e_test',
+              },
             },
-            submittedAt: new Date()
+            submittedAt: new Date(),
           };
 
-          const submission = await this.storage.createSubmission(submissionData);
-          
+          const submission =
+            await this.storage.createSubmission(submissionData);
+
           validations.push({
             name: 'Submission Creation',
             status: submission ? 'passed' : 'failed',
-            message: submission ? 'Submission successfully created' : 'Failed to create submission',
+            message: submission
+              ? 'Submission successfully created'
+              : 'Failed to create submission',
             expectedValue: 'Submission object',
-            actualValue: submission ? 'Created' : 'null'
+            actualValue: submission ? 'Created' : 'null',
           });
 
           // Test 2: Final RFP Status Update
           const updatedRFP = await this.storage.updateRFP(testRFP.id, {
             status: 'submitted',
-            progress: 100
+            progress: 100,
           });
 
           validations.push({
@@ -651,35 +737,37 @@ export class E2ETestOrchestrator {
             status: updatedRFP?.status === 'submitted' ? 'passed' : 'failed',
             message: `Final RFP status: ${updatedRFP?.status}`,
             expectedValue: 'submitted',
-            actualValue: updatedRFP?.status || 'unknown'
+            actualValue: updatedRFP?.status || 'unknown',
           });
 
           // Test 3: Workflow Completion
-          const workflowState = await this.storage.updateWorkflowState(`rfp-workflow-${testRFP.id}`, {
-            currentPhase: 'completed',
-            status: 'completed',
-            metadata: { 
-              testId, 
-              completedAt: new Date(),
-              totalDuration: Date.now() - startTime 
+          const workflowState = await this.storage.updateWorkflowState(
+            `rfp-workflow-${testRFP.id}`,
+            {
+              currentPhase: 'completed',
+              status: 'completed',
+              metadata: {
+                testId,
+                completedAt: new Date(),
+                totalDuration: Date.now() - startTime,
+              },
             }
-          });
+          );
 
           validations.push({
             name: 'Workflow Completion',
             status: workflowState?.status === 'completed' ? 'passed' : 'failed',
             message: 'Workflow marked as completed',
             expectedValue: 'completed',
-            actualValue: workflowState?.status || 'unknown'
+            actualValue: workflowState?.status || 'unknown',
           });
-
         } else {
           validations.push({
             name: 'Proposal Retrieval for Submission',
             status: 'failed',
             message: 'Could not find proposal for submission phase',
             expectedValue: 'Proposal object',
-            actualValue: 'null'
+            actualValue: 'null',
           });
         }
       } else {
@@ -688,17 +776,16 @@ export class E2ETestOrchestrator {
           status: 'failed',
           message: 'Could not find test RFP for submission phase',
           expectedValue: 'RFP object',
-          actualValue: 'null'
+          actualValue: 'null',
         });
       }
-
     } catch (error) {
       validations.push({
         name: 'Submission Phase Execution',
         status: 'failed',
         message: `Submission phase failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful completion',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
     }
 
@@ -710,7 +797,10 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testMonitoringPhase(testId: string, scenario: E2ETestScenario): Promise<void> {
+  async testMonitoringPhase(
+    testId: string,
+    scenario: E2ETestScenario
+  ): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -718,44 +808,49 @@ export class E2ETestOrchestrator {
       // Test 1: Monitoring Data Availability
       // Note: getWorkflowStatesOverview doesn't exist, using getActiveWorkflows instead
       const workflowStates = await this.storage.getActiveWorkflows();
-      
+
       validations.push({
         name: 'Monitoring Data Availability',
-        status: workflowStates && workflowStates.length >= 0 ? 'passed' : 'failed',
-        message: workflowStates ? `Found ${workflowStates.length} active workflows` : 'Failed to retrieve monitoring data',
+        status:
+          workflowStates && workflowStates.length >= 0 ? 'passed' : 'failed',
+        message: workflowStates
+          ? `Found ${workflowStates.length} active workflows`
+          : 'Failed to retrieve monitoring data',
         expectedValue: 'Monitoring data',
-        actualValue: workflowStates ? `${workflowStates.length} workflows` : 'null'
+        actualValue: workflowStates
+          ? `${workflowStates.length} workflows`
+          : 'null',
       });
 
       // Test 2: System Health Check
       const systemHealth = await this.performSystemHealthCheck();
-      
+
       validations.push({
         name: 'System Health Check',
         status: systemHealth.overall === 'healthy' ? 'passed' : 'failed',
         message: `System health: ${systemHealth.overall}`,
         expectedValue: 'healthy',
-        actualValue: systemHealth.overall
+        actualValue: systemHealth.overall,
       });
 
       // Test 3: Agent Performance Monitoring
       const agentPerformance = await this.validateAgentPerformance();
-      
+
       validations.push({
         name: 'Agent Performance Monitoring',
-        status: agentPerformance.averageResponseTime < 5000 ? 'passed' : 'failed',
+        status:
+          agentPerformance.averageResponseTime < 5000 ? 'passed' : 'failed',
         message: `Agent response time: ${agentPerformance.averageResponseTime}ms`,
         expectedValue: '< 5000ms',
-        actualValue: `${agentPerformance.averageResponseTime}ms`
+        actualValue: `${agentPerformance.averageResponseTime}ms`,
       });
-
     } catch (error) {
       validations.push({
         name: 'Monitoring Phase Execution',
         status: 'failed',
         message: `Monitoring phase failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful completion',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
     }
 
@@ -772,68 +867,89 @@ export class E2ETestOrchestrator {
   async validateDataPersistence(entities: string[]): Promise<PhaseValidation> {
     try {
       const results: any[] = [];
-      
+
       for (const entity of entities) {
         switch (entity) {
-          case 'portals':
+          case 'portals': {
             const portals = await this.storage.getAllPortals();
-            results.push({ entity, count: portals.length, sample: portals.slice(0, 3) });
+            results.push({
+              entity,
+              count: portals.length,
+              sample: portals.slice(0, 3),
+            });
             break;
-          case 'rfps':
+          }
+          case 'rfps': {
             const rfps = await this.storage.getAllRFPs({ limit: 100 });
-            results.push({ entity, count: rfps.rfps.length, sample: rfps.rfps.slice(0, 3) });
+            results.push({
+              entity,
+              count: rfps.rfps.length,
+              sample: rfps.rfps.slice(0, 3),
+            });
             break;
-          case 'documents':
+          }
+          case 'documents': {
             // Test document persistence by checking if we can create and retrieve documents
             const sampleRFPs = await this.storage.getAllRFPs({ limit: 5 });
             if (sampleRFPs.rfps.length > 0) {
-              const documentCount = await this.countDocumentsByRFPs(sampleRFPs.rfps.map(r => r.id));
+              const documentCount = await this.countDocumentsByRFPs(
+                sampleRFPs.rfps.map(r => r.id)
+              );
               results.push({ entity, count: documentCount });
             } else {
               results.push({ entity, count: 0 });
             }
             break;
-          case 'proposals':
+          }
+          case 'proposals': {
             const proposalCount = await this.countProposalsByRFPs();
             results.push({ entity, count: proposalCount });
             break;
-          case 'submissions':
+          }
+          case 'submissions': {
             const submissionCount = await this.countSubmissionsByRFPs();
             results.push({ entity, count: submissionCount });
             break;
-          case 'work_items':
+          }
+          case 'work_items': {
             const workItemCount = await this.countWorkItems();
             results.push({ entity, count: workItemCount });
             break;
-          case 'agents':
+          }
+          case 'agents': {
             const agents = await this.agentRegistry.getActiveAgents();
-            results.push({ entity, count: agents.length, sample: agents.slice(0, 3) });
+            results.push({
+              entity,
+              count: agents.length,
+              sample: agents.slice(0, 3),
+            });
             break;
-          case 'workflow_states':
+          }
+          case 'workflow_states': {
             // Note: getWorkflowStatesOverview doesn't exist, using getActiveWorkflows instead
             const workflowStates = await this.storage.getActiveWorkflows();
             results.push({ entity, count: workflowStates.length });
             break;
+          }
         }
       }
 
       const allPersisted = results.every(r => r.count >= 0);
-      
+
       return {
         name: 'Data Persistence Validation',
         status: allPersisted ? 'passed' : 'failed',
         message: `Data persistence check: ${results.map(r => `${r.entity}: ${r.count}`).join(', ')}`,
         expectedValue: 'All entities persisted',
-        actualValue: results
+        actualValue: results,
       };
-
     } catch (error) {
       return {
         name: 'Data Persistence Validation',
         status: 'failed',
         message: `Data persistence validation failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful validation',
-        actualValue: 'Error'
+        actualValue: 'Error',
       };
     }
   }
@@ -893,8 +1009,12 @@ export class E2ETestOrchestrator {
       }
 
       // Calculate overall data integrity score
-      const passedValidations = validations.filter(v => v.status === 'passed').length;
-      const dataIntegrityScore = Math.round((passedValidations / validations.length) * 100);
+      const passedValidations = validations.filter(
+        v => v.status === 'passed'
+      ).length;
+      const dataIntegrityScore = Math.round(
+        (passedValidations / validations.length) * 100
+      );
 
       const overallStatus = issues.length === 0 ? 'passed' : 'failed';
 
@@ -902,23 +1022,22 @@ export class E2ETestOrchestrator {
         overallStatus,
         validations,
         dataIntegrityScore,
-        issues
+        issues,
       };
-
     } catch (error) {
       validations.push({
         name: 'Comprehensive Data Validation',
         status: 'failed',
         message: `Data validation failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful validation',
-        actualValue: 'Error'
+        actualValue: 'Error',
       });
 
       return {
         overallStatus: 'failed',
         validations,
         dataIntegrityScore: 0,
-        issues: ['Critical validation error']
+        issues: ['Critical validation error'],
       };
     }
   }
@@ -932,11 +1051,14 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `Test Portal CRUD ${testId}`,
         url: `https://test-crud-${testId}.example.com`,
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
         scanFrequency: 24,
-        status: 'active' as const
+        status: 'active' as const,
       };
 
       // Create
@@ -949,7 +1071,7 @@ export class E2ETestOrchestrator {
 
       // Update
       const updatedPortal = await this.storage.updatePortal(createdPortal.id, {
-        name: `Updated Portal ${testId}`
+        name: `Updated Portal ${testId}`,
       });
       if (!updatedPortal) throw new Error('Portal update failed');
 
@@ -961,12 +1083,12 @@ export class E2ETestOrchestrator {
         portalId: createdPortal.id,
         sourceUrl: `https://test-rfp-${testId}.example.com`,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        estimatedValue: 100000,
+        estimatedValue: '100000',
         status: 'discovered' as const,
         requirements: ['Test requirement'],
         complianceItems: ['Test compliance'],
         riskFlags: [],
-        progress: 10
+        progress: 10,
       };
 
       // Create RFP
@@ -980,7 +1102,7 @@ export class E2ETestOrchestrator {
       // Update RFP
       const updatedRFP = await this.storage.updateRFP(createdRFP.id, {
         status: 'analyzing',
-        progress: 30
+        progress: 30,
       });
       if (!updatedRFP) throw new Error('RFP update failed');
 
@@ -996,9 +1118,8 @@ export class E2ETestOrchestrator {
         message: 'All CRUD operations successful',
         expectedValue: 'Create, Read, Update operations work',
         actualValue: 'All operations successful',
-        duration
+        duration,
       };
-
     } catch (error) {
       return {
         name: 'Basic CRUD Operations Test',
@@ -1006,7 +1127,7 @@ export class E2ETestOrchestrator {
         message: `CRUD test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'All CRUD operations successful',
         actualValue: 'Failed',
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -1020,9 +1141,13 @@ export class E2ETestOrchestrator {
       const portals = await this.storage.getAllPortals();
       const portalIds = new Set(portals.map(p => p.id));
 
-      const orphanedRFPs = rfps.rfps.filter(rfp => rfp.portalId && !portalIds.has(rfp.portalId));
+      const orphanedRFPs = rfps.rfps.filter(
+        rfp => rfp.portalId && !portalIds.has(rfp.portalId)
+      );
       if (orphanedRFPs.length > 0) {
-        issues.push(`${orphanedRFPs.length} RFPs have invalid portal references`);
+        issues.push(
+          `${orphanedRFPs.length} RFPs have invalid portal references`
+        );
       }
 
       // Check if all documents have valid RFP references
@@ -1049,39 +1174,46 @@ export class E2ETestOrchestrator {
       return {
         name: 'Referential Integrity Test',
         status: issues.length === 0 ? 'passed' : 'failed',
-        message: issues.length === 0 ? 'All references valid' : `Found ${issues.length} integrity issues`,
+        message:
+          issues.length === 0
+            ? 'All references valid'
+            : `Found ${issues.length} integrity issues`,
         expectedValue: 'No referential integrity violations',
-        actualValue: issues.length === 0 ? 'No violations found' : issues.join('; ')
+        actualValue:
+          issues.length === 0 ? 'No violations found' : issues.join('; '),
       };
-
     } catch (error) {
       return {
         name: 'Referential Integrity Test',
         status: 'failed',
         message: `Integrity test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'No referential integrity violations',
-        actualValue: 'Test error'
+        actualValue: 'Test error',
       };
     }
   }
 
   async testTransactionConsistency(): Promise<PhaseValidation> {
     const testId = nanoid();
-    
+
     try {
       // Test atomic operations that should all succeed or all fail together
       const portalData = {
         name: `Transaction Test Portal ${testId}`,
         url: `https://transaction-test-${testId}.example.com`,
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
         loginRequired: true,
         username: 'test',
         password: 'test',
         scanFrequency: 24,
-        status: 'active' as const
+        status: 'active' as const,
       };
 
       const portal = await this.storage.createPortal(portalData);
-      if (!portal) throw new Error('Portal creation failed in transaction test');
+      if (!portal)
+        throw new Error('Portal creation failed in transaction test');
 
       // Create multiple related entities that should be consistent
       const rfpData = {
@@ -1091,12 +1223,12 @@ export class E2ETestOrchestrator {
         portalId: portal.id,
         sourceUrl: `https://transaction-rfp-${testId}.example.com`,
         deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        estimatedValue: 100000,
+        estimatedValue: '100000',
         status: 'discovered' as const,
         requirements: ['Transaction test'],
         complianceItems: ['Test compliance'],
         riskFlags: [],
-        progress: 10
+        progress: 10,
       };
 
       const rfp = await this.storage.createRFP(rfpData);
@@ -1108,25 +1240,34 @@ export class E2ETestOrchestrator {
         currentPhase: 'discovery' as const,
         status: 'in_progress' as const,
         metadata: { testId, transactionTest: true },
-        phaseHistory: [{
-          phase: 'discovery',
-          status: 'in_progress',
-          timestamp: new Date(),
-          duration: 0
-        }]
+        phaseHistory: [
+          {
+            phase: 'discovery',
+            status: 'in_progress',
+            timestamp: new Date(),
+            duration: 0,
+          },
+        ],
       };
 
-      const workflowState = await this.storage.createWorkflowState(workflowStateData);
-      if (!workflowState) throw new Error('Workflow state creation failed in transaction test');
+      const workflowState =
+        await this.storage.createWorkflowState(workflowStateData);
+      if (!workflowState)
+        throw new Error('Workflow state creation failed in transaction test');
 
       // Verify all entities exist and are consistent
       const retrievedPortal = await this.storage.getPortal(portal.id);
       const retrievedRFP = await this.storage.getRFP(rfp.id);
-      const retrievedWorkflowState = await this.storage.getWorkflowStateByWorkflowId(workflowStateData.workflowId);
+      const retrievedWorkflowState =
+        await this.storage.getWorkflowStateByWorkflowId(
+          workflowStateData.workflowId
+        );
 
-      const allConsistent = retrievedPortal && retrievedRFP && 
-                          retrievedRFP.portalId === portal.id &&
-                          retrievedWorkflowState?.workflowId === workflowStateData.workflowId;
+      const allConsistent =
+        retrievedPortal &&
+        retrievedRFP &&
+        retrievedRFP.portalId === portal.id &&
+        retrievedWorkflowState?.workflowId === workflowStateData.workflowId;
 
       // Clean up - using available methods only
       // Note: deleteWorkflowState, deleteRFP, deletePortal methods don't exist in storage interface
@@ -1135,18 +1276,19 @@ export class E2ETestOrchestrator {
       return {
         name: 'Transaction Consistency Test',
         status: allConsistent ? 'passed' : 'failed',
-        message: allConsistent ? 'Transaction consistency maintained' : 'Transaction consistency issues detected',
+        message: allConsistent
+          ? 'Transaction consistency maintained'
+          : 'Transaction consistency issues detected',
         expectedValue: 'All related entities consistent',
-        actualValue: allConsistent ? 'Consistent' : 'Inconsistent'
+        actualValue: allConsistent ? 'Consistent' : 'Inconsistent',
       };
-
     } catch (error) {
       return {
         name: 'Transaction Consistency Test',
         status: 'failed',
         message: `Transaction test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Transaction consistency maintained',
-        actualValue: 'Failed'
+        actualValue: 'Failed',
       };
     }
   }
@@ -1173,18 +1315,20 @@ export class E2ETestOrchestrator {
       return {
         name: 'Schema Consistency Test',
         status: issues.length === 0 ? 'passed' : 'failed',
-        message: issues.length === 0 ? 'Schema consistency validated' : `Found ${issues.length} schema issues`,
+        message:
+          issues.length === 0
+            ? 'Schema consistency validated'
+            : `Found ${issues.length} schema issues`,
         expectedValue: 'All entities have required fields',
-        actualValue: issues.length === 0 ? 'All valid' : issues.join('; ')
+        actualValue: issues.length === 0 ? 'All valid' : issues.join('; '),
       };
-
     } catch (error) {
       return {
         name: 'Schema Consistency Test',
         status: 'failed',
         message: `Schema test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Schema consistency validated',
-        actualValue: 'Failed'
+        actualValue: 'Failed',
       };
     }
   }
@@ -1198,10 +1342,14 @@ export class E2ETestOrchestrator {
       const portalData = {
         name: `Concurrent Test Portal ${testId}`,
         url: `https://concurrent-test-${testId}.example.com`,
-        type: 'government' as const,
-        credentials: { username: 'test', password: 'test' },
-        scanFrequency: 'daily' as const,
-        isActive: true
+        type: 'test',
+        isActive: true,
+        monitoringEnabled: true,
+        loginRequired: true,
+        username: 'test',
+        password: 'test',
+        scanFrequency: 24,
+        status: 'active' as const,
       };
 
       // Create multiple concurrent operations
@@ -1226,12 +1374,13 @@ export class E2ETestOrchestrator {
       return {
         name: 'Concurrent Data Access Test',
         status: allSuccessful ? 'passed' : 'failed',
-        message: allSuccessful ? 'Concurrent operations successful' : 'Some concurrent operations failed',
+        message: allSuccessful
+          ? 'Concurrent operations successful'
+          : 'Some concurrent operations failed',
         expectedValue: 'All concurrent operations successful',
         actualValue: `${results.filter(r => r).length}/${results.length} successful`,
-        duration
+        duration,
       };
-
     } catch (error) {
       return {
         name: 'Concurrent Data Access Test',
@@ -1239,7 +1388,7 @@ export class E2ETestOrchestrator {
         message: `Concurrent test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Concurrent operations successful',
         actualValue: 'Failed',
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -1250,7 +1399,7 @@ export class E2ETestOrchestrator {
     try {
       // Test query performance
       const queryStartTime = Date.now();
-      
+
       // Multiple concurrent queries
       const queryPromises = [
         this.storage.getAllRFPs({ limit: 50 }),
@@ -1263,7 +1412,7 @@ export class E2ETestOrchestrator {
 
       // Performance thresholds (in milliseconds)
       const QUERY_THRESHOLD = 5000; // 5 seconds
-      
+
       const performanceAcceptable = queryDuration < QUERY_THRESHOLD;
 
       return {
@@ -1272,9 +1421,8 @@ export class E2ETestOrchestrator {
         message: `Query performance: ${queryDuration}ms`,
         expectedValue: `< ${QUERY_THRESHOLD}ms`,
         actualValue: `${queryDuration}ms`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
-
     } catch (error) {
       return {
         name: 'Data Performance Test',
@@ -1282,7 +1430,7 @@ export class E2ETestOrchestrator {
         message: `Performance test failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Acceptable performance',
         actualValue: 'Failed',
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -1340,16 +1488,18 @@ export class E2ETestOrchestrator {
       // you'd have a more direct way to count work items
       const rfps = await this.storage.getAllRFPs({ limit: 10 });
       let totalCount = 0;
-      
+
       for (const rfp of rfps.rfps) {
         try {
-          const workItems = await this.storage.getWorkItemsByWorkflow(`rfp-workflow-${rfp.id}`);
+          const workItems = await this.storage.getWorkItemsByWorkflow(
+            `rfp-workflow-${rfp.id}`
+          );
           totalCount += workItems.length;
         } catch (error) {
           // Work items retrieval failed, count as 0
         }
       }
-      
+
       return totalCount;
     } catch (error) {
       return 0;
@@ -1365,22 +1515,21 @@ export class E2ETestOrchestrator {
       const hasSpecialists = agents.some(a => a.tier === 'specialist');
 
       const coordination = hasOrchestrator && hasManagers && hasSpecialists;
-      
+
       return {
         name: 'Agent Coordination Check',
         status: coordination ? 'passed' : 'failed',
         message: `Agent tiers active: Orchestrator(${hasOrchestrator}), Manager(${hasManagers}), Specialist(${hasSpecialists})`,
         expectedValue: 'All tiers active',
-        actualValue: { hasOrchestrator, hasManagers, hasSpecialists }
+        actualValue: { hasOrchestrator, hasManagers, hasSpecialists },
       };
-
     } catch (error) {
       return {
         name: 'Agent Coordination Check',
         status: 'failed',
         message: `Agent coordination validation failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful validation',
-        actualValue: 'Error'
+        actualValue: 'Error',
       };
     }
   }
@@ -1388,26 +1537,30 @@ export class E2ETestOrchestrator {
   async validateWorkItemDistribution(testId: string): Promise<PhaseValidation> {
     try {
       // Get work items for the test workflow
-      const workItems = await this.storage.getWorkItemsByWorkflow(`rfp-workflow-${testId}`);
-      
+      const workItems = await this.storage.getWorkItemsByWorkflow(
+        `rfp-workflow-${testId}`
+      );
+
       const hasWorkItems = workItems.length > 0;
       const hasAssignedItems = workItems.some(item => item.assignedAgentId);
-      
+
       return {
         name: 'Work Item Distribution',
         status: hasWorkItems && hasAssignedItems ? 'passed' : 'failed',
         message: `Work items: ${workItems.length}, Assigned: ${workItems.filter(i => i.assignedAgentId).length}`,
         expectedValue: 'Work items distributed to agents',
-        actualValue: { totalItems: workItems.length, assignedItems: workItems.filter(i => i.assignedAgentId).length }
+        actualValue: {
+          totalItems: workItems.length,
+          assignedItems: workItems.filter(i => i.assignedAgentId).length,
+        },
       };
-
     } catch (error) {
       return {
         name: 'Work Item Distribution',
         status: 'failed',
         message: `Work item validation failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful validation',
-        actualValue: 'Error'
+        actualValue: 'Error',
       };
     }
   }
@@ -1416,38 +1569,43 @@ export class E2ETestOrchestrator {
     try {
       // Validate the complete 3-tier agent system
       const agents = await this.agentRegistry.getActiveAgents();
-      
+
       // Check tier distribution
       const orchestrators = agents.filter(a => a.tier === 'orchestrator');
       const managers = agents.filter(a => a.tier === 'manager');
       const specialists = agents.filter(a => a.tier === 'specialist');
-      
+
       // Check capability mapping
-      const hasCapabilityMapping = agents.every(a => a.capabilities && a.capabilities.length > 0);
-      
+      const hasCapabilityMapping = agents.every(
+        a => a.capabilities && a.capabilities.length > 0
+      );
+
       // Check active coordination
-      const hasActiveCoordination = orchestrators.length >= 1 && managers.length >= 1 && specialists.length >= 1;
-      
+      const hasActiveCoordination =
+        orchestrators.length >= 1 &&
+        managers.length >= 1 &&
+        specialists.length >= 1;
+
       return {
         name: '3-Tier Agent System Validation',
-        status: hasActiveCoordination && hasCapabilityMapping ? 'passed' : 'failed',
+        status:
+          hasActiveCoordination && hasCapabilityMapping ? 'passed' : 'failed',
         message: `Agent distribution - O:${orchestrators.length}, M:${managers.length}, S:${specialists.length}`,
         expectedValue: 'Active 3-tier system with capability mapping',
         actualValue: {
           orchestrators: orchestrators.length,
           managers: managers.length,
           specialists: specialists.length,
-          hasCapabilityMapping
-        }
+          hasCapabilityMapping,
+        },
       };
-
     } catch (error) {
       return {
         name: '3-Tier Agent System Validation',
         status: 'failed',
         message: `3-tier validation failed: ${error instanceof Error ? error.message : String(error)}`,
         expectedValue: 'Successful validation',
-        actualValue: 'Error'
+        actualValue: 'Error',
       };
     }
   }
@@ -1465,30 +1623,35 @@ export class E2ETestOrchestrator {
       // Check workflow coordinator
       const workflowHealthy = this.workflowCoordinator !== null;
 
-      const overall = dbHealthy && agentsHealthy && workflowHealthy ? 'healthy' : 'unhealthy';
+      const overall =
+        dbHealthy && agentsHealthy && workflowHealthy ? 'healthy' : 'unhealthy';
 
       return {
         overall,
         details: {
           database: dbHealthy ? 'healthy' : 'unhealthy',
           agents: agentsHealthy ? 'healthy' : 'unhealthy',
-          workflow: workflowHealthy ? 'healthy' : 'unhealthy'
-        }
+          workflow: workflowHealthy ? 'healthy' : 'unhealthy',
+        },
       };
-
     } catch (error) {
       return {
         overall: 'unhealthy',
-        details: { error: error instanceof Error ? error.message : String(error) }
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
       };
     }
   }
 
-  async validateAgentPerformance(): Promise<{ averageResponseTime: number; throughput: number }> {
+  async validateAgentPerformance(): Promise<{
+    averageResponseTime: number;
+    throughput: number;
+  }> {
     // Simulate agent performance validation
     return {
       averageResponseTime: Math.random() * 3000 + 1000, // 1-4 seconds
-      throughput: Math.random() * 10 + 5 // 5-15 requests per minute
+      throughput: Math.random() * 10 + 5, // 5-15 requests per minute
     };
   }
 
@@ -1496,7 +1659,7 @@ export class E2ETestOrchestrator {
 
   async calculateOverallResults(testId: string): Promise<void> {
     const testResult = this.activeTests.get(testId)!;
-    
+
     let totalValidations = 0;
     let passedValidations = 0;
     let failedValidations = 0;
@@ -1517,11 +1680,14 @@ export class E2ETestOrchestrator {
     testResult.overallResults.failedValidations = failedValidations;
 
     // Calculate system health score
-    testResult.overallResults.systemHealthScore = totalValidations > 0 ? 
-      Math.round((passedValidations / totalValidations) * 100) : 0;
+    testResult.overallResults.systemHealthScore =
+      totalValidations > 0
+        ? Math.round((passedValidations / totalValidations) * 100)
+        : 0;
 
     // Calculate data integrity score
-    testResult.overallResults.dataIntegrityScore = await this.calculateDataIntegrityScore();
+    testResult.overallResults.dataIntegrityScore =
+      await this.calculateDataIntegrityScore();
   }
 
   async calculateDataIntegrityScore(): Promise<number> {
@@ -1529,21 +1695,20 @@ export class E2ETestOrchestrator {
       // Check data consistency across entities
       const rfps = await this.storage.getAllRFPs({ limit: 100 });
       const portals = await this.storage.getAllPortals();
-      
+
       // Basic integrity checks
       let integrityScore = 100;
-      
+
       // Check if RFPs have valid portal references
-      const invalidPortalRefs = rfps.rfps.filter(rfp => 
-        !portals.find(p => p.id === rfp.portalId)
+      const invalidPortalRefs = rfps.rfps.filter(
+        rfp => !portals.find(p => p.id === rfp.portalId)
       );
-      
+
       if (invalidPortalRefs.length > 0) {
         integrityScore -= (invalidPortalRefs.length / rfps.rfps.length) * 20;
       }
 
       return Math.max(0, Math.round(integrityScore));
-
     } catch (error) {
       console.error('Error calculating data integrity score:', error);
       return 0;
@@ -1553,11 +1718,11 @@ export class E2ETestOrchestrator {
   updatePerformanceMetrics(testId: string, duration: number): void {
     const testResult = this.activeTests.get(testId)!;
     const metrics = testResult.overallResults.performanceMetrics;
-    
+
     // Update response time metrics
     metrics.maxResponseTime = Math.max(metrics.maxResponseTime, duration);
     metrics.minResponseTime = Math.min(metrics.minResponseTime, duration);
-    
+
     // Simple moving average for response time
     if (metrics.avgResponseTime === 0) {
       metrics.avgResponseTime = duration;
@@ -1569,7 +1734,9 @@ export class E2ETestOrchestrator {
     metrics.throughput = 1000 / duration; // Convert to operations per second
 
     // Update error rate (simplified)
-    const failedPhases = testResult.phases.filter(p => p.status === 'failed').length;
+    const failedPhases = testResult.phases.filter(
+      p => p.status === 'failed'
+    ).length;
     metrics.errorRate = failedPhases / testResult.phases.length;
 
     // Simulate resource usage
@@ -1584,47 +1751,78 @@ export class E2ETestOrchestrator {
     // Analyze results and generate recommendations
     const healthScore = testResult.overallResults.systemHealthScore;
     const dataIntegrityScore = testResult.overallResults.dataIntegrityScore;
-    const avgResponseTime = testResult.overallResults.performanceMetrics.avgResponseTime;
+    const avgResponseTime =
+      testResult.overallResults.performanceMetrics.avgResponseTime;
     const errorRate = testResult.overallResults.performanceMetrics.errorRate;
 
     if (healthScore < 90) {
-      recommendations.push(`System health score is ${healthScore}%. Investigate failed validations and improve system reliability.`);
+      recommendations.push(
+        `System health score is ${healthScore}%. Investigate failed validations and improve system reliability.`
+      );
     }
 
     if (dataIntegrityScore < 95) {
-      recommendations.push(`Data integrity score is ${dataIntegrityScore}%. Review data consistency and referential integrity.`);
+      recommendations.push(
+        `Data integrity score is ${dataIntegrityScore}%. Review data consistency and referential integrity.`
+      );
     }
 
     if (avgResponseTime > 3000) {
-      recommendations.push(`Average response time is ${avgResponseTime}ms. Consider performance optimizations.`);
+      recommendations.push(
+        `Average response time is ${avgResponseTime}ms. Consider performance optimizations.`
+      );
     }
 
     if (errorRate > 0.1) {
-      recommendations.push(`Error rate is ${(errorRate * 100).toFixed(1)}%. Improve error handling and system stability.`);
+      recommendations.push(
+        `Error rate is ${(errorRate * 100).toFixed(1)}%. Improve error handling and system stability.`
+      );
     }
 
     // Check for failed phases
     const failedPhases = testResult.phases.filter(p => p.status === 'failed');
     if (failedPhases.length > 0) {
-      recommendations.push(`Failed phases detected: ${failedPhases.map(p => p.phase).join(', ')}. Review and fix phase-specific issues.`);
+      recommendations.push(
+        `Failed phases detected: ${failedPhases.map(p => p.phase).join(', ')}. Review and fix phase-specific issues.`
+      );
     }
 
     // Performance recommendations
     if (testResult.overallResults.performanceMetrics.memoryUsage > 80) {
-      recommendations.push('High memory usage detected. Consider memory optimization strategies.');
+      recommendations.push(
+        'High memory usage detected. Consider memory optimization strategies.'
+      );
     }
 
     if (testResult.overallResults.performanceMetrics.cpuUsage > 80) {
-      recommendations.push('High CPU usage detected. Consider load balancing or performance tuning.');
+      recommendations.push(
+        'High CPU usage detected. Consider load balancing or performance tuning.'
+      );
     }
 
     // General recommendations for production readiness
-    if (healthScore >= 95 && dataIntegrityScore >= 95 && avgResponseTime < 2000 && errorRate < 0.05) {
-      recommendations.push('✅ System shows excellent performance and reliability metrics. Ready for production deployment.');
-    } else if (healthScore >= 85 && dataIntegrityScore >= 90 && avgResponseTime < 5000 && errorRate < 0.1) {
-      recommendations.push('⚠️ System shows good performance with minor issues. Address recommendations before production deployment.');
+    if (
+      healthScore >= 95 &&
+      dataIntegrityScore >= 95 &&
+      avgResponseTime < 2000 &&
+      errorRate < 0.05
+    ) {
+      recommendations.push(
+        '✅ System shows excellent performance and reliability metrics. Ready for production deployment.'
+      );
+    } else if (
+      healthScore >= 85 &&
+      dataIntegrityScore >= 90 &&
+      avgResponseTime < 5000 &&
+      errorRate < 0.1
+    ) {
+      recommendations.push(
+        '⚠️ System shows good performance with minor issues. Address recommendations before production deployment.'
+      );
     } else {
-      recommendations.push('❌ System has significant issues that must be resolved before production deployment.');
+      recommendations.push(
+        '❌ System has significant issues that must be resolved before production deployment.'
+      );
     }
 
     testResult.recommendations = recommendations;
@@ -1645,7 +1843,8 @@ export class E2ETestOrchestrator {
     if (testResult && testResult.status === 'running') {
       testResult.status = 'cancelled';
       testResult.endTime = new Date();
-      testResult.duration = testResult.endTime.getTime() - testResult.startTime.getTime();
+      testResult.duration =
+        testResult.endTime.getTime() - testResult.startTime.getTime();
       return true;
     }
     return false;
@@ -1688,7 +1887,6 @@ export class E2ETestOrchestrator {
       }
 
       console.log(`🧹 Cleaned up test data for test ID: ${testId}`);
-
     } catch (error) {
       console.error(`Failed to cleanup test data for ${testId}:`, error);
     }
@@ -1700,18 +1898,23 @@ export class E2ETestOrchestrator {
     details: any;
   } {
     const allTests = Array.from(this.activeTests.values());
-    const completedTests = allTests.filter(t => t.status === 'passed' || t.status === 'failed');
+    const completedTests = allTests.filter(
+      t => t.status === 'passed' || t.status === 'failed'
+    );
 
     if (completedTests.length === 0) {
       return {
         overallReadiness: 'not_ready',
         score: 0,
-        details: { message: 'No E2E tests have been completed yet.' }
+        details: { message: 'No E2E tests have been completed yet.' },
       };
     }
 
     // Calculate overall system readiness based on test results
-    const totalScore = completedTests.reduce((sum, test) => sum + test.overallResults.systemHealthScore, 0);
+    const totalScore = completedTests.reduce(
+      (sum, test) => sum + test.overallResults.systemHealthScore,
+      0
+    );
     const averageScore = totalScore / completedTests.length;
 
     let readiness: 'ready' | 'needs_improvement' | 'not_ready';
@@ -1730,8 +1933,10 @@ export class E2ETestOrchestrator {
         completedTests: completedTests.length,
         passedTests: completedTests.filter(t => t.status === 'passed').length,
         averageHealthScore: averageScore,
-        recommendations: completedTests.flatMap(t => t.recommendations).slice(0, 5)
-      }
+        recommendations: completedTests
+          .flatMap(t => t.recommendations)
+          .slice(0, 5),
+      },
     };
   }
 }

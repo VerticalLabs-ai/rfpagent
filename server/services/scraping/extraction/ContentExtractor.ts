@@ -4,7 +4,11 @@ import { RFPOpportunity } from '../types';
  * Base interface for content extractors
  */
 export interface ContentExtractor {
-  extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]>;
+  extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]>;
   getPortalType(): string;
   validateContent(content: string): boolean;
   getConfidenceScore(opportunity: RFPOpportunity): number;
@@ -20,7 +24,11 @@ export abstract class BaseContentExtractor implements ContentExtractor {
     this.portalType = portalType;
   }
 
-  abstract extract(content: string, url: string, portalContext: string): Promise<RFPOpportunity[]>;
+  abstract extract(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]>;
 
   /**
    * Get supported portal type
@@ -85,9 +93,20 @@ export abstract class BaseContentExtractor implements ContentExtractor {
    */
   protected hasRFPKeywords(text: string): boolean {
     const keywords = [
-      'rfp', 'request for proposal', 'procurement', 'solicitation',
-      'bid', 'tender', 'contract', 'opportunity', 'ifb', 'invitation for bid',
-      'rfq', 'request for quote', 'proposal', 'quotes'
+      'rfp',
+      'request for proposal',
+      'procurement',
+      'solicitation',
+      'bid',
+      'tender',
+      'contract',
+      'opportunity',
+      'ifb',
+      'invitation for bid',
+      'rfq',
+      'request for quote',
+      'proposal',
+      'quotes',
     ];
 
     const lowerText = text.toLowerCase();
@@ -118,10 +137,7 @@ export abstract class BaseContentExtractor implements ContentExtractor {
    * Clean and normalize text
    */
   protected cleanText(text: string): string {
-    return text
-      .replace(/\s+/g, ' ')
-      .replace(/\n+/g, ' ')
-      .trim();
+    return text.replace(/\s+/g, ' ').replace(/\n+/g, ' ').trim();
   }
 
   /**
@@ -159,10 +175,10 @@ export abstract class BaseContentExtractor implements ContentExtractor {
 
     // Common date patterns
     const patterns = [
-      /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/,  // MM/DD/YYYY or DD/MM/YYYY
-      /(\d{4})-(\d{1,2})-(\d{1,2})/,      // YYYY-MM-DD
-      /(\w+)\s+(\d{1,2}),?\s+(\d{4})/,    // Month DD, YYYY
-      /(\d{1,2})\s+(\w+)\s+(\d{4})/       // DD Month YYYY
+      /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/, // MM/DD/YYYY or DD/MM/YYYY
+      /(\d{4})-(\d{1,2})-(\d{1,2})/, // YYYY-MM-DD
+      /(\w+)\s+(\d{1,2}),?\s+(\d{4})/, // Month DD, YYYY
+      /(\d{1,2})\s+(\w+)\s+(\d{4})/, // DD Month YYYY
     ];
 
     for (const pattern of patterns) {
@@ -189,7 +205,7 @@ export abstract class BaseContentExtractor implements ContentExtractor {
     const currencyPatterns = [
       /\$[\d,]+(?:\.\d{2})?/g,
       /USD?\s*[\d,]+(?:\.\d{2})?/gi,
-      /[\d,]+(?:\.\d{2})?\s*dollars?/gi
+      /[\d,]+(?:\.\d{2})?\s*dollars?/gi,
     ];
 
     for (const pattern of currencyPatterns) {
@@ -205,7 +221,10 @@ export abstract class BaseContentExtractor implements ContentExtractor {
   /**
    * Validate and fix source URL
    */
-  protected validateAndFixSourceUrl(url: string | undefined, baseUrl: string): string | undefined {
+  protected validateAndFixSourceUrl(
+    url: string | undefined,
+    baseUrl: string
+  ): string | undefined {
     if (!url) return undefined;
 
     try {
@@ -235,7 +254,9 @@ export abstract class BaseContentExtractor implements ContentExtractor {
   /**
    * Remove duplicate opportunities
    */
-  protected removeDuplicates(opportunities: RFPOpportunity[]): RFPOpportunity[] {
+  protected removeDuplicates(
+    opportunities: RFPOpportunity[]
+  ): RFPOpportunity[] {
     const seen = new Set<string>();
     const unique: RFPOpportunity[] = [];
 
@@ -255,7 +276,10 @@ export abstract class BaseContentExtractor implements ContentExtractor {
   /**
    * Filter opportunities by search criteria
    */
-  protected filterBySearch(opportunities: RFPOpportunity[], searchFilter?: string): RFPOpportunity[] {
+  protected filterBySearch(
+    opportunities: RFPOpportunity[],
+    searchFilter?: string
+  ): RFPOpportunity[] {
     if (!searchFilter) return opportunities;
 
     const searchTerms = searchFilter.toLowerCase().split(/\s+/);
@@ -265,8 +289,10 @@ export abstract class BaseContentExtractor implements ContentExtractor {
         opp.title,
         opp.description,
         opp.agency,
-        opp.category
-      ].join(' ').toLowerCase();
+        opp.category,
+      ]
+        .join(' ')
+        .toLowerCase();
 
       return searchTerms.some(term => searchableText.includes(term));
     });

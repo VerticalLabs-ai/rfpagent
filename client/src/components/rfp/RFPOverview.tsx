@@ -1,7 +1,13 @@
-import { Clock, DollarSign, Building, CheckCircle2, FileText } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import type { RFPOverviewProps } from "./types";
+import {
+  Clock,
+  DollarSign,
+  Building,
+  CheckCircle2,
+  FileText,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import type { RFPOverviewProps } from './types';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('en-US', {
@@ -57,14 +63,21 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
               <Clock className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Deadline</p>
-                <p className="text-sm text-muted-foreground" data-testid="text-deadline">
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid="text-deadline"
+                >
                   {formatDate(rfp.deadline)}
                 </p>
                 {(() => {
                   const days = getDaysUntilDeadline(rfp.deadline);
                   return (
-                    <p className={`text-xs ${days <= 7 ? 'text-red-600' : days <= 30 ? 'text-yellow-600' : 'text-green-600'}`}>
-                      {days > 0 ? `${days} days remaining` : `${Math.abs(days)} days overdue`}
+                    <p
+                      className={`text-xs ${days <= 7 ? 'text-red-600' : days <= 30 ? 'text-yellow-600' : 'text-green-600'}`}
+                    >
+                      {days > 0
+                        ? `${days} days remaining`
+                        : `${Math.abs(days)} days overdue`}
                     </p>
                   );
                 })()}
@@ -77,7 +90,10 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
               <DollarSign className="w-4 h-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Estimated Value</p>
-                <p className="text-sm text-muted-foreground" data-testid="text-estimated-value">
+                <p
+                  className="text-sm text-muted-foreground"
+                  data-testid="text-estimated-value"
+                >
                   {formatCurrency(parseFloat(rfp.estimatedValue))}
                 </p>
               </div>
@@ -88,7 +104,10 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
             <Building className="w-4 h-4 text-muted-foreground" />
             <div>
               <p className="text-sm font-medium">Agency</p>
-              <p className="text-sm text-muted-foreground" data-testid="text-agency">
+              <p
+                className="text-sm text-muted-foreground"
+                data-testid="text-agency"
+              >
                 {rfp.agency}
               </p>
             </div>
@@ -100,7 +119,10 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
               <p className="text-sm font-medium">Progress</p>
               <div className="flex items-center gap-2">
                 <Progress value={rfp.progress || 0} className="w-20" />
-                <span className="text-sm text-muted-foreground" data-testid="text-progress">
+                <span
+                  className="text-sm text-muted-foreground"
+                  data-testid="text-progress"
+                >
                   {rfp.progress || 0}%
                 </span>
               </div>
@@ -109,50 +131,65 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
         </div>
 
         {/* Additional RFP Details */}
-        {rfp.requirements && typeof rfp.requirements === 'object' && !Array.isArray(rfp.requirements) && (
-          <div className="border-t pt-4 space-y-4">
-            {(rfp.requirements as any)?.solicitation_number && (
-              <div>
-                <p className="text-sm font-medium mb-1">Solicitation Number</p>
-                <p className="text-sm text-muted-foreground" data-testid="text-solicitation-number">
-                  {(rfp.requirements as any).solicitation_number}
-                </p>
-              </div>
-            )}
-
-            {(rfp.requirements as any)?.contact && (
-              <div>
-                <p className="text-sm font-medium mb-1">Contact Information</p>
-                <div className="space-y-1" data-testid="text-contact-info">
-                  {(rfp.requirements as any).contact.name && (
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Name:</span> {(rfp.requirements as any).contact.name}
-                    </p>
-                  )}
-                  {(rfp.requirements as any).contact.email && (
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Email:</span> {(rfp.requirements as any).contact.email}
-                    </p>
-                  )}
-                  {(rfp.requirements as any).contact.phone && (
-                    <p className="text-sm text-muted-foreground">
-                      <span className="font-medium">Phone:</span> {(rfp.requirements as any).contact.phone}
-                    </p>
-                  )}
+        {!!rfp.requirements &&
+          typeof rfp.requirements === 'object' &&
+          !Array.isArray(rfp.requirements) && (
+            <div className="border-t pt-4 space-y-4">
+              {(rfp.requirements as any)?.solicitation_number && (
+                <div>
+                  <p className="text-sm font-medium mb-1">
+                    Solicitation Number
+                  </p>
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid="text-solicitation-number"
+                  >
+                    {(rfp.requirements as any).solicitation_number}
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {(rfp.requirements as any).pre_bid_meeting && (
-              <div>
-                <p className="text-sm font-medium mb-1">Pre-bid Meeting</p>
-                <p className="text-sm text-muted-foreground" data-testid="text-pre-bid-meeting">
-                  {(rfp.requirements as any).pre_bid_meeting}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+              {(rfp.requirements as any)?.contact && (
+                <div>
+                  <p className="text-sm font-medium mb-1">
+                    Contact Information
+                  </p>
+                  <div className="space-y-1" data-testid="text-contact-info">
+                    {(rfp.requirements as any).contact.name && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">Name:</span>{' '}
+                        {(rfp.requirements as any).contact.name}
+                      </p>
+                    )}
+                    {(rfp.requirements as any).contact.email && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">Email:</span>{' '}
+                        {(rfp.requirements as any).contact.email}
+                      </p>
+                    )}
+                    {(rfp.requirements as any).contact.phone && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">Phone:</span>{' '}
+                        {(rfp.requirements as any).contact.phone}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(rfp.requirements as any).pre_bid_meeting && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Pre-bid Meeting</p>
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid="text-pre-bid-meeting"
+                  >
+                    {(rfp.requirements as any).pre_bid_meeting}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
       </CardContent>
     </Card>
   );

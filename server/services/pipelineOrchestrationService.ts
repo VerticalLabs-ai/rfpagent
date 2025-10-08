@@ -52,7 +52,11 @@ export interface PipelineCoordinationContext {
   name: string;
   description: string;
   pipelineIds: string[];
-  coordinationType: 'sequential' | 'parallel' | 'conditional' | 'priority_based';
+  coordinationType:
+    | 'sequential'
+    | 'parallel'
+    | 'conditional'
+    | 'priority_based';
   currentStage: number;
   totalStages: number;
   resourceConstraints: ResourceConstraints;
@@ -64,12 +68,13 @@ export interface PipelineCoordinationContext {
 }
 
 export class PipelineOrchestrationService {
-  private activeOrchestrations: Map<string, PipelineCoordinationContext> = new Map();
+  private activeOrchestrations: Map<string, PipelineCoordinationContext> =
+    new Map();
   private resourceAllocations: Map<string, ResourceAllocation> = new Map();
   private workloadBalancer: Map<string, WorkloadBalance> = new Map();
   private priorityQueue: Map<number, string[]> = new Map(); // priority level -> workflow IDs
-  private globalResourceConstraints: ResourceConstraints;
-  
+  private globalResourceConstraints!: ResourceConstraints;
+
   constructor() {
     this.initializeGlobalResourceConstraints();
     this.initializeWorkloadBalancer();
@@ -90,7 +95,7 @@ export class PipelineOrchestrationService {
       maxMemoryMB: 8192,
       maxCpuPercent: 85,
       reservedCapacity: 0.15, // Keep 15% capacity reserved
-      maxWorkItemsPerAgent: 5
+      maxWorkItemsPerAgent: 5,
     };
 
     // Initialize priority queues
@@ -116,18 +121,23 @@ export class PipelineOrchestrationService {
           agentId: agent.agentId,
           tier: agent.tier as any,
           currentWorkItems: 0,
-          maxWorkItems: this.calculateMaxWorkItemsForAgent(agent.tier, agent.capabilities),
+          maxWorkItems: this.calculateMaxWorkItemsForAgent(
+            agent.tier,
+            agent.capabilities
+          ),
           utilizationPercent: 0,
           avgTaskDuration: 0,
           successRate: 1.0,
           capabilities: agent.capabilities,
-          health: agent.status === 'active' ? 'healthy' : 'unhealthy'
+          health: agent.status === 'active' ? 'healthy' : 'unhealthy',
         };
 
         this.workloadBalancer.set(agent.agentId, workloadBalance);
       }
 
-      console.log(`✅ Workload balancer initialized with ${agents.length} agents`);
+      console.log(
+        `✅ Workload balancer initialized with ${agents.length} agents`
+      );
     } catch (error) {
       console.error('❌ Error initializing workload balancer:', error);
     }
@@ -136,24 +146,36 @@ export class PipelineOrchestrationService {
   /**
    * Calculate maximum work items for an agent based on tier and capabilities
    */
-  private calculateMaxWorkItemsForAgent(tier: string, capabilities: string[]): number {
+  private calculateMaxWorkItemsForAgent(
+    tier: string,
+    capabilities: string[]
+  ): number {
     const baseLimits = {
       orchestrator: 3,
       manager: 4,
-      specialist: 6
+      specialist: 6,
     };
 
     let maxItems = baseLimits[tier as keyof typeof baseLimits] || 3;
 
     // Adjust based on capabilities
-    const complexCapabilities = ['ai_generation', 'compliance_checking', 'document_processing'];
-    const hasComplexCapabilities = capabilities.some(cap => complexCapabilities.includes(cap));
-    
+    const complexCapabilities = [
+      'ai_generation',
+      'compliance_checking',
+      'document_processing',
+    ];
+    const hasComplexCapabilities = capabilities.some(cap =>
+      complexCapabilities.includes(cap)
+    );
+
     if (hasComplexCapabilities) {
       maxItems = Math.max(2, maxItems - 1); // Reduce for complex tasks
     }
 
-    return Math.min(maxItems, this.globalResourceConstraints.maxWorkItemsPerAgent);
+    return Math.min(
+      maxItems,
+      this.globalResourceConstraints.maxWorkItemsPerAgent
+    );
   }
 
   /**
@@ -163,7 +185,11 @@ export class PipelineOrchestrationService {
     name: string,
     description: string,
     pipelineIds: string[],
-    coordinationType: 'sequential' | 'parallel' | 'conditional' | 'priority_based',
+    coordinationType:
+      | 'sequential'
+      | 'parallel'
+      | 'conditional'
+      | 'priority_based',
     options: {
       resourceConstraints?: Partial<ResourceConstraints>;
       dependencies?: string[];
@@ -182,7 +208,10 @@ export class PipelineOrchestrationService {
       coordinationType,
       currentStage: 0,
       totalStages: this.calculateTotalStages(coordinationType, pipelineIds),
-      resourceConstraints: { ...this.globalResourceConstraints, ...options.resourceConstraints },
+      resourceConstraints: {
+        ...this.globalResourceConstraints,
+        ...options.resourceConstraints,
+      },
       allocatedResources: [],
       dependencies: options.dependencies || [],
       completionCriteria: options.completionCriteria || {},
@@ -190,8 +219,8 @@ export class PipelineOrchestrationService {
       metadata: {
         ...options.metadata,
         createdAt: new Date().toISOString(),
-        priority: options.priority || 3
-      }
+        priority: options.priority || 3,
+      },
     };
 
     // Store in database
@@ -211,10 +240,16 @@ export class PipelineOrchestrationService {
         dependencies: options.dependencies,
         completionCriteria: options.completionCriteria,
         failureHandling: {},
-        estimatedDuration: this.estimateOrchestrationDuration(pipelineIds, coordinationType)
+        estimatedDuration: this.estimateOrchestrationDuration(
+          pipelineIds,
+          coordinationType
+        ),
       });
     } catch (error) {
-      console.error(`❌ Failed to store orchestration ${orchestrationId}:`, error);
+      console.error(
+        `❌ Failed to store orchestration ${orchestrationId}:`,
+        error
+      );
     }
 
     // Store in memory
@@ -223,14 +258,19 @@ export class PipelineOrchestrationService {
     // Add to priority queue
     this.addToPriorityQueue(orchestrationId, options.priority || 3);
 
-    console.log(`🎭 Created pipeline orchestration: ${orchestrationId} (${coordinationType})`);
+    console.log(
+      `🎭 Created pipeline orchestration: ${orchestrationId} (${coordinationType})`
+    );
     return orchestrationId;
   }
 
   /**
    * Calculate total stages for an orchestration type
    */
-  private calculateTotalStages(coordinationType: string, pipelineIds: string[]): number {
+  private calculateTotalStages(
+    coordinationType: string,
+    pipelineIds: string[]
+  ): number {
     switch (coordinationType) {
       case 'sequential':
         return pipelineIds.length;
@@ -248,7 +288,10 @@ export class PipelineOrchestrationService {
   /**
    * Estimate orchestration duration based on pipelines and coordination type
    */
-  private estimateOrchestrationDuration(pipelineIds: string[], coordinationType: string): number {
+  private estimateOrchestrationDuration(
+    pipelineIds: string[],
+    coordinationType: string
+  ): number {
     const avgPipelineDuration = 45; // minutes - estimated average RFP pipeline duration
 
     switch (coordinationType) {
@@ -293,13 +336,22 @@ export class PipelineOrchestrationService {
   /**
    * Allocate resources for a pipeline orchestration
    */
-  async allocateResourcesForOrchestration(orchestrationId: string): Promise<{ success: boolean; allocation?: ResourceAllocation; error?: string }> {
+  async allocateResourcesForOrchestration(orchestrationId: string): Promise<{
+    success: boolean;
+    allocation?: ResourceAllocation;
+    error?: string;
+  }> {
     const orchestration = this.activeOrchestrations.get(orchestrationId);
     if (!orchestration) {
-      return { success: false, error: `Orchestration ${orchestrationId} not found` };
+      return {
+        success: false,
+        error: `Orchestration ${orchestrationId} not found`,
+      };
     }
 
-    console.log(`🔧 Allocating resources for orchestration: ${orchestrationId}`);
+    console.log(
+      `🔧 Allocating resources for orchestration: ${orchestrationId}`
+    );
 
     try {
       // Check if we have available resources
@@ -307,9 +359,9 @@ export class PipelineOrchestrationService {
       const requiredResources = this.calculateRequiredResources(orchestration);
 
       if (!this.canAllocateResources(availableResources, requiredResources)) {
-        return { 
-          success: false, 
-          error: `Insufficient resources: need ${JSON.stringify(requiredResources)}, available ${JSON.stringify(availableResources)}` 
+        return {
+          success: false,
+          error: `Insufficient resources: need ${JSON.stringify(requiredResources)}, available ${JSON.stringify(availableResources)}`,
         };
       }
 
@@ -324,16 +376,20 @@ export class PipelineOrchestrationService {
         allocatedAgents: allocatedAgents.map(agent => agent.agentId),
         allocatedMemoryMB: requiredResources.memoryMB,
         allocatedCpuPercent: requiredResources.cpuPercent,
-        priorityBoost: this.calculatePriorityBoost(orchestration.metadata.priority || 3),
-        timestamp: new Date()
+        priorityBoost: this.calculatePriorityBoost(
+          orchestration.metadata.priority || 3
+        ),
+        timestamp: new Date(),
       };
 
       // Update agent workloads
       for (const agent of allocatedAgents) {
         const workload = this.workloadBalancer.get(agent.agentId);
         if (workload) {
-          workload.currentWorkItems += this.estimateWorkItemsForPipeline(orchestration);
-          workload.utilizationPercent = (workload.currentWorkItems / workload.maxWorkItems) * 100;
+          workload.currentWorkItems +=
+            this.estimateWorkItemsForPipeline(orchestration);
+          workload.utilizationPercent =
+            (workload.currentWorkItems / workload.maxWorkItems) * 100;
         }
       }
 
@@ -342,15 +398,19 @@ export class PipelineOrchestrationService {
       orchestration.allocatedResources.push(allocation);
       orchestration.status = 'running';
 
-      console.log(`✅ Resources allocated for orchestration ${orchestrationId}: ${allocatedAgents.length} agents`);
-      
-      return { success: true, allocation };
+      console.log(
+        `✅ Resources allocated for orchestration ${orchestrationId}: ${allocatedAgents.length} agents`
+      );
 
+      return { success: true, allocation };
     } catch (error) {
-      console.error(`❌ Resource allocation failed for ${orchestrationId}:`, error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : String(error) 
+      console.error(
+        `❌ Resource allocation failed for ${orchestrationId}:`,
+        error
+      );
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -358,28 +418,39 @@ export class PipelineOrchestrationService {
   /**
    * Calculate available system resources
    */
-  private async calculateAvailableResources(): Promise<{ agents: number; memoryMB: number; cpuPercent: number }> {
+  private async calculateAvailableResources(): Promise<{
+    agents: number;
+    memoryMB: number;
+    cpuPercent: number;
+  }> {
     const totalAgents = this.workloadBalancer.size;
-    const activeAgents = Array.from(this.workloadBalancer.values())
-      .filter(agent => agent.health === 'healthy' && agent.utilizationPercent < 90).length;
+    const activeAgents = Array.from(this.workloadBalancer.values()).filter(
+      agent => agent.health === 'healthy' && agent.utilizationPercent < 90
+    ).length;
 
     const reservedCapacity = this.globalResourceConstraints.reservedCapacity;
-    
+
     return {
       agents: Math.floor(activeAgents * (1 - reservedCapacity)),
-      memoryMB: Math.floor(this.globalResourceConstraints.maxMemoryMB * (1 - reservedCapacity)),
-      cpuPercent: Math.floor(this.globalResourceConstraints.maxCpuPercent * (1 - reservedCapacity))
+      memoryMB: Math.floor(
+        this.globalResourceConstraints.maxMemoryMB * (1 - reservedCapacity)
+      ),
+      cpuPercent: Math.floor(
+        this.globalResourceConstraints.maxCpuPercent * (1 - reservedCapacity)
+      ),
     };
   }
 
   /**
    * Calculate required resources for an orchestration
    */
-  private calculateRequiredResources(orchestration: PipelineCoordinationContext): { agents: number; memoryMB: number; cpuPercent: number } {
+  private calculateRequiredResources(
+    orchestration: PipelineCoordinationContext
+  ): { agents: number; memoryMB: number; cpuPercent: number } {
     const basePipelineRequirements = {
       agents: 2, // Minimum agents per pipeline
       memoryMB: 256, // Base memory per pipeline
-      cpuPercent: 15 // Base CPU per pipeline
+      cpuPercent: 15, // Base CPU per pipeline
     };
 
     let multiplier = 1;
@@ -401,7 +472,7 @@ export class PipelineOrchestrationService {
     return {
       agents: basePipelineRequirements.agents * multiplier,
       memoryMB: basePipelineRequirements.memoryMB * multiplier,
-      cpuPercent: basePipelineRequirements.cpuPercent * multiplier
+      cpuPercent: basePipelineRequirements.cpuPercent * multiplier,
     };
   }
 
@@ -412,39 +483,52 @@ export class PipelineOrchestrationService {
     available: { agents: number; memoryMB: number; cpuPercent: number },
     required: { agents: number; memoryMB: number; cpuPercent: number }
   ): boolean {
-    return available.agents >= required.agents &&
-           available.memoryMB >= required.memoryMB &&
-           available.cpuPercent >= required.cpuPercent;
+    return (
+      available.agents >= required.agents &&
+      available.memoryMB >= required.memoryMB &&
+      available.cpuPercent >= required.cpuPercent
+    );
   }
 
   /**
    * Select optimal agents for pipelines based on capabilities, load, and priority
    */
-  private async selectOptimalAgents(pipelineIds: string[], priority: number): Promise<WorkloadBalance[]> {
-    const availableAgents = Array.from(this.workloadBalancer.values())
-      .filter(agent => 
-        agent.health === 'healthy' && 
+  private async selectOptimalAgents(
+    pipelineIds: string[],
+    priority: number
+  ): Promise<WorkloadBalance[]> {
+    const availableAgents = Array.from(this.workloadBalancer.values()).filter(
+      agent =>
+        agent.health === 'healthy' &&
         agent.utilizationPercent < 85 &&
         agent.currentWorkItems < agent.maxWorkItems
-      );
+    );
 
     // Sort by selection criteria
-    const scoredAgents = availableAgents.map(agent => ({
-      agent,
-      score: this.calculateAgentSelectionScore(agent, priority)
-    })).sort((a, b) => b.score - a.score);
+    const scoredAgents = availableAgents
+      .map(agent => ({
+        agent,
+        score: this.calculateAgentSelectionScore(agent, priority),
+      }))
+      .sort((a, b) => b.score - a.score);
 
     // Select agents based on required capabilities
     const selectedAgents: WorkloadBalance[] = [];
-    const requiredCapabilities = ['portal_scraping', 'compliance_checking', 'proposal_generation', 'portal_automation'];
+    const requiredCapabilities = [
+      'portal_scraping',
+      'compliance_checking',
+      'proposal_generation',
+      'portal_automation',
+    ];
 
     // Ensure we have coverage for all required capabilities
     for (const capability of requiredCapabilities) {
-      const capableAgent = scoredAgents.find(({ agent }) => 
-        agent.capabilities.includes(capability) && 
-        !selectedAgents.includes(agent)
+      const capableAgent = scoredAgents.find(
+        ({ agent }) =>
+          agent.capabilities.includes(capability) &&
+          !selectedAgents.includes(agent)
       );
-      
+
       if (capableAgent) {
         selectedAgents.push(capableAgent.agent);
       }
@@ -465,7 +549,10 @@ export class PipelineOrchestrationService {
   /**
    * Calculate agent selection score based on multiple factors
    */
-  private calculateAgentSelectionScore(agent: WorkloadBalance, priority: number): number {
+  private calculateAgentSelectionScore(
+    agent: WorkloadBalance,
+    priority: number
+  ): number {
     let score = 0;
 
     // Load factor (higher score for less loaded agents)
@@ -488,7 +575,10 @@ export class PipelineOrchestrationService {
     if (priority <= 2) score += 10; // Boost for high priority
 
     // Recency bonus (avoid agents that were just assigned)
-    if (!agent.lastAssignedAt || (Date.now() - agent.lastAssignedAt.getTime()) > 300000) {
+    if (
+      !agent.lastAssignedAt ||
+      Date.now() - agent.lastAssignedAt.getTime() > 300000
+    ) {
       score += 5; // 5 minute cooldown bonus
     }
 
@@ -500,11 +590,11 @@ export class PipelineOrchestrationService {
    */
   private calculatePriorityBoost(priority: number): number {
     const boostMap = {
-      1: 2.0,  // Critical priority gets 2x boost
-      2: 1.5,  // High priority gets 1.5x boost
-      3: 1.0,  // Normal priority (no boost)
-      4: 0.8,  // Low priority gets slight reduction
-      5: 0.6   // Lowest priority gets significant reduction
+      1: 2.0, // Critical priority gets 2x boost
+      2: 1.5, // High priority gets 1.5x boost
+      3: 1.0, // Normal priority (no boost)
+      4: 0.8, // Low priority gets slight reduction
+      5: 0.6, // Lowest priority gets significant reduction
     };
 
     return boostMap[priority as keyof typeof boostMap] || 1.0;
@@ -513,10 +603,12 @@ export class PipelineOrchestrationService {
   /**
    * Estimate work items for a pipeline orchestration
    */
-  private estimateWorkItemsForPipeline(orchestration: PipelineCoordinationContext): number {
+  private estimateWorkItemsForPipeline(
+    orchestration: PipelineCoordinationContext
+  ): number {
     // Base work items per RFP pipeline phase
     const baseWorkItems = 4; // discovery, analysis, generation, submission
-    
+
     switch (orchestration.coordinationType) {
       case 'sequential':
         return baseWorkItems;
@@ -536,7 +628,7 @@ export class PipelineOrchestrationService {
    */
   private startResourceMonitoring(): void {
     console.log('📊 Starting resource monitoring...');
-    
+
     setInterval(async () => {
       await this.updateResourceUtilization();
       await this.detectResourceContentions();
@@ -550,14 +642,17 @@ export class PipelineOrchestrationService {
   private async updateResourceUtilization(): Promise<void> {
     try {
       const { storage } = await import('../storage');
-      
+
       // Update agent workloads with actual work item counts
       const workItems = await storage.getWorkItems();
       const agentWorkItemCounts = new Map<string, number>();
 
       // Count active work items per agent
       for (const item of workItems) {
-        if (item.assignedAgentId && ['assigned', 'in_progress'].includes(item.status)) {
+        if (
+          item.assignedAgentId &&
+          ['assigned', 'in_progress'].includes(item.status)
+        ) {
           const count = agentWorkItemCounts.get(item.assignedAgentId) || 0;
           agentWorkItemCounts.set(item.assignedAgentId, count + 1);
         }
@@ -567,8 +662,9 @@ export class PipelineOrchestrationService {
       for (const [agentId, workload] of this.workloadBalancer) {
         const actualWorkItems = agentWorkItemCounts.get(agentId) || 0;
         workload.currentWorkItems = actualWorkItems;
-        workload.utilizationPercent = (actualWorkItems / workload.maxWorkItems) * 100;
-        
+        workload.utilizationPercent =
+          (actualWorkItems / workload.maxWorkItems) * 100;
+
         // Update health based on utilization
         if (workload.utilizationPercent > 95) {
           workload.health = 'unhealthy';
@@ -578,7 +674,6 @@ export class PipelineOrchestrationService {
           workload.health = 'healthy';
         }
       }
-
     } catch (error) {
       console.error('❌ Error updating resource utilization:', error);
     }
@@ -588,23 +683,34 @@ export class PipelineOrchestrationService {
    * Detect resource contentions and bottlenecks
    */
   private async detectResourceContentions(): Promise<void> {
-    const overloadedAgents = Array.from(this.workloadBalancer.values())
-      .filter(agent => agent.utilizationPercent > 90);
+    const overloadedAgents = Array.from(this.workloadBalancer.values()).filter(
+      agent => agent.utilizationPercent > 90
+    );
 
-    const underutilizedAgents = Array.from(this.workloadBalancer.values())
-      .filter(agent => agent.utilizationPercent < 30 && agent.health === 'healthy');
+    const underutilizedAgents = Array.from(
+      this.workloadBalancer.values()
+    ).filter(
+      agent => agent.utilizationPercent < 30 && agent.health === 'healthy'
+    );
 
     if (overloadedAgents.length > 0) {
-      console.log(`⚠️ Resource contention detected: ${overloadedAgents.length} overloaded agents`);
-      
+      console.log(
+        `⚠️ Resource contention detected: ${overloadedAgents.length} overloaded agents`
+      );
+
       // Attempt load redistribution
       await this.redistributeWorkload(overloadedAgents, underutilizedAgents);
     }
 
     // Check for memory/CPU constraints
     const totalUtilization = this.calculateSystemUtilization();
-    if (totalUtilization.cpuPercent > 85 || totalUtilization.memoryPercent > 90) {
-      console.log(`🚨 System resource pressure: CPU ${totalUtilization.cpuPercent}%, Memory ${totalUtilization.memoryPercent}%`);
+    if (
+      totalUtilization.cpuPercent > 85 ||
+      totalUtilization.memoryPercent > 90
+    ) {
+      console.log(
+        `🚨 System resource pressure: CPU ${totalUtilization.cpuPercent}%, Memory ${totalUtilization.memoryPercent}%`
+      );
       await this.handleResourcePressure();
     }
   }
@@ -612,10 +718,16 @@ export class PipelineOrchestrationService {
   /**
    * Calculate overall system utilization
    */
-  private calculateSystemUtilization(): { cpuPercent: number; memoryPercent: number; agentUtilization: number } {
+  private calculateSystemUtilization(): {
+    cpuPercent: number;
+    memoryPercent: number;
+    agentUtilization: number;
+  } {
     const agents = Array.from(this.workloadBalancer.values());
-    const avgUtilization = agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) / agents.length;
-    
+    const avgUtilization =
+      agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) /
+      agents.length;
+
     // Estimate CPU and memory based on agent utilization
     const estimatedCpuPercent = avgUtilization * 0.8; // Rough estimation
     const estimatedMemoryPercent = avgUtilization * 0.6; // Rough estimation
@@ -623,14 +735,17 @@ export class PipelineOrchestrationService {
     return {
       cpuPercent: estimatedCpuPercent,
       memoryPercent: estimatedMemoryPercent,
-      agentUtilization: avgUtilization
+      agentUtilization: avgUtilization,
     };
   }
 
   /**
    * Redistribute workload between agents
    */
-  private async redistributeWorkload(overloadedAgents: WorkloadBalance[], underutilizedAgents: WorkloadBalance[]): Promise<void> {
+  private async redistributeWorkload(
+    overloadedAgents: WorkloadBalance[],
+    underutilizedAgents: WorkloadBalance[]
+  ): Promise<void> {
     if (underutilizedAgents.length === 0) {
       console.log('⚠️ No underutilized agents available for redistribution');
       return;
@@ -638,25 +753,31 @@ export class PipelineOrchestrationService {
 
     try {
       const { storage } = await import('../storage');
-      
+
       for (const overloadedAgent of overloadedAgents) {
         // Find work items that can be reassigned
-        const workItems = await storage.getWorkItemsByAgent(overloadedAgent.agentId);
-        const reassignableItems = workItems.filter(item => 
-          item.status === 'assigned' && // Not yet started
-          !item.isBlocking // Not blocking other work
+        const workItems = await storage.getWorkItemsByAgent(
+          overloadedAgent.agentId
+        );
+        const reassignableItems = workItems.filter(
+          item =>
+            item.status === 'assigned' && // Not yet started
+            !item.isBlocking // Not blocking other work
         );
 
         // Reassign items to underutilized agents
-        for (const item of reassignableItems.slice(0, 2)) { // Max 2 items per redistribution
-          const targetAgent = underutilizedAgents.find(agent => 
-            agent.capabilities.some(cap => item.metadata?.requiredCapabilities?.includes(cap))
+        for (const item of reassignableItems.slice(0, 2)) {
+          // Max 2 items per redistribution
+          const targetAgent = underutilizedAgents.find(agent =>
+            agent.capabilities.some(cap =>
+              (item.metadata as any)?.requiredCapabilities?.includes(cap)
+            )
           );
 
           if (targetAgent) {
             await storage.updateWorkItem(item.id, {
               assignedAgentId: targetAgent.agentId,
-              updatedAt: new Date()
+              updatedAt: new Date(),
             });
 
             // Update workload tracking
@@ -664,7 +785,9 @@ export class PipelineOrchestrationService {
             targetAgent.currentWorkItems++;
             targetAgent.lastAssignedAt = new Date();
 
-            console.log(`🔄 Redistributed work item ${item.id}: ${overloadedAgent.agentId} → ${targetAgent.agentId}`);
+            console.log(
+              `🔄 Redistributed work item ${item.id}: ${overloadedAgent.agentId} → ${targetAgent.agentId}`
+            );
           }
         }
       }
@@ -678,50 +801,71 @@ export class PipelineOrchestrationService {
    */
   private async handleResourcePressure(): Promise<void> {
     console.log('🚨 Handling system resource pressure...');
-    
+
     // 1. Pause lower priority orchestrations
-    const lowPriorityOrchestrations = Array.from(this.activeOrchestrations.values())
-      .filter(orch => (orch.metadata.priority || 3) >= 4 && orch.status === 'running')
+    const lowPriorityOrchestrations = Array.from(
+      this.activeOrchestrations.values()
+    )
+      .filter(
+        orch => (orch.metadata.priority || 3) >= 4 && orch.status === 'running'
+      )
       .slice(0, 3); // Pause up to 3 low priority orchestrations
 
     for (const orchestration of lowPriorityOrchestrations) {
-      await this.suspendOrchestration(orchestration.orchestrationId, 'system', 'Resource pressure mitigation');
+      await this.suspendOrchestration(
+        orchestration.orchestrationId,
+        'system',
+        'Resource pressure mitigation'
+      );
     }
 
     // 2. Reduce resource allocations for non-critical orchestrations
     await this.optimizeResourceDistribution();
-    
+
     // 3. Alert administrators (in a real system, this would send notifications)
-    console.log('📢 SYSTEM ALERT: High resource utilization detected. Consider scaling resources.');
+    console.log(
+      '📢 SYSTEM ALERT: High resource utilization detected. Consider scaling resources.'
+    );
   }
 
   /**
    * Optimize resource distribution across active orchestrations
    */
   private async optimizeResourceDistribution(): Promise<void> {
-    const activeOrchestrations = Array.from(this.activeOrchestrations.values())
-      .filter(orch => orch.status === 'running');
+    const activeOrchestrations = Array.from(
+      this.activeOrchestrations.values()
+    ).filter(orch => orch.status === 'running');
 
     if (activeOrchestrations.length === 0) {
       return;
     }
 
     // Sort by priority (higher priority gets better resources)
-    activeOrchestrations.sort((a, b) => (a.metadata.priority || 3) - (b.metadata.priority || 3));
+    activeOrchestrations.sort(
+      (a, b) => (a.metadata.priority || 3) - (b.metadata.priority || 3)
+    );
 
     // Rebalance allocations
     for (const orchestration of activeOrchestrations) {
-      const allocation = this.resourceAllocations.get(orchestration.orchestrationId);
+      const allocation = this.resourceAllocations.get(
+        orchestration.orchestrationId
+      );
       if (allocation) {
-        const priorityBoost = this.calculatePriorityBoost(orchestration.metadata.priority || 3);
+        const priorityBoost = this.calculatePriorityBoost(
+          orchestration.metadata.priority || 3
+        );
         allocation.priorityBoost = priorityBoost;
-        
+
         // Update allocated resources if needed
         if (priorityBoost < 1.0) {
           // Reduce allocation for lower priority orchestrations
-          const reducedAgents = Math.floor(allocation.allocatedAgents.length * priorityBoost);
+          const reducedAgents = Math.floor(
+            allocation.allocatedAgents.length * priorityBoost
+          );
           if (reducedAgents < allocation.allocatedAgents.length) {
-            console.log(`📉 Reducing agents for orchestration ${orchestration.orchestrationId}: ${allocation.allocatedAgents.length} → ${reducedAgents}`);
+            console.log(
+              `📉 Reducing agents for orchestration ${orchestration.orchestrationId}: ${allocation.allocatedAgents.length} → ${reducedAgents}`
+            );
           }
         }
       }
@@ -733,7 +877,7 @@ export class PipelineOrchestrationService {
    */
   private startPriorityRebalancing(): void {
     console.log('🎯 Starting priority rebalancing...');
-    
+
     setInterval(async () => {
       await this.rebalancePriorities();
       await this.processHighPriorityQueue();
@@ -745,19 +889,24 @@ export class PipelineOrchestrationService {
    */
   private async rebalancePriorities(): Promise<void> {
     for (const [orchestrationId, orchestration] of this.activeOrchestrations) {
-      if (orchestration.status === 'running' || orchestration.status === 'pending') {
+      if (
+        orchestration.status === 'running' ||
+        orchestration.status === 'pending'
+      ) {
         const newPriority = this.calculateDynamicPriority(orchestration);
         const currentPriority = orchestration.metadata.priority || 3;
-        
+
         if (newPriority !== currentPriority) {
-          console.log(`🎯 Priority updated for ${orchestrationId}: ${currentPriority} → ${newPriority}`);
-          
+          console.log(
+            `🎯 Priority updated for ${orchestrationId}: ${currentPriority} → ${newPriority}`
+          );
+
           // Remove from old priority queue
           this.removeFromPriorityQueue(orchestrationId);
-          
+
           // Update priority
           orchestration.metadata.priority = newPriority;
-          
+
           // Add to new priority queue
           this.addToPriorityQueue(orchestrationId, newPriority);
         }
@@ -768,31 +917,36 @@ export class PipelineOrchestrationService {
   /**
    * Calculate dynamic priority based on current conditions
    */
-  private calculateDynamicPriority(orchestration: PipelineCoordinationContext): number {
+  private calculateDynamicPriority(
+    orchestration: PipelineCoordinationContext
+  ): number {
     let priority = orchestration.metadata.priority || 3;
-    
+
     // Deadline urgency
     if (orchestration.metadata.deadline) {
       const deadline = new Date(orchestration.metadata.deadline);
       const now = new Date();
-      const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursUntilDeadline <= 6) priority = Math.min(priority, 1); // Critical
+      const hoursUntilDeadline =
+        (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+      if (hoursUntilDeadline <= 6)
+        priority = Math.min(priority, 1); // Critical
       else if (hoursUntilDeadline <= 24) priority = Math.min(priority, 2); // High
     }
-    
+
     // Business value boost
     if (orchestration.metadata.businessValue > 10000) {
       priority = Math.min(priority, 2);
     }
-    
+
     // Age factor (older pending orchestrations get priority boost)
-    const age = Date.now() - new Date(orchestration.metadata.createdAt).getTime();
+    const age =
+      Date.now() - new Date(orchestration.metadata.createdAt).getTime();
     const ageHours = age / (1000 * 60 * 60);
     if (ageHours > 2 && orchestration.status === 'pending') {
       priority = Math.max(1, priority - 1);
     }
-    
+
     return Math.max(1, Math.min(5, priority));
   }
 
@@ -803,25 +957,31 @@ export class PipelineOrchestrationService {
     // Process queues in priority order (1 = highest)
     for (let priority = 1; priority <= 5; priority++) {
       const queue = this.priorityQueue.get(priority) || [];
-      
-      for (const orchestrationId of queue.slice(0, 3)) { // Process up to 3 at a time
+
+      for (const orchestrationId of queue.slice(0, 3)) {
+        // Process up to 3 at a time
         const orchestration = this.activeOrchestrations.get(orchestrationId);
-        
+
         if (orchestration && orchestration.status === 'pending') {
-          const allocation = await this.allocateResourcesForOrchestration(orchestrationId);
-          
+          const allocation =
+            await this.allocateResourcesForOrchestration(orchestrationId);
+
           if (allocation.success) {
             this.removeFromPriorityQueue(orchestrationId);
-            console.log(`🚀 Started orchestration ${orchestrationId} (priority ${priority})`);
-            
+            console.log(
+              `🚀 Started orchestration ${orchestrationId} (priority ${priority})`
+            );
+
             // Start the orchestration execution
             await this.executeOrchestration(orchestrationId);
           } else {
-            console.log(`⏸️ Orchestration ${orchestrationId} waiting for resources: ${allocation.error}`);
+            console.log(
+              `⏸️ Orchestration ${orchestrationId} waiting for resources: ${allocation.error}`
+            );
           }
         }
       }
-      
+
       // If high priority items are being processed, give them more resources
       if (priority <= 2 && queue.length > 0) {
         break; // Focus on high priority items first
@@ -834,7 +994,7 @@ export class PipelineOrchestrationService {
    */
   private startLoadBalancingOptimization(): void {
     console.log('⚖️ Starting load balancing optimization...');
-    
+
     setInterval(async () => {
       await this.optimizeLoadBalancing();
       await this.updateAgentPerformanceMetrics();
@@ -846,19 +1006,27 @@ export class PipelineOrchestrationService {
    */
   private async optimizeLoadBalancing(): Promise<void> {
     const agents = Array.from(this.workloadBalancer.values());
-    const avgUtilization = agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) / agents.length;
-    
+    const avgUtilization =
+      agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) /
+      agents.length;
+
     // Find agents that deviate significantly from average
     const threshold = 25; // 25% deviation threshold
-    const overloadedAgents = agents.filter(agent => 
-      agent.utilizationPercent > avgUtilization + threshold && agent.health !== 'unhealthy'
+    const overloadedAgents = agents.filter(
+      agent =>
+        agent.utilizationPercent > avgUtilization + threshold &&
+        agent.health !== 'unhealthy'
     );
-    const underloadedAgents = agents.filter(agent => 
-      agent.utilizationPercent < avgUtilization - threshold && agent.health === 'healthy'
+    const underloadedAgents = agents.filter(
+      agent =>
+        agent.utilizationPercent < avgUtilization - threshold &&
+        agent.health === 'healthy'
     );
 
     if (overloadedAgents.length > 0 && underloadedAgents.length > 0) {
-      console.log(`⚖️ Load balancing: ${overloadedAgents.length} overloaded, ${underloadedAgents.length} underloaded`);
+      console.log(
+        `⚖️ Load balancing: ${overloadedAgents.length} overloaded, ${underloadedAgents.length} underloaded`
+      );
       await this.redistributeWorkload(overloadedAgents, underloadedAgents);
     }
   }
@@ -869,27 +1037,37 @@ export class PipelineOrchestrationService {
   private async updateAgentPerformanceMetrics(): Promise<void> {
     try {
       const { storage } = await import('../storage');
-      
+
       for (const [agentId, workload] of this.workloadBalancer) {
         // Get completed work items for this agent in the last hour
-        const completedItems = await storage.getCompletedWorkItemsByAgentInTimeRange(
-          agentId,
-          new Date(Date.now() - 3600000), // 1 hour ago
-          new Date()
-        );
+        const completedItems =
+          await storage.getCompletedWorkItemsByAgentInTimeRange(
+            agentId,
+            new Date(Date.now() - 3600000), // 1 hour ago
+            new Date()
+          );
 
         if (completedItems.length > 0) {
           // Calculate success rate
-          const successfulItems = completedItems.filter(item => item.status === 'completed').length;
+          const successfulItems = completedItems.filter(
+            item => item.status === 'completed'
+          ).length;
           workload.successRate = successfulItems / completedItems.length;
 
           // Calculate average task duration
           const durations = completedItems
             .filter(item => item.startedAt && item.completedAt)
-            .map(item => new Date(item.completedAt!).getTime() - new Date(item.startedAt!).getTime());
-          
+            .map(
+              item =>
+                new Date(item.completedAt!).getTime() -
+                new Date(item.startedAt!).getTime()
+            );
+
           if (durations.length > 0) {
-            workload.avgTaskDuration = durations.reduce((sum, duration) => sum + duration, 0) / durations.length / (1000 * 60); // minutes
+            workload.avgTaskDuration =
+              durations.reduce((sum, duration) => sum + duration, 0) /
+              durations.length /
+              (1000 * 60); // minutes
           }
         }
       }
@@ -907,7 +1085,9 @@ export class PipelineOrchestrationService {
       return;
     }
 
-    console.log(`🎭 Executing orchestration: ${orchestrationId} (${orchestration.coordinationType})`);
+    console.log(
+      `🎭 Executing orchestration: ${orchestrationId} (${orchestration.coordinationType})`
+    );
 
     try {
       switch (orchestration.coordinationType) {
@@ -925,65 +1105,89 @@ export class PipelineOrchestrationService {
           break;
       }
     } catch (error) {
-      console.error(`❌ Orchestration execution failed ${orchestrationId}:`, error);
+      console.error(
+        `❌ Orchestration execution failed ${orchestrationId}:`,
+        error
+      );
       orchestration.status = 'failed';
       orchestration.metadata.failedAt = new Date().toISOString();
-      orchestration.metadata.failureReason = error instanceof Error ? error.message : String(error);
+      orchestration.metadata.failureReason =
+        error instanceof Error ? error.message : String(error);
     }
   }
 
   /**
    * Execute sequential orchestration
    */
-  private async executeSequentialOrchestration(orchestration: PipelineCoordinationContext): Promise<void> {
-    console.log(`📊 Sequential orchestration started: ${orchestration.orchestrationId}`);
-    
+  private async executeSequentialOrchestration(
+    orchestration: PipelineCoordinationContext
+  ): Promise<void> {
+    console.log(
+      `📊 Sequential orchestration started: ${orchestration.orchestrationId}`
+    );
+
     for (let i = 0; i < orchestration.pipelineIds.length; i++) {
       const pipelineId = orchestration.pipelineIds[i];
       orchestration.currentStage = i + 1;
-      
-      console.log(`🔄 Processing pipeline ${i + 1}/${orchestration.pipelineIds.length}: ${pipelineId}`);
-      
+
+      console.log(
+        `🔄 Processing pipeline ${i + 1}/${orchestration.pipelineIds.length}: ${pipelineId}`
+      );
+
       // In a real implementation, this would start the actual pipeline workflow
       // For now, we'll simulate the process
       await this.simulatePipelineExecution(pipelineId, orchestration);
-      
+
       // Check if orchestration should continue
-      if (orchestration.status === 'suspended' || orchestration.status === 'failed') {
+      if (
+        orchestration.status === 'suspended' ||
+        orchestration.status === 'failed'
+      ) {
         break;
       }
     }
-    
+
     if (orchestration.status === 'running') {
       orchestration.status = 'completed';
       orchestration.metadata.completedAt = new Date().toISOString();
-      console.log(`✅ Sequential orchestration completed: ${orchestration.orchestrationId}`);
+      console.log(
+        `✅ Sequential orchestration completed: ${orchestration.orchestrationId}`
+      );
     }
   }
 
   /**
    * Execute parallel orchestration
    */
-  private async executeParallelOrchestration(orchestration: PipelineCoordinationContext): Promise<void> {
-    console.log(`🔀 Parallel orchestration started: ${orchestration.orchestrationId}`);
-    
+  private async executeParallelOrchestration(
+    orchestration: PipelineCoordinationContext
+  ): Promise<void> {
+    console.log(
+      `🔀 Parallel orchestration started: ${orchestration.orchestrationId}`
+    );
+
     orchestration.currentStage = 1;
-    
+
     // Start all pipelines simultaneously
-    const pipelinePromises = orchestration.pipelineIds.map(pipelineId => 
+    const pipelinePromises = orchestration.pipelineIds.map(pipelineId =>
       this.simulatePipelineExecution(pipelineId, orchestration)
     );
-    
+
     try {
       await Promise.all(pipelinePromises);
-      
+
       if (orchestration.status === 'running') {
         orchestration.status = 'completed';
         orchestration.metadata.completedAt = new Date().toISOString();
-        console.log(`✅ Parallel orchestration completed: ${orchestration.orchestrationId}`);
+        console.log(
+          `✅ Parallel orchestration completed: ${orchestration.orchestrationId}`
+        );
       }
     } catch (error) {
-      console.error(`❌ Parallel orchestration failed: ${orchestration.orchestrationId}`, error);
+      console.error(
+        `❌ Parallel orchestration failed: ${orchestration.orchestrationId}`,
+        error
+      );
       orchestration.status = 'failed';
     }
   }
@@ -991,93 +1195,130 @@ export class PipelineOrchestrationService {
   /**
    * Execute conditional orchestration
    */
-  private async executeConditionalOrchestration(orchestration: PipelineCoordinationContext): Promise<void> {
-    console.log(`🔀 Conditional orchestration started: ${orchestration.orchestrationId}`);
-    
+  private async executeConditionalOrchestration(
+    orchestration: PipelineCoordinationContext
+  ): Promise<void> {
+    console.log(
+      `🔀 Conditional orchestration started: ${orchestration.orchestrationId}`
+    );
+
     // Simplified conditional logic - in reality this would be much more sophisticated
     for (let i = 0; i < orchestration.pipelineIds.length; i++) {
       const pipelineId = orchestration.pipelineIds[i];
       orchestration.currentStage = Math.ceil((i + 1) / 2);
-      
+
       // Simple condition: process every other pipeline, or all if high priority
-      const shouldProcess = (orchestration.metadata.priority || 3) <= 2 || i % 2 === 0;
-      
+      const shouldProcess =
+        (orchestration.metadata.priority || 3) <= 2 || i % 2 === 0;
+
       if (shouldProcess) {
         console.log(`🔄 Conditionally processing pipeline: ${pipelineId}`);
         await this.simulatePipelineExecution(pipelineId, orchestration);
       } else {
         console.log(`⏭️ Skipping pipeline based on conditions: ${pipelineId}`);
       }
-      
-      if (orchestration.status === 'suspended' || orchestration.status === 'failed') {
+
+      if (
+        orchestration.status === 'suspended' ||
+        orchestration.status === 'failed'
+      ) {
         break;
       }
     }
-    
+
     if (orchestration.status === 'running') {
       orchestration.status = 'completed';
       orchestration.metadata.completedAt = new Date().toISOString();
-      console.log(`✅ Conditional orchestration completed: ${orchestration.orchestrationId}`);
+      console.log(
+        `✅ Conditional orchestration completed: ${orchestration.orchestrationId}`
+      );
     }
   }
 
   /**
    * Execute priority-based orchestration
    */
-  private async executePriorityBasedOrchestration(orchestration: PipelineCoordinationContext): Promise<void> {
-    console.log(`🎯 Priority-based orchestration started: ${orchestration.orchestrationId}`);
-    
+  private async executePriorityBasedOrchestration(
+    orchestration: PipelineCoordinationContext
+  ): Promise<void> {
+    console.log(
+      `🎯 Priority-based orchestration started: ${orchestration.orchestrationId}`
+    );
+
     // Sort pipelines by priority (would use actual pipeline priorities in real implementation)
     const prioritizedPipelines = [...orchestration.pipelineIds].sort((a, b) => {
       // Simulate priority sorting - in reality this would look up actual pipeline priorities
       return Math.random() - 0.5; // Random for demonstration
     });
-    
+
     for (let i = 0; i < prioritizedPipelines.length; i++) {
       const pipelineId = prioritizedPipelines[i];
       orchestration.currentStage = i + 1;
-      
-      console.log(`🔄 Processing prioritized pipeline ${i + 1}/${prioritizedPipelines.length}: ${pipelineId}`);
+
+      console.log(
+        `🔄 Processing prioritized pipeline ${i + 1}/${prioritizedPipelines.length}: ${pipelineId}`
+      );
       await this.simulatePipelineExecution(pipelineId, orchestration);
-      
-      if (orchestration.status === 'suspended' || orchestration.status === 'failed') {
+
+      if (
+        orchestration.status === 'suspended' ||
+        orchestration.status === 'failed'
+      ) {
         break;
       }
     }
-    
+
     if (orchestration.status === 'running') {
       orchestration.status = 'completed';
       orchestration.metadata.completedAt = new Date().toISOString();
-      console.log(`✅ Priority-based orchestration completed: ${orchestration.orchestrationId}`);
+      console.log(
+        `✅ Priority-based orchestration completed: ${orchestration.orchestrationId}`
+      );
     }
   }
 
   /**
    * Simulate pipeline execution (in real implementation, this would integrate with workflow engine)
    */
-  private async simulatePipelineExecution(pipelineId: string, orchestration: PipelineCoordinationContext): Promise<void> {
+  private async simulatePipelineExecution(
+    pipelineId: string,
+    orchestration: PipelineCoordinationContext
+  ): Promise<void> {
     const executionTime = Math.random() * 2000 + 500; // 0.5-2.5 seconds simulation
     await new Promise(resolve => setTimeout(resolve, executionTime));
-    
+
     // Simulate occasional failures
-    if (Math.random() < 0.05) { // 5% failure rate
+    if (Math.random() < 0.05) {
+      // 5% failure rate
       throw new Error(`Simulated pipeline failure: ${pipelineId}`);
     }
-    
-    console.log(`✅ Pipeline simulation completed: ${pipelineId} (${Math.round(executionTime)}ms)`);
+
+    console.log(
+      `✅ Pipeline simulation completed: ${pipelineId} (${Math.round(executionTime)}ms)`
+    );
   }
 
   /**
    * Suspend an orchestration
    */
-  async suspendOrchestration(orchestrationId: string, triggeredBy: string, reason?: string): Promise<{ success: boolean; error?: string }> {
+  async suspendOrchestration(
+    orchestrationId: string,
+    triggeredBy: string,
+    reason?: string
+  ): Promise<{ success: boolean; error?: string }> {
     const orchestration = this.activeOrchestrations.get(orchestrationId);
     if (!orchestration) {
-      return { success: false, error: `Orchestration ${orchestrationId} not found` };
+      return {
+        success: false,
+        error: `Orchestration ${orchestrationId} not found`,
+      };
     }
 
     if (orchestration.status !== 'running') {
-      return { success: false, error: `Orchestration is not running (current status: ${orchestration.status})` };
+      return {
+        success: false,
+        error: `Orchestration is not running (current status: ${orchestration.status})`,
+      };
     }
 
     orchestration.status = 'suspended';
@@ -1091,31 +1332,47 @@ export class PipelineOrchestrationService {
       for (const agentId of allocation.allocatedAgents) {
         const workload = this.workloadBalancer.get(agentId);
         if (workload) {
-          workload.currentWorkItems = Math.max(0, workload.currentWorkItems - 1);
-          workload.utilizationPercent = (workload.currentWorkItems / workload.maxWorkItems) * 100;
+          workload.currentWorkItems = Math.max(
+            0,
+            workload.currentWorkItems - 1
+          );
+          workload.utilizationPercent =
+            (workload.currentWorkItems / workload.maxWorkItems) * 100;
         }
       }
     }
 
-    console.log(`⏸️ Orchestration ${orchestrationId} suspended by ${triggeredBy}`);
+    console.log(
+      `⏸️ Orchestration ${orchestrationId} suspended by ${triggeredBy}`
+    );
     return { success: true };
   }
 
   /**
    * Resume a suspended orchestration
    */
-  async resumeOrchestration(orchestrationId: string, triggeredBy: string): Promise<{ success: boolean; error?: string }> {
+  async resumeOrchestration(
+    orchestrationId: string,
+    triggeredBy: string
+  ): Promise<{ success: boolean; error?: string }> {
     const orchestration = this.activeOrchestrations.get(orchestrationId);
     if (!orchestration) {
-      return { success: false, error: `Orchestration ${orchestrationId} not found` };
+      return {
+        success: false,
+        error: `Orchestration ${orchestrationId} not found`,
+      };
     }
 
     if (orchestration.status !== 'suspended') {
-      return { success: false, error: `Orchestration is not suspended (current status: ${orchestration.status})` };
+      return {
+        success: false,
+        error: `Orchestration is not suspended (current status: ${orchestration.status})`,
+      };
     }
 
     // Try to reallocate resources
-    const allocation = await this.allocateResourcesForOrchestration(orchestrationId);
+    const allocation =
+      await this.allocateResourcesForOrchestration(orchestrationId);
     if (!allocation.success) {
       return { success: false, error: `Cannot resume - ${allocation.error}` };
     }
@@ -1126,14 +1383,18 @@ export class PipelineOrchestrationService {
     delete orchestration.metadata.suspendedAt;
     delete orchestration.metadata.suspensionReason;
 
-    console.log(`▶️ Orchestration ${orchestrationId} resumed by ${triggeredBy}`);
+    console.log(
+      `▶️ Orchestration ${orchestrationId} resumed by ${triggeredBy}`
+    );
     return { success: true };
   }
 
   /**
    * Get orchestration status and metrics
    */
-  getOrchestrationStatus(orchestrationId: string): PipelineCoordinationContext | undefined {
+  getOrchestrationStatus(
+    orchestrationId: string
+  ): PipelineCoordinationContext | undefined {
     return this.activeOrchestrations.get(orchestrationId);
   }
 
@@ -1145,20 +1406,29 @@ export class PipelineOrchestrationService {
     totalResourceUtilization: number;
     agentHealth: { healthy: number; degraded: number; unhealthy: number };
     priorityQueueLengths: Record<number, number>;
-    systemLoad: { cpuPercent: number; memoryPercent: number; agentUtilization: number };
+    systemLoad: {
+      cpuPercent: number;
+      memoryPercent: number;
+      agentUtilization: number;
+    };
   } {
     const agents = Array.from(this.workloadBalancer.values());
-    const healthCounts = agents.reduce((acc, agent) => {
-      acc[agent.health]++;
-      return acc;
-    }, { healthy: 0, degraded: 0, unhealthy: 0 });
+    const healthCounts = agents.reduce(
+      (acc, agent) => {
+        acc[agent.health]++;
+        return acc;
+      },
+      { healthy: 0, degraded: 0, unhealthy: 0 }
+    );
 
     const priorityQueueLengths: Record<number, number> = {};
     for (let i = 1; i <= 5; i++) {
       priorityQueueLengths[i] = this.priorityQueue.get(i)?.length || 0;
     }
 
-    const totalUtilization = agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) / agents.length;
+    const totalUtilization =
+      agents.reduce((sum, agent) => sum + agent.utilizationPercent, 0) /
+      agents.length;
     const systemLoad = this.calculateSystemUtilization();
 
     return {
@@ -1166,7 +1436,7 @@ export class PipelineOrchestrationService {
       totalResourceUtilization: totalUtilization,
       agentHealth: healthCounts,
       priorityQueueLengths,
-      systemLoad
+      systemLoad,
     };
   }
 }

@@ -19,7 +19,9 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
   async authenticate(context: AuthContext): Promise<AuthResult> {
     try {
-      console.log(`🔐 Starting generic form authentication for: ${context.portalUrl}`);
+      console.log(
+        `🔐 Starting generic form authentication for: ${context.portalUrl}`
+      );
 
       // Step 1: Analyze the login page
       const loginPageAnalysis = await this.analyzeLoginPage(context.portalUrl);
@@ -28,7 +30,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
         return {
           success: false,
           sessionId: context.sessionId,
-          error: loginPageAnalysis.error || 'Failed to analyze login page'
+          error: loginPageAnalysis.error || 'Failed to analyze login page',
         };
       }
 
@@ -40,7 +42,6 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       );
 
       return authResult;
-
     } catch (error) {
       return this.handleAuthError(error, 'GenericFormAuthStrategy');
     }
@@ -61,16 +62,18 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const response = await request(url, {
         method: 'GET',
         headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        }
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
       });
 
       if (response.statusCode >= 400) {
         return {
           success: false,
-          error: `HTTP ${response.statusCode} when accessing login page`
+          error: `HTTP ${response.statusCode} when accessing login page`,
         };
       }
 
@@ -85,21 +88,21 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
         return {
           success: true,
           authMethod: 'no_auth_required',
-          cookies
+          cookies,
         };
       }
 
       if (authMethod.type === 'unsupported') {
         return {
           success: false,
-          error: `Unsupported authentication method: ${authMethod.details}`
+          error: `Unsupported authentication method: ${authMethod.details}`,
         };
       }
 
       if (authMethod.type === 'browser_required') {
         return {
           success: false,
-          error: `Browser automation required: ${authMethod.details}`
+          error: `Browser automation required: ${authMethod.details}`,
         };
       }
 
@@ -108,19 +111,21 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
           success: true,
           authMethod: 'form',
           formData: authMethod.formData,
-          cookies
+          cookies,
         };
       }
 
       return {
         success: false,
-        error: `Unknown authentication method: ${authMethod.type}`
+        error: `Unknown authentication method: ${authMethod.type}`,
       };
-
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to analyze login page'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to analyze login page',
       };
     }
   }
@@ -128,7 +133,10 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Detect authentication method from page content
    */
-  private detectAuthenticationMethod($: cheerio.CheerioAPI, portalUrl: string): {
+  private detectAuthenticationMethod(
+    $: cheerio.CheerioAPI,
+    portalUrl: string
+  ): {
     type: string;
     details?: string;
     formData?: any;
@@ -147,9 +155,14 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const id = $form.attr('id') || '';
       const className = $form.attr('class') || '';
 
-      return action.includes('login') || action.includes('auth') ||
-             id.includes('login') || id.includes('auth') ||
-             className.includes('login') || className.includes('auth');
+      return (
+        action.includes('login') ||
+        action.includes('auth') ||
+        id.includes('login') ||
+        id.includes('auth') ||
+        className.includes('login') ||
+        className.includes('auth')
+      );
     });
 
     if (loginForm.length > 0) {
@@ -163,7 +176,10 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
     // Check for OAuth or other authentication methods that require browser automation
     if ($('a[href*="oauth"], a[href*="sso"], a[href*="saml"]').length > 0) {
-      return { type: 'browser_required', details: 'OAuth/SSO authentication detected' };
+      return {
+        type: 'browser_required',
+        details: 'OAuth/SSO authentication detected',
+      };
     }
 
     // Check for complex authentication indicators
@@ -172,12 +188,15 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       'javascript:',
       'onclick=',
       '.modal',
-      '#modal'
+      '#modal',
     ];
 
     for (const indicator of complexAuthIndicators) {
       if ($.html().includes(indicator)) {
-        return { type: 'browser_required', details: 'Complex authentication detected' };
+        return {
+          type: 'browser_required',
+          details: 'Complex authentication detected',
+        };
       }
     }
 
@@ -190,13 +209,19 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       }
     }
 
-    return { type: 'unsupported', details: 'No recognizable authentication method found' };
+    return {
+      type: 'unsupported',
+      details: 'No recognizable authentication method found',
+    };
   }
 
   /**
    * Extract form data from a form element
    */
-  private extractFormData($form: cheerio.Cheerio<cheerio.Element>, $: cheerio.CheerioAPI): any {
+  private extractFormData(
+    $form: cheerio.Cheerio<cheerio.Element>,
+    $: cheerio.CheerioAPI
+  ): any {
     const action = $form.attr('action');
     const method = $form.attr('method') || 'POST';
 
@@ -217,22 +242,30 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
         fields[name] = {
           type,
           value,
-          required: $input.attr('required') !== undefined
+          required: $input.attr('required') !== undefined,
         };
       }
     });
 
     return {
-      action: action.startsWith('http') ? action : new URL(action, $form.closest('html').find('base').attr('href') || '').toString(),
+      action: action.startsWith('http')
+        ? action
+        : new URL(
+            action,
+            $form.closest('html').find('base').attr('href') || ''
+          ).toString(),
       method: method.toUpperCase(),
-      fields
+      fields,
     };
   }
 
   /**
    * Check if form has a password field
    */
-  private hasPasswordField($form: cheerio.Cheerio<cheerio.Element>, $: cheerio.CheerioAPI): boolean {
+  private hasPasswordField(
+    $form: cheerio.Cheerio<cheerio.Element>,
+    $: cheerio.CheerioAPI
+  ): boolean {
     return $form.find('input[type="password"]').length > 0;
   }
 
@@ -249,18 +282,27 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const payload: Record<string, string> = {};
 
       // Map credentials to form fields
-      Object.entries(formData.fields).forEach(([fieldName, fieldInfo]: [string, any]) => {
-        const lowerFieldName = fieldName.toLowerCase();
+      Object.entries(formData.fields).forEach(
+        ([fieldName, fieldInfo]: [string, any]) => {
+          const lowerFieldName = fieldName.toLowerCase();
 
-        if (lowerFieldName.includes('user') || lowerFieldName.includes('email') || lowerFieldName.includes('login')) {
-          payload[fieldName] = context.username;
-        } else if (lowerFieldName.includes('pass') || fieldInfo.type === 'password') {
-          payload[fieldName] = context.password;
-        } else if (fieldInfo.value) {
-          // Include hidden fields and CSRF tokens
-          payload[fieldName] = fieldInfo.value;
+          if (
+            lowerFieldName.includes('user') ||
+            lowerFieldName.includes('email') ||
+            lowerFieldName.includes('login')
+          ) {
+            payload[fieldName] = context.username;
+          } else if (
+            lowerFieldName.includes('pass') ||
+            fieldInfo.type === 'password'
+          ) {
+            payload[fieldName] = context.password;
+          } else if (fieldInfo.value) {
+            // Include hidden fields and CSRF tokens
+            payload[fieldName] = fieldInfo.value;
+          }
         }
-      });
+      );
 
       console.log(`📤 Submitting form to: ${formData.action}`);
       console.log(`📋 Form fields:`, this.redactSensitiveInfo(payload));
@@ -270,13 +312,15 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
         method: formData.method,
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          Accept:
+            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'en-US,en;q=0.5',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': context.portalUrl,
-          'Cookie': cookies
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: context.portalUrl,
+          Cookie: cookies,
         },
-        body: new URLSearchParams(payload).toString()
+        body: new URLSearchParams(payload).toString(),
       });
 
       // Extract new cookies from login response
@@ -284,24 +328,29 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const allCookies = this.mergeCookies(cookies, sessionCookies);
 
       // Check if login was successful
-      const isSuccessful = await this.validateLoginSuccess(loginResponse, context.portalUrl);
+      const isSuccessful = await this.validateLoginSuccess(
+        loginResponse,
+        context.portalUrl
+      );
 
       if (isSuccessful) {
         console.log(`✅ Generic form authentication successful`);
         return {
           success: true,
           sessionId: context.sessionId,
-          cookies: allCookies
+          cookies: allCookies,
         };
       } else {
-        console.log(`❌ Generic form authentication failed - still on login page`);
+        console.log(
+          `❌ Generic form authentication failed - still on login page`
+        );
         return {
           success: false,
           sessionId: context.sessionId,
-          error: 'Authentication failed - invalid credentials or form submission error'
+          error:
+            'Authentication failed - invalid credentials or form submission error',
         };
       }
-
     } catch (error) {
       return this.handleAuthError(error, 'submitCredentials');
     }
@@ -310,12 +359,19 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Validate if login was successful
    */
-  private async validateLoginSuccess(loginResponse: any, originalUrl: string): Promise<boolean> {
+  private async validateLoginSuccess(
+    loginResponse: any,
+    originalUrl: string
+  ): Promise<boolean> {
     try {
       // Check for redirect (common for successful logins)
       if ([301, 302, 303, 307, 308].includes(loginResponse.statusCode)) {
         const location = loginResponse.headers.location;
-        if (location && !location.includes('login') && !location.includes('auth')) {
+        if (
+          location &&
+          !location.includes('login') &&
+          !location.includes('auth')
+        ) {
           return true; // Redirected away from login page
         }
       }
@@ -326,19 +382,24 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
         const $response = cheerio.load(responseHtml);
 
         // Look for login forms (absence indicates success)
-        const hasLoginForm = $response('form').filter((_, form) => {
-          const $form = $response(form);
-          const action = $form.attr('action') || '';
-          return action.includes('login') || action.includes('auth');
-        }).length > 0;
+        const hasLoginForm =
+          $response('form').filter((_, form) => {
+            const $form = $response(form);
+            const action = $form.attr('action') || '';
+            return action.includes('login') || action.includes('auth');
+          }).length > 0;
 
         // Look for error messages
-        const hasErrorMessage = $response('.error, .alert-danger, .login-error, [class*="error"]').length > 0;
+        const hasErrorMessage =
+          $response('.error, .alert-danger, .login-error, [class*="error"]')
+            .length > 0;
 
         // Look for success indicators
-        const hasSuccessIndicators = $response('.dashboard, .welcome, .logout, [href*="logout"]').length > 0;
+        const hasSuccessIndicators =
+          $response('.dashboard, .welcome, .logout, [href*="logout"]').length >
+          0;
 
-        return !hasLoginForm && !hasErrorMessage || hasSuccessIndicators;
+        return (!hasLoginForm && !hasErrorMessage) || hasSuccessIndicators;
       }
 
       return false;

@@ -47,7 +47,7 @@ class ComplianceBatchProcessor {
     successfullyProcessed: 0,
     errors: 0,
     skipped: 0,
-    startTime: new Date()
+    startTime: new Date(),
   };
 
   /**
@@ -74,7 +74,6 @@ class ComplianceBatchProcessor {
       }
 
       this.printFinalReport();
-
     } catch (error) {
       console.error('❌ Batch processing failed:', error);
       process.exit(1);
@@ -91,26 +90,34 @@ class ComplianceBatchProcessor {
       const { rfps: allRfps } = await storage.getAllRFPs({ limit: 10000 });
       this.stats.totalRfps = allRfps.length;
 
-      const unprocessedRfps = allRfps.filter(rfp =>
-        !rfp.requirements ||
-        !rfp.complianceItems ||
-        !rfp.riskFlags ||
-        (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
+      const unprocessedRfps = allRfps.filter(
+        rfp =>
+          !rfp.requirements ||
+          !rfp.complianceItems ||
+          !rfp.riskFlags ||
+          (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
       );
 
       this.stats.unprocessedRfps = unprocessedRfps.length;
 
       console.log(`Total RFPs in database: ${this.stats.totalRfps}`);
-      console.log(`RFPs missing compliance data: ${this.stats.unprocessedRfps}`);
-      console.log(`RFPs with compliance data: ${this.stats.totalRfps - this.stats.unprocessedRfps}`);
-      console.log(`Compliance coverage: ${((this.stats.totalRfps - this.stats.unprocessedRfps) / this.stats.totalRfps * 100).toFixed(1)}%`);
+      console.log(
+        `RFPs missing compliance data: ${this.stats.unprocessedRfps}`
+      );
+      console.log(
+        `RFPs with compliance data: ${this.stats.totalRfps - this.stats.unprocessedRfps}`
+      );
+      console.log(
+        `Compliance coverage: ${(((this.stats.totalRfps - this.stats.unprocessedRfps) / this.stats.totalRfps) * 100).toFixed(1)}%`
+      );
       console.log('');
 
       if (this.stats.unprocessedRfps === 0) {
-        console.log('✅ All RFPs already have compliance data! Nothing to process.');
+        console.log(
+          '✅ All RFPs already have compliance data! Nothing to process.'
+        );
         process.exit(0);
       }
-
     } catch (error) {
       console.error('❌ Failed to analyze current state:', error);
       throw error;
@@ -126,12 +133,15 @@ class ComplianceBatchProcessor {
     try {
       const { rfps: allRfps } = await storage.getAllRFPs({ limit: 10000 });
 
-      const unprocessedRfps = allRfps.filter(rfp =>
-        !rfp.requirements ||
-        !rfp.complianceItems ||
-        !rfp.riskFlags ||
-        (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
-      ).slice(0, options.limit);
+      const unprocessedRfps = allRfps
+        .filter(
+          rfp =>
+            !rfp.requirements ||
+            !rfp.complianceItems ||
+            !rfp.riskFlags ||
+            (Array.isArray(rfp.requirements) && rfp.requirements.length === 0)
+        )
+        .slice(0, options.limit);
 
       console.log(`Would process ${unprocessedRfps.length} RFPs:`);
       console.log('');
@@ -144,15 +154,18 @@ class ComplianceBatchProcessor {
         console.log(`${i + 1}. ${rfp.title}`);
         console.log(`   Agency: ${rfp.agency}`);
         console.log(`   Status: ${rfp.status}`);
-        console.log(`   Documents: ${documents.length} (${documentsWithText.length} with text)`);
-        console.log(`   Strategy: ${this.determineProcessingStrategy(rfp, documents, documentsWithText)}`);
+        console.log(
+          `   Documents: ${documents.length} (${documentsWithText.length} with text)`
+        );
+        console.log(
+          `   Strategy: ${this.determineProcessingStrategy(rfp, documents, documentsWithText)}`
+        );
         console.log('');
       }
 
       if (unprocessedRfps.length > 10) {
         console.log(`... and ${unprocessedRfps.length - 10} more RFPs`);
       }
-
     } catch (error) {
       console.error('❌ Dry run failed:', error);
       throw error;
@@ -166,7 +179,10 @@ class ComplianceBatchProcessor {
     console.log('⚡ Starting batch processing...');
 
     try {
-      const results = await complianceIntegrationService.batchProcessUnprocessedRFPs(options.limit);
+      const results =
+        await complianceIntegrationService.batchProcessUnprocessedRFPs(
+          options.limit
+        );
 
       this.stats.successfullyProcessed = results.filter(r => r.success).length;
       this.stats.errors = results.filter(r => !r.success).length;
@@ -176,18 +192,30 @@ class ComplianceBatchProcessor {
         console.log('====================');
 
         results.forEach((result, index) => {
-          console.log(`\n${index + 1}. RFP ${result.rfpId}: ${result.success ? '✅ SUCCESS' : '❌ FAILED'}`);
+          console.log(
+            `\n${index + 1}. RFP ${result.rfpId}: ${result.success ? '✅ SUCCESS' : '❌ FAILED'}`
+          );
 
           if (result.success) {
             if (result.complianceData) {
-              console.log(`   Requirements: ${result.complianceData.requirements.length}`);
-              console.log(`   Compliance Items: ${result.complianceData.complianceItems.length}`);
-              console.log(`   Risk Flags: ${result.complianceData.riskFlags.length}`);
+              console.log(
+                `   Requirements: ${result.complianceData.requirements.length}`
+              );
+              console.log(
+                `   Compliance Items: ${result.complianceData.complianceItems.length}`
+              );
+              console.log(
+                `   Risk Flags: ${result.complianceData.riskFlags.length}`
+              );
             }
             if (result.metadata) {
-              console.log(`   Analysis Type: ${result.metadata.analysisType || 'unknown'}`);
+              console.log(
+                `   Analysis Type: ${result.metadata.analysisType || 'unknown'}`
+              );
               if (result.metadata.documentsAnalyzed) {
-                console.log(`   Documents Analyzed: ${result.metadata.documentsAnalyzed}`);
+                console.log(
+                  `   Documents Analyzed: ${result.metadata.documentsAnalyzed}`
+                );
               }
             }
           } else {
@@ -195,7 +223,6 @@ class ComplianceBatchProcessor {
           }
         });
       }
-
     } catch (error) {
       console.error('❌ Processing failed:', error);
       throw error;
@@ -205,7 +232,11 @@ class ComplianceBatchProcessor {
   /**
    * Determine what processing strategy would be used for an RFP
    */
-  private determineProcessingStrategy(rfp: any, documents: any[], documentsWithText: any[]): string {
+  private determineProcessingStrategy(
+    rfp: any,
+    documents: any[],
+    documentsWithText: any[]
+  ): string {
     if (documents.length === 0) {
       return 'Basic Analysis (no documents)';
     }
@@ -222,7 +253,8 @@ class ComplianceBatchProcessor {
    */
   private printFinalReport(): void {
     this.stats.endTime = new Date();
-    this.stats.duration = this.stats.endTime.getTime() - this.stats.startTime.getTime();
+    this.stats.duration =
+      this.stats.endTime.getTime() - this.stats.startTime.getTime();
 
     console.log('\n🎯 Final Report');
     console.log('===============');
@@ -231,25 +263,42 @@ class ComplianceBatchProcessor {
     console.log(`Successfully processed: ${this.stats.successfullyProcessed}`);
     console.log(`Errors: ${this.stats.errors}`);
     console.log(`Skipped: ${this.stats.skipped}`);
-    console.log(`Processing time: ${(this.stats.duration / 1000).toFixed(1)} seconds`);
+    console.log(
+      `Processing time: ${(this.stats.duration / 1000).toFixed(1)} seconds`
+    );
 
-    const successRate = this.stats.unprocessedRfps > 0
-      ? (this.stats.successfullyProcessed / this.stats.unprocessedRfps * 100).toFixed(1)
-      : '0';
+    const successRate =
+      this.stats.unprocessedRfps > 0
+        ? (
+            (this.stats.successfullyProcessed / this.stats.unprocessedRfps) *
+            100
+          ).toFixed(1)
+        : '0';
     console.log(`Success rate: ${successRate}%`);
 
-    const newCoverage = this.stats.totalRfps > 0
-      ? ((this.stats.totalRfps - this.stats.unprocessedRfps + this.stats.successfullyProcessed) / this.stats.totalRfps * 100).toFixed(1)
-      : '0';
+    const newCoverage =
+      this.stats.totalRfps > 0
+        ? (
+            ((this.stats.totalRfps -
+              this.stats.unprocessedRfps +
+              this.stats.successfullyProcessed) /
+              this.stats.totalRfps) *
+            100
+          ).toFixed(1)
+        : '0';
     console.log(`New compliance coverage: ${newCoverage}%`);
 
     if (this.stats.errors > 0) {
-      console.log('\n⚠️  Some RFPs failed to process. Check the logs above for details.');
+      console.log(
+        '\n⚠️  Some RFPs failed to process. Check the logs above for details.'
+      );
     }
 
     if (this.stats.successfullyProcessed > 0) {
       console.log('\n✅ Batch processing completed successfully!');
-      console.log('   The compliance page should now show updated data for processed RFPs.');
+      console.log(
+        '   The compliance page should now show updated data for processed RFPs.'
+      );
     }
   }
 }

@@ -1,14 +1,32 @@
-import { useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertCompanyContactSchema } from "@shared/schema";
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { queryClient, apiRequest } from "@/lib/queryClient";
-import { CompanyContact, CompanyContactFormData, DECISION_AREAS } from "./types";
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { insertCompanyContactSchema } from '@shared/schema';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
+import { queryClient, apiRequest } from '@/lib/queryClient';
+import {
+  CompanyContact,
+  CompanyContactFormData,
+  DECISION_AREAS,
+} from './types';
 
 interface CompanyContactFormProps {
   contact?: CompanyContact;
@@ -16,62 +34,81 @@ interface CompanyContactFormProps {
   onSuccess: () => void;
 }
 
-export function CompanyContactForm({ contact, companyProfileId, onSuccess }: CompanyContactFormProps) {
+export function CompanyContactForm({
+  contact,
+  companyProfileId,
+  onSuccess,
+}: CompanyContactFormProps) {
   const { toast } = useToast();
 
   const form = useForm<CompanyContactFormData>({
-    resolver: zodResolver(insertCompanyContactSchema.extend({
-      email: insertCompanyContactSchema.shape.email?.optional().refine(
-        (val) => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
-        { message: "Please enter a valid email address" }
-      ),
-    })),
+    resolver: zodResolver(
+      insertCompanyContactSchema.extend({
+        email: insertCompanyContactSchema.shape.email
+          ?.optional()
+          .refine(val => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
+            message: 'Please enter a valid email address',
+          }),
+      })
+    ),
     defaultValues: {
       companyProfileId,
-      contactType: contact?.contactType || "primary",
-      name: contact?.name || "",
-      role: contact?.role || "",
-      email: contact?.email || "",
-      officePhone: contact?.officePhone || "",
-      mobilePhone: contact?.mobilePhone || "",
-      fax: contact?.fax || "",
+      contactType: contact?.contactType || 'primary',
+      name: contact?.name || '',
+      role: contact?.role || '',
+      email: contact?.email || '',
+      officePhone: contact?.officePhone || '',
+      mobilePhone: contact?.mobilePhone || '',
+      fax: contact?.fax || '',
       decisionAreas: contact?.decisionAreas || [],
-      ownershipPercent: contact?.ownershipPercent || "",
-      gender: contact?.gender || "",
-      ethnicity: contact?.ethnicity || "",
-      citizenship: contact?.citizenship || "",
-      hoursPerWeek: contact?.hoursPerWeek || "",
+      ownershipPercent: contact?.ownershipPercent || '',
+      gender: contact?.gender || '',
+      ethnicity: contact?.ethnicity || '',
+      citizenship: contact?.citizenship || '',
+      hoursPerWeek: contact?.hoursPerWeek || '',
       isActive: contact?.isActive ?? true,
     },
   });
 
   const createMutation = useMutation({
     mutationFn: (data: CompanyContactFormData) =>
-      apiRequest("POST", `/api/company/profiles/${companyProfileId}/contacts`, data),
+      apiRequest(
+        'POST',
+        `/api/company/profiles/${companyProfileId}/contacts`,
+        data
+      ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
-      toast({ title: "Contact created successfully" });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', 'all-contacts'],
+      });
+      toast({ title: 'Contact created successfully' });
       onSuccess();
     },
     onError: () => {
-      toast({ title: "Failed to create contact", variant: "destructive" });
+      toast({ title: 'Failed to create contact', variant: 'destructive' });
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: (data: CompanyContactFormData) =>
-      apiRequest("PUT", `/api/company-contacts/${contact!.id}`, data),
+      apiRequest('PUT', `/api/company/contacts/${contact!.id}`, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles", companyProfileId, "contacts"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/company/profiles/all-contacts"] });
-      toast({ title: "Contact updated successfully" });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', companyProfileId, 'contacts'],
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/company/profiles'] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/company/profiles', 'all-contacts'],
+      });
+      toast({ title: 'Contact updated successfully' });
       onSuccess();
     },
     onError: () => {
-      toast({ title: "Failed to update contact", variant: "destructive" });
+      toast({ title: 'Failed to update contact', variant: 'destructive' });
     },
   });
 
@@ -83,9 +120,10 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
     }
   };
 
-  const contactType = form.watch("contactType");
-  const isOwner = contactType === "owner";
-  const isDecisionMaker = contactType === "decision_maker" || contactType === "owner";
+  const contactType = form.watch('contactType');
+  const isOwner = contactType === 'owner';
+  const isDecisionMaker =
+    contactType === 'decision_maker' || contactType === 'owner';
 
   return (
     <Form {...form}>
@@ -112,7 +150,11 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Contact Type *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} data-testid="select-contact-type">
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                  data-testid="select-contact-type"
+                >
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select contact type" />
@@ -121,7 +163,9 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   <SelectContent>
                     <SelectItem value="primary">Primary Contact</SelectItem>
                     <SelectItem value="owner">Owner</SelectItem>
-                    <SelectItem value="decision_maker">Decision Maker</SelectItem>
+                    <SelectItem value="decision_maker">
+                      Decision Maker
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -138,7 +182,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
               <FormItem>
                 <FormLabel>Role/Title</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value || ""} placeholder="e.g., CEO, Project Manager" data-testid="input-contact-role" />
+                  <Input
+                    {...field}
+                    value={field.value || ''}
+                    placeholder="e.g., CEO, Project Manager"
+                    data-testid="input-contact-role"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -152,7 +201,13 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
               <FormItem>
                 <FormLabel>Email</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value || ""} type="email" placeholder="email@company.com" data-testid="input-contact-email" />
+                  <Input
+                    {...field}
+                    value={field.value || ''}
+                    type="email"
+                    placeholder="email@company.com"
+                    data-testid="input-contact-email"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -169,7 +224,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
               <FormItem>
                 <FormLabel>Office Phone</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value || ""} placeholder="(555) 123-4567" data-testid="input-contact-office-phone" />
+                  <Input
+                    {...field}
+                    value={field.value || ''}
+                    placeholder="(555) 123-4567"
+                    data-testid="input-contact-office-phone"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -183,7 +243,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
               <FormItem>
                 <FormLabel>Mobile Phone</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value || ""} placeholder="(555) 123-4567" data-testid="input-contact-mobile-phone" />
+                  <Input
+                    {...field}
+                    value={field.value || ''}
+                    placeholder="(555) 123-4567"
+                    data-testid="input-contact-mobile-phone"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -197,7 +262,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
               <FormItem>
                 <FormLabel>Fax</FormLabel>
                 <FormControl>
-                  <Input {...field} value={field.value || ""} placeholder="(555) 123-4567" data-testid="input-contact-fax" />
+                  <Input
+                    {...field}
+                    value={field.value || ''}
+                    placeholder="(555) 123-4567"
+                    data-testid="input-contact-fax"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -217,17 +287,29 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   Select the areas where this person makes key decisions
                 </FormDescription>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                  {DECISION_AREAS.map((area) => (
-                    <label key={area.value} className="flex items-center space-x-2 text-sm">
+                  {DECISION_AREAS.map(area => (
+                    <label
+                      key={area.value}
+                      className="flex items-center space-x-2 text-sm"
+                    >
                       <input
                         type="checkbox"
-                        checked={Array.isArray(field.value) && field.value.includes(area.value)}
-                        onChange={(e) => {
-                          const currentAreas = Array.isArray(field.value) ? field.value : [];
+                        checked={
+                          Array.isArray(field.value) &&
+                          field.value.includes(area.value)
+                        }
+                        onChange={e => {
+                          const currentAreas = Array.isArray(field.value)
+                            ? field.value
+                            : [];
                           if (e.target.checked) {
                             field.onChange([...currentAreas, area.value]);
                           } else {
-                            field.onChange(currentAreas.filter((a: string) => a !== area.value));
+                            field.onChange(
+                              currentAreas.filter(
+                                (a: string) => a !== area.value
+                              )
+                            );
                           }
                         }}
                         className="rounded border-gray-300"
@@ -255,7 +337,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   <FormItem>
                     <FormLabel>Ownership Percentage</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="e.g., 100%" data-testid="input-ownership-percent" />
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="e.g., 100%"
+                        data-testid="input-ownership-percent"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -269,7 +356,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   <FormItem>
                     <FormLabel>Hours Per Week</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="e.g., 40" data-testid="input-hours-per-week" />
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="e.g., 40"
+                        data-testid="input-hours-per-week"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -284,7 +376,11 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Gender</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || ""} data-testid="select-gender">
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || ''}
+                      data-testid="select-gender"
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
@@ -294,7 +390,9 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                         <SelectItem value="male">Male</SelectItem>
                         <SelectItem value="female">Female</SelectItem>
                         <SelectItem value="non_binary">Non-Binary</SelectItem>
-                        <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
+                        <SelectItem value="prefer_not_to_say">
+                          Prefer Not to Say
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -309,7 +407,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   <FormItem>
                     <FormLabel>Ethnicity</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="e.g., Hispanic/Latino" data-testid="input-ethnicity" />
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="e.g., Hispanic/Latino"
+                        data-testid="input-ethnicity"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -323,7 +426,12 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
                   <FormItem>
                     <FormLabel>Citizenship</FormLabel>
                     <FormControl>
-                      <Input {...field} value={field.value || ""} placeholder="e.g., US Citizen" data-testid="input-citizenship" />
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="e.g., US Citizen"
+                        data-testid="input-citizenship"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -339,7 +447,11 @@ export function CompanyContactForm({ contact, companyProfileId, onSuccess }: Com
             disabled={createMutation.isPending || updateMutation.isPending}
             data-testid="button-save-contact"
           >
-            {createMutation.isPending || updateMutation.isPending ? "Saving..." : contact ? "Update Contact" : "Create Contact"}
+            {createMutation.isPending || updateMutation.isPending
+              ? 'Saving...'
+              : contact
+                ? 'Update Contact'
+                : 'Create Contact'}
           </Button>
         </div>
       </form>

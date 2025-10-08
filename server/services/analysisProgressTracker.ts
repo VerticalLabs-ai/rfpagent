@@ -1,10 +1,15 @@
-import { storage } from "../storage";
-import type { WorkItem, RFP } from "@shared/schema";
+import { storage } from '../storage';
+import type { WorkItem, RFP } from '@shared/schema';
 
 export interface AnalysisProgress {
   rfpId: string;
   workflowId: string;
-  phase: 'document_validation' | 'text_extraction' | 'requirement_parsing' | 'compliance_analysis' | 'completed';
+  phase:
+    | 'document_validation'
+    | 'text_extraction'
+    | 'requirement_parsing'
+    | 'compliance_analysis'
+    | 'completed';
   progress: number; // 0-100
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   startTime: Date;
@@ -55,22 +60,24 @@ export class AnalysisProgressTracker {
         documentsToProcess: 0,
         documentsProcessed: 0,
         complianceItems: 0,
-        requirementsParsed: 0
-      }
+        requirementsParsed: 0,
+      },
     };
 
     this.progressMap.set(params.workflowId, progress);
     this.stepHistory.set(params.workflowId, []);
 
-    console.log(`📈 Initialized progress tracking for workflow: ${params.workflowId}`);
-    
+    console.log(
+      `📈 Initialized progress tracking for workflow: ${params.workflowId}`
+    );
+
     // Create notification for progress tracking start
     await storage.createNotification({
       type: 'progress',
       title: 'Analysis Started',
       message: `Started analysis workflow for RFP`,
       relatedEntityType: 'rfp',
-      relatedEntityId: params.rfpId
+      relatedEntityId: params.rfpId,
     });
 
     return progress;
@@ -98,7 +105,8 @@ export class AnalysisProgressTracker {
     if (params.phase) progress.phase = params.phase;
     if (params.currentStep) progress.currentStep = params.currentStep;
     if (params.status) progress.status = params.status;
-    if (typeof params.progress === 'number') progress.progress = params.progress;
+    if (typeof params.progress === 'number')
+      progress.progress = params.progress;
     if (params.metadata) {
       progress.metadata = { ...progress.metadata, ...params.metadata };
     }
@@ -109,7 +117,9 @@ export class AnalysisProgressTracker {
     // Auto-calculate progress based on completed steps if not provided
     if (typeof params.progress !== 'number' && params.status === 'completed') {
       progress.completedSteps++;
-      progress.progress = Math.round((progress.completedSteps / progress.totalSteps) * 100);
+      progress.progress = Math.round(
+        (progress.completedSteps / progress.totalSteps) * 100
+      );
     }
 
     // Mark as completed if at 100%
@@ -119,7 +129,9 @@ export class AnalysisProgressTracker {
       progress.phase = 'completed';
     }
 
-    console.log(`📊 Progress update [${params.workflowId}]: ${progress.currentStep} (${progress.progress}%)`);
+    console.log(
+      `📊 Progress update [${params.workflowId}]: ${progress.currentStep} (${progress.progress}%)`
+    );
 
     // Store progress to memory for persistence
     await this.persistProgress(progress);
@@ -144,7 +156,7 @@ export class AnalysisProgressTracker {
       data: params.data,
       error: params.error,
       duration: params.duration,
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
     const history = this.stepHistory.get(params.workflowId) || [];
@@ -156,10 +168,12 @@ export class AnalysisProgressTracker {
       workflowId: params.workflowId,
       currentStep: `Completed: ${params.stepName}`,
       status: params.success ? 'in_progress' : 'failed',
-      error: params.error
+      error: params.error,
     });
 
-    console.log(`🔄 Step recorded [${params.workflowId}]: ${params.stepName} - ${params.success ? 'SUCCESS' : 'FAILED'}`);
+    console.log(
+      `🔄 Step recorded [${params.workflowId}]: ${params.stepName} - ${params.success ? 'SUCCESS' : 'FAILED'}`
+    );
   }
 
   /**
@@ -197,20 +211,20 @@ export class AnalysisProgressTracker {
       workflowId,
       status: 'failed',
       currentStep: 'Workflow failed',
-      error
+      error,
     });
 
     const progress = this.progressMap.get(workflowId);
     if (progress) {
       progress.endTime = new Date();
-      
+
       // Create failure notification
       await storage.createNotification({
         type: 'error',
         title: 'Analysis Failed',
         message: `Analysis workflow failed: ${error}`,
         relatedEntityType: 'rfp',
-        relatedEntityId: progress.rfpId
+        relatedEntityId: progress.rfpId,
       });
     }
   }
@@ -226,8 +240,8 @@ export class AnalysisProgressTracker {
       currentStep: 'Analysis workflow completed',
       metadata: {
         completionTime: new Date(),
-        results
-      }
+        results,
+      },
     });
 
     const progress = this.progressMap.get(workflowId);
@@ -238,7 +252,7 @@ export class AnalysisProgressTracker {
         title: 'Analysis Complete',
         message: `Analysis workflow completed successfully`,
         relatedEntityType: 'rfp',
-        relatedEntityId: progress.rfpId
+        relatedEntityId: progress.rfpId,
       });
     }
 
@@ -260,14 +274,16 @@ export class AnalysisProgressTracker {
         currentStep: progress.currentStep,
         metadata: progress.metadata,
         errors: progress.errors,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
 
       // This would ideally be stored in a more permanent store
       // For now, we can use work item updates to track progress
-      
     } catch (error) {
-      console.warn(`❌ Failed to persist progress for ${progress.workflowId}:`, error);
+      console.warn(
+        `❌ Failed to persist progress for ${progress.workflowId}:`,
+        error
+      );
     }
   }
 
@@ -275,10 +291,16 @@ export class AnalysisProgressTracker {
    * Clean up completed workflows (for memory management)
    */
   cleanupCompletedWorkflows(olderThanHours: number = 24): void {
-    const cutoffTime = new Date(Date.now() - (olderThanHours * 60 * 60 * 1000));
-    
-    for (const [workflowId, progress] of Array.from(this.progressMap.entries())) {
-      if (progress.status === 'completed' && progress.endTime && progress.endTime < cutoffTime) {
+    const cutoffTime = new Date(Date.now() - olderThanHours * 60 * 60 * 1000);
+
+    for (const [workflowId, progress] of Array.from(
+      this.progressMap.entries()
+    )) {
+      if (
+        progress.status === 'completed' &&
+        progress.endTime &&
+        progress.endTime < cutoffTime
+      ) {
         this.progressMap.delete(workflowId);
         this.stepHistory.delete(workflowId);
         console.log(`🗑️ Cleaned up completed workflow: ${workflowId}`);
@@ -289,15 +311,15 @@ export class AnalysisProgressTracker {
   /**
    * Get real-time progress updates for frontend
    */
-  getProgressSummary(): { 
-    activeWorkflows: number; 
-    completedToday: number; 
+  getProgressSummary(): {
+    activeWorkflows: number;
+    completedToday: number;
     failedToday: number;
     averageCompletionTime: number;
   } {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let activeCount = 0;
     let completedToday = 0;
     let failedToday = 0;
@@ -310,7 +332,9 @@ export class AnalysisProgressTracker {
         if (progress.status === 'completed') {
           completedToday++;
           if (progress.endTime && progress.startTime) {
-            completionTimes.push(progress.endTime.getTime() - progress.startTime.getTime());
+            completionTimes.push(
+              progress.endTime.getTime() - progress.startTime.getTime()
+            );
           }
         } else if (progress.status === 'failed') {
           failedToday++;
@@ -318,15 +342,16 @@ export class AnalysisProgressTracker {
       }
     }
 
-    const averageCompletionTime = completionTimes.length > 0
-      ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length
-      : 0;
+    const averageCompletionTime =
+      completionTimes.length > 0
+        ? completionTimes.reduce((a, b) => a + b, 0) / completionTimes.length
+        : 0;
 
     return {
       activeWorkflows: activeCount,
       completedToday,
       failedToday,
-      averageCompletionTime: Math.round(averageCompletionTime / 1000) // Convert to seconds
+      averageCompletionTime: Math.round(averageCompletionTime / 1000), // Convert to seconds
     };
   }
 }
@@ -335,6 +360,9 @@ export class AnalysisProgressTracker {
 export const analysisProgressTracker = new AnalysisProgressTracker();
 
 // Auto-cleanup every hour
-setInterval(() => {
-  analysisProgressTracker.cleanupCompletedWorkflows();
-}, 60 * 60 * 1000);
+setInterval(
+  () => {
+    analysisProgressTracker.cleanupCompletedWorkflows();
+  },
+  60 * 60 * 1000
+);

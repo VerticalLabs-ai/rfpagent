@@ -23,7 +23,8 @@ router.get('/status', async (req, res) => {
 router.post('/analyze/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    const result = await complianceIntegrationService.processRfpCompliance(rfpId);
+    const result =
+      await complianceIntegrationService.processRfpCompliance(rfpId);
     res.json(result);
   } catch (error) {
     console.error('Error triggering compliance analysis:', error);
@@ -37,11 +38,12 @@ router.post('/analyze/:rfpId', async (req, res) => {
 router.post('/batch-process', async (req, res) => {
   try {
     const { limit = 10 } = req.body;
-    const results = await complianceIntegrationService.batchProcessCompliance(limit);
+    const results =
+      await complianceIntegrationService.batchProcessCompliance(limit);
     res.json({
       processed: results.length,
       results,
-      message: `Successfully processed ${results.length} RFPs for compliance`
+      message: `Successfully processed ${results.length} RFPs for compliance`,
     });
   } catch (error) {
     console.error('Error in batch compliance processing:', error);
@@ -61,7 +63,8 @@ router.get('/rfp/:rfpId', async (req, res) => {
       return res.status(404).json({ error: 'RFP not found' });
     }
 
-    const complianceData = complianceIntegrationService.formatComplianceData(rfp);
+    const complianceData =
+      complianceIntegrationService.formatComplianceData(rfp);
     res.json(complianceData);
   } catch (error) {
     console.error('Error getting RFP compliance data:', error);
@@ -75,10 +78,13 @@ router.get('/rfp/:rfpId', async (req, res) => {
 router.post('/refresh/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    const result = await complianceIntegrationService.processRfpCompliance(rfpId, { force: true });
+    const result = await complianceIntegrationService.processRfpCompliance(
+      rfpId,
+      { force: true }
+    );
     res.json({
       ...result,
-      message: 'Compliance analysis refreshed successfully'
+      message: 'Compliance analysis refreshed successfully',
     });
   } catch (error) {
     console.error('Error refreshing compliance analysis:', error);

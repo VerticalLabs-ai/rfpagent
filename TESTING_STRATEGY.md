@@ -21,7 +21,7 @@
 
 - ✅ **ESLint**: TypeScript-aware rules, security checks
 - ✅ **Prettier**: Consistent formatting across codebase
-- ✅ **Scripts**: Full quality pipeline with `npm run quality`
+- ✅ **Scripts**: Full quality pipeline with `pnpm quality`
 
 ## 🎯 **Current Testing Coverage**
 
@@ -29,13 +29,13 @@
 
 ```bash
 # Run all tests
-npm run test
+pnpmtest
 
 # Watch mode for development
-npm run test:watch
+pnpmtest:watch
 
 # Generate coverage report
-npm run test:coverage
+pnpmtest:coverage
 ```
 
 ### **Storage Service Tests**
@@ -50,14 +50,14 @@ npm run test:coverage
 
 ```bash
 # Complete quality pipeline
-npm run quality
+pnpmquality
 
 # Individual checks
-npm run type-check    # TypeScript compilation
-npm run lint         # ESLint checking
-npm run lint:fix     # Auto-fix linting issues
-npm run format       # Format code with Prettier
-npm run format:check # Verify formatting
+pnpmtype-check    # TypeScript compilation
+pnpmlint         # ESLint checking
+pnpmlint:fix     # Auto-fix linting issues
+pnpmformat       # Format code with Prettier
+pnpmformat:check # Verify formatting
 ```
 
 ## 🚀 **Production Readiness Status**
@@ -107,7 +107,7 @@ _(Server-side is production ready)_
 
 ```bash
 # Before committing changes
-npm run quality  # Runs all checks:
+pnpmquality  # Runs all checks:
 # ├── type-check   (TypeScript compilation)
 # ├── lint         (Code quality)
 # ├── format:check (Code formatting)

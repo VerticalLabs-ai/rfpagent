@@ -1,10 +1,16 @@
 import { Router } from 'express';
 import { storage } from '../storage';
 import { aiAgentOrchestrator } from '../services/aiAgentOrchestrator';
+import { agentMonitoringService } from '../services/agentMonitoringService';
 import { mastraWorkflowEngine } from '../services/mastraWorkflowEngine';
 import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
 import { workflowCoordinator } from '../services/workflowCoordinator';
 import { agentRegistryService } from '../services/agentRegistryService';
+import { analysisOrchestrator } from '../services/analysisOrchestrator';
+import {
+  discoveryOrchestrator,
+  type DiscoveryWorkflowRequest,
+} from '../services/discoveryOrchestrator';
 
 const router = Router();
 
@@ -13,11 +19,13 @@ const router = Router();
  */
 router.get('/suspended', async (req, res) => {
   try {
-    const suspendedWorkflows = await mastraWorkflowEngine.getSuspendedWorkflows();
+    const suspendedWorkflows = mastraWorkflowEngine
+      .getAllActiveWorkflows()
+      .filter(workflow => workflow.status === 'suspended');
     res.json(suspendedWorkflows);
   } catch (error) {
-    console.error("Error fetching suspended workflows:", error);
-    res.status(500).json({ error: "Failed to fetch suspended workflows" });
+    console.error('Error fetching suspended workflows:', error);
+    res.status(500).json({ error: 'Failed to fetch suspended workflows' });
   }
 });
 
@@ -26,11 +34,11 @@ router.get('/suspended', async (req, res) => {
  */
 router.get('/state', async (req, res) => {
   try {
-    const workflowState = await workflowCoordinator.getGlobalWorkflowState();
+    const workflowState = await agentMonitoringService.getWorkflowOverview();
     res.json(workflowState);
   } catch (error) {
-    console.error("Error fetching workflow state:", error);
-    res.status(500).json({ error: "Failed to fetch workflow state" });
+    console.error('Error fetching workflow state:', error);
+    res.status(500).json({ error: 'Failed to fetch workflow state' });
   }
 });
 
@@ -39,11 +47,11 @@ router.get('/state', async (req, res) => {
  */
 router.get('/phase-stats', async (req, res) => {
   try {
-    const phaseStats = await workflowCoordinator.getPhaseStatistics();
+    const phaseStats = await agentMonitoringService.getPhaseStatistics();
     res.json(phaseStats);
   } catch (error) {
-    console.error("Error fetching phase statistics:", error);
-    res.status(500).json({ error: "Failed to fetch phase statistics" });
+    console.error('Error fetching phase statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch phase statistics' });
   }
 });
 
@@ -53,16 +61,17 @@ router.get('/phase-stats', async (req, res) => {
 router.get('/:workflowId/status', async (req, res) => {
   try {
     const { workflowId } = req.params;
-    const status = await mastraWorkflowEngine.getWorkflowStatus(workflowId);
+    const status =
+      mastraWorkflowEngine.getWorkflowPhaseState(workflowId) || null;
 
     if (!status) {
-      return res.status(404).json({ error: "Workflow not found" });
+      return res.status(404).json({ error: 'Workflow not found' });
     }
 
     res.json(status);
   } catch (error) {
-    console.error("Error fetching workflow status:", error);
-    res.status(500).json({ error: "Failed to fetch workflow status" });
+    console.error('Error fetching workflow status:', error);
+    res.status(500).json({ error: 'Failed to fetch workflow status' });
   }
 });
 
@@ -71,33 +80,44 @@ router.get('/:workflowId/status', async (req, res) => {
  */
 router.post('/document-processing/execute', async (req, res) => {
   try {
-    const { rfpId, documentIds, analysisType = 'standard' } = req.body;
+    const {
+      rfpId,
+      companyProfileId,
+      analysisType = 'standard',
+      priority = 5,
+      deadline,
+      options = {},
+    } = req.body;
 
-    if (!rfpId || !documentIds || !Array.isArray(documentIds)) {
-      return res.status(400).json({
-        error: "rfpId and documentIds array are required"
-      });
+    if (!rfpId) {
+      return res.status(400).json({ error: 'rfpId is required' });
     }
 
     console.log(`🔄 Starting document processing workflow for RFP: ${rfpId}`);
 
-    const workflowResult = await mastraWorkflowEngine.executeDocumentProcessingWorkflow({
+    const sessionId = `analysis_${rfpId}_${Date.now()}`;
+    const workflowResult = await analysisOrchestrator.executeAnalysisWorkflow({
       rfpId,
-      documentIds,
-      analysisType,
-      priority: 5
+      sessionId,
+      companyProfileId,
+      priority,
+      deadline: deadline ? new Date(deadline) : undefined,
     });
 
     res.json({
-      success: true,
-      workflowId: workflowResult.workflowId,
-      message: "Document processing workflow started successfully"
+      ...workflowResult,
+      analysisType,
+      sessionId,
+      message: workflowResult.success
+        ? 'Document processing workflow started successfully'
+        : workflowResult.error ||
+          'Failed to start document processing workflow',
     });
   } catch (error) {
-    console.error("Error executing document processing workflow:", error);
+    console.error('Error executing document processing workflow:', error);
     res.status(500).json({
-      error: "Failed to execute document processing workflow",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to execute document processing workflow',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -107,33 +127,57 @@ router.post('/document-processing/execute', async (req, res) => {
  */
 router.post('/rfp-discovery/execute', async (req, res) => {
   try {
-    const { portalIds, searchCriteria, maxRfps = 50 } = req.body;
+    const {
+      portalIds,
+      searchCriteria,
+      maxRfps = 50,
+      sessionId,
+      workflowId,
+      priority = 5,
+      deadline,
+      options = {},
+    } = req.body;
 
     if (!portalIds || !Array.isArray(portalIds)) {
       return res.status(400).json({
-        error: "portalIds array is required"
+        error: 'portalIds array is required',
       });
     }
 
-    console.log(`🔍 Starting RFP discovery workflow for portals: ${portalIds.join(', ')}`);
+    console.log(
+      `🔍 Starting RFP discovery workflow for portals: ${portalIds.join(', ')}`
+    );
 
-    const workflowResult = await mastraWorkflowEngine.executeRfpDiscoveryWorkflow({
-      portalIds,
+    const discoveryOptions: DiscoveryWorkflowRequest['options'] = {
+      fullScan: options?.fullScan,
+      deepExtraction: options?.deepExtraction,
+      realTimeNotifications: options?.realTimeNotifications,
+      maxRetries: options?.maxRetries,
       searchCriteria,
       maxRfps,
-      priority: 5
+    };
+
+    const result = await discoveryOrchestrator.createDiscoveryWorkflow({
+      portalIds,
+      sessionId: sessionId || `discovery-${Date.now()}`,
+      workflowId,
+      priority,
+      deadline: deadline ? new Date(deadline) : undefined,
+      options: discoveryOptions,
     });
 
     res.json({
-      success: true,
-      workflowId: workflowResult.workflowId,
-      message: "RFP discovery workflow started successfully"
+      success: result.success,
+      workflowId: result.workflowId,
+      createdWorkItems: result.createdWorkItems.length,
+      assignedAgents: result.assignedAgents.map(agent => agent.agentId),
+      message: 'RFP discovery workflow started successfully',
     });
   } catch (error) {
-    console.error("Error executing RFP discovery workflow:", error);
+    console.error('Error executing RFP discovery workflow:', error);
     res.status(500).json({
-      error: "Failed to execute RFP discovery workflow",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to execute RFP discovery workflow',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -147,30 +191,39 @@ router.post('/proposal-generation/execute', async (req, res) => {
 
     if (!rfpId || !companyProfileId) {
       return res.status(400).json({
-        error: "rfpId and companyProfileId are required"
+        error: 'rfpId and companyProfileId are required',
       });
     }
 
     console.log(`📝 Starting proposal generation workflow for RFP: ${rfpId}`);
 
-    const workflowResult = await proposalGenerationOrchestrator.generateProposal({
-      rfpId,
-      companyProfileId,
-      proposalType,
-      priority: 5
-    });
+    const pipelineResult =
+      await proposalGenerationOrchestrator.createProposalGenerationPipeline({
+        rfpId,
+        companyProfileId,
+        proposalType,
+      });
+
+    if (!pipelineResult.success) {
+      return res.status(500).json({
+        success: false,
+        error:
+          pipelineResult.error ||
+          'Failed to start proposal generation pipeline',
+      });
+    }
 
     res.json({
       success: true,
-      workflowId: workflowResult.workflowId,
-      proposalId: workflowResult.proposalId,
-      message: "Proposal generation workflow started successfully"
+      pipelineId: pipelineResult.pipelineId,
+      message: 'Proposal generation pipeline started successfully',
+      metadata: pipelineResult,
     });
   } catch (error) {
-    console.error("Error executing proposal generation workflow:", error);
+    console.error('Error executing proposal generation workflow:', error);
     res.status(500).json({
-      error: "Failed to execute proposal generation workflow",
-      details: error instanceof Error ? error.message : 'Unknown error'
+      error: 'Failed to execute proposal generation workflow',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -181,16 +234,18 @@ router.post('/proposal-generation/execute', async (req, res) => {
 router.get('/:workflowId', async (req, res) => {
   try {
     const { workflowId } = req.params;
-    const workflow = await mastraWorkflowEngine.getWorkflowDetails(workflowId);
+    const workflowDetails =
+      mastraWorkflowEngine.getWorkflowPhaseState(workflowId) ||
+      (await analysisOrchestrator.getWorkflowStatus(workflowId));
 
-    if (!workflow) {
-      return res.status(404).json({ error: "Workflow not found" });
+    if (!workflowDetails) {
+      return res.status(404).json({ error: 'Workflow not found' });
     }
 
-    res.json(workflow);
+    res.json(workflowDetails);
   } catch (error) {
-    console.error("Error fetching workflow details:", error);
-    res.status(500).json({ error: "Failed to fetch workflow details" });
+    console.error('Error fetching workflow details:', error);
+    res.status(500).json({ error: 'Failed to fetch workflow details' });
   }
 });
 
@@ -202,20 +257,26 @@ router.post('/:workflowId/suspend', async (req, res) => {
     const { workflowId } = req.params;
     const { reason } = req.body;
 
-    const result = await mastraWorkflowEngine.suspendWorkflow(workflowId, reason);
+    const result = await mastraWorkflowEngine.pauseWorkflow(
+      workflowId,
+      'api_gateway',
+      reason
+    );
 
-    if (!result) {
-      return res.status(404).json({ error: "Workflow not found or cannot be suspended" });
+    if (!result.success) {
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be suspended',
+      });
     }
 
     res.json({
       success: true,
       workflowId,
-      message: "Workflow suspended successfully"
+      message: 'Workflow suspended successfully',
     });
   } catch (error) {
-    console.error("Error suspending workflow:", error);
-    res.status(500).json({ error: "Failed to suspend workflow" });
+    console.error('Error suspending workflow:', error);
+    res.status(500).json({ error: 'Failed to suspend workflow' });
   }
 });
 
@@ -227,20 +288,26 @@ router.post('/:workflowId/resume', async (req, res) => {
     const { workflowId } = req.params;
     const { resumeData } = req.body;
 
-    const result = await mastraWorkflowEngine.resumeWorkflow(workflowId, resumeData);
+    const result = await mastraWorkflowEngine.resumeWorkflow(
+      workflowId,
+      'api_gateway',
+      resumeData?.reason
+    );
 
-    if (!result) {
-      return res.status(404).json({ error: "Workflow not found or cannot be resumed" });
+    if (!result.success) {
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be resumed',
+      });
     }
 
     res.json({
       success: true,
       workflowId,
-      message: "Workflow resumed successfully"
+      message: 'Workflow resumed successfully',
     });
   } catch (error) {
-    console.error("Error resuming workflow:", error);
-    res.status(500).json({ error: "Failed to resume workflow" });
+    console.error('Error resuming workflow:', error);
+    res.status(500).json({ error: 'Failed to resume workflow' });
   }
 });
 
@@ -252,20 +319,26 @@ router.post('/:workflowId/cancel', async (req, res) => {
     const { workflowId } = req.params;
     const { reason } = req.body;
 
-    const result = await mastraWorkflowEngine.cancelWorkflow(workflowId, reason);
+    const result = await mastraWorkflowEngine.cancelWorkflow(
+      workflowId,
+      'api_gateway',
+      reason
+    );
 
-    if (!result) {
-      return res.status(404).json({ error: "Workflow not found or cannot be cancelled" });
+    if (!result.success) {
+      return res.status(404).json({
+        error: result.error || 'Workflow not found or cannot be cancelled',
+      });
     }
 
     res.json({
       success: true,
       workflowId,
-      message: "Workflow cancelled successfully"
+      message: 'Workflow cancelled successfully',
     });
   } catch (error) {
-    console.error("Error cancelling workflow:", error);
-    res.status(500).json({ error: "Failed to cancel workflow" });
+    console.error('Error cancelling workflow:', error);
+    res.status(500).json({ error: 'Failed to cancel workflow' });
   }
 });
 
@@ -275,16 +348,21 @@ router.post('/:workflowId/cancel', async (req, res) => {
 router.get('/state/:rfpId', async (req, res) => {
   try {
     const { rfpId } = req.params;
-    const workflowState = await workflowCoordinator.getRfpWorkflowState(rfpId);
+    const activeWorkflows = workflowCoordinator.getActiveWorkflows();
+    const workflowState = activeWorkflows.find(
+      workflow => workflow.data?.rfpId === rfpId
+    );
 
     if (!workflowState) {
-      return res.status(404).json({ error: "No workflow state found for this RFP" });
+      return res
+        .status(404)
+        .json({ error: 'No workflow state found for this RFP' });
     }
 
     res.json(workflowState);
   } catch (error) {
-    console.error("Error fetching RFP workflow state:", error);
-    res.status(500).json({ error: "Failed to fetch RFP workflow state" });
+    console.error('Error fetching RFP workflow state:', error);
+    res.status(500).json({ error: 'Failed to fetch RFP workflow state' });
   }
 });
 
@@ -297,27 +375,34 @@ router.post('/:workflowId/transition', async (req, res) => {
     const { targetPhase, transitionData } = req.body;
 
     if (!targetPhase) {
-      return res.status(400).json({ error: "targetPhase is required" });
+      return res.status(400).json({ error: 'targetPhase is required' });
     }
 
-    const result = await workflowCoordinator.transitionWorkflow(workflowId, targetPhase, transitionData);
+    const transitionResult = await mastraWorkflowEngine.transitionWorkflowPhase(
+      workflowId,
+      targetPhase,
+      'api_gateway',
+      'manual',
+      undefined,
+      transitionData
+    );
 
-    if (!result.success) {
+    if (!transitionResult.success) {
       return res.status(400).json({
-        error: "Failed to transition workflow",
-        details: result.error
+        error: 'Failed to transition workflow',
+        details: transitionResult.error,
       });
     }
 
     res.json({
       success: true,
       workflowId,
-      currentPhase: result.currentPhase,
-      message: "Workflow transitioned successfully"
+      state: transitionResult.state,
+      message: 'Workflow transitioned successfully',
     });
   } catch (error) {
-    console.error("Error transitioning workflow:", error);
-    res.status(500).json({ error: "Failed to transition workflow" });
+    console.error('Error transitioning workflow:', error);
+    res.status(500).json({ error: 'Failed to transition workflow' });
   }
 });
 

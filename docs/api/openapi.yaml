@@ -1,0 +1,1738 @@
+openapi: 3.0.3
+info:
+  title: RFP Agent API
+  version: 1.0.0
+  description: |
+    **RFP Agent** is an AI-powered platform for automated RFP discovery, proposal generation, and submission management.
+
+    ## Features
+    - 🔍 **Automated RFP Discovery**: Scan government portals for new opportunities
+    - 🤖 **AI-Powered Proposal Generation**: Generate compliant proposals using GPT-5
+    - 📊 **3-Tier Agent System**: Orchestrator, Managers, and Specialist agents
+    - 📄 **Document Intelligence**: Parse and analyze RFP documents
+    - 🚀 **Automated Submission**: Submit proposals through portal automation
+    - 📈 **Analytics & Monitoring**: Track performance and success rates
+
+    ## Architecture
+    The platform uses a sophisticated 3-tier agentic system:
+    - **Tier 1**: Primary Orchestrator (1 agent)
+    - **Tier 2**: Managers - Portal, Proposal, Research (3 agents)
+    - **Tier 3**: Specialists - Scanner, Monitor, Generator, Checker, Processor, Market Analyst, Historical Analyzer (7 agents)
+
+    ## Authentication
+    Currently, the API uses session-based authentication. API key support is planned for future releases.
+
+  contact:
+    name: RFP Agent Support
+    email: support@rfpagent.com
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+  - url: https://api.rfpagent.com/api
+    description: Production server
+
+tags:
+  - name: RFPs
+    description: RFP management and discovery operations
+  - name: Proposals
+    description: Proposal generation and management
+  - name: Portals
+    description: Portal management and scanning
+  - name: Documents
+    description: Document processing and analysis
+  - name: Submissions
+    description: Proposal submission pipeline
+  - name: AI
+    description: AI services and chat interactions
+  - name: Company
+    description: Company profile management
+  - name: Agents
+    description: AI agent monitoring and coordination
+  - name: Workflows
+    description: Workflow orchestration and management
+  - name: Analytics
+    description: System analytics and metrics
+  - name: System
+    description: System configuration and health
+
+paths:
+  # ============================================================================
+  # RFP ENDPOINTS
+  # ============================================================================
+  /rfps:
+    get:
+      tags: [RFPs]
+      summary: List all RFPs
+      description: Retrieve a paginated list of RFPs with optional filtering
+      operationId: listRFPs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [discovered, parsing, drafting, review, approved, submitted, closed]
+          description: Filter by RFP status
+        - name: portalId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by portal ID
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+          description: Items per page
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rfps:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RFP'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+              example:
+                rfps:
+                  - id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "IT Services Procurement 2024"
+                    agency: "City of Austin"
+                    category: "Technology"
+                    status: "discovered"
+                    deadline: "2024-12-31T23:59:59Z"
+                    estimatedValue: "500000.00"
+                    sourceUrl: "https://financeonline.austintexas.gov/rfp/123"
+                    progress: 20
+                total: 150
+                page: 1
+                limit: 20
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [RFPs]
+      summary: Create a new RFP
+      description: Manually create a new RFP entry
+      operationId: createRFP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRFPRequest'
+            example:
+              title: "Cloud Infrastructure Services"
+              agency: "City of Philadelphia"
+              category: "Technology"
+              sourceUrl: "https://phlcontracts.phila.gov/contract/123456"
+              deadline: "2024-12-31T23:59:59Z"
+              estimatedValue: "750000.00"
+      responses:
+        '201':
+          description: RFP created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RFP'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rfps/{id}:
+    get:
+      tags: [RFPs]
+      summary: Get RFP by ID
+      description: Retrieve detailed information for a specific RFP
+      operationId: getRFP
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: RFP ID
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RFP'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags: [RFPs]
+      summary: Update an RFP
+      description: Update RFP details
+      operationId: updateRFP
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRFPRequest'
+      responses:
+        '200':
+          description: RFP updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RFP'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [RFPs]
+      summary: Delete an RFP
+      description: Remove an RFP from the system
+      operationId: deleteRFP
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: RFP deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rfps/{id}/documents:
+    get:
+      tags: [RFPs, Documents]
+      summary: Get RFP documents
+      description: Retrieve all documents associated with an RFP
+      operationId: getRFPDocuments
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [RFPs, Documents]
+      summary: Add document to RFP
+      description: Upload and associate a document with an RFP
+      operationId: addRFPDocument
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - documentURL
+                - filename
+                - fileType
+              properties:
+                documentURL:
+                  type: string
+                  format: uri
+                filename:
+                  type: string
+                fileType:
+                  type: string
+      responses:
+        '201':
+          description: Document added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  document:
+                    $ref: '#/components/schemas/Document'
+                  objectPath:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /rfps/manual:
+    post:
+      tags: [RFPs]
+      summary: Process manual RFP submission
+      description: Submit an RFP URL for automated scraping and processing
+      operationId: submitManualRFP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - url
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: URL of the RFP page
+                userNotes:
+                  type: string
+                  description: Optional notes about this RFP
+            example:
+              url: "https://financeonline.austintexas.gov/rfp/567890"
+              userNotes: "High priority - cloud migration project"
+      responses:
+        '201':
+          description: Manual RFP processing started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  rfpId:
+                    type: string
+                    format: uuid
+                  sessionId:
+                    type: string
+                  message:
+                    type: string
+              example:
+                success: true
+                rfpId: "550e8400-e29b-41d4-a716-446655440001"
+                sessionId: "session_abc123"
+                message: "RFP processing started successfully"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # PROPOSAL ENDPOINTS
+  # ============================================================================
+  /proposals/rfp/{rfpId}:
+    get:
+      tags: [Proposals]
+      summary: Get proposals for RFP
+      description: Retrieve all proposals associated with a specific RFP
+      operationId: getProposalsForRFP
+      parameters:
+        - name: rfpId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Proposal'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /proposals/{id}:
+    put:
+      tags: [Proposals]
+      summary: Update proposal
+      description: Update proposal details
+      operationId: updateProposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProposalRequest'
+      responses:
+        '200':
+          description: Proposal updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Proposal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags: [Proposals]
+      summary: Delete proposal
+      description: Remove a proposal from the system
+      operationId: deleteProposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Proposal deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /proposals/enhanced/generate:
+    post:
+      tags: [Proposals]
+      summary: Generate enhanced proposal
+      description: Start AI-powered proposal generation with advanced features
+      operationId: generateEnhancedProposal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rfpId
+              properties:
+                rfpId:
+                  type: string
+                  format: uuid
+                companyProfileId:
+                  type: string
+                  format: uuid
+                options:
+                  type: object
+                  properties:
+                    generatePricing:
+                      type: boolean
+                      default: true
+                    generateCompliance:
+                      type: boolean
+                      default: true
+                    proposalType:
+                      type: string
+                      enum: [standard, technical, cost]
+                    qualityThreshold:
+                      type: number
+                      minimum: 0
+                      maximum: 1
+                      default: 0.8
+            example:
+              rfpId: "550e8400-e29b-41d4-a716-446655440000"
+              companyProfileId: "660e8400-e29b-41d4-a716-446655440000"
+              options:
+                generatePricing: true
+                generateCompliance: true
+                proposalType: "technical"
+                qualityThreshold: 0.85
+      responses:
+        '200':
+          description: Proposal generation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  sessionId:
+                    type: string
+                  message:
+                    type: string
+              example:
+                success: true
+                sessionId: "enhanced_550e8400_1234567890"
+                message: "Enhanced proposal generation started"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /proposals/pipeline/generate:
+    post:
+      tags: [Proposals]
+      summary: Generate proposals in pipeline
+      description: Generate multiple proposals in parallel or sequential pipeline
+      operationId: generateProposalPipeline
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rfpIds
+                - companyProfileId
+              properties:
+                rfpIds:
+                  type: array
+                  items:
+                    type: string
+                    format: uuid
+                companyProfileId:
+                  type: string
+                  format: uuid
+                priority:
+                  type: integer
+                  minimum: 1
+                  maximum: 10
+                  default: 5
+                parallelExecution:
+                  type: boolean
+                  default: true
+                options:
+                  type: object
+      responses:
+        '200':
+          description: Pipeline started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  pipelines:
+                    type: array
+                    items:
+                      type: object
+                  rfpCount:
+                    type: integer
+                  message:
+                    type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /proposals/{id}/approve:
+    post:
+      tags: [Proposals]
+      summary: Approve proposal
+      description: Mark a proposal as approved for submission
+      operationId: approveProposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approvedBy:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Proposal approved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  proposal:
+                    $ref: '#/components/schemas/Proposal'
+                  message:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # PORTAL ENDPOINTS
+  # ============================================================================
+  /portals:
+    get:
+      tags: [Portals]
+      summary: List all portals
+      description: Retrieve all configured government portals
+      operationId: listPortals
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Portal'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Portals]
+      summary: Create portal
+      description: Add a new government portal for monitoring
+      operationId: createPortal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePortalRequest'
+      responses:
+        '201':
+          description: Portal created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portal'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /portals/{id}/scan:
+    post:
+      tags: [Portals]
+      summary: Start portal scan
+      description: Initiate automated RFP discovery scan for a portal
+      operationId: startPortalScan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                searchFilter:
+                  type: string
+                  maxLength: 100
+                  description: Optional search filter for the scan
+      responses:
+        '202':
+          description: Scan started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scanId:
+                    type: string
+                  message:
+                    type: string
+              example:
+                scanId: "scan_abc123def456"
+                message: "Portal scan started"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Portal is already being scanned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Portal is already being scanned"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /portals/{id}/scan/stream:
+    get:
+      tags: [Portals]
+      summary: Stream scan events (SSE)
+      description: Server-Sent Events endpoint for real-time scan updates
+      operationId: streamPortalScan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: scanId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE stream established
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                data: {"type":"scan_started","scanId":"scan_123","portalName":"Austin Finance Online"}
+
+                data: {"type":"step_update","step":"authenticating","progress":25}
+
+                data: {"type":"rfp_discovered","rfp":{"title":"Cloud Services RFP","agency":"City of Austin"}}
+
+                data: {"type":"scan_completed","totalRfps":15}
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================================================
+  # SUBMISSION ENDPOINTS
+  # ============================================================================
+  /submissions:
+    post:
+      tags: [Submissions]
+      summary: Create submission
+      description: Create a new submission for a proposal
+      operationId: createSubmission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubmissionRequest'
+      responses:
+        '201':
+          description: Submission created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /submissions/{id}/execute:
+    post:
+      tags: [Submissions]
+      summary: Execute submission pipeline
+      description: Start automated submission process for a proposal
+      operationId: executeSubmissionPipeline
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                browserOptions:
+                  type: object
+                  properties:
+                    headless:
+                      type: boolean
+                      default: true
+                    timeout:
+                      type: number
+                      default: 30000
+      responses:
+        '202':
+          description: Submission pipeline started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  pipelineId:
+                    type: string
+                  message:
+                    type: string
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /submissions/{id}/status:
+    get:
+      tags: [Submissions]
+      summary: Get submission status
+      description: Retrieve current status of submission pipeline
+      operationId: getSubmissionStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionPipeline'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # AI & CHAT ENDPOINTS
+  # ============================================================================
+  /ai/chat:
+    post:
+      tags: [AI]
+      summary: Chat with AI assistant
+      description: Send a message to the AI assistant for RFP-related queries
+      operationId: chatWithAI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - message
+              properties:
+                message:
+                  type: string
+                conversationId:
+                  type: string
+                  format: uuid
+                context:
+                  type: object
+            example:
+              message: "Find me technology RFPs from Austin with value over $100k"
+              conversationId: "conv_123"
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response:
+                    type: string
+                  conversationId:
+                    type: string
+                    format: uuid
+                  metadata:
+                    type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # AGENT ENDPOINTS
+  # ============================================================================
+  /agent-registry:
+    get:
+      tags: [Agents]
+      summary: List registered agents
+      description: Get all registered agents in the 3-tier system
+      operationId: listAgents
+      parameters:
+        - name: tier
+          in: query
+          schema:
+            type: string
+            enum: [orchestrator, manager, specialist]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, busy, offline, error]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Agent'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /agent-activity:
+    get:
+      tags: [Agents]
+      summary: Get agent activity
+      description: Retrieve recent agent coordination and activity logs
+      operationId: getAgentActivity
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentActivity'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # COMPANY PROFILE ENDPOINTS
+  # ============================================================================
+  /company/profiles:
+    get:
+      tags: [Company]
+      summary: List company profiles
+      description: Retrieve all company profiles
+      operationId: listCompanyProfiles
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompanyProfile'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags: [Company]
+      summary: Create company profile
+      description: Create a new company profile for proposal generation
+      operationId: createCompanyProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCompanyProfileRequest'
+      responses:
+        '201':
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # ANALYTICS & METRICS ENDPOINTS
+  # ============================================================================
+  /dashboard/metrics:
+    get:
+      tags: [Analytics]
+      summary: Get dashboard metrics
+      description: Retrieve high-level system metrics for dashboard
+      operationId: getDashboardMetrics
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /system-metrics:
+    get:
+      tags: [Analytics, System]
+      summary: Get system metrics
+      description: Retrieve detailed system performance metrics
+      operationId: getSystemMetrics
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemMetrics'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ============================================================================
+  # SYSTEM ENDPOINTS
+  # ============================================================================
+  /system/health:
+    get:
+      tags: [System]
+      summary: Health check
+      description: Check system health and availability
+      operationId: healthCheck
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+                  components:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: healthy
+                      storage:
+                        type: string
+                        example: healthy
+                      agents:
+                        type: string
+                        example: healthy
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: unhealthy
+                  errors:
+                    type: array
+                    items:
+                      type: string
+
+components:
+  schemas:
+    # ============================================================================
+    # CORE SCHEMAS
+    # ============================================================================
+    RFP:
+      type: object
+      required:
+        - id
+        - title
+        - agency
+        - sourceUrl
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        agency:
+          type: string
+        category:
+          type: string
+        portalId:
+          type: string
+          format: uuid
+        sourceUrl:
+          type: string
+          format: uri
+        deadline:
+          type: string
+          format: date-time
+        estimatedValue:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+        status:
+          type: string
+          enum: [discovered, parsing, drafting, review, approved, submitted, closed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        requirements:
+          type: object
+        complianceItems:
+          type: object
+        riskFlags:
+          type: object
+        analysis:
+          type: object
+        addedBy:
+          type: string
+          enum: [manual, automatic]
+        discoveredAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateRFPRequest:
+      type: object
+      required:
+        - title
+        - agency
+        - sourceUrl
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        agency:
+          type: string
+        category:
+          type: string
+        portalId:
+          type: string
+          format: uuid
+        sourceUrl:
+          type: string
+          format: uri
+        deadline:
+          type: string
+          format: date-time
+        estimatedValue:
+          type: string
+
+    UpdateRFPRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [discovered, parsing, drafting, review, approved, submitted, closed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        requirements:
+          type: object
+        complianceItems:
+          type: object
+        analysis:
+          type: object
+
+    Proposal:
+      type: object
+      required:
+        - id
+        - rfpId
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        rfpId:
+          type: string
+          format: uuid
+        content:
+          type: object
+        narratives:
+          type: object
+        pricingTables:
+          type: object
+        forms:
+          type: object
+        attachments:
+          type: object
+        proposalData:
+          type: object
+        estimatedCost:
+          type: string
+        estimatedMargin:
+          type: string
+        status:
+          type: string
+          enum: [draft, review, approved, submitted]
+        generatedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UpdateProposalRequest:
+      type: object
+      properties:
+        content:
+          type: object
+        narratives:
+          type: object
+        pricingTables:
+          type: object
+        status:
+          type: string
+          enum: [draft, review, approved, submitted]
+        estimatedCost:
+          type: string
+        estimatedMargin:
+          type: string
+
+    Portal:
+      type: object
+      required:
+        - id
+        - name
+        - url
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        type:
+          type: string
+          default: general
+        isActive:
+          type: boolean
+        monitoringEnabled:
+          type: boolean
+        loginRequired:
+          type: boolean
+        lastScanned:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, maintenance, error]
+        scanFrequency:
+          type: integer
+          description: Hours between scans
+          default: 24
+        maxRfpsPerScan:
+          type: integer
+          default: 50
+        selectors:
+          type: object
+        filters:
+          type: object
+        lastError:
+          type: string
+        errorCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePortalRequest:
+      type: object
+      required:
+        - name
+        - url
+      properties:
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        type:
+          type: string
+        loginRequired:
+          type: boolean
+        username:
+          type: string
+        password:
+          type: string
+        scanFrequency:
+          type: integer
+        selectors:
+          type: object
+        filters:
+          type: object
+
+    Document:
+      type: object
+      required:
+        - id
+        - rfpId
+        - filename
+        - fileType
+        - objectPath
+      properties:
+        id:
+          type: string
+          format: uuid
+        rfpId:
+          type: string
+          format: uuid
+        filename:
+          type: string
+        fileType:
+          type: string
+        objectPath:
+          type: string
+        extractedText:
+          type: string
+        parsedData:
+          type: object
+        uploadedAt:
+          type: string
+          format: date-time
+
+    Submission:
+      type: object
+      required:
+        - id
+        - rfpId
+        - proposalId
+        - portalId
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        rfpId:
+          type: string
+          format: uuid
+        proposalId:
+          type: string
+          format: uuid
+        portalId:
+          type: string
+          format: uuid
+        submissionData:
+          type: object
+        receiptData:
+          type: object
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed, cancelled, submitted, confirmed]
+        submittedAt:
+          type: string
+          format: date-time
+        confirmedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateSubmissionRequest:
+      type: object
+      required:
+        - rfpId
+        - proposalId
+        - portalId
+      properties:
+        rfpId:
+          type: string
+          format: uuid
+        proposalId:
+          type: string
+          format: uuid
+        portalId:
+          type: string
+          format: uuid
+        submissionData:
+          type: object
+
+    SubmissionPipeline:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        submissionId:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+        currentPhase:
+          type: string
+          enum: [queued, preflight, authenticating, filling, uploading, submitting, verifying, completed, failed]
+        status:
+          type: string
+          enum: [pending, in_progress, suspended, completed, failed]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        preflightChecks:
+          type: object
+        authenticationData:
+          type: object
+        formData:
+          type: object
+        uploadedDocuments:
+          type: object
+        submissionReceipt:
+          type: object
+        errorData:
+          type: object
+        retryCount:
+          type: integer
+        estimatedCompletion:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    Agent:
+      type: object
+      required:
+        - id
+        - agentId
+        - tier
+        - role
+        - displayName
+      properties:
+        id:
+          type: string
+          format: uuid
+        agentId:
+          type: string
+        tier:
+          type: string
+          enum: [orchestrator, manager, specialist]
+        role:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        capabilities:
+          type: array
+          items:
+            type: string
+        tools:
+          type: array
+          items:
+            type: string
+        maxConcurrency:
+          type: integer
+        status:
+          type: string
+          enum: [active, busy, offline, error]
+        lastHeartbeat:
+          type: string
+          format: date-time
+        version:
+          type: string
+        configuration:
+          type: object
+        parentAgentId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    AgentActivity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sessionId:
+          type: string
+        initiatorAgentId:
+          type: string
+        targetAgentId:
+          type: string
+        coordinationType:
+          type: string
+          enum: [handoff, collaboration, consultation, delegation]
+        context:
+          type: object
+        request:
+          type: object
+        response:
+          type: object
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        priority:
+          type: integer
+          minimum: 1
+          maximum: 10
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+
+    CompanyProfile:
+      type: object
+      required:
+        - id
+        - companyName
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        dba:
+          type: string
+        website:
+          type: string
+          format: uri
+        primaryBusinessCategory:
+          type: string
+        naicsPrimary:
+          type: string
+        nigpCodes:
+          type: string
+        employeesCount:
+          type: string
+        registrationState:
+          type: string
+        county:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateCompanyProfileRequest:
+      type: object
+      required:
+        - companyName
+      properties:
+        companyName:
+          type: string
+        dba:
+          type: string
+        website:
+          type: string
+          format: uri
+        primaryBusinessCategory:
+          type: string
+        naicsPrimary:
+          type: string
+        registrationState:
+          type: string
+
+    DashboardMetrics:
+      type: object
+      properties:
+        totalRFPs:
+          type: integer
+        activeRFPs:
+          type: integer
+        totalProposals:
+          type: integer
+        submittedProposals:
+          type: integer
+        winRate:
+          type: number
+        totalValue:
+          type: string
+        recentActivity:
+          type: array
+          items:
+            type: object
+        portalStatus:
+          type: array
+          items:
+            type: object
+
+    SystemMetrics:
+      type: object
+      properties:
+        uptime:
+          type: integer
+          description: System uptime in seconds
+        activeAgents:
+          type: integer
+        queuedWorkItems:
+          type: integer
+        avgResponseTime:
+          type: number
+        errorRate:
+          type: number
+        throughput:
+          type: number
+        resourceUtilization:
+          type: object
+          properties:
+            cpu:
+              type: number
+            memory:
+              type: number
+            storage:
+              type: number
+
+  # ============================================================================
+  # RESPONSE TEMPLATES
+  # ============================================================================
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              details:
+                type: array
+                items:
+                  type: object
+          example:
+            error: "Invalid input data"
+            details:
+              - field: "url"
+                message: "Must be a valid URL"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: "Resource not found"
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+          example:
+            error: "Internal server error"
+
+  # ============================================================================
+  # SECURITY SCHEMES
+  # ============================================================================
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: connect.sid
+      description: Session-based authentication using cookies
+
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token authentication (planned for future release)
+
+# Global security - currently using session-based auth
+security:
+  - sessionAuth: []

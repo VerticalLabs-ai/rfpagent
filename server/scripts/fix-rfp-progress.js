@@ -23,22 +23,22 @@ async function fixRFPProgress() {
       // Determine correct progress based on status
       switch (rfp.status) {
         case 'open':
-          newProgress = 10;  // RFP discovered but not yet processed
+          newProgress = 10; // RFP discovered but not yet processed
           break;
         case 'discovered':
-          newProgress = 15;  // Just discovered and scraped
+          newProgress = 15; // Just discovered and scraped
           break;
         case 'parsing':
-          newProgress = 25;  // Documents being processed
+          newProgress = 25; // Documents being processed
           break;
         case 'review':
-          newProgress = 40;  // Analysis complete, pending review
+          newProgress = 40; // Analysis complete, pending review
           break;
         case 'drafting':
-          newProgress = 60;  // Proposal being generated
+          newProgress = 60; // Proposal being generated
           break;
         case 'approved':
-          newProgress = 80;  // Proposal approved, ready for submission
+          newProgress = 80; // Proposal approved, ready for submission
           break;
         case 'submitted':
           newProgress = 100; // Actually submitted - this should be 100%
@@ -54,13 +54,16 @@ async function fixRFPProgress() {
       // Only update if progress is different
       if (rfp.progress !== newProgress) {
         await storage.updateRFP(rfp.id, { progress: newProgress });
-        console.log(`✅ Updated RFP "${rfp.title}" (${rfp.status}): ${rfp.progress}% → ${newProgress}%`);
+        console.log(
+          `✅ Updated RFP "${rfp.title}" (${rfp.status}): ${rfp.progress}% → ${newProgress}%`
+        );
         updatedCount++;
       }
     }
 
-    console.log(`🎉 Progress fix complete! Updated ${updatedCount} out of ${rfps.length} RFPs`);
-
+    console.log(
+      `🎉 Progress fix complete! Updated ${updatedCount} out of ${rfps.length} RFPs`
+    );
   } catch (error) {
     console.error('❌ Error fixing RFP progress:', error);
     process.exit(1);
@@ -71,7 +74,7 @@ async function fixRFPProgress() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   fixRFPProgress()
     .then(() => process.exit(0))
-    .catch((error) => {
+    .catch(error => {
       console.error(error);
       process.exit(1);
     });

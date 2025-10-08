@@ -24,7 +24,11 @@ interface RFPWithDetails {
 }
 
 export default function RFPsPage() {
-  const { data: rfps = [], isLoading, error } = useQuery<RFPWithDetails[]>({
+  const {
+    data: rfps = [],
+    isLoading,
+    error,
+  } = useQuery<RFPWithDetails[]>({
     queryKey: ['/api/rfps/detailed'],
   });
 
@@ -56,7 +60,10 @@ export default function RFPsPage() {
         <h1 className="text-3xl font-bold mb-6">RFPs</h1>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-red-600">Error loading RFPs: {error instanceof Error ? error.message : 'Unknown error'}</p>
+            <p className="text-red-600">
+              Error loading RFPs:{' '}
+              {error instanceof Error ? error.message : 'Unknown error'}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -88,31 +95,47 @@ export default function RFPsPage() {
       {rfps.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center">
-            <p className="text-muted-foreground">No RFPs found. Check your portal configurations and try scanning again.</p>
+            <p className="text-muted-foreground">
+              No RFPs found. Check your portal configurations and try scanning
+              again.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
           {rfps.map(({ rfp }) => (
-            <Card key={rfp.id} className="hover:shadow-md transition-shadow" data-testid={`rfp-card-${rfp.id}`}>
+            <Card
+              key={rfp.id}
+              className="hover:shadow-md transition-shadow"
+              data-testid={`rfp-card-${rfp.id}`}
+            >
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <CardTitle className="text-xl mb-2" data-testid={`rfp-title-${rfp.id}`}>
+                    <CardTitle
+                      className="text-xl mb-2"
+                      data-testid={`rfp-title-${rfp.id}`}
+                    >
                       {rfp.title}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground mb-2" data-testid={`rfp-agency-${rfp.id}`}>
+                    <p
+                      className="text-sm text-muted-foreground mb-2"
+                      data-testid={`rfp-agency-${rfp.id}`}
+                    >
                       {rfp.agency}
                     </p>
                     {rfp.description && (
-                      <p className="text-sm text-foreground line-clamp-2" data-testid={`rfp-description-${rfp.id}`}>
+                      <p
+                        className="text-sm text-foreground line-clamp-2"
+                        data-testid={`rfp-description-${rfp.id}`}
+                      >
                         {rfp.description}
                       </p>
                     )}
                   </div>
                   <div className="flex gap-2 ml-4">
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="sm"
                       asChild
                       data-testid={`rfp-details-button-${rfp.id}`}
@@ -120,13 +143,17 @@ export default function RFPsPage() {
                       <Link href={`/rfps/${rfp.id}`}>View Details</Link>
                     </Button>
                     {rfp.sourceUrl && (
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         asChild
                         data-testid={`rfp-source-button-${rfp.id}`}
                       >
-                        <a href={rfp.sourceUrl} target="_blank" rel="noopener noreferrer">
+                        <a
+                          href={rfp.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           <ExternalLink className="h-4 w-4" />
                         </a>
                       </Button>
@@ -137,9 +164,11 @@ export default function RFPsPage() {
               <CardContent>
                 <div className="grid grid-cols-4 gap-4 mb-4">
                   <div>
-                    <div className="text-xs font-medium text-muted-foreground mb-1">STATUS</div>
-                    <Badge 
-                      variant="secondary" 
+                    <div className="text-xs font-medium text-muted-foreground mb-1">
+                      STATUS
+                    </div>
+                    <Badge
+                      variant="secondary"
                       className="text-xs font-medium px-3 py-1 min-w-[80px] justify-center"
                       data-testid={`rfp-status-${rfp.id}`}
                     >
@@ -147,32 +176,47 @@ export default function RFPsPage() {
                     </Badge>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-muted-foreground mb-1">DEADLINE</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">
+                      DEADLINE
+                    </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm" data-testid={`rfp-deadline-${rfp.id}`}>
+                      <span
+                        className="text-sm"
+                        data-testid={`rfp-deadline-${rfp.id}`}
+                      >
                         {formatDate(rfp.deadline)}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-muted-foreground mb-1">VALUE</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">
+                      VALUE
+                    </div>
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm" data-testid={`rfp-value-${rfp.id}`}>
+                      <span
+                        className="text-sm"
+                        data-testid={`rfp-value-${rfp.id}`}
+                      >
                         {formatCurrency(rfp.estimatedValue)}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs font-medium text-muted-foreground mb-1">PROGRESS</div>
+                    <div className="text-xs font-medium text-muted-foreground mb-1">
+                      PROGRESS
+                    </div>
                     <div className="space-y-2">
-                      <span className="text-sm" data-testid={`rfp-progress-${rfp.id}`}>
+                      <span
+                        className="text-sm"
+                        data-testid={`rfp-progress-${rfp.id}`}
+                      >
                         {rfp.progress || 0}% complete
                       </span>
-                      <Progress 
-                        value={rfp.progress || 0} 
-                        className="w-full h-2" 
+                      <Progress
+                        value={rfp.progress || 0}
+                        className="w-full h-2"
                         data-testid={`rfp-progress-bar-${rfp.id}`}
                       />
                     </div>

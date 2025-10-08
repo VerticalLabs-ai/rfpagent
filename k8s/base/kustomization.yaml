@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - hpa.yaml
+  - pdb.yaml
+  - configmap.yaml
+  - serviceaccount.yaml
+
+commonLabels:
+  app: rfp-agent
+  managed-by: kustomize
+
+images:
+  - name: ghcr.io/mgunnin/rfpagent
+    newTag: sha-${COMMIT_SHA}

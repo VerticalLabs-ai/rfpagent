@@ -1,19 +1,32 @@
 import { UserRepository } from './UserRepository';
 import { PortalRepository } from './PortalRepository';
 import { RFPRepository } from './RFPRepository';
+import { db } from '../db';
+import { users } from '@shared/schema';
+import { eq, sql } from 'drizzle-orm';
 
 // Additional repositories (to be created)
 import type {
-  Proposal, InsertProposal,
-  Document, InsertDocument,
-  Submission, InsertSubmission,
-  SubmissionPipeline, InsertSubmissionPipeline,
-  SubmissionEvent, InsertSubmissionEvent,
-  SubmissionStatusHistory, InsertSubmissionStatusHistory,
-  AuditLog, InsertAuditLog,
-  Notification, InsertNotification,
-  Scan, InsertScan,
-  ScanEvent, InsertScanEvent
+  Proposal,
+  InsertProposal,
+  Document,
+  InsertDocument,
+  Submission,
+  InsertSubmission,
+  SubmissionPipeline,
+  InsertSubmissionPipeline,
+  SubmissionEvent,
+  InsertSubmissionEvent,
+  SubmissionStatusHistory,
+  InsertSubmissionStatusHistory,
+  AuditLog,
+  InsertAuditLog,
+  Notification,
+  InsertNotification,
+  Scan,
+  InsertScan,
+  ScanEvent,
+  InsertScanEvent,
 } from '@shared/schema';
 
 /**
@@ -24,9 +37,9 @@ export class RepositoryManager {
   private static instance: RepositoryManager;
 
   // Core repositories
-  private _userRepository: UserRepository;
-  private _portalRepository: PortalRepository;
-  private _rfpRepository: RFPRepository;
+  private _userRepository!: UserRepository;
+  private _portalRepository!: PortalRepository;
+  private _rfpRepository!: RFPRepository;
 
   // Additional repositories (to be implemented)
   // private _proposalRepository: ProposalRepository;
@@ -104,7 +117,7 @@ export class RepositoryManager {
     const checks = {
       users: false,
       portals: false,
-      rfps: false
+      rfps: false,
     };
 
     try {
@@ -143,7 +156,7 @@ export class RepositoryManager {
 
     return {
       status,
-      repositories: checks
+      repositories: checks,
     };
   }
 
@@ -158,24 +171,27 @@ export class RepositoryManager {
     const [userStats, portalStats, rfpStats] = await Promise.all([
       this._userRepository.count(),
       this._portalRepository.getPortalStats(),
-      this._rfpRepository.getRFPStats()
+      this._rfpRepository.getRFPStats(),
     ]);
 
-    const activeUsers = await this._userRepository.count({ isActive: true } as any);
+    const [{ count: activeUsers }] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(users)
+      .where(eq(users.isActive, true));
 
     return {
       users: {
         total: userStats,
-        active: activeUsers
+        active: Number(activeUsers ?? 0),
       },
       portals: {
         total: portalStats.total,
-        active: portalStats.active
+        active: portalStats.active,
       },
       rfps: {
         total: rfpStats.total,
-        active: rfpStats.active
-      }
+        active: rfpStats.active,
+      },
     };
   }
 
@@ -187,12 +203,7 @@ export class RepositoryManager {
   ): Promise<T> {
     // For now, use the base repository transaction from one of the repositories
     // In a more advanced implementation, this would coordinate transactions across all repositories
-    return await this._userRepository.transaction(async (tx) => {
-      // Create a temporary repository manager with transaction-aware repositories
-      // This is a simplified implementation - in production, you'd want to pass the transaction
-      // context to all repositories
-      return await callback(this);
-    });
+    return await callback(this);
   }
 
   /**
@@ -206,7 +217,7 @@ export class RepositoryManager {
   /**
    * Graceful shutdown
    */
-  async shutdown(): void {
+  async shutdown(): Promise<void> {
     console.log('🛑 Repository Manager shutting down...');
     this.clearCaches();
     console.log('✅ Repository Manager shutdown complete');
@@ -222,7 +233,18 @@ export const repositoryManager = RepositoryManager.getInstance();
  * Backward compatibility - provide the same interface as the old storage
  * This allows gradual migration from the old storage pattern
  */
-export const repositories = {
+export interface RepositoryFacade {
+  users: UserRepository;
+  portals: PortalRepository;
+  rfps: RFPRepository;
+  healthCheck: () => ReturnType<RepositoryManager['healthCheck']>;
+  getStats: () => ReturnType<RepositoryManager['getStats']>;
+  executeTransaction: <T>(
+    callback: (repos: RepositoryFacade) => Promise<T>
+  ) => Promise<T>;
+}
+
+export const repositories: RepositoryFacade = {
   users: repositoryManager.users,
   portals: repositoryManager.portals,
   rfps: repositoryManager.rfps,
@@ -232,6 +254,7 @@ export const repositories = {
   getStats: () => repositoryManager.getStats(),
 
   // Transaction support
-  executeTransaction: <T>(callback: (repos: typeof repositories) => Promise<T>) =>
-    repositoryManager.executeTransaction(() => callback(repositories))
+  executeTransaction: async <T>(
+    callback: (repos: RepositoryFacade) => Promise<T>
+  ) => repositoryManager.executeTransaction(() => callback(repositories)),
 };

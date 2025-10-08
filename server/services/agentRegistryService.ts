@@ -1,10 +1,15 @@
-import { storage } from "../storage";
-import type { AgentRegistry, InsertAgentRegistry, WorkItem, AgentSession } from "@shared/schema";
-import { nanoid } from "nanoid";
+import { storage } from '../storage';
+import type {
+  AgentRegistry,
+  InsertAgentRegistry,
+  WorkItem,
+  AgentSession,
+} from '@shared/schema';
+import { nanoid } from 'nanoid';
 
 /**
  * AgentRegistryService - Core service for managing the 3-tier agentic system
- * 
+ *
  * Responsibilities:
  * - Agent lifecycle management (registration, deregistration, status updates)
  * - Capability-based agent discovery and routing
@@ -12,7 +17,6 @@ import { nanoid } from "nanoid";
  * - Load balancing and availability tracking
  */
 export class AgentRegistryService {
-  
   /**
    * Register a new agent in the system
    */
@@ -28,7 +32,6 @@ export class AgentRegistryService {
     parentAgentId?: string;
     configuration?: any;
   }): Promise<AgentRegistry> {
-    
     const agent: InsertAgentRegistry = {
       agentId: agentData.agentId,
       tier: agentData.tier,
@@ -39,7 +42,6 @@ export class AgentRegistryService {
       tools: agentData.tools || [],
       maxConcurrency: agentData.maxConcurrency || 1,
       status: 'active',
-      lastHeartbeat: new Date(),
       version: '1.0.0',
       configuration: agentData.configuration,
       parentAgentId: agentData.parentAgentId,
@@ -51,7 +53,7 @@ export class AgentRegistryService {
       if (!parentAgent) {
         throw new Error(`Parent agent ${agent.parentAgentId} not found`);
       }
-      
+
       // Validate tier hierarchy (specialist -> manager -> orchestrator)
       if (agent.tier === 'manager' && parentAgent.tier !== 'orchestrator') {
         throw new Error('Manager agents must report to orchestrator agents');
@@ -72,26 +74,32 @@ export class AgentRegistryService {
     if (!agent) {
       throw new Error(`Agent ${agentId} not found`);
     }
-    
+
     await storage.updateAgentHeartbeat(agentId);
   }
 
   /**
    * Update agent status (active, busy, offline, error)
    */
-  async updateAgentStatus(agentId: string, status: string): Promise<AgentRegistry> {
+  async updateAgentStatus(
+    agentId: string,
+    status: string
+  ): Promise<AgentRegistry> {
     const agent = await storage.getAgent(agentId);
     if (!agent) {
       throw new Error(`Agent ${agentId} not found`);
     }
-    
+
     return await storage.updateAgentStatus(agentId, status);
   }
 
   /**
    * Find agents by capability for task routing
    */
-  async findAgentsByCapability(capabilities: string[], tier?: string): Promise<AgentRegistry[]> {
+  async findAgentsByCapability(
+    capabilities: string[],
+    tier?: string
+  ): Promise<AgentRegistry[]> {
     return await storage.findAvailableAgents(capabilities, tier);
   }
 
@@ -124,26 +132,32 @@ export class AgentRegistryService {
     if (!agent) {
       throw new Error(`Agent ${agentId} not found`);
     }
-    
+
     // Check if agent has any active work items (pending, assigned, or in_progress)
     const [pendingWork, assignedWork, inProgressWork] = await Promise.all([
       storage.getWorkItemsByAgent(agentId, 'pending'),
       storage.getWorkItemsByAgent(agentId, 'assigned'),
-      storage.getWorkItemsByAgent(agentId, 'in_progress')
+      storage.getWorkItemsByAgent(agentId, 'in_progress'),
     ]);
-    
-    const activeWorkCount = pendingWork.length + assignedWork.length + inProgressWork.length;
+
+    const activeWorkCount =
+      pendingWork.length + assignedWork.length + inProgressWork.length;
     if (activeWorkCount > 0) {
-      throw new Error(`Cannot deregister agent ${agentId}: has ${activeWorkCount} active work items`);
+      throw new Error(
+        `Cannot deregister agent ${agentId}: has ${activeWorkCount} active work items`
+      );
     }
-    
+
     await storage.deregisterAgent(agentId);
   }
 
   /**
    * Update agent configuration
    */
-  async updateAgentConfiguration(agentId: string, configuration: any): Promise<AgentRegistry> {
+  async updateAgentConfiguration(
+    agentId: string,
+    configuration: any
+  ): Promise<AgentRegistry> {
     return await storage.updateAgent(agentId, { configuration });
   }
 
@@ -151,13 +165,19 @@ export class AgentRegistryService {
    * Find the best available agent for a given capability
    * Considers agent load, response time, and availability
    */
-  async findBestAgentForCapability(capability: string, tier?: string): Promise<AgentRegistry | null> {
-    const availableAgents = await this.findAgentsByCapability([capability], tier);
-    
+  async findBestAgentForCapability(
+    capability: string,
+    tier?: string
+  ): Promise<AgentRegistry | null> {
+    const availableAgents = await this.findAgentsByCapability(
+      [capability],
+      tier
+    );
+
     if (availableAgents.length === 0) {
       return null;
     }
-    
+
     // Simple load balancing - pick agent with least recent heartbeat (least busy)
     // In a production system, this would consider actual load metrics
     return availableAgents.sort((a, b) => {
@@ -181,19 +201,19 @@ export class AgentRegistryService {
     if (!agent) {
       throw new Error(`Agent ${agentId} not found`);
     }
-    
+
     const [activeWork, pendingWork, completedWork] = await Promise.all([
       storage.getWorkItemsByAgent(agentId, 'in_progress'),
       storage.getWorkItemsByAgent(agentId, 'pending'),
-      storage.getWorkItemsByAgent(agentId, 'completed')
+      storage.getWorkItemsByAgent(agentId, 'completed'),
     ]);
-    
+
     // Determine if agent is healthy based on last heartbeat
     const now = new Date();
     const lastHeartbeat = agent.lastHeartbeat || new Date(0);
     const timeSinceHeartbeat = now.getTime() - lastHeartbeat.getTime();
     const isHealthy = timeSinceHeartbeat < 5 * 60 * 1000; // 5 minutes threshold
-    
+
     return {
       agent,
       activeWorkItems: activeWork.length,
@@ -223,27 +243,27 @@ export class AgentRegistryService {
   }> {
     const allAgents = await storage.getActiveAgents();
     const now = new Date();
-    
+
     let healthyCount = 0;
     let unhealthyCount = 0;
     const tierCounts: Record<string, number> = {};
-    
+
     for (const agent of allAgents) {
       // Count by tier
       tierCounts[agent.tier] = (tierCounts[agent.tier] || 0) + 1;
-      
+
       // Check health
       const lastHeartbeat = agent.lastHeartbeat || new Date(0);
       const timeSinceHeartbeat = now.getTime() - lastHeartbeat.getTime();
       const isHealthy = timeSinceHeartbeat < 5 * 60 * 1000; // 5 minutes threshold
-      
+
       if (isHealthy) {
         healthyCount++;
       } else {
         unhealthyCount++;
       }
     }
-    
+
     return {
       totalAgents: allAgents.length,
       activeAgents: allAgents.filter(a => a.status === 'active').length,
@@ -260,27 +280,28 @@ export class AgentRegistryService {
     // Register Primary Orchestrator
     const orchestratorId = 'primary-orchestrator';
     const existingOrchestrator = await storage.getAgent(orchestratorId);
-    
+
     if (!existingOrchestrator) {
       await this.registerAgent({
         agentId: orchestratorId,
         tier: 'orchestrator',
         role: 'primary-orchestrator',
         displayName: 'Primary Orchestrator',
-        description: 'Main coordination agent for user interactions and workflow management',
+        description:
+          'Main coordination agent for user interactions and workflow management',
         capabilities: [
           'session_management',
           'intent_analysis',
           'workflow_coordination',
           'task_delegation',
-          'user_interface'
+          'user_interface',
         ],
         tools: ['openai', 'database', 'notification'],
         maxConcurrency: 5,
         configuration: {
           maxSessionDuration: 3600, // 1 hour
-          maxConcurrentSessions: 10
-        }
+          maxConcurrentSessions: 10,
+        },
       });
     }
 
@@ -290,26 +311,41 @@ export class AgentRegistryService {
         agentId: 'portal-manager',
         role: 'portal-manager',
         displayName: 'Portal Manager',
-        description: 'Coordinates portal-specific operations and scraping activities',
-        capabilities: ['portal_management', 'scraping_coordination', 'data_extraction'],
-        tools: ['browser', 'puppeteer', 'database']
+        description:
+          'Coordinates portal-specific operations and scraping activities',
+        capabilities: [
+          'portal_management',
+          'scraping_coordination',
+          'data_extraction',
+        ],
+        tools: ['browser', 'puppeteer', 'database'],
       },
       {
         agentId: 'proposal-manager',
         role: 'proposal-manager',
         displayName: 'Proposal Manager',
-        description: 'Manages proposal generation, compliance checking, and quality assurance',
-        capabilities: ['proposal_generation', 'compliance_checking', 'quality_assurance'],
-        tools: ['openai', 'document_parser', 'database']
+        description:
+          'Manages proposal generation, compliance checking, and quality assurance',
+        capabilities: [
+          'proposal_generation',
+          'compliance_checking',
+          'quality_assurance',
+        ],
+        tools: ['openai', 'document_parser', 'database'],
       },
       {
         agentId: 'research-manager',
         role: 'research-manager',
         displayName: 'Research Manager',
-        description: 'Coordinates market research and competitive analysis activities',
-        capabilities: ['market_research', 'competitive_analysis', 'data_analysis'],
-        tools: ['openai', 'web_search', 'database']
-      }
+        description:
+          'Coordinates market research and competitive analysis activities',
+        capabilities: [
+          'market_research',
+          'competitive_analysis',
+          'data_analysis',
+        ],
+        tools: ['openai', 'web_search', 'database'],
+      },
     ];
 
     for (const manager of managers) {
@@ -319,7 +355,7 @@ export class AgentRegistryService {
           ...manager,
           tier: 'manager',
           parentAgentId: orchestratorId,
-          maxConcurrency: 3
+          maxConcurrency: 3,
         });
       }
     }
@@ -332,18 +368,30 @@ export class AgentRegistryService {
         parentAgentId: 'portal-manager',
         role: 'portal-scanner',
         displayName: 'Portal Scanner',
-        description: 'Specialized in automated portal scanning and RFP discovery',
-        capabilities: ['portal_scanning', 'rfp_discovery', 'data_extraction', 'authentication'],
-        tools: ['puppeteer', 'stagehand', 'database']
+        description:
+          'Specialized in automated portal scanning and RFP discovery',
+        capabilities: [
+          'portal_scanning',
+          'rfp_discovery',
+          'data_extraction',
+          'authentication',
+        ],
+        tools: ['puppeteer', 'stagehand', 'database'],
       },
       {
         agentId: 'portal-monitor',
         parentAgentId: 'portal-manager',
         role: 'portal-monitor',
         displayName: 'Portal Monitor',
-        description: 'Monitors portal health, schedules scans, and tracks portal status',
-        capabilities: ['portal_monitoring', 'scheduling', 'health_checking', 'alerts'],
-        tools: ['cron', 'database', 'notification']
+        description:
+          'Monitors portal health, schedules scans, and tracks portal status',
+        capabilities: [
+          'portal_monitoring',
+          'scheduling',
+          'health_checking',
+          'alerts',
+        ],
+        tools: ['cron', 'database', 'notification'],
       },
       // Proposal Generation Specialists
       {
@@ -351,27 +399,45 @@ export class AgentRegistryService {
         parentAgentId: 'proposal-manager',
         role: 'content-generator',
         displayName: 'Content Generator',
-        description: 'Generates proposal content, narratives, and technical sections',
-        capabilities: ['content_generation', 'narrative_writing', 'technical_writing', 'template_processing'],
-        tools: ['openai', 'document_templates', 'database']
+        description:
+          'Generates proposal content, narratives, and technical sections',
+        capabilities: [
+          'content_generation',
+          'narrative_writing',
+          'technical_writing',
+          'template_processing',
+        ],
+        tools: ['openai', 'document_templates', 'database'],
       },
       {
         agentId: 'compliance-checker',
         parentAgentId: 'proposal-manager',
         role: 'compliance-checker',
         displayName: 'Compliance Checker',
-        description: 'Validates proposal compliance and identifies risk factors',
-        capabilities: ['compliance_checking', 'risk_assessment', 'requirement_validation', 'quality_assurance'],
-        tools: ['openai', 'compliance_rules', 'database']
+        description:
+          'Validates proposal compliance and identifies risk factors',
+        capabilities: [
+          'compliance_checking',
+          'risk_assessment',
+          'requirement_validation',
+          'quality_assurance',
+        ],
+        tools: ['openai', 'compliance_rules', 'database'],
       },
       {
         agentId: 'document-processor',
         parentAgentId: 'proposal-manager',
         role: 'document-processor',
         displayName: 'Document Processor',
-        description: 'Processes, parses, and analyzes RFP documents and attachments',
-        capabilities: ['document_processing', 'text_extraction', 'structure_analysis', 'data_parsing'],
-        tools: ['pdf_parser', 'mammoth', 'openai', 'database']
+        description:
+          'Processes, parses, and analyzes RFP documents and attachments',
+        capabilities: [
+          'document_processing',
+          'text_extraction',
+          'structure_analysis',
+          'data_parsing',
+        ],
+        tools: ['pdf_parser', 'mammoth', 'openai', 'database'],
       },
       // Research Specialists
       {
@@ -380,8 +446,13 @@ export class AgentRegistryService {
         role: 'market-analyst',
         displayName: 'Market Analyst',
         description: 'Performs market research and competitive analysis',
-        capabilities: ['market_research', 'competitive_analysis', 'pricing_analysis', 'trend_analysis'],
-        tools: ['web_search', 'openai', 'database']
+        capabilities: [
+          'market_research',
+          'competitive_analysis',
+          'pricing_analysis',
+          'trend_analysis',
+        ],
+        tools: ['web_search', 'openai', 'database'],
       },
       {
         agentId: 'historical-analyzer',
@@ -389,9 +460,14 @@ export class AgentRegistryService {
         role: 'historical-analyzer',
         displayName: 'Historical Analyzer',
         description: 'Analyzes historical bid data and performance metrics',
-        capabilities: ['historical_analysis', 'performance_tracking', 'success_prediction', 'pattern_recognition'],
-        tools: ['database', 'analytics', 'openai']
-      }
+        capabilities: [
+          'historical_analysis',
+          'performance_tracking',
+          'success_prediction',
+          'pattern_recognition',
+        ],
+        tools: ['database', 'analytics', 'openai'],
+      },
     ];
 
     for (const specialist of specialists) {
@@ -400,7 +476,7 @@ export class AgentRegistryService {
         await this.registerAgent({
           ...specialist,
           tier: 'specialist',
-          maxConcurrency: 2
+          maxConcurrency: 2,
         });
       }
     }
