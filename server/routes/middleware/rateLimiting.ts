@@ -1,17 +1,6 @@
 import type { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    rateLimit?: {
-      limit: number;
-      current: number;
-      remaining: number;
-      resetTime?: Date;
-    };
-  }
-}
-
 /**
  * Rate limiting middleware configurations
  */
