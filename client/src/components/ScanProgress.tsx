@@ -19,6 +19,7 @@ import { ScanState, ScanEvent } from '@/hooks/useScanStream';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ScanProgressProps {
+  portalId: string;
   scanState: ScanState | null;
   isConnected: boolean;
   error: string | null;

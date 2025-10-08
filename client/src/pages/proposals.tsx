@@ -16,17 +16,21 @@ import {
   getStatusLabel,
   getStatusIcon,
 } from '@/lib/badge-utils';
+import type { RFP, ProposalRow } from '@shared/schema';
+
+type RFPWithDetails = { rfp: RFP; proposal?: ProposalRow };
+type ProposalUpdateData = Partial<Pick<ProposalRow, 'content' | 'pricing' | 'status'>>;
 
 export default function Proposals() {
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const { toast } = useToast();
 
-  const { data: rfps, isLoading: rfpsLoading } = useQuery({
+  const { data: rfps, isLoading: rfpsLoading } = useQuery<RFPWithDetails[]>({
     queryKey: ['/api/rfps', 'detailed'],
   });
 
-  const { data: selectedProposal, isLoading: proposalLoading } = useQuery({
+  const { data: selectedProposal, isLoading: proposalLoading } = useQuery<ProposalRow>({
     queryKey: ['/api/proposals/rfp', selectedRfp],
     enabled: !!selectedRfp,
   });
@@ -315,7 +319,7 @@ export default function Proposals() {
                   <ProposalContentEditor
                     proposal={selectedProposal}
                     editMode={editMode}
-                    onUpdate={updates =>
+                    onUpdate={(updates: ProposalUpdateData) =>
                       updateProposalMutation.mutate({
                         proposalId: selectedProposal.id,
                         updates,
@@ -328,7 +332,7 @@ export default function Proposals() {
                   <ProposalPricingEditor
                     proposal={selectedProposal}
                     editMode={editMode}
-                    onUpdate={updates =>
+                    onUpdate={(updates: ProposalUpdateData) =>
                       updateProposalMutation.mutate({
                         proposalId: selectedProposal.id,
                         updates,

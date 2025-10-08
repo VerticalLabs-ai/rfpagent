@@ -46,6 +46,12 @@ interface ScanHistoryResponse {
   hasMore: boolean;
 }
 
+interface ScanStatistics {
+  successRate: number;
+  avgRfpsPerScan: number;
+  totalRfpsDiscovered: number;
+}
+
 type ScanStatus =
   | 'all'
   | 'completed'
@@ -75,8 +81,8 @@ export default function ScanHistoryPage() {
         offset: currentPage * pageSize,
       },
     ],
-    queryFn: ({ queryKey }) => {
-      const [url, params] = queryKey as [string, Record<string, any>];
+    queryFn: async ({ queryKey }) => {
+      const [url, params] = queryKey as [string, Record<string, unknown>];
       const searchParams = new URLSearchParams();
 
       Object.entries(params).forEach(([key, value]) => {
@@ -85,15 +91,19 @@ export default function ScanHistoryPage() {
         }
       });
 
-      return apiRequest('GET', `${url}?${searchParams.toString()}`);
+      const response = await apiRequest('GET', `${url}?${searchParams.toString()}`);
+      return response.json();
     },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Also fetch scan statistics
-  const { data: scanStats } = useQuery({
+  const { data: scanStats } = useQuery<ScanStatistics>({
     queryKey: ['/api/scans/statistics'],
-    queryFn: ({ queryKey }) => apiRequest('GET', queryKey[0] as string),
+    queryFn: async ({ queryKey }) => {
+      const response = await apiRequest('GET', queryKey[0] as string);
+      return response.json();
+    },
     refetchInterval: 60000, // Refresh every minute
   });
 
@@ -102,7 +112,7 @@ export default function ScanHistoryPage() {
   const hasMore = scanHistoryResponse?.hasMore || false;
 
   // Filter scans based on search term (client-side filtering for UX)
-  const filteredScans = scans.filter(scan => {
+  const filteredScans = scans.filter((scan: ScanHistoryItem) => {
     if (!searchTerm) return true;
     return scan.portalName.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -290,7 +300,7 @@ export default function ScanHistoryPage() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {filteredScans.map(scan => (
+          {filteredScans.map((scan: ScanHistoryItem) => (
             <Card
               key={scan.id}
               className="hover:shadow-md transition-shadow"
@@ -367,7 +377,7 @@ export default function ScanHistoryPage() {
                     <h4 className="text-sm font-medium text-red-800 mb-2">
                       Error Details
                     </h4>
-                    {scan.errors.map((error, index) => (
+                    {scan.errors.map((error: ScanHistoryItem['errors'][0], index: number) => (
                       <div
                         key={index}
                         className="text-sm"
