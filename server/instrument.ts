@@ -1,4 +1,9 @@
-import { expressIntegration, init } from '@sentry/node';
+import {
+  expressIntegration,
+  init,
+  consoleIntegration,
+  consoleLoggingIntegration,
+} from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 init({
@@ -15,7 +20,14 @@ init({
     expressIntegration(),
     // Add profiling integration
     nodeProfilingIntegration(),
+    // Capture console calls as breadcrumbs for context
+    consoleIntegration(),
+    // Send console.log, console.warn, and console.error as log events to Sentry
+    consoleLoggingIntegration({ levels: ['log', 'warn', 'error'] }),
   ],
+
+  // Enable logs to be sent to Sentry (required for consoleLoggingIntegration)
+  enableLogs: true,
 
   // Setting this option to true will send default PII data to Sentry.
   // For example, automatic IP address collection on events
