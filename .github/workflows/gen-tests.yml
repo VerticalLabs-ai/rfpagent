@@ -23,9 +23,6 @@ jobs:
               with:
                   node-version: "22"
 
-            - name: Install Claude Flow
-              run: npm install -g claude-flow@alpha
-
             - name: Identify New Code
               id: new-code
               uses: tj-actions/changed-files@v40
@@ -39,20 +36,35 @@ jobs:
                       **/*.spec.js
                       **/*.spec.ts
 
-            - name: Generate Tests
+            - name: Generate Test Placeholder
               if: steps.new-code.outputs.any_changed == 'true'
-              env:
-                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
               run: |
-                  # Generate tests for changed files
+                  mkdir -p tests/todo
+
+                  # Create placeholder for tests that need to be written
                   for file in ${{ steps.new-code.outputs.all_changed_files }}; do
-                    echo "Generating tests for: $file"
-                    
-                    npx claude-flow@alpha sparc tdd "create comprehensive unit tests for $file" \
-                      --no-interactive \
-                      --output-format json \
-                      --output-file "test-${file//\//-}.json"
+                    echo "File needs tests: $file"
+                    testfile="tests/todo/$(basename ${file%.ts}.test.ts)"
+
+                    cat > "$testfile" << 'EOF'
+                  // TODO: Add tests for $file
+                  //
+                  // This file was modified but tests have not been created yet.
+                  // Please add comprehensive unit tests covering:
+                  // - Happy path scenarios
+                  // - Edge cases
+                  // - Error handling
+                  // - Integration with other components
+
+                  describe.skip('$(basename $file)', () => {
+                    it('should have tests', () => {
+                      // Add tests here
+                    });
+                  });
+                  EOF
                   done
+
+                  echo "Created test placeholders in tests/todo/"
 
             - name: Create PR with Tests
               uses: peter-evans/create-pull-request@v5

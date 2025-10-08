@@ -38,51 +38,59 @@ jobs:
                   npm install -g jsdoc typedoc
 
             - name: Generate Documentation
-              env:
-                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
               run: |
                   SCOPE="${{ github.event.inputs.scope || 'full' }}"
 
-                  # Run documentation generation
-                  npx claude-flow@alpha swarm "generate comprehensive $SCOPE documentation, API references, usage examples, and tutorials" \
-                    --agents 6 \
-                    --strategy parallel \
-                    --output-format json \
-                    --output-file docs-output.json
+                  # Create docs directory
+                  mkdir -p docs/generated
 
-            - name: Process Documentation
-              run: |
-                  # Extract documentation from results
+                  # Generate documentation index based on existing docs
                   node -e "
-                    const output = require('./docs-output.json');
                     const fs = require('fs');
-                    
-                    // Create docs directory
-                    if (!fs.existsSync('docs/generated')) {
-                      fs.mkdirSync('docs/generated', { recursive: true });
-                    }
-                    
-                    // Process artifacts
-                    Object.entries(output.results.artifacts || {}).forEach(([key, artifact]) => {
-                      if (artifact.content) {
-                        fs.writeFileSync('docs/generated/' + key + '.md', artifact.content);
-                      }
-                    });
-                    
+                    const path = require('path');
+
                     // Create index
-                    const insights = output.results.insights || [];
                     let index = '# Generated Documentation\\n\\n';
                     index += 'Generated on: ' + new Date().toISOString() + '\\n\\n';
-                    index += '## Contents\\n\\n';
-                    
-                    fs.readdirSync('docs/generated').forEach(file => {
-                      if (file.endsWith('.md') && file !== 'index.md') {
-                        index += '- [' + file.replace('.md', '') + '](./' + file + ')\\n';
+                    index += '## Scope: ' + process.env.SCOPE + '\\n\\n';
+                    index += '## Available Documentation\\n\\n';
+
+                    // Find existing documentation
+                    if (fs.existsSync('docs')) {
+                      const categories = {
+                        'Technical': 'docs/technical',
+                        'Testing': 'docs/testing',
+                        'Deployment': 'docs/deployment',
+                        'Guides': 'docs/guides',
+                        'API': 'docs/api'
+                      };
+
+                      Object.entries(categories).forEach(([name, dir]) => {
+                        if (fs.existsSync(dir)) {
+                          index += '### ' + name + '\\n\\n';
+                          const files = fs.readdirSync(dir).filter(f => f.endsWith('.md'));
+                          files.forEach(file => {
+                            const title = file.replace('.md', '').replace(/-/g, ' ').replace(/\\b\\w/g, l => l.toUpperCase());
+                            index += '- [' + title + '](../' + path.relative('docs/generated', path.join(dir, file)) + ')\\n';
+                          });
+                          index += '\\n';
+                        }
+                      });
+                    }
+
+                    index += '## Root Documentation\\n\\n';
+                    ['README.md', 'CLAUDE.md', 'TESTING_BASELINE.md', 'MODELS_REFERENCE.md'].forEach(file => {
+                      if (fs.existsSync(file)) {
+                        const title = file.replace('.md', '').replace(/_/g, ' ');
+                        index += '- [' + title + '](../../' + file + ')\\n';
                       }
                     });
-                    
+
                     fs.writeFileSync('docs/generated/index.md', index);
+                    console.log('Documentation index generated successfully');
                   "
+              env:
+                  SCOPE: ${{ github.event.inputs.scope || 'full' }}
 
             - name: Deploy to GitHub Pages
               uses: peaceiris/actions-gh-pages@v3

@@ -22,53 +22,35 @@ jobs:
               with:
                   node-version: "22"
 
-            - name: Install Claude Flow
-              run: npm install -g claude-flow@alpha
-
             - name: Get Changed Files
               id: changed-files
               uses: tj-actions/changed-files@v40
 
-            - name: Run Code Review
-              env:
-                  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+            - name: Analyze Changes
+              id: analyze
               run: |
-                  # Create file list for review
-                  echo "${{ steps.changed-files.outputs.all_changed_files }}" > changed_files.txt
+                  # Count changed files by type
+                  total_files=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | wc -w)
 
-                  # Run AI review
-                  npx claude-flow@alpha swarm "review code changes in changed_files.txt for bugs, security issues, and improvements" \
-                    --agents 5 \
-                    --output-format json \
-                    --output-file review.json
+                  # Create basic analysis
+                  cat > review_comment.md << 'EOF'
+                  ## 📊 Code Change Summary
 
-            - name: Parse Review Results
-              id: parse-review
-              run: |
-                  # Extract insights and format as markdown
-                  REVIEW_COMMENT=$(node -e "
-                    const review = require('./review.json');
-                    const insights = review.results.insights || [];
-                    const issues = review.results.errors || [];
-                    
-                    console.log('## 🤖 AI Code Review\\n');
-                    
-                    if (issues.length > 0) {
-                      console.log('### ⚠️ Issues Found\\n');
-                      issues.forEach(issue => console.log('- ' + issue));
-                      console.log('\\n');
-                    }
-                    
-                    if (insights.length > 0) {
-                      console.log('### 💡 Suggestions\\n');
-                      insights.forEach(insight => console.log('- ' + insight));
-                    }
-                    
-                    console.log('\\n---\\n*Powered by Claude Flow ' + review.metadata.version + '*');
-                  ")
+                  **Files Changed:** $total_files
 
-                  # Save to file for comment
-                  echo "$REVIEW_COMMENT" > review_comment.md
+                  ### Changed Files:
+                  ${{ steps.changed-files.outputs.all_changed_files }}
+
+                  ### Recommendations:
+                  - ✅ Ensure all changes have corresponding tests
+                  - ✅ Review for potential security issues
+                  - ✅ Verify type safety and error handling
+                  - ✅ Check for code duplication
+                  - ✅ Validate documentation updates
+
+                  ---
+                  *Automated PR Analysis*
+                  EOF
 
             - name: Post Review Comment
               uses: actions/github-script@v7
