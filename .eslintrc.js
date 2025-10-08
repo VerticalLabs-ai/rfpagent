@@ -31,8 +31,7 @@ module.exports = {
     '@typescript-eslint/no-non-null-assertion': 'warn',
     'no-console': 'off',
     'prefer-const': 'error',
-    'no-var': 'error',
-    'no-undef': 0 // TypeScript handles undefined variables, disable for TS files
+    'no-var': 'error'
   },
   ignorePatterns: [
     'dist/',
