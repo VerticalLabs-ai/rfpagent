@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
+import type {} from 'express-serve-static-core';
 
 declare module 'express-serve-static-core' {
   interface Request {

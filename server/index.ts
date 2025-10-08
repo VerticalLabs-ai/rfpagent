@@ -1,3 +1,6 @@
+// IMPORTANT: Import Sentry instrumentation FIRST, before any other imports
+import './instrument';
+
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -7,15 +10,17 @@ const envPath = path.join(process.cwd(), '.env');
 dotenv.config({ path: envLocalPath });
 dotenv.config({ path: envPath });
 
-import express, { type Request, Response, NextFunction } from 'express';
+import { setupExpressErrorHandler } from '@sentry/node';
+import express, { NextFunction, type Request, Response } from 'express';
 import { createServer } from 'http';
 import { configureRoutes } from './routes';
-import { setupVite, serveStatic, log } from './vite';
 import { agentRegistryService } from './services/agentRegistryService';
-import { websocketService } from './services/websocketService';
 import { saflaSystemIntegration } from './services/saflaSystemIntegration';
+import { websocketService } from './services/websocketService';
+import { log, serveStatic, setupVite } from './vite';
 
 const app = express();
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -125,6 +130,10 @@ app.use((req, res, next) => {
   // Create HTTP server
   const server = createServer(app);
 
+  // Sentry error handler must be registered BEFORE other error handlers
+  setupExpressErrorHandler(app);
+
+  // Custom error handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || 'Internal Server Error';

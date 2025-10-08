@@ -13,6 +13,9 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+  /* Only run Playwright tests (.spec.ts files), ignore Jest tests (.test.ts) */
+  testMatch: '**/*.spec.ts',
+  testIgnore: '**/*.test.ts',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

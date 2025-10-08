@@ -19,6 +19,9 @@ on:
                     - guides
                     - examples
 
+permissions:
+    contents: write
+
 jobs:
     generate-docs:
         runs-on: ubuntu-latest

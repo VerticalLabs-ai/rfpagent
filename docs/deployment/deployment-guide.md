@@ -4,6 +4,8 @@
 
 Complete guide for deploying the RFP Agent platform to production.
 
+> **Note**: For Sentry error tracking setup, see [SENTRY_SETUP.md](./SENTRY_SETUP.md)
+
 ---
 
 ## Quick Start
@@ -47,6 +49,7 @@ flyctl secrets set ANTHROPIC_API_KEY="your-anthropic-key"
 ### Environment Variables
 
 Required secrets:
+
 - `DATABASE_URL`: PostgreSQL connection string (Neon Database)
 - `OPENAI_API_KEY`: OpenAI API key for GPT-5
 - `ANTHROPIC_API_KEY`: Anthropic API key for Claude Sonnet 4.5
