@@ -23,6 +23,7 @@
     "test:watch": "npx jest tests/ --watch",
     "test:coverage": "npx jest tests/ --coverage",
     "lint": "eslint client/src server shared",
+    "lint:ci": "eslint client/src server shared --max-warnings=2100",
     "lint:fix": "eslint client/src server shared --fix",
     "format": "prettier --write server/ shared/ client/src/",
     "format:check": "prettier --check server/ shared/ client/src/",

@@ -43,7 +43,7 @@ jobs:
         run: pnpm type-check
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint:ci
 
       - name: Prettier Format Check
         run: pnpm format:check
