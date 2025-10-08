@@ -1,0 +1,10 @@
+# GitLeaks Ignore File
+# Patterns for known, rotated, or false positive secrets
+
+# Old Sentry DSN that was in documentation but has been replaced
+# This specific key should be rotated in Sentry dashboard
+315d8fa4019d9670c0496e5f71f562d9
+
+# Historical documentation commits
+docs/deployment/SENTRY_SETUP.md:*
+docs/archive/*

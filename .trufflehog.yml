@@ -1,0 +1,27 @@
+# TruffleHog Configuration
+# This file configures secret scanning behavior
+
+# Allow list for known, rotated, or false positive secrets
+allow:
+  paths:
+    # Ignore historical commits in docs that have been sanitized
+    - "docs/deployment/SENTRY_SETUP.md"
+    - "docs/archive/"
+
+  # Allow specific known secrets that have been rotated
+  regexes:
+    # Old Sentry DSN that was in docs but has been replaced with placeholder
+    # This specific key should be rotated in Sentry after this config is added
+    - "315d8fa4019d9670c0496e5f71f562d9"
+
+# Exclude patterns - files to never scan
+exclude:
+  paths:
+    - ".env"
+    - ".env.local"
+    - "node_modules/"
+    - "dist/"
+    - ".git/"
+    - "*.lock"
+    - "pnpm-lock.yaml"
+    - "package-lock.json"

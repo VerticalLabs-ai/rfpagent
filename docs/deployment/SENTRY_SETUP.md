@@ -26,7 +26,7 @@ Sentry is configured to provide:
 
 ```bash
 # Required
-SENTRY_DSN="https://315d8fa4019d9670c0496e5f71f562d9@o4510143884296192.ingest.us.sentry.io/4510155732615168"
+SENTRY_DSN="https://your-sentry-key@your-org-id.ingest.us.sentry.io/your-project-id"
 
 # Optional (auto-detected from environment)
 NODE_ENV="production"
@@ -130,7 +130,7 @@ For enhanced security, you can set the DSN as a secret:
 
 ```bash
 # Set Sentry DSN as a secret
-fly secrets set SENTRY_DSN="https://315d8fa4019d9670c0496e5f71f562d9@o4510143884296192.ingest.us.sentry.io/4510155732615168"
+fly secrets set SENTRY_DSN="https://your-sentry-key@your-org-id.ingest.us.sentry.io/your-project-id"
 
 # Verify secrets
 fly secrets list
