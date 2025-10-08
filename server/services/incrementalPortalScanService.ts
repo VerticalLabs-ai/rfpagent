@@ -1,4 +1,4 @@
-import { eq, and, gte, desc, or } from 'drizzle-orm';
+import { eq, and, gte, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { portals, rfps, scans, scanEvents } from '@shared/schema';
 import { storage } from '../storage';
@@ -68,7 +68,12 @@ export class IncrementalPortalScanService {
    */
   async scanPortal(options: ScanOptions): Promise<ScanResult> {
     const startTime = Date.now();
-    const { portalId, sessionId = `scan-${Date.now()}`, forceFullScan = false, maxRfpsToScan = 50 } = options;
+    const {
+      portalId,
+      sessionId = `scan-${Date.now()}`,
+      forceFullScan = false,
+      maxRfpsToScan = 50,
+    } = options;
 
     console.log(`🔍 Starting incremental scan for portal: ${portalId}`);
 
@@ -102,8 +107,15 @@ export class IncrementalPortalScanService {
       });
 
       // Step 1: Get last scan timestamp
-      await this.updateScanProgress(scan.id, 'navigating', 10, 'Determining scan scope...');
-      const lastScanTime = forceFullScan ? null : await this.getLastSuccessfulScanTime(portalId);
+      await this.updateScanProgress(
+        scan.id,
+        'navigating',
+        10,
+        'Determining scan scope...'
+      );
+      const lastScanTime = forceFullScan
+        ? null
+        : await this.getLastSuccessfulScanTime(portalId);
 
       if (lastScanTime) {
         console.log(`📅 Last successful scan: ${lastScanTime.toISOString()}`);
@@ -120,8 +132,18 @@ export class IncrementalPortalScanService {
       }
 
       // Step 2: Extract RFP candidates from portal
-      await this.updateScanProgress(scan.id, 'extracting', 30, 'Extracting RFP opportunities...');
-      const candidates = await this.extractRFPCandidates(portal, sessionId, lastScanTime, maxRfpsToScan);
+      await this.updateScanProgress(
+        scan.id,
+        'extracting',
+        30,
+        'Extracting RFP opportunities...'
+      );
+      const candidates = await this.extractRFPCandidates(
+        portal,
+        sessionId,
+        lastScanTime,
+        maxRfpsToScan
+      );
 
       console.log(`📊 Found ${candidates.length} RFP candidates`);
       await this.emitScanEvent(scan.id, 'log', {
@@ -130,7 +152,12 @@ export class IncrementalPortalScanService {
       });
 
       // Step 3: Process each candidate
-      await this.updateScanProgress(scan.id, 'parsing', 50, `Processing ${candidates.length} candidates...`);
+      await this.updateScanProgress(
+        scan.id,
+        'parsing',
+        50,
+        `Processing ${candidates.length} candidates...`
+      );
 
       for (let i = 0; i < candidates.length; i++) {
         const candidate = candidates[i];
@@ -144,7 +171,11 @@ export class IncrementalPortalScanService {
             `Processing ${i + 1}/${candidates.length}: ${candidate.title.substring(0, 50)}...`
           );
 
-          const result = await this.processRFPCandidate(portalId, candidate, lastScanTime);
+          const result = await this.processRFPCandidate(
+            portalId,
+            candidate,
+            lastScanTime
+          );
 
           if (result === 'new') {
             newRfpsCount++;
@@ -163,7 +194,8 @@ export class IncrementalPortalScanService {
           }
         } catch (error) {
           errorCount++;
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          const errorMsg =
+            error instanceof Error ? error.message : 'Unknown error';
           errors.push(`Error processing ${candidate.title}: ${errorMsg}`);
 
           await this.emitScanEvent(scan.id, 'error', {
@@ -174,7 +206,12 @@ export class IncrementalPortalScanService {
       }
 
       // Step 4: Finalize scan
-      await this.updateScanProgress(scan.id, 'completed', 100, 'Scan completed successfully');
+      await this.updateScanProgress(
+        scan.id,
+        'completed',
+        100,
+        'Scan completed successfully'
+      );
 
       // Update portal last scanned timestamp
       await db
@@ -182,7 +219,8 @@ export class IncrementalPortalScanService {
         .set({
           lastScanned: new Date(),
           updatedAt: new Date(),
-          errorCount: errorCount > 0 ? (portal.errorCount || 0) + errorCount : 0,
+          errorCount:
+            errorCount > 0 ? (portal.errorCount || 0) + errorCount : 0,
           lastError: errors.length > 0 ? errors[0] : null,
         })
         .where(eq(portals.id, portalId));
@@ -208,7 +246,9 @@ export class IncrementalPortalScanService {
         duration,
       });
 
-      console.log(`✅ Scan completed: ${newRfpsCount} new, ${updatedRfpsCount} updated, ${unchangedRfpsCount} unchanged`);
+      console.log(
+        `✅ Scan completed: ${newRfpsCount} new, ${updatedRfpsCount} updated, ${unchangedRfpsCount} unchanged`
+      );
 
       return {
         scanId: scan.id,
@@ -226,7 +266,12 @@ export class IncrementalPortalScanService {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       errors.push(errorMsg);
 
-      await this.updateScanProgress(scan.id, 'failed', 0, `Scan failed: ${errorMsg}`);
+      await this.updateScanProgress(
+        scan.id,
+        'failed',
+        0,
+        `Scan failed: ${errorMsg}`
+      );
 
       await db
         .update(scans)
@@ -250,12 +295,11 @@ export class IncrementalPortalScanService {
   /**
    * Get the timestamp of the last successful scan for a portal
    */
-  private async getLastSuccessfulScanTime(portalId: string): Promise<Date | null> {
-    const lastScan = await db.query.scans.findFirst({
-      where: and(
-        eq(scans.portalId, portalId),
-        eq(scans.status, 'completed')
-      ),
+  private async getLastSuccessfulScanTime(
+    portalId: string
+  ): Promise<Date | null> {
+    const lastScan = await (db.query as any).scans.findFirst({
+      where: and(eq(scans.portalId, portalId), eq(scans.status, 'completed')),
       orderBy: desc(scans.completedAt),
     });
 
@@ -286,13 +330,26 @@ export class IncrementalPortalScanService {
     try {
       // Step 2: Use specialized extractor if available, otherwise use generic AI extraction
       if (extractorType === 'austin') {
-        return await this.extractWithAustinExtractor(targetUrl, sessionId, lastScanTime, maxResults);
+        return await this.extractWithAustinExtractor(
+          targetUrl,
+          sessionId,
+          lastScanTime,
+          maxResults
+        );
       } else {
-        return await this.extractWithGenericExtractor(targetUrl, sessionId, lastScanTime, maxResults, portal.filters);
+        return await this.extractWithGenericExtractor(
+          targetUrl,
+          sessionId,
+          lastScanTime,
+          maxResults,
+          portal.filters
+        );
       }
     } catch (error) {
       console.error(`❌ Failed to extract RFPs from ${targetUrl}:`, error);
-      throw new Error(`RFP extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `RFP extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -323,9 +380,15 @@ export class IncrementalPortalScanService {
 
     // Use Austin Finance extractor
     const extractor = new AustinFinanceContentExtractor();
-    const opportunities = await extractor.extract(content, url, 'austin_finance');
+    const opportunities = await extractor.extract(
+      content,
+      url,
+      'austin_finance'
+    );
 
-    console.log(`🏛️ Austin extractor found ${opportunities.length} opportunities`);
+    console.log(
+      `🏛️ Austin extractor found ${opportunities.length} opportunities`
+    );
 
     // Convert to RFPCandidate format
     const candidates: RFPCandidate[] = opportunities.map(opp => ({
@@ -336,7 +399,7 @@ export class IncrementalPortalScanService {
       estimatedValue: opp.estimatedValue,
       url: opp.url || opp.link || url,
       sourceIdentifier: (opp as any).solicitationId,
-      lastModified: opp.postedDate,
+      lastModified: (opp as any).postedDate,
       category: opp.category,
     }));
 
@@ -360,17 +423,19 @@ export class IncrementalPortalScanService {
       ? `Extract RFP opportunities posted or modified after ${lastScanTime.toISOString()}. Include: title, description, agency, deadline, estimated value, URL, portal-specific ID, and last modified date. Return up to ${maxResults} most recent opportunities.`
       : `Extract all active RFP opportunities. Include: title, description, agency, deadline, estimated value, URL, portal-specific ID, and last modified date. Return up to ${maxResults} most recent opportunities.`;
 
-    const extractionResult = pageExtractTool?.execute ? await pageExtractTool.execute({
-      context: {
-        url,
-        instruction,
-        sessionId,
-        schema: {
-          opportunities: z.array(rfpCandidateSchema),
-        },
-      },
-      runtimeContext: {} as any,
-    }) : { data: { opportunities: [] } };
+    const extractionResult = pageExtractTool?.execute
+      ? await pageExtractTool.execute({
+          context: {
+            url,
+            instruction,
+            sessionId,
+            schema: {
+              opportunities: z.array(rfpCandidateSchema),
+            },
+          },
+          runtimeContext: {} as any,
+        })
+      : { data: { opportunities: [] } };
 
     const opportunities = (extractionResult as any).data?.opportunities || [];
 
@@ -378,7 +443,9 @@ export class IncrementalPortalScanService {
     let filtered = opportunities;
     if (filters) {
       filtered = this.applyPortalFilters(opportunities, filters);
-      console.log(`🔍 Applied filters: ${opportunities.length} -> ${filtered.length} opportunities`);
+      console.log(
+        `🔍 Applied filters: ${opportunities.length} -> ${filtered.length} opportunities`
+      );
     }
 
     return filtered.slice(0, maxResults);
@@ -387,15 +454,25 @@ export class IncrementalPortalScanService {
   /**
    * Apply portal-specific filters to candidates
    */
-  private applyPortalFilters(candidates: RFPCandidate[], filters: any): RFPCandidate[] {
+  private applyPortalFilters(
+    candidates: RFPCandidate[],
+    filters: any
+  ): RFPCandidate[] {
     if (!filters || typeof filters !== 'object') {
       return candidates;
     }
 
     return candidates.filter(candidate => {
       // Category filter
-      if (filters.categories && Array.isArray(filters.categories) && filters.categories.length > 0) {
-        if (!candidate.category || !filters.categories.includes(candidate.category)) {
+      if (
+        filters.categories &&
+        Array.isArray(filters.categories) &&
+        filters.categories.length > 0
+      ) {
+        if (
+          !candidate.category ||
+          !filters.categories.includes(candidate.category)
+        ) {
           return false;
         }
       }
@@ -409,8 +486,13 @@ export class IncrementalPortalScanService {
       }
 
       // Keyword filter
-      if (filters.keywords && Array.isArray(filters.keywords) && filters.keywords.length > 0) {
-        const text = `${candidate.title} ${candidate.description || ''}`.toLowerCase();
+      if (
+        filters.keywords &&
+        Array.isArray(filters.keywords) &&
+        filters.keywords.length > 0
+      ) {
+        const text =
+          `${candidate.title} ${candidate.description || ''}`.toLowerCase();
         const hasKeyword = filters.keywords.some((keyword: string) =>
           text.includes(keyword.toLowerCase())
         );
@@ -432,7 +514,7 @@ export class IncrementalPortalScanService {
     lastScanTime: Date | null
   ): Promise<'new' | 'updated' | 'unchanged'> {
     // Find existing RFP by source URL or source identifier
-    const existingRfps = await db.query.rfps.findMany({
+    const existingRfps = await (db.query as any).rfps.findMany({
       where: and(
         eq(rfps.portalId, portalId),
         or(
@@ -447,7 +529,9 @@ export class IncrementalPortalScanService {
     const existingRfp = existingRfps[0];
 
     // Parse deadline
-    const deadline = candidate.deadline ? this.parseDeadline(candidate.deadline) : null;
+    const deadline = candidate.deadline
+      ? this.parseDeadline(candidate.deadline)
+      : null;
 
     // Parse estimated value
     const estimatedValueNum = candidate.estimatedValue
@@ -480,7 +564,12 @@ export class IncrementalPortalScanService {
     }
 
     // Check if RFP has been modified
-    const hasChanges = this.detectChanges(existingRfp, candidate, deadline, estimatedValueNum);
+    const hasChanges = this.detectChanges(
+      existingRfp,
+      candidate,
+      deadline,
+      estimatedValueNum
+    );
 
     if (hasChanges) {
       console.log(`🔄 Updating RFP: ${candidate.title}`);
@@ -490,11 +579,12 @@ export class IncrementalPortalScanService {
         description: candidate.description || existingRfp.description,
         agency: candidate.agency || existingRfp.agency,
         deadline: deadline || existingRfp.deadline,
-        estimatedValue: estimatedValueNum?.toString() || existingRfp.estimatedValue,
+        estimatedValue:
+          estimatedValueNum?.toString() || existingRfp.estimatedValue,
         category: candidate.category || existingRfp.category,
         updatedAt: new Date(),
         analysis: {
-          ...(existingRfp.analysis as any || {}),
+          ...((existingRfp.analysis as any) || {}),
           sourceIdentifier: candidate.sourceIdentifier,
           lastModified: candidate.lastModified,
           lastCheckedInScan: new Date().toISOString(),
@@ -507,7 +597,7 @@ export class IncrementalPortalScanService {
     // No changes, just mark as checked
     await storage.updateRFP(existingRfp.id, {
       analysis: {
-        ...(existingRfp.analysis as any || {}),
+        ...((existingRfp.analysis as any) || {}),
         lastCheckedInScan: new Date().toISOString(),
       },
     });
@@ -530,14 +620,18 @@ export class IncrementalPortalScanService {
     }
 
     // Description changed (if provided)
-    if (candidate.description && candidate.description !== existingRfp.description) {
+    if (
+      candidate.description &&
+      candidate.description !== existingRfp.description
+    ) {
       return true;
     }
 
     // Deadline changed
     if (deadline && existingRfp.deadline) {
       const existingDeadlineTime = new Date(existingRfp.deadline).getTime();
-      if (Math.abs(deadline.getTime() - existingDeadlineTime) > 60000) { // More than 1 minute difference
+      if (Math.abs(deadline.getTime() - existingDeadlineTime) > 60000) {
+        // More than 1 minute difference
         return true;
       }
     } else if (deadline !== existingRfp.deadline) {
@@ -547,7 +641,10 @@ export class IncrementalPortalScanService {
     // Estimated value changed
     if (estimatedValue !== null && existingRfp.estimatedValue) {
       const existingValue = parseFloat(existingRfp.estimatedValue);
-      if (!isNaN(existingValue) && Math.abs(estimatedValue - existingValue) > 0.01) {
+      if (
+        !isNaN(existingValue) &&
+        Math.abs(estimatedValue - existingValue) > 0.01
+      ) {
         return true;
       }
     }
@@ -631,7 +728,10 @@ export class IncrementalPortalScanService {
   /**
    * Batch scan multiple portals
    */
-  async batchScanPortals(portalIds: string[], options?: Partial<ScanOptions>): Promise<ScanResult[]> {
+  async batchScanPortals(
+    portalIds: string[],
+    options?: Partial<ScanOptions>
+  ): Promise<ScanResult[]> {
     console.log(`🚀 Starting batch scan of ${portalIds.length} portals`);
 
     const results: ScanResult[] = [];
@@ -649,7 +749,9 @@ export class IncrementalPortalScanService {
       }
     }
 
-    console.log(`✅ Batch scan completed: ${results.length}/${portalIds.length} successful`);
+    console.log(
+      `✅ Batch scan completed: ${results.length}/${portalIds.length} successful`
+    );
     return results;
   }
 }

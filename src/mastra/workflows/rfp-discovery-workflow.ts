@@ -204,7 +204,7 @@ const scrapePortalStep = createStep({
         portalId: portal.id,
         sessionId: `portal-${portal.id}-${Date.now()}`,
         forceFullScan: false,
-        maxRfpsToScan: portal.searchFilters?.maxResults || 50,
+        maxRfpsToScan: portal.maxRfpsPerScan || 50,
       });
 
       // Fetch newly discovered RFPs to return as opportunities
