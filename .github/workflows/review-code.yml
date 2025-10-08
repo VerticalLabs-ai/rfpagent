@@ -24,7 +24,7 @@ jobs:
 
             - name: Get Changed Files
               id: changed-files
-              uses: tj-actions/changed-files@v40
+              uses: tj-actions/changed-files@v46
 
             - name: Analyze Changes
               id: analyze
