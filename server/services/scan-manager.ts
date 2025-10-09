@@ -187,7 +187,10 @@ export class ScanManager {
    */
   completeScan(scanId: string, success: boolean): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) return;
+    if (!scan) {
+      console.warn(`ScanManager: Attempted to complete non-existent scan ${scanId}`);
+      return;
+    }
 
     const completedAt = new Date();
     scan.completedAt = completedAt;
@@ -207,27 +210,36 @@ export class ScanManager {
       };
     }
 
+    const duration = completedAt.getTime() - scan.startedAt.getTime();
+    const eventData = {
+      duration,
+      rfpCount: scan.discoveredRFPs.length,
+      errorCount: scan.errors.length,
+    };
+
+    // Log detailed completion info
+    console.log(
+      `ScanManager: ${scanId} - Scan ${success ? 'completed' : 'failed'} for portal ${scan.portalName}`,
+      `Duration: ${(duration / 1000).toFixed(2)}s, RFPs: ${scan.discoveredRFPs.length}, Errors: ${scan.errors.length}`
+    );
+
+    // Emit completion event
     this.emitEvent(scanId, {
       type: success ? 'scan_completed' : 'scan_failed',
       timestamp: completedAt,
-      data: {
-        duration: completedAt.getTime() - scan.startedAt.getTime(),
-        rfpCount: scan.discoveredRFPs.length,
-        errorCount: scan.errors.length,
-      },
+      data: eventData,
       message: scan.currentStep.message,
     });
 
     // Add to history
     this.addToHistory(scan);
 
-    // Clean up active scan
-    this.activeScans.delete(scanId);
-    this.scanEmitters.delete(scanId);
-
-    console.log(
-      `ScanManager: ${scanId} - Scan ${success ? 'completed' : 'failed'}`
-    );
+    // Clean up active scan (delayed to allow event emission)
+    setTimeout(() => {
+      this.activeScans.delete(scanId);
+      this.scanEmitters.delete(scanId);
+      console.log(`ScanManager: Cleaned up scan ${scanId}`);
+    }, 500);
   }
 
   /**
@@ -278,6 +290,13 @@ export class ScanManager {
     if (scan && emitter) {
       scan.events.push(event);
       emitter.emit('event', event);
+
+      // Log important events for debugging
+      if (['scan_completed', 'scan_failed', 'error'].includes(event.type)) {
+        console.log(`ScanManager: Event emitted for ${scanId} - Type: ${event.type}, Message: ${event.message}`);
+      }
+    } else {
+      console.warn(`ScanManager: Cannot emit event for scan ${scanId} - scan or emitter not found`);
     }
   }
 
