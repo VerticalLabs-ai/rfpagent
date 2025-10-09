@@ -1225,6 +1225,9 @@ export class MastraScrapingService {
         relatedEntityType: 'portal',
         relatedEntityId: portal.id,
       });
+
+      // Re-throw error to propagate to scan manager
+      throw error;
     }
   }
 

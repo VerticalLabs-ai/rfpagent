@@ -150,7 +150,16 @@ router.post('/:id/scan', async (req, res) => {
     // Use new monitoring service for enhanced scanning with scan context
     portalMonitoringService
       .scanPortalWithEvents(portal.id, scanId)
-      .catch(console.error);
+      .catch(error => {
+        console.error(`Portal scan error for ${portal.name} (${portal.id}):`, error);
+        // Ensure scan manager is notified of failure
+        try {
+          scanManager.log(scanId, 'error', `Fatal scan error: ${error instanceof Error ? error.message : String(error)}`);
+          scanManager.completeScan(scanId, false);
+        } catch (managerError) {
+          console.error('Failed to update scan manager with error:', managerError);
+        }
+      });
 
     res.status(202).json({
       scanId,
@@ -245,11 +254,29 @@ router.get('/:id/scan/stream', async (req, res) => {
 
     // Listen for scan events
     const eventHandler = (event: any) => {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      try {
+        // Only write if response is still writable
+        if (!res.writableEnded) {
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
 
-      // Close connection if scan is completed or failed
-      if (event.type === 'scan_completed' || event.type === 'scan_failed') {
-        res.end();
+          // Log scan completion status
+          if (event.type === 'scan_completed') {
+            console.log(`Scan ${scanId} completed successfully, closing SSE stream`);
+          } else if (event.type === 'scan_failed') {
+            console.log(`Scan ${scanId} failed, closing SSE stream`);
+          }
+
+          // Close connection if scan is completed or failed
+          if (event.type === 'scan_completed' || event.type === 'scan_failed') {
+            setTimeout(() => {
+              if (!res.writableEnded) {
+                res.end();
+              }
+            }, 100); // Small delay to ensure final message is sent
+          }
+        }
+      } catch (error) {
+        console.error(`Error writing SSE event for scan ${scanId}:`, error);
       }
     };
 
@@ -264,12 +291,24 @@ router.get('/:id/scan/stream', async (req, res) => {
     const cleanup = () => {
       emitter.off('event', eventHandler);
       clearInterval(keepAlive);
-      res.end();
-      console.log(`SSE connection closed for scan ${scanId}`);
+
+      // Check if response is still writable before ending
+      if (!res.writableEnded) {
+        res.end();
+      }
+
+      console.log(`SSE connection closed for scan ${scanId} (portal: ${portalId})`);
     };
 
-    req.on('close', cleanup);
-    req.on('error', cleanup);
+    req.on('close', () => {
+      console.log(`Client closed SSE connection for scan ${scanId}`);
+      cleanup();
+    });
+
+    req.on('error', (err) => {
+      console.error(`SSE connection error for scan ${scanId}:`, err);
+      cleanup();
+    });
   } catch (error) {
     console.error('Error setting up SSE stream:', error);
     res.status(500).json({ error: 'Failed to setup scan stream' });

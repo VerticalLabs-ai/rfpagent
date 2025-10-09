@@ -88,9 +88,21 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
         setError(null);
       };
 
-      eventSource.onerror = () => {
+      eventSource.onerror = (err) => {
+        console.error('SSE connection error:', err);
         setIsConnected(false);
-        setError('Connection lost. Call reconnect() to retry.');
+
+        // Provide more specific error context
+        const readyState = eventSource.readyState;
+        let errorMessage = 'Connection lost.';
+
+        if (readyState === EventSource.CLOSED) {
+          errorMessage = 'Connection closed by server. The scan may have completed or failed.';
+        } else if (readyState === EventSource.CONNECTING) {
+          errorMessage = 'Attempting to reconnect...';
+        }
+
+        setError(errorMessage);
       };
 
       eventSource.onmessage = event => {
@@ -99,7 +111,10 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
           setScanState(prevState => {
             if (!prevState) {
-              // Initialize scan state
+              // Initialize scan state with safe timestamp parsing
+              const timestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+              const isValidTimestamp = !isNaN(timestamp.getTime());
+
               return {
                 scanId,
                 portalId: targetPortalId,
@@ -109,11 +124,11 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   step: 'initializing',
                   progress: 0,
                   message: 'Starting scan...',
-                  timestamp: new Date(scanEvent.timestamp),
+                  timestamp: isValidTimestamp ? timestamp : new Date(),
                 },
                 events: [scanEvent],
                 rfpsDiscovered: [],
-                startedAt: new Date(scanEvent.timestamp),
+                startedAt: isValidTimestamp ? timestamp : new Date(),
               };
             }
 
@@ -137,13 +152,15 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   typeof scanEvent.data.progress === 'number' &&
                   typeof scanEvent.data.message === 'string'
                 ) {
+                  // Safe timestamp parsing
+                  const timestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+                  const isValidTimestamp = !isNaN(timestamp.getTime());
+
                   newState.currentStep = {
                     step: scanEvent.data.step,
                     progress: scanEvent.data.progress,
                     message: scanEvent.data.message,
-                    timestamp: scanEvent.timestamp
-                      ? new Date(scanEvent.timestamp)
-                      : new Date(),
+                    timestamp: isValidTimestamp ? timestamp : new Date(),
                   };
                 } else {
                   // Log malformed event and skip update
@@ -160,7 +177,9 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
               case 'scan_completed':
                 newState.status = 'completed';
-                newState.completedAt = new Date(scanEvent.timestamp);
+                // Safe timestamp parsing
+                const completedTimestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+                newState.completedAt = !isNaN(completedTimestamp.getTime()) ? completedTimestamp : new Date();
                 newState.currentStep = {
                   ...newState.currentStep,
                   progress: 100,
@@ -172,7 +191,9 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
               case 'scan_failed':
                 newState.status = 'failed';
-                newState.completedAt = new Date(scanEvent.timestamp);
+                // Safe timestamp parsing
+                const failedTimestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+                newState.completedAt = !isNaN(failedTimestamp.getTime()) ? failedTimestamp : new Date();
                 newState.error = scanEvent.data?.error || 'Scan failed';
                 newState.currentStep = {
                   ...newState.currentStep,
