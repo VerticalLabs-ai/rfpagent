@@ -151,13 +151,23 @@ router.post('/:id/scan', async (req, res) => {
     portalMonitoringService
       .scanPortalWithEvents(portal.id, scanId)
       .catch(error => {
-        console.error(`Portal scan error for ${portal.name} (${portal.id}):`, error);
+        console.error(
+          `Portal scan error for ${portal.name} (${portal.id}):`,
+          error
+        );
         // Ensure scan manager is notified of failure
         try {
-          scanManager.log(scanId, 'error', `Fatal scan error: ${error instanceof Error ? error.message : String(error)}`);
+          scanManager.log(
+            scanId,
+            'error',
+            `Fatal scan error: ${error instanceof Error ? error.message : String(error)}`
+          );
           scanManager.completeScan(scanId, false);
         } catch (managerError) {
-          console.error('Failed to update scan manager with error:', managerError);
+          console.error(
+            'Failed to update scan manager with error:',
+            managerError
+          );
         }
       });
 
@@ -261,7 +271,9 @@ router.get('/:id/scan/stream', async (req, res) => {
 
           // Log scan completion status
           if (event.type === 'scan_completed') {
-            console.log(`Scan ${scanId} completed successfully, closing SSE stream`);
+            console.log(
+              `Scan ${scanId} completed successfully, closing SSE stream`
+            );
           } else if (event.type === 'scan_failed') {
             console.log(`Scan ${scanId} failed, closing SSE stream`);
           }
@@ -297,7 +309,9 @@ router.get('/:id/scan/stream', async (req, res) => {
         res.end();
       }
 
-      console.log(`SSE connection closed for scan ${scanId} (portal: ${portalId})`);
+      console.log(
+        `SSE connection closed for scan ${scanId} (portal: ${portalId})`
+      );
     };
 
     req.on('close', () => {
@@ -305,7 +319,7 @@ router.get('/:id/scan/stream', async (req, res) => {
       cleanup();
     });
 
-    req.on('error', (err) => {
+    req.on('error', err => {
       console.error(`SSE connection error for scan ${scanId}:`, err);
       cleanup();
     });

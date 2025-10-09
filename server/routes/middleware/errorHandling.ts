@@ -34,7 +34,8 @@ export const errorHandler = (
   });
 
   // Determine if this is a client error (4xx) or server error (5xx)
-  const isClientError = error.status && error.status >= 400 && error.status < 500;
+  const isClientError =
+    error.status && error.status >= 400 && error.status < 500;
   const isValidationError = error instanceof ZodError;
 
   // Capture to Sentry for server errors and validation errors
