@@ -666,7 +666,6 @@ export class MastraScrapingService {
       console.log(`🎯 Detected portal type: ${portalType}`);
 
       // Use intelligent web scraping for proper Mastra integration
-      let scrapingResult;
       let documentsCount = 0;
 
       // Special handling for Austin Finance URLs
@@ -701,7 +700,7 @@ export class MastraScrapingService {
         }
       }
 
-      scrapingResult = await this.intelligentWebScrape({
+      const scrapingResult = await this.intelligentWebScrape({
         url,
         portalType,
         loginRequired: false, // Assume public access for re-scraping
@@ -2747,7 +2746,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       // Use more tolerant ID regex patterns
       const tolerantPattern =
-        /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:\.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
+        /\b(?:IFQ|IFB|RFP|RFQS)\s*[#:.-]?\s*\d{3,5}(?:\s+[A-Z]{2,}\d{3,5})?\b/i;
       const fallbackPattern = /\b(?:IFQ|IFB|RFP|RFQS)\s*\d+\b/i;
 
       const idMatch =

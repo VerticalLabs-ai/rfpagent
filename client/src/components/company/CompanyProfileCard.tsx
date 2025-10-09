@@ -132,9 +132,10 @@ export function CompanyProfileCard({ profile }: CompanyProfileCardProps) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Company Profile</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{profile.companyName}"?
-                    This action cannot be undone. All associated contacts,
-                    certifications, and insurance records will also be deleted.
+                    Are you sure you want to delete &quot;{profile.companyName}
+                    &quot;? This action cannot be undone. All associated
+                    contacts, certifications, and insurance records will also be
+                    deleted.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

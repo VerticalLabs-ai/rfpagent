@@ -4,9 +4,12 @@ import dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
-// Override NODE_ENV and DATABASE_URL for tests to use local Supabase
+// Override NODE_ENV and DATABASE_URL for tests
 process.env.NODE_ENV = 'test';
-process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:54422/postgres';
+// Use CI DATABASE_URL if set, otherwise use local Supabase
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:54422/postgres';
+}
 
 // Only set OPENAI_API_KEY if not already in .env
 if (!process.env.OPENAI_API_KEY) {

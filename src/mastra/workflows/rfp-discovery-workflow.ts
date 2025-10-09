@@ -145,16 +145,19 @@ const opportunitySchema = z.object({
 const fetchActivePortalsStep = createStep({
   id: 'fetch-active-portals',
   description: 'Fetch all active portals from database',
-  inputSchema: z.object({}),
+  inputSchema: z.object({
+    maxPortals: z.number().optional().default(5),
+  }),
   outputSchema: z.object({
     portals: z.array(portalConfigSchema),
+    maxPortals: z.number(),
   }),
-  execute: async () => {
+  execute: async ({ inputData }) => {
     console.log('📋 Fetching active portals...');
 
-    const activePortals = await storage.getPortalsByStatus('active');
+    const activePortals = await storage.getActivePortals();
 
-    const portals = activePortals.map(portal => ({
+    const portals = activePortals.map((portal: any) => ({
       id: portal.id,
       name: portal.name,
       url: portal.url,
@@ -170,113 +173,99 @@ const fetchActivePortalsStep = createStep({
     }));
 
     console.log(`✅ Found ${portals.length} active portals`);
-    return { portals };
+    return { portals, maxPortals: inputData.maxPortals ?? 5 };
   },
 });
 
-// Step 2: Scrape individual portal
+// Step 2: Scrape individual portal (using incremental scanning)
 const scrapePortalStep = createStep({
   id: 'scrape-portal',
-  description: 'Scrape RFP opportunities from a single portal',
+  description: 'Incrementally scrape RFP opportunities from a single portal',
   inputSchema: portalConfigSchema,
   outputSchema: z.object({
     opportunities: z.array(opportunitySchema),
     portalId: z.string(),
     status: z.enum(['success', 'error']),
     message: z.string().optional(),
+    scanMetrics: z.object({
+      newRfps: z.number(),
+      updatedRfps: z.number(),
+      unchangedRfps: z.number(),
+    }).optional(),
   }),
   execute: async ({ inputData: portal }) => {
-    console.log(`🔍 Scraping ${portal.name} (${portal.url})`);
+    console.log(`🔍 Incrementally scanning ${portal.name} (${portal.url})`);
 
     try {
-      const scraper = new MastraScrapingService();
-      const sessionId = `portal-${portal.id}`;
+      // Use incremental scanning service
+      const { incrementalPortalScanService } = await import('../../../server/services/incrementalPortalScanService');
 
-      // Handle authentication if needed
-      if (portal.requiresAuth && portal.credentials?.username) {
-        console.log(`🔐 Authenticating with ${portal.name}`);
-
-        const authResult = await pageAuthTool.execute({
-          context: {
-            loginUrl: portal.url,
-            username: portal.credentials.username,
-            password: portal.credentials.password || '',
-            targetUrl: portal.url,
-            sessionId,
-            portalType: portal.type,
-          },
-        });
-
-        if (!authResult.success) {
-          throw new Error(`Authentication failed for ${portal.name}`);
-        }
-      }
-
-      // Extract RFP opportunities
-      const extractionResult = await pageExtractTool.execute({
-        context: {
-          url: portal.url,
-          instruction: portal.searchFilters?.length
-            ? `Find RFP opportunities matching: ${portal.searchFilters.join(', ')}`
-            : 'Extract all RFP opportunities with titles, deadlines, agencies, and descriptions',
-          sessionId,
-          schema: {
-            opportunities: z.array(
-              z.object({
-                title: z.string(),
-                description: z.string().optional(),
-                agency: z.string().optional(),
-                deadline: z.string().optional(),
-                estimatedValue: z.string().optional(),
-                url: z.string().optional(),
-                category: z.string().optional(),
-              })
-            ),
-          },
-        },
+      const scanResult = await incrementalPortalScanService.scanPortal({
+        portalId: portal.id,
+        sessionId: `portal-${portal.id}-${Date.now()}`,
+        forceFullScan: false,
+        maxRfpsToScan: 50, // Default max RFPs per scan
       });
 
-      const opportunities = (extractionResult.data?.opportunities || []).map(
-        (opp: any) => ({
-          ...opp,
+      // Fetch newly discovered RFPs to return as opportunities
+      const newRfps = await storage.getRFPsByPortal(portal.id);
+
+      // Convert RFPs to opportunity format
+      const opportunities = newRfps
+        .filter(rfp => rfp.addedBy === 'automatic')
+        .slice(0, 50)
+        .map((rfp: any) => ({
+          title: rfp.title,
+          description: rfp.description || undefined,
+          agency: rfp.agency,
+          deadline: rfp.deadline?.toISOString(),
+          estimatedValue: rfp.estimatedValue || undefined,
+          url: rfp.sourceUrl,
+          category: rfp.category || undefined,
           portalId: portal.id,
-          confidence: calculateConfidence(opp, {
-            confidence: extractionResult.confidence,
-            extractionQuality: extractionResult.quality,
-          }),
-        })
-      );
+          confidence: 0.85, // High confidence for scanned RFPs
+        }));
 
       console.log(
-        `✅ Found ${opportunities.length} opportunities from ${portal.name}`
+        `✅ Incremental scan completed for ${portal.name}: ${scanResult.newRfpsCount} new, ${scanResult.updatedRfpsCount} updated`
       );
 
       return {
         opportunities,
         portalId: portal.id,
-        status: 'success',
-        message: `Scraped ${opportunities.length} opportunities`,
+        status: 'success' as const,
+        message: `Incremental scan: ${scanResult.newRfpsCount} new, ${scanResult.updatedRfpsCount} updated`,
+        scanMetrics: {
+          newRfps: scanResult.newRfpsCount,
+          updatedRfps: scanResult.updatedRfpsCount,
+          unchangedRfps: scanResult.unchangedRfpsCount,
+        },
       };
     } catch (error) {
-      console.error(`❌ Error scraping ${portal.name}:`, error);
+      console.error(`❌ Error scanning ${portal.name}:`, error);
 
       return {
         opportunities: [],
         portalId: portal.id,
-        status: 'error',
+        status: 'error' as const,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   },
 });
 
-// Step 3: Process discovered RFPs
+// Step 3: Process discovered RFPs (simplified since incremental scanning handles this)
 const processDiscoveredRfpsStep = createStep({
   id: 'process-discovered-rfps',
-  description: 'Save discovered RFPs to database',
+  description: 'Aggregate scan results and create notifications',
   inputSchema: z.object({
     allOpportunities: z.array(opportunitySchema),
     portalsScanned: z.number(),
+    scanResults: z.array(z.object({
+      newRfps: z.number(),
+      updatedRfps: z.number(),
+      unchangedRfps: z.number(),
+    })).optional(),
   }),
   outputSchema: z.object({
     newRfps: z.number(),
@@ -285,68 +274,43 @@ const processDiscoveredRfpsStep = createStep({
     portalsScanned: z.number(),
   }),
   execute: async ({ inputData }) => {
-    const { allOpportunities, portalsScanned } = inputData;
+    const { allOpportunities, portalsScanned, scanResults } = inputData;
+
+    // Aggregate metrics from incremental scans
     let newRfps = 0;
     let updatedRfps = 0;
 
-    console.log(
-      `💾 Processing ${allOpportunities.length} discovered opportunities`
-    );
-
-    for (const opportunity of allOpportunities) {
-      try {
-        // Check if RFP already exists
-        const existingRfps = await storage.getRFPsByPortal(
-          opportunity.portalId
-        );
-        const existing = existingRfps.find(
-          rfp => rfp.title.toLowerCase() === opportunity.title.toLowerCase()
-        );
-
-        if (!existing) {
-          // Create new RFP
-          await storage.createRFP({
-            title: opportunity.title,
-            description: opportunity.description || '',
-            portalId: opportunity.portalId,
-            sourceUrl: opportunity.url || '',
-            deadline: opportunity.deadline
-              ? new Date(opportunity.deadline)
-              : undefined,
-            estimatedValue: opportunity.estimatedValue,
-            status: 'discovered',
-            progress: 10,
-            aiAnalysis: {
-              confidence: opportunity.confidence,
-              category: opportunity.category,
-              agency: opportunity.agency,
-            },
-          });
-          newRfps++;
-        } else if (
-          opportunity.deadline &&
-          existing.deadline !== opportunity.deadline
-        ) {
-          // Update deadline if changed
-          await storage.updateRFP(existing.id, {
-            deadline: new Date(opportunity.deadline),
-          });
-          updatedRfps++;
-        }
-      } catch (error) {
-        console.error(
-          `Failed to process opportunity: ${opportunity.title}`,
-          error
-        );
+    if (scanResults && scanResults.length > 0) {
+      for (const result of scanResults) {
+        newRfps += result.newRfps;
+        updatedRfps += result.updatedRfps;
       }
+    } else {
+      // Fallback: count opportunities if scan results not available
+      newRfps = allOpportunities.length;
     }
 
-    // Create notification
+    console.log(
+      `💾 Aggregated scan results: ${newRfps} new, ${updatedRfps} updated`
+    );
+
+    // Create notification for new RFPs
     if (newRfps > 0) {
       await storage.createNotification({
         type: 'system',
         title: 'New RFPs Discovered',
-        message: `${newRfps} new RFP opportunities have been discovered`,
+        message: `${newRfps} new RFP opportunities have been discovered from ${portalsScanned} portals`,
+        relatedEntityType: 'portal',
+        relatedEntityId: null,
+      });
+    }
+
+    // Create notification for updated RFPs
+    if (updatedRfps > 0) {
+      await storage.createNotification({
+        type: 'system',
+        title: 'RFPs Updated',
+        message: `${updatedRfps} existing RFP opportunities have been updated`,
         relatedEntityType: 'portal',
         relatedEntityId: null,
       });
@@ -357,7 +321,7 @@ const processDiscoveredRfpsStep = createStep({
     return {
       newRfps,
       updatedRfps,
-      totalProcessed: allOpportunities.length,
+      totalProcessed: newRfps + updatedRfps,
       portalsScanned,
     };
   },
@@ -383,7 +347,7 @@ export const rfpDiscoveryWorkflow = createWorkflow({
       id: 'prepare-parallel-scraping',
       inputSchema: z.object({
         portals: z.array(portalConfigSchema),
-        maxPortals: z.number().optional(),
+        maxPortals: z.number(),
       }),
       outputSchema: z.object({
         portalBatches: z.array(portalConfigSchema),
@@ -411,19 +375,24 @@ export const rfpDiscoveryWorkflow = createWorkflow({
       outputSchema: z.object({
         allOpportunities: z.array(opportunitySchema),
         portalsScanned: z.number(),
+        scanResults: z.array(z.object({
+          newRfps: z.number(),
+          updatedRfps: z.number(),
+          unchangedRfps: z.number(),
+        })).optional(),
       }),
-      execute: async ({ inputData, mastra }) => {
+      execute: async ({ inputData }) => {
         // Execute scraping in parallel for each portal
-        const scrapePromises = inputData.portalBatches.map(portal =>
+        const scrapePromises = inputData.portalBatches.map((portal: any) =>
           scrapePortalStep.execute({
             inputData: portal,
-            mastra,
-          })
+          } as any)
         );
 
         const results = await Promise.allSettled(scrapePromises);
 
         const allOpportunities: any[] = [];
+        const scanResults: any[] = [];
         let portalsScanned = 0;
 
         results.forEach((result, index) => {
@@ -433,6 +402,11 @@ export const rfpDiscoveryWorkflow = createWorkflow({
           ) {
             allOpportunities.push(...result.value.opportunities);
             portalsScanned++;
+
+            // Capture scan metrics
+            if (result.value.scanMetrics) {
+              scanResults.push(result.value.scanMetrics);
+            }
           } else {
             console.warn(`Portal scraping failed for batch ${index}`);
           }
@@ -441,6 +415,7 @@ export const rfpDiscoveryWorkflow = createWorkflow({
         return {
           allOpportunities,
           portalsScanned,
+          scanResults,
         };
       },
     })

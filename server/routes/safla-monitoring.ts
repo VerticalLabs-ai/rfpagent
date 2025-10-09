@@ -71,7 +71,7 @@ router.get('/dashboard', async (req, res) => {
             dashboard.performanceMetrics?.documentProcessingTime || 0,
         },
         improvementOpportunities:
-          dashboard.improvementOpportunities?.map(opp => ({
+          dashboard.improvementOpportunities?.map((opp: any) => ({
             area: opp.component,
             priority: opp.impact as 'high' | 'medium' | 'low',
             description: opp.opportunity,
@@ -79,7 +79,7 @@ router.get('/dashboard', async (req, res) => {
               opp.impact === 'high' ? 25 : opp.impact === 'medium' ? 15 : 5,
           })) || [],
         alerts:
-          dashboard.alerts?.map(alert => ({
+          dashboard.alerts?.map((alert: any) => ({
             type:
               alert.severity === 'critical'
                 ? ('error' as const)

@@ -38,6 +38,9 @@ const fetchJson = async <T,>(url: string): Promise<T> => {
   return response.json() as Promise<T>;
 };
 
+const hasActiveProgress = (w: WorkflowStateSummary['workflows'][0]): boolean =>
+  !!(w.title && w.progress > 0);
+
 export default function AgentMonitoring() {
   // Reduced polling intervals to minimize console noise
   const { data: agentPerformance, isLoading: perfLoading } = useQuery({
@@ -251,7 +254,7 @@ export default function AgentMonitoring() {
               }`}
               data-testid="text-system-status"
             >
-              {safeSystemHealth.systemStatus}
+              {safeSystemHealth.systemStatus.replace(/_/g, ' ').toLowerCase()}
             </div>
             <div className="flex items-center space-x-2 mt-2">
               <div className="text-sm text-muted-foreground">
@@ -1092,7 +1095,7 @@ export default function AgentMonitoring() {
             <CardContent>
               <div className="space-y-4">
                 {safeWorkflowStates.workflows
-                  .filter(workflow => workflow.title && workflow.progress > 0)
+                  .filter(hasActiveProgress)
                   .slice(0, 10)
                   .map((workflow, index) => {
                     const status = workflow.status ?? 'pending';
@@ -1178,9 +1181,8 @@ export default function AgentMonitoring() {
                     );
                   })}
                 {(safeWorkflowStates.workflows.length === 0 ||
-                  safeWorkflowStates.workflows.filter(
-                    w => w.title && w.progress > 0
-                  ).length === 0) && (
+                  safeWorkflowStates.workflows.filter(hasActiveProgress)
+                    .length === 0) && (
                   <div className="text-center py-12 text-muted-foreground">
                     <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg font-medium mb-2">

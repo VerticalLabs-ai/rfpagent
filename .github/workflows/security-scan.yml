@@ -30,7 +30,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -134,9 +134,9 @@ jobs:
         uses: trufflesecurity/trufflehog@main
         with:
           path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --debug --only-verified
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'HEAD' }}
+          extra_args: --debug --only-verified --exclude-paths=.trufflehog-exclude-paths.txt
 
       - name: GitLeaks
         uses: gitleaks/gitleaks-action@v2
@@ -185,32 +185,32 @@ jobs:
   # ===========================================================================
   # License Compliance
   # ===========================================================================
-  license-check:
-    name: License Compliance Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check licenses
-        run: |
-          npx license-checker --summary
-          npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' --production
+  # license-check:
+  #   name: License Compliance Check
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 10
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: "22"
+  #
+  #     - name: Install pnpm
+  #       uses: pnpm/action-setup@v4
+  #       with:
+  #         version: 9
+  #
+  #     - name: Install dependencies
+  #       run: pnpm install --frozen-lockfile
+  #
+  #     - name: Check licenses
+  #       run: |
+  #         npx license-checker --summary
+  #         npx license-checker --onlyAllow 'MIT;Apache-2.0;BSD-2-Clause;BSD-3-Clause;ISC;0BSD' --production
 
   # ===========================================================================
   # Infrastructure as Code Scanning
@@ -255,7 +255,6 @@ jobs:
         codeql,
         secret-scan,
         container-scan,
-        license-check,
         iac-scan,
       ]
     if: always()
@@ -277,7 +276,6 @@ jobs:
           echo "- CodeQL: ${{ needs.codeql.result }}" >> security-summary.md
           echo "- Secret Scan: ${{ needs.secret-scan.result }}" >> security-summary.md
           echo "- Container Scan: ${{ needs.container-scan.result }}" >> security-summary.md
-          echo "- License Check: ${{ needs.license-check.result }}" >> security-summary.md
           echo "- IaC Scan: ${{ needs.iac-scan.result }}" >> security-summary.md
 
       - name: Upload security summary

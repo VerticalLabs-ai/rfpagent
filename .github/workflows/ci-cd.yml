@@ -16,7 +16,7 @@ on:
           - production
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   PNPM_VERSION: "9"
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
@@ -112,6 +112,8 @@ jobs:
         run: pnpm run test:coverage
         env:
           CI: true
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          NODE_ENV: test
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -175,6 +177,8 @@ jobs:
         run: pnpm exec playwright test
         env:
           CI: true
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          NODE_ENV: test
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
@@ -283,6 +287,18 @@ jobs:
         run: pnpm run build
         env:
           NODE_ENV: production
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: vertical-labs-o2
+          SENTRY_PROJECT: bidhive
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          sourcemaps: './dist'
+          set_commits: auto
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
@@ -397,6 +413,17 @@ jobs:
           echo "Running smoke tests on staging..."
           # Add smoke test commands here
 
+      - name: Notify Sentry of deployment
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: vertical-labs-o2
+          SENTRY_PROJECT: bidhive
+        with:
+          environment: staging
+          version: ${{ github.sha }}
+          finalize: true
+
   # ===========================================================================
   # Job 8: Deploy to Production
   # ===========================================================================
@@ -425,6 +452,18 @@ jobs:
         run: |
           echo "Running smoke tests on production..."
           # Add smoke test commands here
+
+      - name: Notify Sentry of deployment
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: vertical-labs-o2
+          SENTRY_PROJECT: bidhive
+        with:
+          environment: production
+          version: ${{ github.sha }}
+          finalize: true
+
       - name: Notify deployment success
         uses: actions/github-script@v7
         if: github.event_name == 'pull_request'

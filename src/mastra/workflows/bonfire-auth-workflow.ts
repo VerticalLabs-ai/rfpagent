@@ -1,4 +1,4 @@
-import { createWorkflow, WorkflowContext } from '@mastra/core';
+import { createWorkflow, createStep } from '@mastra/core';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
 import { sessionManager } from '../tools/session-manager';
@@ -13,17 +13,15 @@ const BonfireAuthInputSchema = z.object({
   maxRetries: z.number().default(3),
 });
 
-export const bonfireAuthWorkflow = createWorkflow({
-  id: 'bonfire-auth',
-  description:
-    'Handles complex BonfireHub authentication with 2FA and human-in-the-loop',
+const executeWorkflowStep = createStep({
+  id: 'execute-workflow',
   inputSchema: BonfireAuthInputSchema,
-
+  outputSchema: z.any(),
   execute: async ({
     input,
     step,
     suspend,
-  }: WorkflowContext<z.infer<typeof BonfireAuthInputSchema>>) => {
+  }: any): Promise<any> => {
     const {
       portalId,
       username,
@@ -239,5 +237,11 @@ export const bonfireAuthWorkflow = createWorkflow({
       retryCount,
       timestamp: new Date().toISOString(),
     };
-  },
+  }
 });
+
+export const bonfireAuthWorkflow: any = createWorkflow({
+  id: 'bonfire-auth',
+  description: 'Handles complex BonfireHub authentication with 2FA and human-in-the-loop',
+  inputSchema: BonfireAuthInputSchema,
+} as any).then(executeWorkflowStep as any).commit();

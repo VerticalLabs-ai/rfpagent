@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { storage } from '../storage';
 import { agentMemoryService } from './agentMemoryService';
 import { sessionManager } from '../../src/mastra/tools/session-manager';
@@ -32,8 +31,9 @@ export class PortalAuthenticationSpecialist {
   async authenticatePortal(
     workItem: WorkItem
   ): Promise<SubmissionSpecialistResult> {
+    const inputs = workItem.inputs as Record<string, any>;
     console.log(
-      `🔐 Auth Specialist: Authenticating with portal for submission ${workItem.inputs.submissionId}`
+      `🔐 Auth Specialist: Authenticating with portal for submission ${inputs.submissionId}`
     );
 
     try {
@@ -43,11 +43,11 @@ export class PortalAuthenticationSpecialist {
         preflightResults,
         browserOptions,
         pipelineId,
-      } = workItem.inputs;
+      } = inputs;
 
       // Get portal and submission data
       const [portal, submission] = await Promise.all([
-        storage.getPortal(portalId),
+        storage.getPortalWithCredentials(portalId),
         storage.getSubmission(submissionId),
       ]);
 
@@ -153,14 +153,17 @@ export class PortalAuthenticationSpecialist {
       console.error('❌ Portal authentication failed:', error);
 
       // Create error event
+      const errorInputs = workItem.inputs as Record<string, any>;
       await storage.createSubmissionEvent({
-        pipelineId: workItem.inputs.pipelineId,
-        submissionId: workItem.inputs.submissionId,
+        pipelineId: errorInputs.pipelineId,
+        submissionId: errorInputs.submissionId,
         eventType: 'error',
         phase: 'authenticating',
         level: 'error',
         message: 'Portal authentication failed',
-        details: { error: error.message },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'portal-authentication-specialist',
       });
 
@@ -178,7 +181,7 @@ export class PortalAuthenticationSpecialist {
 
   private async checkIfLoggedIn(
     stagehand: any,
-    portal: Portal
+    portal: Partial<Portal>
   ): Promise<boolean> {
     try {
       // Common indicators of being logged in
@@ -233,7 +236,7 @@ export class PortalAuthenticationSpecialist {
 
   private async findLoginElements(
     stagehand: any,
-    portal: Portal
+    portal: Partial<Portal>
   ): Promise<any> {
     // Try multiple strategies to find login elements
     const strategies = [
@@ -261,7 +264,7 @@ export class PortalAuthenticationSpecialist {
 
   private async findLoginElementsWithPortalSelectors(
     stagehand: any,
-    portal: Portal
+    portal: Partial<Portal>
   ): Promise<any> {
     if (!portal.selectors) {
       throw new Error('No portal-specific selectors available');
@@ -380,7 +383,7 @@ export class PortalAuthenticationSpecialist {
 
   private async performLogin(
     stagehand: any,
-    portal: Portal,
+    portal: Partial<Portal>,
     loginElements: any
   ): Promise<void> {
     if (!portal.username || !portal.password) {
@@ -411,7 +414,10 @@ export class PortalAuthenticationSpecialist {
     await stagehand.page.waitForTimeout(3000);
   }
 
-  private async handleMFA(stagehand: any, portal: Portal): Promise<any> {
+  private async handleMFA(
+    stagehand: any,
+    portal: Partial<Portal>
+  ): Promise<any> {
     try {
       // Check for common MFA elements
       const mfaSelectors = [
@@ -446,7 +452,10 @@ export class PortalAuthenticationSpecialist {
 
       return { mfaDetected };
     } catch (error) {
-      return { mfaDetected: false, error: error.message };
+      return {
+        mfaDetected: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
@@ -510,14 +519,17 @@ export class PortalAuthenticationSpecialist {
         currentUrl,
       };
     } catch (error) {
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   }
 
   private async handleSuccessfulAuth(
     sessionId: string,
     submission: Submission,
-    portal: Portal,
+    portal: Partial<Portal>,
     pipelineId: string,
     authDetails: any
   ): Promise<SubmissionSpecialistResult> {
@@ -532,10 +544,14 @@ export class PortalAuthenticationSpecialist {
         portalName: portal.name,
         authMethod: authDetails.method,
         authenticatedAt: new Date(),
-        currentUrl: authDetails.currentUrl,
+        currentUrl: authDetails.currentUrl || portal.url,
       },
       importance: 8,
-      tags: ['portal_authentication', 'active_session', portal.name],
+      tags: [
+        'portal_authentication',
+        'active_session',
+        portal.name || 'unknown_portal',
+      ],
       metadata: { submissionId: submission.id, pipelineId },
     });
 
@@ -606,8 +622,9 @@ export class FormSubmissionSpecialist {
   async populateSubmissionForms(
     workItem: WorkItem
   ): Promise<SubmissionSpecialistResult> {
+    const inputs = workItem.inputs as Record<string, any>;
     console.log(
-      `📝 Form Specialist: Populating forms for submission ${workItem.inputs.submissionId}`
+      `📝 Form Specialist: Populating forms for submission ${inputs.submissionId}`
     );
 
     try {
@@ -618,7 +635,7 @@ export class FormSubmissionSpecialist {
         formMapping,
         authenticationData,
         pipelineId,
-      } = workItem.inputs;
+      } = inputs;
 
       // Get submission and proposal data
       const [submission, proposal] = await Promise.all([
@@ -728,14 +745,17 @@ export class FormSubmissionSpecialist {
       console.error('❌ Form population failed:', error);
 
       // Create error event
+      const errorInputs = workItem.inputs as Record<string, any>;
       await storage.createSubmissionEvent({
-        pipelineId: workItem.inputs.pipelineId,
-        submissionId: workItem.inputs.submissionId,
+        pipelineId: errorInputs.pipelineId,
+        submissionId: errorInputs.submissionId,
         eventType: 'error',
         phase: 'filling',
         level: 'error',
         message: 'Form population failed',
-        details: { error: error.message },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'form-submission-specialist',
       });
 
@@ -874,7 +894,10 @@ export class FormSubmissionSpecialist {
         } catch (fieldError) {
           errors.push({
             field: await this.getFieldName(element),
-            error: fieldError.message,
+            error:
+              fieldError instanceof Error
+                ? fieldError.message
+                : String(fieldError),
           });
         }
       }
@@ -885,7 +908,9 @@ export class FormSubmissionSpecialist {
         status: errors.length === 0 ? 'success' : 'partial',
       };
     } catch (error) {
-      throw new Error(`Form population failed: ${error.message}`);
+      throw new Error(
+        `Form population failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -1018,7 +1043,9 @@ export class FormSubmissionSpecialist {
       // Wait a bit for any dynamic updates
       await element.page().waitForTimeout(300);
     } catch (error) {
-      throw new Error(`Failed to populate field: ${error.message}`);
+      throw new Error(
+        `Failed to populate field: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -1058,7 +1085,7 @@ export class FormSubmissionSpecialist {
     } catch (error) {
       return {
         status: 'validation_failed',
-        errors: [error.message],
+        errors: [error instanceof Error ? error.message : String(error)],
         validatedAt: new Date(),
       };
     }
@@ -1092,8 +1119,9 @@ export class DocumentUploadSpecialist {
   async uploadSubmissionDocuments(
     workItem: WorkItem
   ): Promise<SubmissionSpecialistResult> {
+    const inputs = workItem.inputs as Record<string, any>;
     console.log(
-      `📎 Upload Specialist: Uploading documents for submission ${workItem.inputs.submissionId}`
+      `📎 Upload Specialist: Uploading documents for submission ${inputs.submissionId}`
     );
 
     try {
@@ -1104,7 +1132,7 @@ export class DocumentUploadSpecialist {
         documentChecklist,
         formData,
         pipelineId,
-      } = workItem.inputs;
+      } = inputs;
 
       // Get submission and proposal data
       const [submission, proposal] = await Promise.all([
@@ -1229,14 +1257,17 @@ export class DocumentUploadSpecialist {
       console.error('❌ Document upload failed:', error);
 
       // Create error event
+      const errorInputs = workItem.inputs as Record<string, any>;
       await storage.createSubmissionEvent({
-        pipelineId: workItem.inputs.pipelineId,
-        submissionId: workItem.inputs.submissionId,
+        pipelineId: errorInputs.pipelineId,
+        submissionId: errorInputs.submissionId,
         eventType: 'error',
         phase: 'uploading',
         level: 'error',
         message: 'Document upload failed',
-        details: { error: error.message },
+        details: {
+          error: error instanceof Error ? error.message : String(error),
+        },
         agentId: 'document-upload-specialist',
       });
 
@@ -1265,11 +1296,12 @@ export class DocumentUploadSpecialist {
       const documentsToUpload = [];
 
       // Add main proposal document if it exists
-      if (proposal.documentPath) {
+      const proposalData = proposal.proposalData as any;
+      if (proposalData?.documentPath) {
         documentsToUpload.push({
           type: 'proposal',
           name: 'proposal.pdf',
-          path: proposal.documentPath,
+          path: proposalData.documentPath,
           description: 'Main proposal document',
         });
       }
@@ -1282,7 +1314,8 @@ export class DocumentUploadSpecialist {
             type: 'supporting',
             name: doc.filename || 'document.pdf',
             path,
-            description: doc.description || 'Supporting document',
+            description:
+              (doc.parsedData as any)?.description || 'Supporting document',
           });
         }
       }
@@ -1293,7 +1326,7 @@ export class DocumentUploadSpecialist {
           // Try to find matching document
           const matchingDoc = proposalDocuments.find(
             doc =>
-              doc.documentType === requiredDoc.type ||
+              (doc.parsedData as any)?.documentType === requiredDoc.type ||
               doc.filename?.includes(requiredDoc.name)
           );
 
@@ -1400,7 +1433,10 @@ export class DocumentUploadSpecialist {
           document: document.name,
           type: document.type,
           status: 'failed',
-          error: uploadError.message,
+          error:
+            uploadError instanceof Error
+              ? uploadError.message
+              : String(uploadError),
           path: document.path,
         });
       }
@@ -1436,7 +1472,9 @@ export class DocumentUploadSpecialist {
 
       return null;
     } catch (error) {
-      throw new Error(`Could not find file input: ${error.message}`);
+      throw new Error(
+        `Could not find file input: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -1540,7 +1578,7 @@ export class DocumentUploadSpecialist {
     } catch (error) {
       return {
         status: 'verification_failed',
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         confirmations: [],
         verifiedAt: new Date(),
       };

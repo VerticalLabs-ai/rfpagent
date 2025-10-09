@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,20 +16,27 @@ import {
   getStatusLabel,
   getStatusIcon,
 } from '@/lib/badge-utils';
+import type { RFP, ProposalRow } from '@shared/schema';
+
+type RFPWithDetails = { rfp: RFP; proposal?: ProposalRow };
+type ProposalUpdateData = Partial<
+  Pick<ProposalRow, 'content' | 'pricingTables' | 'status'>
+>;
 
 export default function Proposals() {
   const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const { toast } = useToast();
 
-  const { data: rfps, isLoading: rfpsLoading } = useQuery({
+  const { data: rfps, isLoading: rfpsLoading } = useQuery<RFPWithDetails[]>({
     queryKey: ['/api/rfps', 'detailed'],
   });
 
-  const { data: selectedProposal, isLoading: proposalLoading } = useQuery({
-    queryKey: ['/api/proposals/rfp', selectedRfp],
-    enabled: !!selectedRfp,
-  });
+  const { data: selectedProposal, isLoading: proposalLoading } =
+    useQuery<ProposalRow>({
+      queryKey: ['/api/proposals/rfp', selectedRfp],
+      enabled: !!selectedRfp,
+    });
 
   const generateProposalMutation = useMutation({
     mutationFn: async (rfpId: string) => {
@@ -316,7 +322,7 @@ export default function Proposals() {
                   <ProposalContentEditor
                     proposal={selectedProposal}
                     editMode={editMode}
-                    onUpdate={updates =>
+                    onUpdate={(updates: ProposalUpdateData) =>
                       updateProposalMutation.mutate({
                         proposalId: selectedProposal.id,
                         updates,
@@ -329,7 +335,7 @@ export default function Proposals() {
                   <ProposalPricingEditor
                     proposal={selectedProposal}
                     editMode={editMode}
-                    onUpdate={updates =>
+                    onUpdate={(updates: ProposalUpdateData) =>
                       updateProposalMutation.mutate({
                         proposalId: selectedProposal.id,
                         updates,
@@ -354,7 +360,7 @@ export default function Proposals() {
                   No Proposal Yet
                 </h3>
                 <p className="text-muted-foreground mb-4">
-                  This RFP doesn't have a generated proposal yet
+                  This RFP doesn&apos;t have a generated proposal yet
                 </p>
                 <Button
                   onClick={() =>

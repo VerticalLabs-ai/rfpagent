@@ -6,27 +6,28 @@ import { errorHandler } from './middleware/errorHandling';
 import { rateLimiter } from './middleware/rateLimiting';
 
 // Import all route modules
-import rfpRoutes from './rfps.routes';
-import proposalRoutes from './proposals.routes';
-import analysisRoutes from './analysis'; // Existing analysis routes
-import complianceRoutes from './compliance.routes';
-import systemRoutes from './system.routes';
-import dashboardRoutes from './dashboard.routes';
-import portalRoutes from './portals.routes';
-import submissionRoutes from './submissions.routes';
-import documentRoutes from './documents.routes';
-import aiRoutes from './ai.routes';
-import companyRoutes from './company.routes';
-import workflowRoutes from './workflows.routes';
-import scanRoutes from './scans.routes';
-import discoveryRoutes from './discovery.routes';
-import notificationRoutes from './notifications.routes';
-import auditLogRoutes from './audit-logs.routes';
 import agentRoutes from './agents.routes';
-import metricsRoutes from './metrics.routes';
+import aiRoutes from './ai.routes';
+import analysisRoutes from './analysis'; // Existing analysis routes
+import auditLogRoutes from './audit-logs.routes';
+import companyRoutes from './company.routes';
+import complianceRoutes from './compliance.routes';
+import dashboardRoutes from './dashboard.routes';
+import discoveryRoutes from './discovery.routes';
+import documentRoutes from './documents.routes';
 import e2eRoutes from './e2e.routes';
-import saflaRoutes from './safla-monitoring';
 import healthRoutes from './health.routes';
+import metricsRoutes from './metrics.routes';
+import notificationRoutes from './notifications.routes';
+import portalRoutes from './portals.routes';
+import proposalRoutes from './proposals.routes';
+import rfpRoutes from './rfps.routes';
+import saflaRoutes from './safla-monitoring';
+import scanRoutes from './scans.routes';
+import sentryTestRoutes from './sentry-test';
+import submissionRoutes from './submissions.routes';
+import systemRoutes from './system.routes';
+import workflowRoutes from './workflows.routes';
 
 /**
  * Configure and mount all API routes
@@ -65,6 +66,14 @@ export function configureRoutes(app: Express): void {
 
   // Mount health check routes (skip rate limiting for health checks)
   apiRouter.use('/health', healthRoutes);
+
+  // Mount Sentry test routes (development/testing only)
+  if (
+    process.env.NODE_ENV !== 'production' ||
+    process.env.ENABLE_SENTRY_TEST === 'true'
+  ) {
+    apiRouter.use('/sentry', sentryTestRoutes);
+  }
 
   // Mount the API router
   app.use('/api', apiRouter);
@@ -184,6 +193,11 @@ export const routeModules = {
   health: {
     prefix: '/api/health',
     description: 'Health checks and system monitoring',
+    version: '1.0.0',
+  },
+  sentry: {
+    prefix: '/api/sentry',
+    description: 'Sentry error tracking test routes (dev/test only)',
     version: '1.0.0',
   },
 } as const;

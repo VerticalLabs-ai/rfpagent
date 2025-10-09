@@ -68,8 +68,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### AI & Automation
 
-- **OpenAI**: GPT-5 for document analysis and proposal generation
-- **Mastra**: TypeScript AI agent framework with workflow orchestration
+- **OpenAI**: GPT-5 (released August 2025) - Latest unified model combining reasoning and fast responses
+- **Anthropic**: Claude Sonnet 4.5 (released September 2025) - Best coding model with advanced reasoning
+- **Mastra**: TypeScript AI agent framework with workflow orchestration (v0.20.1)
 - **Puppeteer**: Web scraping for portal automation
 
 ### Infrastructure
@@ -83,3 +84,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Drizzle ORM**: Type-safe database operations
 - **Zod**: Runtime type validation
 - **Node-cron**: Job scheduling for automated portal scanning
+
+---
+
+## Documentation Guidelines
+
+### STRICT RULES for Documentation
+
+**⚠️ CRITICAL: All documentation MUST go in `/docs` folder**
+
+1. **NEVER create documentation files in project root**
+   - Root is for: `CLAUDE.md`, `README.md`, `package.json`, config files ONLY
+   - Everything else goes in `/docs`
+
+2. **Before creating ANY new documentation:**
+   - Check `/docs` for related existing documents
+   - If related doc exists → UPDATE it, don't create new
+   - If truly new topic → discuss folder structure first
+   - Follow naming: `kebab-case.md`
+
+3. **Documentation folder structure:**
+   ```
+   docs/
+   ├── README.md              # Documentation index
+   ├── technical/             # Architecture, models, agents
+   ├── testing/               # Testing guides
+   ├── deployment/            # Deployment guides
+   ├── guides/                # User guides
+   └── archive/               # Outdated docs (don't delete, archive)
+   ```
+
+4. **Every documentation file MUST have:**
+   - `**Last Updated**: Month Year` at the top
+   - Cross-references to related docs
+   - Clear purpose statement
+   - Table of contents for long docs (>200 lines)
+
+5. **Update, don't duplicate:**
+   - Combine related docs instead of creating similar ones
+   - Example: All testing info → `docs/testing/testing-guide.md`
+   - Example: All deployment info → `docs/deployment/deployment-guide.md`
+
+6. **Archiving old docs:**
+   - Move to `/docs/archive/` with date suffix
+   - Add deprecation note at top
+   - Update references in other docs
+
+### Quick Reference
+
+**Where does my documentation go?**
+- AI models, agent architecture → `/docs/technical/`
+- Testing procedures, verification → `/docs/testing/`
+- Deployment, infrastructure → `/docs/deployment/`
+- User guides, tutorials → `/docs/guides/`
+- Outdated but useful → `/docs/archive/`
+
+**See `/docs/README.md` for complete documentation index**
+
+---
+
+## AI Model Configuration
+
+**IMPORTANT: Current Real Models (as of January 2025)**
+
+- **GPT-5**: Latest OpenAI model (released August 2025)
+  - Model ID: `gpt-5`
+  - Announcement: https://openai.com/index/introducing-gpt-5/
+
+- **Claude Sonnet 4.5**: Latest Anthropic model (released September 2025)
+  - Model ID: `claude-sonnet-4-5-20250929`
+  - Announcement: https://www.anthropic.com/news/claude-sonnet-4-5
+
+**See `/docs/technical/models-reference.md` for complete model documentation**

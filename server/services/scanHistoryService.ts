@@ -1,4 +1,4 @@
-import { IStorage } from '../storage';
+import { IStorage, storage } from '../storage';
 import type {
   Scan,
   ScanEvent,
@@ -388,6 +388,4 @@ export class ScanHistoryService {
   }
 }
 
-export const scanHistoryService = new ScanHistoryService(
-  require('../storage').storage
-);
+export const scanHistoryService = new ScanHistoryService(storage);

@@ -73,17 +73,6 @@ export function BulkOperations<T extends { id: string }>({
     }
   }, [allSelected, items, onSelectionChange]);
 
-  const handleActionClick = useCallback(
-    (action: BulkAction) => {
-      if (action.requiresConfirmation) {
-        setConfirmAction(action);
-      } else {
-        executeAction(action);
-      }
-    },
-    [executeAction, selectedItems]
-  );
-
   const executeAction = useCallback(
     async (action: BulkAction) => {
       if (selectedItems.size === 0) {
@@ -121,6 +110,17 @@ export function BulkOperations<T extends { id: string }>({
       }
     },
     [selectedItems, onAction, toast, onSelectionChange]
+  );
+
+  const handleActionClick = useCallback(
+    (action: BulkAction) => {
+      if (action.requiresConfirmation) {
+        setConfirmAction(action);
+      } else {
+        executeAction(action);
+      }
+    },
+    [executeAction]
   );
 
   return (
@@ -285,8 +285,9 @@ export function SelectableItem({
 }: SelectableItemProps) {
   return (
     <div
-      className={`group relative transition-all ${selected ? 'ring-2 ring-primary ring-offset-2' : ''
-        } ${className}`}
+      className={`group relative transition-all ${
+        selected ? 'ring-2 ring-primary ring-offset-2' : ''
+      } ${className}`}
     >
       <div className="absolute top-2 left-2 z-10">
         <Checkbox

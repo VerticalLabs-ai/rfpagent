@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: Base image with pnpm
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
 
 # Install pnpm globally
 RUN npm install -g pnpm@9
@@ -54,7 +54,7 @@ RUN pnpm run build
 # -----------------------------------------------------------------------------
 # Stage 5: Production runtime
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 # Install security updates
 RUN apk update && \

@@ -293,7 +293,7 @@ const processDocumentsStep = createStep({
         - Submission requirements
         - Evaluation criteria
         - Document category (RFP main, pricing form, technical specs, etc.)`,
-      model: openai('gpt-5-mini'),
+      model: openai('gpt-5'),
     });
 
     for (const doc of uploadedDocuments) {

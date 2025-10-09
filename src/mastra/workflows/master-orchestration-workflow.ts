@@ -1,4 +1,4 @@
-import { createWorkflow } from '@mastra/core';
+import { createWorkflow, createStep } from '@mastra/core';
 import { z } from 'zod';
 import { agentMemoryService } from '../../../server/services/agentMemoryService';
 import { storage } from '../../../server/storage';
@@ -23,12 +23,10 @@ const MasterOrchestrationInputSchema = z.object({
     .optional(),
 });
 
-export const masterOrchestrationWorkflow = createWorkflow({
-  id: 'master-orchestration',
-  description:
-    'Coordinates all RFP workflows end-to-end from discovery to submission',
+const executeWorkflowStep = createStep({
+  id: 'execute-workflow',
   inputSchema: MasterOrchestrationInputSchema,
-
+  outputSchema: z.any(),
   execute: async ({ input, step, parallel }: any) => {
     const { mode, portalIds, rfpId, companyProfileId, options = {} } = input;
     const startTime = Date.now();
@@ -115,13 +113,15 @@ export const masterOrchestrationWorkflow = createWorkflow({
 
                   // Run authentication workflow if no valid session exists
                   const authResult = await bonfireAuthWorkflow.execute({
-                    portalId,
-                    username: (portal as any).username || '',
-                    password: (portal as any).password || '',
-                    companyName: portal.name,
-                    retryCount: 0,
-                    maxRetries: 3,
-                  });
+                    input: {
+                      portalId,
+                      username: (portal as any).username || '',
+                      password: (portal as any).password || '',
+                      companyName: portal.name,
+                      retryCount: 0,
+                      maxRetries: 3,
+                    }
+                  } as any);
 
                   // Store authentication state in Memory API for future checks
                   if (authResult.success && authResult.authenticated) {
@@ -161,9 +161,10 @@ export const masterOrchestrationWorkflow = createWorkflow({
 
           // Execute discovery workflow
           const discoveryOutput = await rfpDiscoveryWorkflow.execute({
-            portalIds,
-            deepScan: options.deepScan,
-          });
+            input: {
+              maxPortals: portalIds?.length || 10,
+            }
+          } as any);
 
           results.workflows.push({
             type: 'rfp-discovery',
@@ -215,10 +216,10 @@ export const masterOrchestrationWorkflow = createWorkflow({
 
           // Generate proposal
           const proposalOutput = await proposalGenerationWorkflow.execute({
-            rfpId,
-            companyProfileId,
-            proposalType: 'standard',
-          });
+            input: {
+              rfpId: rfpId!,
+            }
+          } as any);
 
           results.workflows.push({
             type: 'proposal-generation',
@@ -244,9 +245,10 @@ export const masterOrchestrationWorkflow = createWorkflow({
             console.log('🚀 Phase 1: RFP Discovery');
 
             return await rfpDiscoveryWorkflow.execute({
-              portalIds,
-              deepScan: options.deepScan,
-            });
+              input: {
+                maxPortals: portalIds?.length || 10,
+              }
+            } as any);
           }
         );
 
@@ -290,10 +292,10 @@ export const masterOrchestrationWorkflow = createWorkflow({
                       if (companyProfileId) {
                         const proposal =
                           await proposalGenerationWorkflow.execute({
-                            rfpId: rfp.id,
-                            companyProfileId,
-                            proposalType: 'standard',
-                          });
+                            input: {
+                              rfpId: rfp.id,
+                            }
+                          } as any);
 
                         return {
                           rfpId: rfp.id,
@@ -356,7 +358,8 @@ export const masterOrchestrationWorkflow = createWorkflow({
             type: 'info',
             title: 'New RFP Discovered',
             message: `Found: ${rfp.title}`,
-            metadata: { rfpId: rfp.id },
+            relatedEntityType: 'rfp',
+            relatedEntityId: rfp.id,
           });
         }
       }
@@ -373,11 +376,6 @@ export const masterOrchestrationWorkflow = createWorkflow({
           type: 'success',
           title: 'Orchestration Complete',
           message: `${mode} workflow completed: ${metrics.rfpsDiscovered} RFPs discovered, ${metrics.rfpsProcessed} processed`,
-          metadata: {
-            mode,
-            metrics,
-            duration: metrics.executionTime,
-          },
         });
 
         return { notified: true };
@@ -396,5 +394,11 @@ export const masterOrchestrationWorkflow = createWorkflow({
       processedRfps: results.processedRfps,
       proposal: results.proposal,
     };
-  },
+  }
 });
+
+export const masterOrchestrationWorkflow: any = createWorkflow({
+  id: 'master-orchestration',
+  description: 'Coordinates all RFP workflows end-to-end from discovery to submission',
+  inputSchema: MasterOrchestrationInputSchema,
+} as any).then(executeWorkflowStep as any).commit();

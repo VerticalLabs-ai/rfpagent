@@ -315,10 +315,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   ): string | undefined {
     const text = $row.text();
     const patterns = [
-      /Solicitation\s*[#:]?\s*([A-Z0-9\-_]+)/i,
-      /Sol[#:]?\s*([A-Z0-9\-_]+)/i,
-      /Number[#:]?\s*([A-Z0-9\-_]+)/i,
-      /\b([A-Z]{2,}\d{2,}[\w\-]*)\b/,
+      /Solicitation\s*[#:]?\s*([A-Z0-9_-]+)/i,
+      /Sol[#:]?\s*([A-Z0-9_-]+)/i,
+      /Number[#:]?\s*([A-Z0-9_-]+)/i,
+      /\b([A-Z]{2,}\d{2,}[\w-]*)\b/,
     ];
 
     for (const pattern of patterns) {
