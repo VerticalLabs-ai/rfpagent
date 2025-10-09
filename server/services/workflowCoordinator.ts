@@ -120,22 +120,21 @@ export class WorkflowCoordinator {
   private learningContext: any = null;
 
   constructor() {
-    // Check environment variable to enable automatic background processing
-    const autoStart = process.env.AUTO_WORK_DISTRIBUTION === 'true';
+    // Check environment variable to disable automatic background processing
+    const autoStart = process.env.AUTO_WORK_DISTRIBUTION !== 'false';
     if (autoStart) {
       console.log(
-        '🔄 Auto-starting work distribution (enabled via AUTO_WORK_DISTRIBUTION=true)'
+        '🔄 Auto-starting work distribution (enabled by default, set AUTO_WORK_DISTRIBUTION=false to disable)'
       );
       this.startWorkItemProcessing();
     } else {
       console.log(
-        '⏸️ Work distribution disabled by default (set AUTO_WORK_DISTRIBUTION=true to enable)'
+        '⏸️ Work distribution disabled (set AUTO_WORK_DISTRIBUTION=true to re-enable)'
       );
     }
 
     // Initialize SAFLA learning system
     this.initializeLearningSystem();
-    // Call startWorkItemProcessing() manually to enable automated work distribution
   }
 
   /**

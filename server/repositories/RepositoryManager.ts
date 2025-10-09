@@ -1,33 +1,12 @@
 import { UserRepository } from './UserRepository';
 import { PortalRepository } from './PortalRepository';
 import { RFPRepository } from './RFPRepository';
+import { ProposalRepository } from './ProposalRepository';
+import { DocumentRepository } from './DocumentRepository';
+import { SubmissionRepository } from './SubmissionRepository';
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
-
-// Additional repositories (to be created)
-import type {
-  Proposal,
-  InsertProposal,
-  Document,
-  InsertDocument,
-  Submission,
-  InsertSubmission,
-  SubmissionPipeline,
-  InsertSubmissionPipeline,
-  SubmissionEvent,
-  InsertSubmissionEvent,
-  SubmissionStatusHistory,
-  InsertSubmissionStatusHistory,
-  AuditLog,
-  InsertAuditLog,
-  Notification,
-  InsertNotification,
-  Scan,
-  InsertScan,
-  ScanEvent,
-  InsertScanEvent,
-} from '@shared/schema';
 
 /**
  * Repository Manager provides centralized access to all repositories
@@ -40,16 +19,9 @@ export class RepositoryManager {
   private _userRepository!: UserRepository;
   private _portalRepository!: PortalRepository;
   private _rfpRepository!: RFPRepository;
-
-  // Additional repositories (to be implemented)
-  // private _proposalRepository: ProposalRepository;
-  // private _documentRepository: DocumentRepository;
-  // private _submissionRepository: SubmissionRepository;
-  // private _submissionPipelineRepository: SubmissionPipelineRepository;
-  // private _submissionEventRepository: SubmissionEventRepository;
-  // private _auditLogRepository: AuditLogRepository;
-  // private _notificationRepository: NotificationRepository;
-  // private _scanRepository: ScanRepository;
+  private _proposalRepository!: ProposalRepository;
+  private _documentRepository!: DocumentRepository;
+  private _submissionRepository!: SubmissionRepository;
 
   private constructor() {
     this.initializeRepositories();
@@ -72,6 +44,9 @@ export class RepositoryManager {
     this._userRepository = new UserRepository();
     this._portalRepository = new PortalRepository();
     this._rfpRepository = new RFPRepository();
+    this._proposalRepository = new ProposalRepository();
+    this._documentRepository = new DocumentRepository();
+    this._submissionRepository = new SubmissionRepository();
 
     console.log('🏗️ Repository Manager initialized with all repositories');
   }
@@ -97,15 +72,26 @@ export class RepositoryManager {
     return this._rfpRepository;
   }
 
-  // Additional repository getters (to be implemented)
-  // get proposals(): ProposalRepository { return this._proposalRepository; }
-  // get documents(): DocumentRepository { return this._documentRepository; }
-  // get submissions(): SubmissionRepository { return this._submissionRepository; }
-  // get submissionPipelines(): SubmissionPipelineRepository { return this._submissionPipelineRepository; }
-  // get submissionEvents(): SubmissionEventRepository { return this._submissionEventRepository; }
-  // get auditLogs(): AuditLogRepository { return this._auditLogRepository; }
-  // get notifications(): NotificationRepository { return this._notificationRepository; }
-  // get scans(): ScanRepository { return this._scanRepository; }
+  /**
+   * Get Proposal Repository
+   */
+  get proposals(): ProposalRepository {
+    return this._proposalRepository;
+  }
+
+  /**
+   * Get Document Repository
+   */
+  get documents(): DocumentRepository {
+    return this._documentRepository;
+  }
+
+  /**
+   * Get Submission Repository
+   */
+  get submissions(): SubmissionRepository {
+    return this._submissionRepository;
+  }
 
   /**
    * Health check for all repositories
@@ -118,10 +104,12 @@ export class RepositoryManager {
       users: false,
       portals: false,
       rfps: false,
+      proposals: false,
+      documents: false,
+      submissions: false,
     };
 
     try {
-      // Test basic operations
       await this._userRepository.count();
       checks.users = true;
     } catch (error) {
@@ -140,6 +128,27 @@ export class RepositoryManager {
       checks.rfps = true;
     } catch (error) {
       console.error('RFP repository health check failed:', error);
+    }
+
+    try {
+      await this._proposalRepository.count();
+      checks.proposals = true;
+    } catch (error) {
+      console.error('Proposal repository health check failed:', error);
+    }
+
+    try {
+      await this._documentRepository.count();
+      checks.documents = true;
+    } catch (error) {
+      console.error('Document repository health check failed:', error);
+    }
+
+    try {
+      await this._submissionRepository.count();
+      checks.submissions = true;
+    } catch (error) {
+      console.error('Submission repository health check failed:', error);
     }
 
     const healthyCount = Object.values(checks).filter(Boolean).length;
@@ -237,6 +246,9 @@ export interface RepositoryFacade {
   users: UserRepository;
   portals: PortalRepository;
   rfps: RFPRepository;
+  proposals: ProposalRepository;
+  documents: DocumentRepository;
+  submissions: SubmissionRepository;
   healthCheck: () => ReturnType<RepositoryManager['healthCheck']>;
   getStats: () => ReturnType<RepositoryManager['getStats']>;
   executeTransaction: <T>(
@@ -248,6 +260,9 @@ export const repositories: RepositoryFacade = {
   users: repositoryManager.users,
   portals: repositoryManager.portals,
   rfps: repositoryManager.rfps,
+  proposals: repositoryManager.proposals,
+  documents: repositoryManager.documents,
+  submissions: repositoryManager.submissions,
 
   // Health and stats
   healthCheck: () => repositoryManager.healthCheck(),

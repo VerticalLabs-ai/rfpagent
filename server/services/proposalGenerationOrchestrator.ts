@@ -4,6 +4,7 @@ import { agentRegistryService } from './agentRegistryService';
 import { aiProposalService } from './ai-proposal-service';
 import { enhancedProposalService } from './enhancedProposalService';
 import { agentMemoryService } from './agentMemoryService';
+import { logger } from '../utils/logger';
 import type { RFP, Proposal, WorkItem, AgentSession } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
