@@ -88,7 +88,11 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
         setError(null);
       };
 
+<<<<<<< HEAD
       eventSource.onerror = err => {
+=======
+      eventSource.onerror = (err) => {
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
         console.error('SSE connection error:', err);
         setIsConnected(false);
 
@@ -97,8 +101,12 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
         let errorMessage = 'Connection lost.';
 
         if (readyState === EventSource.CLOSED) {
+<<<<<<< HEAD
           errorMessage =
             'Connection closed by server. The scan may have completed or failed.';
+=======
+          errorMessage = 'Connection closed by server. The scan may have completed or failed.';
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
         } else if (readyState === EventSource.CONNECTING) {
           errorMessage = 'Attempting to reconnect...';
         }
@@ -113,9 +121,13 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
           setScanState(prevState => {
             if (!prevState) {
               // Initialize scan state with safe timestamp parsing
+<<<<<<< HEAD
               const timestamp = scanEvent.timestamp
                 ? new Date(scanEvent.timestamp)
                 : new Date();
+=======
+              const timestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
               const isValidTimestamp = !isNaN(timestamp.getTime());
 
               return {
@@ -156,9 +168,13 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   typeof scanEvent.data.message === 'string'
                 ) {
                   // Safe timestamp parsing
+<<<<<<< HEAD
                   const timestamp = scanEvent.timestamp
                     ? new Date(scanEvent.timestamp)
                     : new Date();
+=======
+                  const timestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
                   const isValidTimestamp = !isNaN(timestamp.getTime());
 
                   newState.currentStep = {
@@ -183,12 +199,17 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
               case 'scan_completed': {
                 newState.status = 'completed';
                 // Safe timestamp parsing
+<<<<<<< HEAD
                 const completedTimestamp = scanEvent.timestamp
                   ? new Date(scanEvent.timestamp)
                   : new Date();
                 newState.completedAt = !isNaN(completedTimestamp.getTime())
                   ? completedTimestamp
                   : new Date();
+=======
+                const completedTimestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+                newState.completedAt = !isNaN(completedTimestamp.getTime()) ? completedTimestamp : new Date();
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
                 newState.currentStep = {
                   ...newState.currentStep,
                   progress: 100,
@@ -202,12 +223,17 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
               case 'scan_failed': {
                 newState.status = 'failed';
                 // Safe timestamp parsing
+<<<<<<< HEAD
                 const failedTimestamp = scanEvent.timestamp
                   ? new Date(scanEvent.timestamp)
                   : new Date();
                 newState.completedAt = !isNaN(failedTimestamp.getTime())
                   ? failedTimestamp
                   : new Date();
+=======
+                const failedTimestamp = scanEvent.timestamp ? new Date(scanEvent.timestamp) : new Date();
+                newState.completedAt = !isNaN(failedTimestamp.getTime()) ? failedTimestamp : new Date();
+>>>>>>> 8cc6bbb75f8913ac30a725ca4320801a0fd8b9c0
                 newState.error = scanEvent.data?.error || 'Scan failed';
                 newState.currentStep = {
                   ...newState.currentStep,

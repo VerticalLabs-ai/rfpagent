@@ -188,7 +188,9 @@ export class ScanManager {
   completeScan(scanId: string, success: boolean): void {
     const scan = this.activeScans.get(scanId);
     if (!scan) {
-      console.warn(`ScanManager: Attempted to complete non-existent scan ${scanId}`);
+      console.warn(
+        `ScanManager: Attempted to complete non-existent scan ${scanId}`
+      );
       return;
     }
 
@@ -293,10 +295,14 @@ export class ScanManager {
 
       // Log important events for debugging
       if (['scan_completed', 'scan_failed', 'error'].includes(event.type)) {
-        console.log(`ScanManager: Event emitted for ${scanId} - Type: ${event.type}, Message: ${event.message}`);
+        console.log(
+          `ScanManager: Event emitted for ${scanId} - Type: ${event.type}, Message: ${event.message}`
+        );
       }
     } else {
-      console.warn(`ScanManager: Cannot emit event for scan ${scanId} - scan or emitter not found`);
+      console.warn(
+        `ScanManager: Cannot emit event for scan ${scanId} - scan or emitter not found`
+      );
     }
   }
 
