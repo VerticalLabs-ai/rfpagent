@@ -136,7 +136,7 @@ jobs:
           path: ./
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'HEAD' }}
-          extra_args: --debug --only-verified --config=.trufflehog.yml
+          extra_args: --debug --only-verified --exclude-paths=.trufflehog-exclude-paths.txt
 
       - name: GitLeaks
         uses: gitleaks/gitleaks-action@v2

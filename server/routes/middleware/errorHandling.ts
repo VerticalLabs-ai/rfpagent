@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import { captureException, withScope } from '@sentry/node';
 import { ZodError } from 'zod';
 
 /**
@@ -22,6 +23,7 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
+  // Log to console for development
   console.error('Error occurred:', {
     message: error.message,
     stack: error.stack,
@@ -30,6 +32,42 @@ export const errorHandler = (
     body: req.body,
     timestamp: new Date().toISOString(),
   });
+
+  // Determine if this is a client error (4xx) or server error (5xx)
+  const isClientError =
+    error.status && error.status >= 400 && error.status < 500;
+  const isValidationError = error instanceof ZodError;
+
+  // Capture to Sentry for server errors and validation errors
+  if (!isClientError || isValidationError) {
+    withScope(scope => {
+      // Add request context
+      scope.setContext('request', {
+        method: req.method,
+        url: req.url,
+        headers: req.headers,
+        query: req.query,
+        params: req.params,
+      });
+
+      // Add error metadata
+      scope.setTag('error_type', error.name || 'Unknown');
+      scope.setTag('status_code', error.status || 500);
+      scope.setTag('route', req.route?.path || req.path);
+
+      // Add user context if available
+      if (req.user) {
+        scope.setUser({
+          id: (req.user as any).id,
+          username: (req.user as any).username,
+          email: (req.user as any).email,
+        });
+      }
+
+      // Capture the exception
+      captureException(error);
+    });
+  }
 
   // Zod validation errors
   if (error instanceof ZodError) {
