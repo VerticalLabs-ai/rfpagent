@@ -1,7 +1,9 @@
 /**
- * Structured Logging Service
- * Provides consistent logging with levels, context, and metadata
+ * Structured Logging Service with Winston
+ * Provides consistent logging with levels, context, metadata, and correlation IDs
  */
+
+import winston from 'winston';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
@@ -10,9 +12,11 @@ export interface LogContext {
   module?: string;
   userId?: string;
   requestId?: string;
+  correlationId?: string;
   sessionId?: string;
   agentId?: string;
   workflowId?: string;
+  pipelineId?: string;
   [key: string]: any;
 }
 
@@ -32,6 +36,7 @@ export interface LogEntry {
 class Logger {
   private context: LogContext = {};
   private minLevel: LogLevel;
+  private winstonLogger: winston.Logger;
   private levels: Record<LogLevel, number> = {
     debug: 0,
     info: 1,
@@ -44,6 +49,45 @@ class Logger {
     const envLevel = process.env.LOG_LEVEL?.toLowerCase() as LogLevel;
     this.minLevel =
       envLevel || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
+
+    this.winstonLogger = winston.createLogger({
+      level: this.minLevel,
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        process.env.NODE_ENV === 'production'
+          ? winston.format.json()
+          : winston.format.combine(
+              winston.format.colorize(),
+              winston.format.printf(
+                ({ timestamp, level, message, ...meta }) => {
+                  const metaStr = Object.keys(meta).length
+                    ? JSON.stringify(meta, null, 2)
+                    : '';
+                  return `${timestamp} [${level}]: ${message} ${metaStr}`;
+                }
+              )
+            )
+      ),
+      transports: [
+        new winston.transports.Console(),
+        ...(process.env.NODE_ENV === 'production'
+          ? [
+              new winston.transports.File({
+                filename: 'logs/error.log',
+                level: 'error',
+                maxsize: 10485760, // 10MB
+                maxFiles: 5,
+              }),
+              new winston.transports.File({
+                filename: 'logs/combined.log',
+                maxsize: 10485760, // 10MB
+                maxFiles: 5,
+              }),
+            ]
+          : []),
+      ],
+    });
   }
 
   /**
@@ -115,7 +159,7 @@ class Logger {
   }
 
   /**
-   * Core logging method
+   * Core logging method using Winston
    */
   private log(
     level: LogLevel,
@@ -128,23 +172,16 @@ class Logger {
       return;
     }
 
-    const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      context: Object.keys(this.context).length > 0 ? this.context : undefined,
-      metadata,
-      error,
+    const winstonLevel = level === 'fatal' ? 'error' : level;
+
+    // Merge context and metadata
+    const logData = {
+      ...this.context,
+      ...metadata,
+      ...(error && { error }),
     };
 
-    // Format output based on environment
-    if (process.env.NODE_ENV === 'production') {
-      // JSON format for production (easier to parse by log aggregators)
-      console.log(JSON.stringify(entry));
-    } else {
-      // Human-readable format for development
-      this.formatDevelopmentLog(entry);
-    }
+    this.winstonLogger.log(winstonLevel, message, logData);
   }
 
   /**

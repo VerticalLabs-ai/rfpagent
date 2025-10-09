@@ -18,11 +18,15 @@ import { agentRegistryService } from './services/agentRegistryService';
 import { saflaSystemIntegration } from './services/saflaSystemIntegration';
 import { websocketService } from './services/websocketService';
 import { log, serveStatic, setupVite } from './vite';
+import { correlationIdMiddleware } from './middleware/correlationId';
+import { logger } from './utils/logger';
 
 const app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+app.use(correlationIdMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();
