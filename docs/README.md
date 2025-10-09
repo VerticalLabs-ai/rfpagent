@@ -17,6 +17,7 @@ docs/
 ├── technical/                  # Technical architecture and implementation
 │   ├── models-reference.md    # AI models (GPT-5, Claude 4.5)
 │   ├── agents-architecture.md # Multi-agent system design
+│   ├── logging-and-observability.md # Logging, correlation IDs, tracing
 │   ├── incremental-scanning.md # Incremental portal scanning
 │   ├── SECURITY.md            # Security documentation
 │   ├── BROWSERBASE_MIGRATION.md # Browserbase migration
@@ -43,6 +44,7 @@ docs/
 
 ### For Developers
 - [Testing Guide](testing/testing-guide.md) - How to test your changes
+- [Logging & Observability](technical/logging-and-observability.md) - Structured logging and tracing
 - [Models Reference](technical/models-reference.md) - AI model configuration
 - [Agents Architecture](technical/agents-architecture.md) - Multi-agent system
 - [API Documentation](api/README.md) - REST API reference
