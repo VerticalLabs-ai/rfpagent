@@ -28,27 +28,27 @@ export function correlationIdMiddleware(
   next: NextFunction
 ): void {
   const existingId = req.headers['x-correlation-id'] as string | undefined;
-  
+
   const correlationId = existingId || `corr_${nanoid(16)}`;
-  
+
   req.correlationId = correlationId;
-  
+
   res.setHeader('X-Correlation-ID', correlationId);
-  
+
   const requestLogger = logger.child({
     correlationId,
     method: req.method,
     path: req.path,
     userAgent: req.headers['user-agent'],
   });
-  
+
   (req as any).logger = requestLogger;
-  
+
   requestLogger.info('Incoming request', {
     query: req.query,
     ip: req.ip,
   });
-  
+
   next();
 }
 

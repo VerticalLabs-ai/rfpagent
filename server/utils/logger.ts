@@ -49,7 +49,7 @@ class Logger {
     const envLevel = process.env.LOG_LEVEL?.toLowerCase() as LogLevel;
     this.minLevel =
       envLevel || (process.env.NODE_ENV === 'production' ? 'info' : 'debug');
-    
+
     this.winstonLogger = winston.createLogger({
       level: this.minLevel,
       format: winston.format.combine(
@@ -59,26 +59,30 @@ class Logger {
           ? winston.format.json()
           : winston.format.combine(
               winston.format.colorize(),
-              winston.format.printf(({ timestamp, level, message, ...meta }) => {
-                const metaStr = Object.keys(meta).length ? JSON.stringify(meta, null, 2) : '';
-                return `${timestamp} [${level}]: ${message} ${metaStr}`;
-              })
+              winston.format.printf(
+                ({ timestamp, level, message, ...meta }) => {
+                  const metaStr = Object.keys(meta).length
+                    ? JSON.stringify(meta, null, 2)
+                    : '';
+                  return `${timestamp} [${level}]: ${message} ${metaStr}`;
+                }
+              )
             )
       ),
       transports: [
         new winston.transports.Console(),
         ...(process.env.NODE_ENV === 'production'
           ? [
-              new winston.transports.File({ 
-                filename: 'logs/error.log', 
+              new winston.transports.File({
+                filename: 'logs/error.log',
                 level: 'error',
                 maxsize: 10485760, // 10MB
-                maxFiles: 5
+                maxFiles: 5,
               }),
-              new winston.transports.File({ 
+              new winston.transports.File({
                 filename: 'logs/combined.log',
                 maxsize: 10485760, // 10MB
-                maxFiles: 5
+                maxFiles: 5,
               }),
             ]
           : []),
