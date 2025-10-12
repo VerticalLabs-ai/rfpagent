@@ -115,6 +115,7 @@ export class MastraScrapingService {
       const extractionResult = await executeStagehandTool(
         stagehandExtractTool,
         {
+          url: String(url), // CRITICAL: Navigate to the portal URL before extraction
           instruction: searchFilter
             ? `find and extract RFP opportunities related to "${searchFilter}" including titles, deadlines, agencies, descriptions, and links`
             : 'extract all RFP opportunities, procurement notices, and solicitations with their complete details',
@@ -151,6 +152,23 @@ export class MastraScrapingService {
           },
         },
         StagehandExtractionResultSchema
+      );
+
+      console.log(
+        `🔍 DEBUG: extractionResult keys:`,
+        extractionResult ? Object.keys(extractionResult) : 'null'
+      );
+      console.log(
+        `🔍 DEBUG: extractionResult.data type:`,
+        extractionResult?.data ? typeof extractionResult.data : 'undefined'
+      );
+      console.log(
+        `🔍 DEBUG: extractionResult.data keys:`,
+        extractionResult?.data ? Object.keys(extractionResult.data) : 'undefined'
+      );
+      console.log(
+        `🔍 DEBUG: Full extractionResult:`,
+        JSON.stringify(extractionResult, null, 2)
       );
 
       const opportunities =

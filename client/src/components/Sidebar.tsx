@@ -1,7 +1,7 @@
-import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
 import type { DashboardMetrics } from '@/types/api';
+import { useQuery } from '@tanstack/react-query';
+import { Link, useLocation } from 'wouter';
 
 export default function Sidebar() {
   const [location] = useLocation();
@@ -25,7 +25,7 @@ export default function Sidebar() {
     },
     {
       path: '/safla-dashboard',
-      label: 'SAFLA Self-Improving AI',
+      label: 'SAFLA',
       icon: 'fas fa-brain',
     },
     {

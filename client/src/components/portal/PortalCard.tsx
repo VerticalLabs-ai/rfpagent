@@ -47,6 +47,9 @@ export function PortalCard({
   deleting = false,
   updatingMonitoring = false,
 }: PortalCardProps) {
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isMonitorOpen, setIsMonitorOpen] = useState(false);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -73,6 +76,16 @@ export function PortalCard({
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
     if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
     return `${Math.floor(diffMinutes / 1440)}d ago`;
+  };
+
+  const handleUpdatePortal = (data: Partial<PortalFormData>) => {
+    onUpdate(data);
+    setIsEditOpen(false);
+  };
+
+  const handleUpdateMonitoring = (data: any) => {
+    onUpdateMonitoring(data);
+    setIsMonitorOpen(false);
   };
 
   return (
@@ -138,7 +151,7 @@ export function PortalCard({
             </p>
           </div>
 
-          <div className="flex space-x-2 pt-2">
+          <div className="grid grid-cols-2 gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
@@ -146,18 +159,18 @@ export function PortalCard({
               disabled={scanning}
               data-testid={`scan-portal-${portal.id}`}
             >
-              <i className="fas fa-search mr-2"></i>
+              <i className="fas fa-search"></i>
               {scanning ? 'Scanning...' : 'Scan Now'}
             </Button>
 
-            <Dialog>
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   data-testid={`edit-portal-${portal.id}`}
                 >
-                  <i className="fas fa-edit mr-2"></i>
+                  <i className="fas fa-edit"></i>
                   Edit
                 </Button>
               </DialogTrigger>
@@ -165,18 +178,18 @@ export function PortalCard({
                 <DialogHeader>
                   <DialogTitle>Edit Portal</DialogTitle>
                 </DialogHeader>
-                <EditPortalForm portal={portal} onSubmit={onUpdate} />
+                <EditPortalForm portal={portal} onSubmit={handleUpdatePortal} />
               </DialogContent>
             </Dialog>
 
-            <Dialog>
+            <Dialog open={isMonitorOpen} onOpenChange={setIsMonitorOpen}>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
                   data-testid={`configure-monitoring-${portal.id}`}
                 >
-                  <i className="fas fa-chart-line mr-2"></i>
+                  <i className="fas fa-chart-line"></i>
                   Monitor
                 </Button>
               </DialogTrigger>
@@ -186,7 +199,7 @@ export function PortalCard({
                 </DialogHeader>
                 <MonitoringConfigForm
                   portal={portal}
-                  onSubmit={onUpdateMonitoring}
+                  onSubmit={handleUpdateMonitoring}
                   isLoading={updatingMonitoring}
                 />
               </DialogContent>
@@ -200,7 +213,7 @@ export function PortalCard({
                   disabled={deleting}
                   data-testid={`delete-portal-${portal.id}`}
                 >
-                  <i className="fas fa-trash mr-2"></i>
+                  <i className="fas fa-trash"></i>
                   {deleting ? 'Deleting...' : 'Delete'}
                 </Button>
               </AlertDialogTrigger>

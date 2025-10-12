@@ -18,6 +18,10 @@ export class BrowserbaseSessionManager {
         apiKey: process.env.BROWSERBASE_API_KEY,
         projectId: process.env.BROWSERBASE_PROJECT_ID,
         verbose: 1,
+        modelName: 'gpt-5', // Use latest GPT-5 model
+        modelClientOptions: {
+          apiKey: process.env.OPENAI_API_KEY,
+        },
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
           keepAlive: true,

@@ -327,37 +327,56 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
    * Extract title from Austin opportunity text
    */
   private extractTitle(text: string, solicitationId: string): string {
-    // Try to find title after the ID
-    const afterId = text
-      .substring(text.indexOf(solicitationId) + solicitationId.length)
+    // First, remove common prefixes that get concatenated
+    let cleanedText = text
+      .replace(/^view\s+details\s*/i, '')
+      .replace(/^due\s+date:\s*\d{1,2}\/\d{1,2}\/\d{4}\s+at\s+\d{1,2}[AP]M\s*/i, '')
       .trim();
-    const lines = afterId.split(/\n|Due Date|View Details|Deadline/i);
+
+    // Try to find title after the ID
+    const afterId = cleanedText
+      .substring(cleanedText.indexOf(solicitationId) + solicitationId.length)
+      .trim();
+
+    // Split on various delimiters to isolate the title
+    const lines = afterId.split(/\n|due\s+date|view\s+details|deadline/i);
     let title = lines[0] ? lines[0].trim() : '';
 
-    // Clean up common patterns
+    // Clean up common patterns more aggressively
     title = title
       .replace(/^[-:\s]+/, '') // Remove leading punctuation
       .replace(/\s+due\s+date.*$/i, '') // Remove due date suffix
       .replace(/\s+view\s+details.*$/i, '') // Remove view details suffix
+      .replace(/^at\s+\d{1,2}[AP]M\s*/i, '') // Remove time prefix
+      .replace(/^\d{1,2}\/\d{1,2}\/\d{4}\s+at\s+\d{1,2}[AP]M\s*/i, '') // Remove date/time prefix
       .trim();
 
     // If title is still empty or too short, try alternative methods
     if (!title || title.length < 5) {
-      // Look for text before "Due Date" or before the solicitation ID
-      const beforeDueDate = text.split(/due\s+date/i)[0];
-      const beforeId = beforeDueDate.substring(
-        0,
-        beforeDueDate.indexOf(solicitationId)
+      // Look for text after the date pattern but before other keywords
+      const afterDatePattern = cleanedText.match(
+        /\d{1,2}\/\d{1,2}\/\d{4}\s+at\s+\d{1,2}[AP]M\s+(.+?)(?:due\s+date|view\s+details|$)/i
       );
 
-      if (beforeId.trim().length > 10) {
-        title = beforeId.trim();
+      if (afterDatePattern && afterDatePattern[1]) {
+        title = afterDatePattern[1].trim();
       } else {
-        // Use a portion of the description as title
-        title = afterId
-          .substring(0, 100)
-          .replace(/[\n\r]/g, ' ')
-          .trim();
+        // Look for text before "Due Date" or before the solicitation ID
+        const beforeDueDate = cleanedText.split(/due\s+date/i)[0];
+        const beforeId = beforeDueDate.substring(
+          0,
+          beforeDueDate.indexOf(solicitationId)
+        );
+
+        if (beforeId.trim().length > 10) {
+          title = beforeId.trim();
+        } else {
+          // Use a portion of the description as title
+          title = afterId
+            .substring(0, 100)
+            .replace(/[\n\r]/g, ' ')
+            .trim();
+        }
       }
     }
 
