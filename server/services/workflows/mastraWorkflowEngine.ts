@@ -783,7 +783,7 @@ export class MastraWorkflowEngine {
     context: Record<string, any>
   ): Promise<void> {
     // Import storage dynamically to avoid circular imports
-    const { storage } = await import('../storage');
+    const { storage } = await import('../../storage');
 
     switch (action) {
       case 'initialize_discovery':
