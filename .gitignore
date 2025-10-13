@@ -6,6 +6,13 @@ vite.config.ts.*
 *.tar.gz
 .claude-flow
 
+# Ignore compiled JS files in source directories (we use TypeScript)
+server/**/*.js
+!server/scripts/**/*.js
+shared/**/*.js
+src/**/*.js
+client/src/**/*.js
+
 # Package manager lock files
 package-lock.json
 yarn.lock

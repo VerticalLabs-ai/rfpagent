@@ -25,6 +25,7 @@ import {
   StagehandAuthResultSchema,
   StagehandExtractionResultSchema,
 } from './scraping/utils/stagehand';
+import { logger } from '../utils/logger';
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -154,30 +155,37 @@ export class MastraScrapingService {
         StagehandExtractionResultSchema
       );
 
-      console.log(
-        `🔍 DEBUG: extractionResult keys:`,
-        extractionResult ? Object.keys(extractionResult) : 'null'
-      );
-      console.log(
-        `🔍 DEBUG: extractionResult.data type:`,
-        extractionResult?.data ? typeof extractionResult.data : 'undefined'
-      );
-      console.log(
-        `🔍 DEBUG: extractionResult.data keys:`,
-        extractionResult?.data ? Object.keys(extractionResult.data) : 'undefined'
-      );
-      console.log(
-        `🔍 DEBUG: Full extractionResult:`,
-        JSON.stringify(extractionResult, null, 2)
-      );
+      // Debug logging with bounded output - only logs when LOG_LEVEL=debug
+      logger.debug('Extraction result structure', {
+        hasResult: !!extractionResult,
+        resultKeys: extractionResult ? Object.keys(extractionResult) : null,
+        dataType: extractionResult?.data
+          ? typeof extractionResult.data
+          : 'undefined',
+        dataKeys: extractionResult?.data
+          ? Object.keys(extractionResult.data)
+          : null,
+        opportunitiesCount:
+          extractionResult?.opportunities?.length ??
+          extractionResult?.data?.opportunities?.length ??
+          0,
+        // Truncated preview of extraction result (first 500 chars)
+        resultPreview:
+          JSON.stringify(extractionResult).slice(0, 500) +
+          (JSON.stringify(extractionResult).length > 500
+            ? '... (truncated)'
+            : ''),
+      });
 
       const opportunities =
         extractionResult.opportunities ??
         extractionResult.data?.opportunities ??
         [];
-      console.log(
-        `🎯 Extracted ${opportunities.length} opportunities from ${url}`
-      );
+      logger.info('Successfully extracted opportunities', {
+        url,
+        opportunitiesCount: opportunities.length,
+        portalType,
+      });
 
       return {
         opportunities,
@@ -187,7 +195,9 @@ export class MastraScrapingService {
         scrapedAt: new Date().toISOString(),
       };
     } catch (error) {
-      console.error(`❌ Unified Browserbase scrape failed for ${url}:`, error);
+      logger.error('Unified Browserbase scrape failed', error as Error, {
+        url,
+      });
       return {
         opportunities: [],
         status: 'error',

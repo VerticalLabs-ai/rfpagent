@@ -173,13 +173,16 @@ export default function PortalSettings() {
   });
 
   const handleUpdatePortal =
-    (portalId: string) => (data: Partial<PortalFormData>) => {
-      updatePortalMutation.mutate({ id: portalId, updates: data });
+    (portalId: string) =>
+    async (data: Partial<PortalFormData>): Promise<void> => {
+      await updatePortalMutation.mutateAsync({ id: portalId, updates: data });
     };
 
-  const handleUpdateMonitoring = (portalId: string) => (config: any) => {
-    updateMonitoringMutation.mutate({ id: portalId, config });
-  };
+  const handleUpdateMonitoring =
+    (portalId: string) =>
+    async (config: any): Promise<void> => {
+      await updateMonitoringMutation.mutateAsync({ id: portalId, config });
+    };
 
   const handleScanPortal = (portalId: string) => () => {
     scanPortalMutation.mutate(portalId);

@@ -27,10 +27,10 @@ import type { Portal, PortalFormData } from './types';
 interface PortalCardProps {
   portal: Portal;
   rfpCount: number;
-  onUpdate: (data: Partial<PortalFormData>) => void;
+  onUpdate: (data: Partial<PortalFormData>) => Promise<void>;
   onScan: () => void;
   onDelete: () => void;
-  onUpdateMonitoring: (data: any) => void;
+  onUpdateMonitoring: (data: any) => Promise<void>;
   scanning?: boolean;
   deleting?: boolean;
   updatingMonitoring?: boolean;
@@ -49,6 +49,8 @@ export function PortalCard({
 }: PortalCardProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isMonitorOpen, setIsMonitorOpen] = useState(false);
+  const [isEditSubmitting, setIsEditSubmitting] = useState(false);
+  const [isMonitorSubmitting, setIsMonitorSubmitting] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -78,14 +80,30 @@ export function PortalCard({
     return `${Math.floor(diffMinutes / 1440)}d ago`;
   };
 
-  const handleUpdatePortal = (data: Partial<PortalFormData>) => {
-    onUpdate(data);
-    setIsEditOpen(false);
+  const handleUpdatePortal = async (data: Partial<PortalFormData>) => {
+    setIsEditSubmitting(true);
+    try {
+      await onUpdate(data);
+      setIsEditOpen(false);
+    } catch (error) {
+      // Error is handled by parent mutation's onError
+      console.error('Failed to update portal:', error);
+    } finally {
+      setIsEditSubmitting(false);
+    }
   };
 
-  const handleUpdateMonitoring = (data: any) => {
-    onUpdateMonitoring(data);
-    setIsMonitorOpen(false);
+  const handleUpdateMonitoring = async (data: any) => {
+    setIsMonitorSubmitting(true);
+    try {
+      await onUpdateMonitoring(data);
+      setIsMonitorOpen(false);
+    } catch (error) {
+      // Error is handled by parent mutation's onError
+      console.error('Failed to update monitoring:', error);
+    } finally {
+      setIsMonitorSubmitting(false);
+    }
   };
 
   return (
@@ -159,7 +177,7 @@ export function PortalCard({
               disabled={scanning}
               data-testid={`scan-portal-${portal.id}`}
             >
-              <i className="fas fa-search"></i>
+              <i className="fas fa-search mr-2"></i>
               {scanning ? 'Scanning...' : 'Scan Now'}
             </Button>
 
@@ -170,7 +188,7 @@ export function PortalCard({
                   size="sm"
                   data-testid={`edit-portal-${portal.id}`}
                 >
-                  <i className="fas fa-edit"></i>
+                  <i className="fas fa-edit mr-2"></i>
                   Edit
                 </Button>
               </DialogTrigger>
@@ -178,7 +196,11 @@ export function PortalCard({
                 <DialogHeader>
                   <DialogTitle>Edit Portal</DialogTitle>
                 </DialogHeader>
-                <EditPortalForm portal={portal} onSubmit={handleUpdatePortal} />
+                <EditPortalForm
+                  portal={portal}
+                  onSubmit={handleUpdatePortal}
+                  isLoading={isEditSubmitting}
+                />
               </DialogContent>
             </Dialog>
 
@@ -189,7 +211,7 @@ export function PortalCard({
                   size="sm"
                   data-testid={`configure-monitoring-${portal.id}`}
                 >
-                  <i className="fas fa-chart-line"></i>
+                  <i className="fas fa-chart-line mr-2"></i>
                   Monitor
                 </Button>
               </DialogTrigger>
@@ -200,7 +222,7 @@ export function PortalCard({
                 <MonitoringConfigForm
                   portal={portal}
                   onSubmit={handleUpdateMonitoring}
-                  isLoading={updatingMonitoring}
+                  isLoading={isMonitorSubmitting || updatingMonitoring}
                 />
               </DialogContent>
             </Dialog>
@@ -213,7 +235,7 @@ export function PortalCard({
                   disabled={deleting}
                   data-testid={`delete-portal-${portal.id}`}
                 >
-                  <i className="fas fa-trash"></i>
+                  <i className="fas fa-trash mr-2"></i>
                   {deleting ? 'Deleting...' : 'Delete'}
                 </Button>
               </AlertDialogTrigger>

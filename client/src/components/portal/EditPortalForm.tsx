@@ -16,10 +16,15 @@ import type { Portal, PortalFormData } from './types';
 
 interface EditPortalFormProps {
   portal: Portal;
-  onSubmit: (data: Partial<PortalFormData>) => void;
+  onSubmit: (data: Partial<PortalFormData>) => void | Promise<void>;
+  isLoading?: boolean;
 }
 
-export function EditPortalForm({ portal, onSubmit }: EditPortalFormProps) {
+export function EditPortalForm({
+  portal,
+  onSubmit,
+  isLoading = false,
+}: EditPortalFormProps) {
   const form = useForm<PortalFormData>({
     resolver: zodResolver(insertPortalSchema),
     defaultValues: {
@@ -128,9 +133,13 @@ export function EditPortalForm({ portal, onSubmit }: EditPortalFormProps) {
         )}
 
         <div className="flex justify-end space-x-2 pt-4">
-          <Button type="submit" data-testid="update-portal-button">
+          <Button
+            type="submit"
+            data-testid="update-portal-button"
+            disabled={isLoading}
+          >
             <i className="fas fa-save mr-2"></i>
-            Update Portal
+            {isLoading ? 'Updating...' : 'Update Portal'}
           </Button>
         </div>
       </form>
