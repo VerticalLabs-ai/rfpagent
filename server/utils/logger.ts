@@ -71,21 +71,9 @@ class Logger {
       ),
       transports: [
         new winston.transports.Console(),
-        ...(process.env.NODE_ENV === 'production'
-          ? [
-              new winston.transports.File({
-                filename: 'logs/error.log',
-                level: 'error',
-                maxsize: 10485760, // 10MB
-                maxFiles: 5,
-              }),
-              new winston.transports.File({
-                filename: 'logs/combined.log',
-                maxsize: 10485760, // 10MB
-                maxFiles: 5,
-              }),
-            ]
-          : []),
+        // File-based logging disabled in production for containerized environments
+        // Container orchestrators (Fly.io, Kubernetes, etc.) capture stdout/stderr
+        // and provide centralized log aggregation services
       ],
     });
   }
@@ -182,49 +170,6 @@ class Logger {
     };
 
     this.winstonLogger.log(winstonLevel, message, logData);
-  }
-
-  /**
-   * Format log for development environment
-   */
-  private formatDevelopmentLog(entry: LogEntry): void {
-    const colors = {
-      debug: '\x1b[36m', // Cyan
-      info: '\x1b[32m', // Green
-      warn: '\x1b[33m', // Yellow
-      error: '\x1b[31m', // Red
-      fatal: '\x1b[35m', // Magenta
-    };
-    const reset = '\x1b[0m';
-
-    const levelColor = colors[entry.level];
-    const levelStr = `[${entry.level.toUpperCase()}]`.padEnd(8);
-    const timeStr = new Date(entry.timestamp).toLocaleTimeString();
-
-    let logMessage = `${levelColor}${levelStr}${reset} ${timeStr} - ${entry.message}`;
-
-    // Add context if present
-    if (entry.context && Object.keys(entry.context).length > 0) {
-      const contextStr = Object.entries(entry.context)
-        .map(([key, value]) => `${key}=${value}`)
-        .join(' ');
-      logMessage += ` [${contextStr}]`;
-    }
-
-    // Add metadata if present
-    if (entry.metadata) {
-      logMessage += `\n  ${JSON.stringify(entry.metadata, null, 2)}`;
-    }
-
-    // Add error if present
-    if (entry.error) {
-      logMessage += `\n  Error: ${entry.error.name} - ${entry.error.message}`;
-      if (entry.error.stack) {
-        logMessage += `\n${entry.error.stack}`;
-      }
-    }
-
-    console.log(logMessage);
   }
 
   /**
