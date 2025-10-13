@@ -49,7 +49,7 @@ export function CompanyContactForm({
           .refine(val => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), {
             message: 'Please enter a valid email address',
           }),
-      })
+      }) as any
     ),
     defaultValues: {
       companyProfileId,

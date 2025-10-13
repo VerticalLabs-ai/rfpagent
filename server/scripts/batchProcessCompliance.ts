@@ -17,7 +17,7 @@ import 'dotenv/config';
 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { complianceIntegrationService } from '../services/complianceIntegrationService';
+import { complianceIntegrationService } from '../services/core/complianceIntegrationService';
 import { storage } from '../storage';
 
 const __filename = fileURLToPath(import.meta.url);

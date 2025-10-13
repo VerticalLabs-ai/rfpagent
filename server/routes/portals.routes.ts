@@ -1,9 +1,9 @@
 import { insertPortalSchema } from '@shared/schema';
 import { Router } from 'express';
 import { z } from 'zod';
-import { PortalMonitoringService } from '../services/portal-monitoring-service';
-import { PortalSchedulerService } from '../services/portal-scheduler-service';
-import { scanManager } from '../services/scan-manager';
+import { PortalMonitoringService } from '../services/monitoring/portal-monitoring-service';
+import { PortalSchedulerService } from '../services/portals/portal-scheduler-service';
+import { scanManager } from '../services/portals/scan-manager';
 import { storage } from '../storage';
 
 const router = Router();

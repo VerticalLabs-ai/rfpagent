@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { getMastraScrapingService } from '../services/mastraScrapingService';
-import { NotificationService } from '../services/notificationService';
+import { getMastraScrapingService } from '../services/scrapers/mastraScrapingService';
+import { NotificationService } from '../services/core/notificationService';
 import { storage } from '../storage';
 
 export function setupScrapingScheduler(): void {

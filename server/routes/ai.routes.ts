@@ -9,8 +9,8 @@ import {
   type ResearchFinding,
 } from '@shared/schema';
 import { storage } from '../storage';
-import { AIService } from '../services/aiService';
-import { aiProposalService } from '../services/ai-proposal-service';
+import { AIService } from '../services/core/aiService';
+import { aiProposalService } from '../services/proposals/ai-proposal-service';
 
 const router = Router();
 

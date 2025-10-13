@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { Memory } from '@mastra/memory';
-import { agentMemoryService } from '../../../server/services/agentMemoryService';
+import { agentMemoryService } from '../../../server/services/agents/agentMemoryService';
 
 /**
  * Centralized Memory Provider for all Mastra agents

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
-import { submissionService } from '../services/submissionService';
+import { submissionService } from '../services/core/submissionService';
 
 const router = Router();
 
@@ -176,7 +176,7 @@ router.get('/pipeline/status/:pipelineId', async (req, res) => {
 
     // Import submission orchestrator to get status
     const { submissionOrchestrator } = await import(
-      '../services/submissionOrchestrator'
+      '../services/orchestrators/submissionOrchestrator'
     );
     const status = await submissionOrchestrator.getPipelineStatus(pipelineId);
 
@@ -267,7 +267,7 @@ router.delete('/pipeline/:pipelineId', async (req, res) => {
 
     // Import submission orchestrator to cancel pipeline
     const { submissionOrchestrator } = await import(
-      '../services/submissionOrchestrator'
+      '../services/orchestrators/submissionOrchestrator'
     );
     const cancelResult =
       await submissionOrchestrator.cancelPipeline(pipelineId);

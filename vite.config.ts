@@ -31,11 +31,11 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://localhost:3000",
+        target: process.env.VITE_API_URL || "http://localhost:3001",
         changeOrigin: true,
       },
       "/ws": {
-        target: "ws://localhost:3000",
+        target: process.env.VITE_WS_URL || "ws://localhost:3001",
         ws: true,
       },
     },

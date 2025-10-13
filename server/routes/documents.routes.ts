@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { documentIntelligenceService } from '../services/documentIntelligenceService';
+import { documentIntelligenceService } from '../services/processing/documentIntelligenceService';
 
 const router = Router();
 

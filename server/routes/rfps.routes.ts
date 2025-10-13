@@ -3,11 +3,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
 import { ObjectStorageService } from '../objectStorage';
-import { DocumentParsingService } from '../services/documentParsingService';
-import { ManualRfpService } from '../services/manualRfpService';
-import { PhiladelphiaDocumentDownloader } from '../services/philadelphiaDocumentDownloader';
-import { getMastraScrapingService } from '../services/mastraScrapingService';
-import { progressTracker } from '../services/progressTracker';
+import { DocumentParsingService } from '../services/processing/documentParsingService';
+import { ManualRfpService } from '../services/proposals/manualRfpService';
+import { PhiladelphiaDocumentDownloader } from '../services/scrapers/philadelphiaDocumentDownloader';
+import { getMastraScrapingService } from '../services/scrapers/mastraScrapingService';
+import { progressTracker } from '../services/monitoring/progressTracker';
 import { storage } from '../storage';
 
 const router = Router();

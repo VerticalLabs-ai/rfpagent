@@ -1,16 +1,16 @@
 import { Router } from 'express';
 import { storage } from '../storage';
-import { aiAgentOrchestrator } from '../services/aiAgentOrchestrator';
-import { agentMonitoringService } from '../services/agentMonitoringService';
-import { mastraWorkflowEngine } from '../services/mastraWorkflowEngine';
-import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
-import { workflowCoordinator } from '../services/workflowCoordinator';
-import { agentRegistryService } from '../services/agentRegistryService';
-import { analysisOrchestrator } from '../services/analysisOrchestrator';
+import { aiAgentOrchestrator } from '../services/orchestrators/aiAgentOrchestrator';
+import { agentMonitoringService } from '../services/agents/agentMonitoringService';
+import { mastraWorkflowEngine } from '../services/workflows/mastraWorkflowEngine';
+import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
+import { workflowCoordinator } from '../services/workflows/workflowCoordinator';
+import { agentRegistryService } from '../services/agents/agentRegistryService';
+import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import {
   discoveryOrchestrator,
   type DiscoveryWorkflowRequest,
-} from '../services/discoveryOrchestrator';
+} from '../services/orchestrators/discoveryOrchestrator';
 
 const router = Router();
 

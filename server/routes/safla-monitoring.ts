@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { saflaSystemIntegration } from '../services/saflaSystemIntegration';
-import { workflowCoordinator } from '../services/workflowCoordinator';
+import { saflaSystemIntegration } from '../services/learning/saflaSystemIntegration';
+import { workflowCoordinator } from '../services/workflows/workflowCoordinator';
 
 const router = Router();
 

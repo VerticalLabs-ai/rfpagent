@@ -29,7 +29,7 @@ export function CompanyProfileForm({
   const { toast } = useToast();
 
   const form = useForm<CompanyProfileFormData>({
-    resolver: zodResolver(insertCompanyProfileSchema),
+    resolver: zodResolver(insertCompanyProfileSchema as any),
     defaultValues: {
       companyName: profile?.companyName || '',
       dba: profile?.dba || '',

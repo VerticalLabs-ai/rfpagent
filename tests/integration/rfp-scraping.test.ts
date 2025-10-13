@@ -1,4 +1,4 @@
-import { getMastraScrapingService } from '../../server/services/mastraScrapingService';
+import { getMastraScrapingService } from '../../server/services/scrapers/mastraScrapingService';
 
 describe('RFP Scraping Integration Tests', () => {
   // Test timeout: 5 minutes for Browserbase operations (cloud browser takes time)

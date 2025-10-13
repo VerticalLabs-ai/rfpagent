@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { agentMonitoringService } from '../services/agentMonitoringService';
+import { agentMonitoringService } from '../services/agents/agentMonitoringService';
 
 const router = Router();
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { complianceIntegrationService } from '../services/complianceIntegrationService';
+import { complianceIntegrationService } from '../services/core/complianceIntegrationService';
 import { storage } from '../storage';
 
 const router = express.Router();

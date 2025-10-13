@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { storage } from '../storage';
-import { scanManager } from '../services/scan-manager';
+import { scanManager } from '../services/portals/scan-manager';
 
 const router = Router();
 

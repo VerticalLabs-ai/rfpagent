@@ -20,7 +20,7 @@ interface AddPortalFormProps {
 
 export function AddPortalForm({ onSubmit }: AddPortalFormProps) {
   const form = useForm<PortalFormData>({
-    resolver: zodResolver(insertPortalSchema),
+    resolver: zodResolver(insertPortalSchema as any),
     defaultValues: {
       name: '',
       url: '',

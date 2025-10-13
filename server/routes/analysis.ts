@@ -1,7 +1,7 @@
 import express from 'express';
-import { analysisOrchestrator } from '../services/analysisOrchestrator';
-import { analysisProgressTracker } from '../services/analysisProgressTracker';
-import { analysisTestRunner } from '../services/analysisTestRunner';
+import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
+import { analysisProgressTracker } from '../services/monitoring/analysisProgressTracker';
+import { analysisTestRunner } from '../services/benchmarks/analysisTestRunner';
 import { storage } from '../storage';
 
 const router = express.Router();

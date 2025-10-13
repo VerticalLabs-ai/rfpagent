@@ -1,6 +1,6 @@
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
-import { MastraScrapingService } from '../../../server/services/mastraScrapingService';
+import { MastraScrapingService } from '../../../server/services/scrapers/mastraScrapingService';
 import { storage } from '../../../server/storage';
 import { pageAuthTool, pageExtractTool } from '../tools';
 

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { healthCheckService } from '../services/healthCheckService';
+import { healthCheckService } from '../services/monitoring/healthCheckService';
 import { circuitBreakerManager } from '../utils/circuitBreaker';
 import { ApiResponse } from '../utils/apiResponse';
 import { handleAsyncError } from './middleware/errorHandling';

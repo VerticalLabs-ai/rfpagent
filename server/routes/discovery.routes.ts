@@ -9,7 +9,7 @@ const router = Router();
 router.post('/workflow', async (req, res) => {
   try {
     const { discoveryOrchestrator } = await import(
-      '../services/discoveryOrchestrator'
+      '../services/orchestrators/discoveryOrchestrator'
     );
 
     const {
@@ -80,7 +80,7 @@ router.get('/workflow/:workflowId/status', async (req, res) => {
   try {
     const { workflowId } = req.params;
     const { discoveryOrchestrator } = await import(
-      '../services/discoveryOrchestrator'
+      '../services/orchestrators/discoveryOrchestrator'
     );
 
     const status = await discoveryOrchestrator.getWorkflowStatus(workflowId);

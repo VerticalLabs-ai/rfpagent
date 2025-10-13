@@ -1,6 +1,6 @@
 import type { AgentMetricsTimeframe } from '@shared/api/agentMonitoring';
 import { Router } from 'express';
-import { agentMonitoringService } from '../services/agentMonitoringService';
+import { agentMonitoringService } from '../services/agents/agentMonitoringService';
 
 const router = Router();
 

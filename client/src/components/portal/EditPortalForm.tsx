@@ -26,7 +26,7 @@ export function EditPortalForm({
   isLoading = false,
 }: EditPortalFormProps) {
   const form = useForm<PortalFormData>({
-    resolver: zodResolver(insertPortalSchema),
+    resolver: zodResolver(insertPortalSchema as any),
     defaultValues: {
       name: portal.name,
       url: portal.url,

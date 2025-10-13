@@ -1,10 +1,10 @@
 import express from 'express';
 import { storage } from '../storage';
 import { insertProposalSchema } from '@shared/schema';
-import { enhancedProposalService } from '../services/enhancedProposalService';
-import { proposalGenerationOrchestrator } from '../services/proposalGenerationOrchestrator';
-import { submissionMaterialsService } from '../services/submissionMaterialsService';
-import { progressTracker } from '../services/progressTracker';
+import { enhancedProposalService } from '../services/proposals/enhancedProposalService';
+import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
+import { submissionMaterialsService } from '../services/processing/submissionMaterialsService';
+import { progressTracker } from '../services/monitoring/progressTracker';
 import { validateRequest } from './middleware/validation';
 import { handleAsyncError } from './middleware/errorHandling';
 import {

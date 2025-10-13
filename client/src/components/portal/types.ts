@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import { insertPortalSchema } from '@shared/schema';
 
 export type PortalFormData = z.infer<typeof insertPortalSchema>;
