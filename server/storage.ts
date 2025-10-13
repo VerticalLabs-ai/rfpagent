@@ -2766,6 +2766,23 @@ export class DatabaseStorage implements IStorage {
 
   // Agent Registry Operations (3-Tier Agentic System)
   async registerAgent(agent: InsertAgentRegistry): Promise<AgentRegistry> {
+    // Check if agent already exists first (upsert pattern)
+    const existing = await this.getAgent(agent.agentId);
+
+    if (existing) {
+      // Agent already exists, update instead of insert
+      const [updatedAgent] = await db
+        .update(agentRegistry)
+        .set({
+          ...agent,
+          lastHeartbeat: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(agentRegistry.agentId, agent.agentId))
+        .returning();
+      return updatedAgent;
+    }
+
     try {
       const [newAgent] = await db
         .insert(agentRegistry)
@@ -2773,12 +2790,12 @@ export class DatabaseStorage implements IStorage {
         .returning();
       return newAgent;
     } catch (error: any) {
-      // Handle duplicate registration gracefully (idempotency)
+      // Handle race condition where agent was created between check and insert
       if (
-        error.code === '23505' &&
-        error.constraint === 'agent_registry_agent_id_unique'
+        error.code === '23505' ||
+        (error.constraint && error.constraint.includes('agent_id_unique'))
       ) {
-        // Agent already exists, update instead of insert
+        // Agent was just created, update instead
         const [existingAgent] = await db
           .update(agentRegistry)
           .set({
