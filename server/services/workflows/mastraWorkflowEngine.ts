@@ -901,7 +901,7 @@ export class MastraWorkflowEngine {
 
     try {
       // Record in database for persistent tracking
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       await storage.createPhaseStateTransition({
         workflowId,
         entityType: 'workflow',
@@ -1117,7 +1117,7 @@ export class MastraWorkflowEngine {
   }> {
     try {
       // Get work item details
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const workItem = await storage.getWorkItemById(workItemId);
 
       if (!workItem) {
@@ -1252,7 +1252,7 @@ export class MastraWorkflowEngine {
     context?: Record<string, any>
   ): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const workItem = await storage.getWorkItemById(workItemId);
 
       if (!workItem) {
@@ -1370,7 +1370,7 @@ export class MastraWorkflowEngine {
    */
   private async updateWorkflowProgress(workflowId: string): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const workflow = this.activeWorkflows.get(workflowId);
 
       if (!workflow) {

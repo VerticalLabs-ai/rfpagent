@@ -390,7 +390,7 @@ export class RetryBackoffDlqService {
   ): Promise<void> {
     try {
       // Import storage dynamically to avoid circular imports
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
       const lastFailureAt = new Date();
       const enrichedMetadata = {
@@ -479,20 +479,13 @@ export class RetryBackoffDlqService {
 
     try {
       // Import storage dynamically
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
-      // Update database record
-      const dbEntries = await storage.getDeadLetterQueueEntries();
-      const dbEntry = dbEntries.find(
-        e => e.originalWorkItemId === entry.originalWorkItemId
-      );
-
-      if (dbEntry) {
-        await storage.updateDeadLetterQueueEntry(dbEntry.id, {
-          escalatedAt: new Date(),
-          metadata: entry.metadata,
-        });
-      }
+      // Update database record directly using the provided dlqEntryId
+      await storage.updateDeadLetterQueueEntry(dlqEntryId, {
+        escalatedAt: new Date(),
+        metadata: entry.metadata,
+      });
 
       console.log(`🚨 Escalated DLQ entry ${dlqEntryId}: ${reason}`);
 
@@ -551,8 +544,8 @@ export class RetryBackoffDlqService {
 
     try {
       // Import storage and workflow engine
-      const { storage } = await import('../storage');
-      const { mastraWorkflowEngine } = await import('./mastraWorkflowEngine');
+      const { storage } = await import('../../storage');
+      const { mastraWorkflowEngine } = await import('../workflows/mastraWorkflowEngine');
 
       // Create a new work item from the DLQ entry
       const reprocessedWorkItem = {
@@ -618,7 +611,7 @@ export class RetryBackoffDlqService {
    */
   private async processScheduledRetries(): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
       // Get work items that are ready for retry
       const workItems = await storage.getWorkItems();
@@ -677,7 +670,7 @@ export class RetryBackoffDlqService {
    */
   private async monitorDLQHealth(): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const dlqEntries = await storage.getDeadLetterQueueEntries();
 
       const stats = {
@@ -743,7 +736,7 @@ export class RetryBackoffDlqService {
     entriesByFailureReason: Record<string, number>;
   }> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const dlqEntries = await storage.getDeadLetterQueueEntries();
 
       const stats = {

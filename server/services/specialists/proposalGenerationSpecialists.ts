@@ -1,5 +1,8 @@
 import { storage } from '../../storage';
-import { aiProposalService } from '../proposals/ai-proposal-service';
+import {
+  aiProposalService,
+  type CompanyDataMapping,
+} from '../proposals/ai-proposal-service';
 import { enhancedProposalService } from '../proposals/enhancedProposalService';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import { AIService } from '../core/aiService';
@@ -349,7 +352,8 @@ export class ContentGenerationSpecialist {
         : [];
 
       // Prepare company data (use default if not provided)
-      let companyData: DefaultCompanyMappingConfig = createDefaultCompanyMapping();
+      let companyData: DefaultCompanyMappingConfig | CompanyDataMapping =
+        createDefaultCompanyMapping();
       if (companyProfileId) {
         const companyProfile =
           await storage.getCompanyProfile(companyProfileId);

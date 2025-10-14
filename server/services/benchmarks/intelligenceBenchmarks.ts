@@ -31,6 +31,34 @@ export interface PredictionLog {
 }
 
 /**
+ * Prediction bucket containing actual and predicted values for a specific metric
+ */
+export interface PredictionBucket {
+  actual: number[];
+  predicted: number[];
+}
+
+/**
+ * Recent predictions grouped by prediction type
+ */
+export interface RecentPredictions {
+  winProbability: PredictionBucket;
+  cost: PredictionBucket;
+  timeline: PredictionBucket;
+  risk: PredictionBucket;
+}
+
+/**
+ * Prediction log entry from storage matching getPredictionLogs structure
+ */
+export interface PredictionLogEntry {
+  predictionType: 'winProbability' | 'cost' | 'timeline' | 'risk';
+  predictedValue: number;
+  actualValue: number | null | undefined;
+  [key: string]: any; // Allow additional fields
+}
+
+/**
  * Intelligence Benchmarking System
  *
  * Comprehensive benchmarks to measure agent intelligence and learning effectiveness:
@@ -842,10 +870,11 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
     }
   }
 
-  private async getRecentPredictions(): Promise<any> {
+  private async getRecentPredictions(): Promise<RecentPredictions> {
     try {
       // Attempt to fetch prediction logs from persistent storage
-      const predictionLogs = await storage.getPredictionLogs?.();
+      const predictionLogs: PredictionLogEntry[] | undefined =
+        await storage.getPredictionLogs?.();
 
       if (!predictionLogs || predictionLogs.length === 0) {
         // No prediction logs available
@@ -858,7 +887,7 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
       }
 
       // Group logs by prediction type
-      const result: any = {
+      const result: RecentPredictions = {
         winProbability: { actual: [], predicted: [] },
         cost: { actual: [], predicted: [] },
         timeline: { actual: [], predicted: [] },

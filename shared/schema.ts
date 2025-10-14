@@ -1776,6 +1776,7 @@ export type InsertProposal = Omit<
   InsertProposalInput,
   'receiptData' | 'submittedAt'
 > & {
+  rfpId: string;
   receiptData?: SubmissionReceiptData | null;
   submittedAt?: Date | null;
 };
@@ -1798,6 +1799,9 @@ export type InsertSubmission = Omit<
   InsertSubmissionInput,
   'submissionData' | 'receiptData'
 > & {
+  rfpId: string;
+  proposalId: string;
+  portalId: string;
   submissionData?: SubmissionLifecycleData | null;
   receiptData?: SubmissionReceiptData | null;
 };

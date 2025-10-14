@@ -1,15 +1,13 @@
+import type {
+  Portal,
+  Proposal,
+  RFP,
+  Submission,
+  WorkItem,
+} from '@shared/schema';
+import { sessionManager } from '../../../src/mastra/tools/session-manager';
 import { storage } from '../../storage';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import { sessionManager } from '../../../src/mastra/tools/session-manager';
-import type {
-  WorkItem,
-  Submission,
-  Proposal,
-  Portal,
-  RFP,
-  Document,
-} from '@shared/schema';
-import { nanoid } from 'nanoid';
 
 export interface SubmissionSpecialistResult {
   success: boolean;
@@ -471,10 +469,11 @@ export class PortalAuthenticationSpecialist {
         while (Date.now() - startTime < mfaTimeoutMs) {
           // Check if we've navigated away from MFA page
           const currentUrl = stagehand.page.url();
+          const currentUrlLower = currentUrl.toLowerCase();
           const isMfaPage =
-            currentUrl.includes('mfa') ||
-            currentUrl.includes('verify') ||
-            currentUrl.includes('2fa');
+            currentUrlLower.includes('mfa') ||
+            currentUrlLower.includes('verify') ||
+            currentUrlLower.includes('2fa');
 
           if (!isMfaPage) {
             console.log('✅ Navigated away from MFA page');
@@ -482,7 +481,7 @@ export class PortalAuthenticationSpecialist {
             break;
           }
 
-          // Check for success indicators
+          // Check for success indicators in parallel
           const successSelectors = [
             'text=/dashboard/i',
             'text=/welcome/i',
@@ -492,17 +491,38 @@ export class PortalAuthenticationSpecialist {
             '[data-testid="user-menu"]',
           ];
 
-          for (const selector of successSelectors) {
-            try {
-              const element = stagehand.page.locator(selector).first();
-              if (await element.isVisible({ timeout: 1000 })) {
-                console.log(`✅ MFA completion detected via: ${selector}`);
-                mfaCompleted = true;
-                break;
-              }
-            } catch (_e) {
-              // Ignore - continue checking
+          // Create promises for each selector check with short timeout
+          const visibilityChecks = successSelectors.map(selector =>
+            stagehand.page
+              .locator(selector)
+              .first()
+              .isVisible({ timeout: 300 })
+              .then(() => selector)
+              .catch(() => null)
+          );
+
+          try {
+            // Race all checks - completes as soon as any selector is visible
+            const firstVisible = await Promise.race([
+              Promise.any(
+                visibilityChecks.map(p =>
+                  p.then((s: string | null) =>
+                    s ? Promise.resolve(s) : Promise.reject()
+                  )
+                )
+              ),
+              // Add a timeout for the entire parallel check
+              new Promise<null>(resolve =>
+                setTimeout(() => resolve(null), 500)
+              ),
+            ]);
+
+            if (firstVisible) {
+              console.log(`✅ MFA completion detected via: ${firstVisible}`);
+              mfaCompleted = true;
             }
+          } catch (_e) {
+            // All checks failed or timed out - continue polling
           }
 
           if (mfaCompleted) break;

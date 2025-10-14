@@ -1,5 +1,11 @@
+import { agentKnowledgeBase, agentMemory } from '@shared/schema';
+import { and, count, lt, sql } from 'drizzle-orm';
+import { db } from '../../db';
 import { storage } from '../../storage';
-import { agentMemoryService } from '../agents/agentMemoryService';
+import {
+  agentMemoryService,
+  type AgentMemoryEntry,
+} from '../agents/agentMemoryService';
 
 /**
  * Persistent Memory Engine Service
@@ -834,7 +840,9 @@ export class PersistentMemoryEngine {
   ): Promise<CrossSessionContext | null> {
     // agentId must be provided to correctly retrieve session context
     if (!agentId) {
-      console.error(`getSessionContext called without agentId for session ${sessionId}. agentId is required for correct memory retrieval.`);
+      console.error(
+        `getSessionContext called without agentId for session ${sessionId}. agentId is required for correct memory retrieval.`
+      );
       return null;
     }
 
@@ -906,96 +914,673 @@ export class PersistentMemoryEngine {
     }
   }
 
-  /**
-   * TODO: Implement getTotalMemoryCount - Placeholder implementation
-   *
-   * Expected behavior:
-   * - Query the database to count all memory records across all agents
-   * - Should aggregate from agentMemory table: SELECT COUNT(*) FROM agent_memory
-   * - Filter by non-archived memories (where archived != true)
-   * - Return the actual count instead of hardcoded value
-   *
-   * Inputs: None
-   * Outputs: Promise<number> - Total count of active memories in storage
-   *
-   * Related: Used by compressMemories() to determine if compression is needed
-   */
   private async getTotalMemoryCount(): Promise<number> {
-    // TODO: Query storage.getTotalMemoryCount() or db.select({ count: count() }).from(agentMemory)
-    return 10000; // Placeholder - replace with actual database query
+    const [result] = await db
+      .select({ count: count() })
+      .from(agentMemory)
+      .where(
+        sql`COALESCE((${agentMemory.metadata} ->> 'archived')::boolean, false) = false`
+      );
+
+    return Number(result?.count ?? 0);
   }
 
-  /**
-   * TODO: Implement mergeSimilarMemories - Placeholder implementation
-   *
-   * Expected behavior:
-   * - Find pairs/groups of memories with similarity > threshold (e.g., 0.85)
-   * - Use calculateMemorySimilarity() method to compute similarity scores
-   * - Merge similar memories by:
-   *   1. Combining content and metadata from similar memories
-   *   2. Keeping the memory with higher importance
-   *   3. Updating associatedMemories references
-   *   4. Marking merged memories as archived
-   * - Continue until targetCount memories are merged or no more similar pairs exist
-   *
-   * Inputs: targetCount - number of memories to merge/compress
-   * Outputs: Promise<number> - Actual number of memories merged
-   *
-   * Related: Called by compressMemories() when memory count exceeds compression ratio
-   */
   private async mergeSimilarMemories(targetCount: number): Promise<number> {
-    // TODO: Implement similarity-based memory merging with calculateMemorySimilarity()
-    return Math.floor(targetCount * 0.8); // Placeholder - implement actual merging logic
+    if (targetCount <= 0) return 0;
+
+    const similarityThreshold = 0.85;
+    const fetchLimit = Math.min(Math.max(targetCount * 4, 100), 500);
+
+    const activeMemoriesRaw = await db
+      .select()
+      .from(agentMemory)
+      .where(
+        sql`COALESCE((${agentMemory.metadata} ->> 'archived')::boolean, false) = false`
+      )
+      .limit(fetchLimit);
+
+    if (!activeMemoriesRaw.length) return 0;
+
+    const memoryById = new Map<string, any>();
+    const activeIds = new Set<string>();
+
+    for (const rawMemory of activeMemoriesRaw) {
+      const normalizedMemory = {
+        ...rawMemory,
+        metadata: rawMemory.metadata ?? {},
+        tags: rawMemory.tags ?? [],
+      };
+      memoryById.set(normalizedMemory.id, normalizedMemory);
+      activeIds.add(normalizedMemory.id);
+    }
+
+    let mergedCount = 0;
+
+    while (mergedCount < targetCount && activeIds.size > 1) {
+      const ids = Array.from(activeIds);
+      let bestPair: {
+        primaryId: string;
+        secondaryId: string;
+        similarity: number;
+      } | null = null;
+
+      for (let i = 0; i < ids.length; i++) {
+        const memoryA = memoryById.get(ids[i]);
+        if (!memoryA) continue;
+
+        for (let j = i + 1; j < ids.length; j++) {
+          const memoryB = memoryById.get(ids[j]);
+          if (!memoryB) continue;
+
+          const similarity = this.calculateMemorySimilarity(memoryA, memoryB);
+          if (similarity <= similarityThreshold) continue;
+
+          const primary =
+            (memoryA.importance ?? 0) >= (memoryB.importance ?? 0)
+              ? memoryA
+              : memoryB;
+          const secondary = primary === memoryA ? memoryB : memoryA;
+
+          if (
+            !bestPair ||
+            similarity > bestPair.similarity ||
+            (similarity === bestPair.similarity &&
+              (secondary.importance ?? 0) <
+                (memoryById.get(bestPair.secondaryId)?.importance ?? 0))
+          ) {
+            bestPair = {
+              primaryId: primary.id,
+              secondaryId: secondary.id,
+              similarity,
+            };
+          }
+        }
+      }
+
+      if (!bestPair) break;
+
+      const primaryMemory = memoryById.get(bestPair.primaryId);
+      const secondaryMemory = memoryById.get(bestPair.secondaryId);
+
+      if (!primaryMemory || !secondaryMemory) {
+        activeIds.delete(bestPair.primaryId);
+        activeIds.delete(bestPair.secondaryId);
+        continue;
+      }
+
+      const similarCandidates: any[] = [secondaryMemory];
+
+      for (const id of ids) {
+        if (id === primaryMemory.id || id === secondaryMemory.id) continue;
+        if (!activeIds.has(id)) continue;
+
+        const candidate = memoryById.get(id);
+        if (!candidate) continue;
+
+        const similarity = this.calculateMemorySimilarity(
+          primaryMemory,
+          candidate
+        );
+
+        if (similarity > similarityThreshold) {
+          similarCandidates.push(candidate);
+        }
+      }
+
+      similarCandidates.sort(
+        (a, b) => (a.importance ?? 0) - (b.importance ?? 0)
+      );
+
+      const mergeQuota = targetCount - mergedCount;
+      const memoriesToMerge = similarCandidates.slice(0, mergeQuota);
+
+      if (!memoriesToMerge.length) break;
+
+      let combinedContent = primaryMemory.content;
+      let combinedMetadata = primaryMemory.metadata ?? {};
+      const combinedTags = new Set<string>(primaryMemory.tags ?? []);
+      const associatedSet = new Set<string>(
+        Array.isArray(combinedMetadata.associatedMemories)
+          ? combinedMetadata.associatedMemories
+          : []
+      );
+      associatedSet.add(primaryMemory.id);
+
+      const mergedFrom = new Set<string>();
+
+      if (Array.isArray(combinedMetadata.mergedFrom)) {
+        for (const id of combinedMetadata.mergedFrom) {
+          if (typeof id === 'string') mergedFrom.add(id);
+        }
+      } else if (typeof combinedMetadata.mergedFrom === 'string') {
+        mergedFrom.add(combinedMetadata.mergedFrom);
+      }
+
+      const mergedAt = new Date();
+
+      for (const memory of memoriesToMerge) {
+        combinedContent = this.mergeFieldValues(
+          combinedContent,
+          memory.content
+        );
+        combinedMetadata = this.mergeFieldValues(
+          combinedMetadata,
+          memory.metadata ?? {}
+        );
+
+        for (const tag of memory.tags ?? []) {
+          if (typeof tag === 'string') {
+            combinedTags.add(tag);
+          }
+        }
+
+        const associations = Array.isArray(memory.metadata?.associatedMemories)
+          ? memory.metadata.associatedMemories
+          : [];
+        for (const assoc of associations) {
+          if (typeof assoc === 'string') {
+            associatedSet.add(assoc);
+          }
+        }
+
+        associatedSet.add(memory.id);
+        mergedFrom.add(memory.id);
+      }
+
+      combinedMetadata =
+        this.isPlainObject(combinedMetadata) && combinedMetadata !== null
+          ? combinedMetadata
+          : {};
+
+      const updatedMetadata = {
+        ...combinedMetadata,
+        associatedMemories: Array.from(associatedSet),
+        archived: false,
+        mergedFrom: Array.from(mergedFrom),
+        mergedAt,
+      };
+
+      const updatedImportance = Math.max(
+        primaryMemory.importance ?? 0,
+        ...memoriesToMerge.map(memory => memory.importance ?? 0)
+      );
+
+      const updatedPrimary = await agentMemoryService.updateMemory(
+        primaryMemory.id,
+        {
+          content: combinedContent,
+          metadata: updatedMetadata,
+          tags: Array.from(combinedTags),
+          importance: updatedImportance,
+        }
+      );
+
+      primaryMemory.content = updatedPrimary.content ?? combinedContent;
+      primaryMemory.metadata = updatedPrimary.metadata ?? updatedMetadata;
+      primaryMemory.tags = updatedPrimary.tags ?? Array.from(combinedTags);
+      primaryMemory.importance = updatedPrimary.importance ?? updatedImportance;
+
+      memoryById.set(primaryMemory.id, primaryMemory);
+
+      for (const memory of memoriesToMerge) {
+        await agentMemoryService.updateMemory(memory.id, {
+          metadata: {
+            ...(memory.metadata ?? {}),
+            archived: true,
+            archivedAt: mergedAt,
+            mergedInto: primaryMemory.id,
+          },
+        });
+
+        activeIds.delete(memory.id);
+        memoryById.delete(memory.id);
+        mergedCount += 1;
+      }
+
+      activeIds.add(primaryMemory.id);
+    }
+
+    return mergedCount;
   }
 
-  /**
-   * TODO: Implement applyMemoryDecay - Placeholder implementation
-   *
-   * Expected behavior:
-   * - Apply decay factor (this.memoryDecayRate = 0.95) to old memories
-   * - Query memories older than a threshold (e.g., 30 days)
-   * - For each old memory:
-   *   - Multiply importance by decay rate: newImportance = importance * 0.95
-   *   - Update memory record with new importance value
-   *   - Archive memories where importance drops below threshold (e.g., < 2)
-   * - Should preserve recently accessed memories (check lastAccessed field)
-   *
-   * Inputs: None (uses this.memoryDecayRate)
-   * Outputs: Promise<void>
-   *
-   * Related: Called by compressMemories() to gradually reduce importance of stale memories
-   */
+  private mergeFieldValues(existing: any, incoming: any): any {
+    if (existing === undefined || existing === null) return incoming;
+    if (incoming === undefined || incoming === null) return existing;
+
+    if (Array.isArray(existing) && Array.isArray(incoming)) {
+      return this.deduplicateArray([...existing, ...incoming]);
+    }
+
+    if (this.isPlainObject(existing) && this.isPlainObject(incoming)) {
+      const result: Record<string, any> = { ...existing };
+      for (const key of Object.keys(incoming)) {
+        result[key] = this.mergeFieldValues(result[key], incoming[key]);
+      }
+      return result;
+    }
+
+    if (Array.isArray(existing)) {
+      return this.deduplicateArray([...existing, incoming]);
+    }
+
+    if (Array.isArray(incoming)) {
+      return this.deduplicateArray([existing, ...incoming]);
+    }
+
+    if (existing === incoming) {
+      return existing;
+    }
+
+    return this.deduplicateArray([existing, incoming]);
+  }
+
+  private isPlainObject(value: any): value is Record<string, any> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private deduplicateArray(values: any[]): any[] {
+    const result: any[] = [];
+    const primitiveTracker = new Set<string>();
+
+    for (const value of values) {
+      if (value === undefined) continue;
+
+      if (value === null) {
+        if (!primitiveTracker.has('null')) {
+          primitiveTracker.add('null');
+          result.push(value);
+        }
+        continue;
+      }
+
+      const type = typeof value;
+      if (type === 'string' || type === 'number' || type === 'boolean') {
+        const key = `${type}:${value}`;
+        if (primitiveTracker.has(key)) continue;
+        primitiveTracker.add(key);
+        result.push(value);
+        continue;
+      }
+
+      result.push(value);
+    }
+
+    return result;
+  }
+
   private async applyMemoryDecay(): Promise<void> {
-    // TODO: Query old memories and update importance *= this.memoryDecayRate
-    // TODO: Archive memories with importance < threshold
-    console.log('Applying memory decay...'); // Placeholder - implement decay algorithm
+    const decayRate = this.memoryDecayRate;
+    const archiveThreshold = 2;
+    const decayWindowDays = 30;
+    const thresholdDate = new Date(
+      Date.now() - decayWindowDays * 24 * 60 * 60 * 1000
+    );
+
+    const staleMemories = await db
+      .select({
+        id: agentMemory.id,
+        importance: agentMemory.importance,
+        metadata: agentMemory.metadata,
+        lastAccessed: agentMemory.lastAccessed,
+      })
+      .from(agentMemory)
+      .where(
+        and(
+          lt(agentMemory.createdAt, thresholdDate),
+          sql`COALESCE((${agentMemory.metadata} ->> 'archived')::boolean, false) = false`
+        )
+      );
+
+    if (!staleMemories.length) {
+      return;
+    }
+
+    let decayedCount = 0;
+    let archivedCount = 0;
+    const updatePromises: Promise<any>[] = [];
+
+    for (const memory of staleMemories) {
+      if (memory.lastAccessed && memory.lastAccessed > thresholdDate) {
+        continue;
+      }
+
+      const decayedImportance = memory.importance * decayRate;
+      const newImportance = Math.max(1, Math.floor(decayedImportance));
+      const shouldArchive = decayedImportance < archiveThreshold;
+
+      const updatePayload: Partial<AgentMemoryEntry> = {};
+
+      if (newImportance !== memory.importance) {
+        updatePayload.importance = newImportance;
+      }
+
+      if (shouldArchive) {
+        updatePayload.metadata = {
+          ...(memory.metadata || {}),
+          archived: true,
+          archivedAt: new Date(),
+        };
+      }
+
+      if (!Object.keys(updatePayload).length) {
+        continue;
+      }
+
+      decayedCount += 1;
+      if (shouldArchive) {
+        archivedCount += 1;
+      }
+
+      updatePromises.push(
+        agentMemoryService.updateMemory(memory.id, updatePayload)
+      );
+    }
+
+    if (updatePromises.length) {
+      await Promise.all(updatePromises);
+    }
+
+    if (decayedCount) {
+      console.log(
+        `📉 Applied decay to ${decayedCount} memories (${archivedCount} archived)`
+      );
+    }
   }
 
-  /**
-   * TODO: Implement updateGlobalPatterns - Placeholder implementation
-   *
-   * Expected behavior:
-   * - Aggregate patterns extracted during consolidation across all agents
-   * - Update global pattern statistics:
-   *   - Most frequent pattern types (episodic, semantic, procedural)
-   *   - Common pattern contexts and domains
-   *   - Pattern success correlations (which patterns lead to successful outcomes)
-   * - Store aggregated stats in agentKnowledgeBase with domain='global'
-   * - Identify cross-agent patterns that can be shared
-   * - Update knowledge graph with new global pattern nodes and edges
-   *
-   * Inputs: consolidation - MemoryConsolidation object with patternsExtracted count
-   * Outputs: Promise<void>
-   *
-   * Related: Called by performMemoryConsolidation() to update system-wide learning patterns
-   */
   private async updateGlobalPatterns(
     consolidation: MemoryConsolidation
   ): Promise<void> {
-    // TODO: Aggregate consolidation.patternsExtracted stats across agents
-    // TODO: Update global knowledge base with cross-agent patterns
-    // TODO: Store in agentKnowledgeBase with agentId='global' or domain='system'
-    console.log('Updating global patterns...'); // Placeholder - implement pattern aggregation
+    if (!consolidation.patternsExtracted) return;
+
+    try {
+      const patternEntries = await db
+        .select({
+          id: agentKnowledgeBase.id,
+          agentId: agentKnowledgeBase.agentId,
+          domain: agentKnowledgeBase.domain,
+          knowledgeType: agentKnowledgeBase.knowledgeType,
+          title: agentKnowledgeBase.title,
+          tags: agentKnowledgeBase.tags,
+          content: agentKnowledgeBase.content,
+          successRate: agentKnowledgeBase.successRate,
+          usageCount: agentKnowledgeBase.usageCount,
+          confidenceScore: agentKnowledgeBase.confidenceScore,
+        })
+        .from(agentKnowledgeBase)
+        .where(
+          sql`${agentKnowledgeBase.domain} != 'global' AND (${agentKnowledgeBase.content} ? 'pattern')`
+        );
+
+      if (!patternEntries.length) {
+        return;
+      }
+
+      const totalPatterns = patternEntries.length;
+      const agentSet = new Set<string>();
+      const patternTypeCounts: Record<string, number> = {};
+      const domainCounts: Record<string, number> = {};
+      const contextCounts: Record<string, number> = {};
+      const patternAggregates = new Map<
+        string,
+        {
+          pattern: string;
+          agents: Set<string>;
+          domains: Set<string>;
+          type: string;
+          successSamples: number[];
+          usage: number;
+          confidenceSum: number;
+          count: number;
+        }
+      >();
+
+      let confidenceAccumulator = 0;
+
+      for (const entry of patternEntries) {
+        agentSet.add(entry.agentId);
+
+        const tags = entry.tags || [];
+        const patternType =
+          tags.find(tag =>
+            ['episodic', 'semantic', 'procedural', 'working'].includes(tag)
+          ) || 'semantic';
+        patternTypeCounts[patternType] =
+          (patternTypeCounts[patternType] || 0) + 1;
+
+        if (entry.domain) {
+          domainCounts[entry.domain] = (domainCounts[entry.domain] || 0) + 1;
+        }
+
+        const content = (entry.content ?? {}) as {
+          pattern?: string;
+          context?: Record<string, unknown>;
+        };
+        const context = (content.context ?? {}) as Record<string, unknown>;
+        for (const [key, value] of Object.entries(context)) {
+          if (value === undefined || value === null) continue;
+
+          let normalizedValue: string;
+          if (typeof value === 'string') {
+            normalizedValue = value.toLowerCase();
+          } else if (typeof value === 'number' || typeof value === 'boolean') {
+            normalizedValue = String(value);
+          } else if (Array.isArray(value)) {
+            normalizedValue = value.map(item => JSON.stringify(item)).join(',');
+          } else {
+            normalizedValue = JSON.stringify(value);
+          }
+
+          const contextKey = `${key}:${normalizedValue}`;
+          contextCounts[contextKey] = (contextCounts[contextKey] || 0) + 1;
+        }
+
+        const confidence = Number(entry.confidenceScore ?? 0);
+        if (!Number.isNaN(confidence)) {
+          confidenceAccumulator += confidence;
+        }
+
+        const patternLabel =
+          typeof content.pattern === 'string' ? content.pattern : entry.title;
+        const signature = patternLabel.toLowerCase();
+
+        let aggregate = patternAggregates.get(signature);
+        if (!aggregate) {
+          aggregate = {
+            pattern: patternLabel,
+            agents: new Set<string>(),
+            domains: new Set<string>(),
+            type: patternType,
+            successSamples: [],
+            usage: 0,
+            confidenceSum: 0,
+            count: 0,
+          };
+          patternAggregates.set(signature, aggregate);
+        }
+
+        aggregate.agents.add(entry.agentId);
+        aggregate.domains.add(entry.domain);
+        aggregate.count += 1;
+        aggregate.usage += Number(entry.usageCount ?? 0);
+
+        const successValue =
+          entry.successRate !== null && entry.successRate !== undefined
+            ? Number(entry.successRate)
+            : undefined;
+        if (successValue !== undefined && !Number.isNaN(successValue)) {
+          aggregate.successSamples.push(successValue);
+        }
+
+        if (!Number.isNaN(confidence)) {
+          aggregate.confidenceSum += confidence;
+        }
+      }
+
+      const mostFrequentPatternTypes = Object.entries(patternTypeCounts)
+        .map(([type, count]) => ({
+          type,
+          count,
+          ratio: Number((count / totalPatterns).toFixed(2)),
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      const commonDomains = Object.entries(domainCounts)
+        .map(([domain, count]) => ({
+          domain,
+          count,
+          ratio: Number((count / totalPatterns).toFixed(2)),
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      const commonContexts = Object.entries(contextCounts)
+        .map(([contextValue, count]) => ({
+          context: contextValue,
+          count,
+          ratio: Number((count / totalPatterns).toFixed(2)),
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      const aggregateEntries = Array.from(patternAggregates.values());
+
+      const patternSuccessCorrelations = aggregateEntries
+        .map(entry => {
+          const avgSuccess =
+            entry.successSamples.length > 0
+              ? Number(
+                  (
+                    entry.successSamples.reduce(
+                      (sum, value) => sum + value,
+                      0
+                    ) / entry.successSamples.length
+                  ).toFixed(2)
+                )
+              : null;
+
+          const avgConfidence =
+            entry.count > 0
+              ? Number((entry.confidenceSum / entry.count).toFixed(2))
+              : null;
+
+          return {
+            pattern: entry.pattern,
+            type: entry.type,
+            domains: Array.from(entry.domains),
+            agentCount: entry.agents.size,
+            avgSuccessRate: avgSuccess,
+            usage: entry.usage,
+            avgConfidence,
+          };
+        })
+        .sort((a, b) => {
+          const successA = a.avgSuccessRate ?? 0;
+          const successB = b.avgSuccessRate ?? 0;
+          if (successB !== successA) return successB - successA;
+          return b.usage - a.usage;
+        })
+        .slice(0, 15);
+
+      const shareablePatterns = aggregateEntries
+        .filter(entry => entry.agents.size > 1)
+        .map(entry => {
+          const avgSuccess =
+            entry.successSamples.length > 0
+              ? Number(
+                  (
+                    entry.successSamples.reduce(
+                      (sum, value) => sum + value,
+                      0
+                    ) / entry.successSamples.length
+                  ).toFixed(2)
+                )
+              : null;
+
+          return {
+            pattern: entry.pattern,
+            type: entry.type,
+            agentIds: Array.from(entry.agents),
+            domains: Array.from(entry.domains),
+            avgSuccessRate: avgSuccess,
+            usage: entry.usage,
+          };
+        })
+        .sort((a, b) => {
+          const successA = a.avgSuccessRate ?? 0;
+          const successB = b.avgSuccessRate ?? 0;
+          if (successB !== successA) return successB - successA;
+          return b.usage - a.usage;
+        })
+        .slice(0, 10);
+
+      const aggregatedConfidence =
+        totalPatterns > 0
+          ? Number((confidenceAccumulator / totalPatterns).toFixed(2))
+          : 0.5;
+
+      const aggregatedStats = {
+        generatedAt: new Date().toISOString(),
+        consolidationId: consolidation.id,
+        totalPatterns,
+        recentPatternsExtracted: consolidation.patternsExtracted,
+        agentCoverage: {
+          totalAgents: agentSet.size,
+          agentIds: Array.from(agentSet),
+        },
+        mostFrequentPatternTypes,
+        commonDomains,
+        commonContexts,
+        patternSuccessCorrelations,
+        shareablePatterns,
+      };
+
+      const [existingGlobalKnowledge] =
+        await agentMemoryService.getAgentKnowledge(
+          'memory-engine',
+          'rfp_pattern',
+          'global',
+          1
+        );
+
+      const knowledgePayload = {
+        title: 'Global Pattern Intelligence',
+        description: `Aggregated from ${totalPatterns} patterns across ${agentSet.size} agents`,
+        content: aggregatedStats,
+        confidenceScore: aggregatedConfidence,
+        tags: [
+          'global_pattern_stats',
+          'consolidated_pattern',
+          'system_insight',
+        ],
+      };
+
+      if (existingGlobalKnowledge) {
+        await agentMemoryService.updateKnowledge(existingGlobalKnowledge.id, {
+          ...knowledgePayload,
+        });
+      } else {
+        await agentMemoryService.storeKnowledge({
+          agentId: 'memory-engine',
+          knowledgeType: 'rfp_pattern',
+          domain: 'global',
+          title: knowledgePayload.title,
+          description: knowledgePayload.description,
+          content: knowledgePayload.content,
+          confidenceScore: knowledgePayload.confidenceScore,
+          sourceType: 'experience',
+          tags: knowledgePayload.tags,
+        });
+      }
+
+      await this.buildKnowledgeGraph('global');
+
+      console.log(
+        `🌐 Updated global patterns with ${totalPatterns} insights across ${agentSet.size} agents`
+      );
+    } catch (error) {
+      console.error('❌ Failed to update global patterns:', error);
+    }
   }
 
   private async storeConsolidationRecord(

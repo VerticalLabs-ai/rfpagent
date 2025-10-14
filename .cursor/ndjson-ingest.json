@@ -1,4 +1,4 @@
 {
   "externalUrl": "http://127.0.0.1:57452/ingest",
-  "logPath": "/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/.cursor/debug.log"
+  "logPath": ".cursor/debug.log"
 }

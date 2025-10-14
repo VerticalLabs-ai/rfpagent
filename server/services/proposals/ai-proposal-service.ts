@@ -1,11 +1,13 @@
 import type {
   CompanyCertification,
   CompanyContact,
+  CompanyIdentifier,
   CompanyInsurance,
   CompanyProfile,
 } from '@shared/schema';
 import OpenAI from 'openai';
 import { z } from 'zod';
+import type { DefaultCompanyMappingConfig } from '../../config/defaultCompanyMapping.js';
 
 // Zod schemas for AI service validation
 const RFPAnalysisResultSchema = z.object({
@@ -131,6 +133,15 @@ export interface CompanyDataMapping {
     veteranOwned: boolean;
     hubZone: boolean;
   };
+  identifiers: CompanyIdentifier[];
+  addresses: {
+    type: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }[];
 }
 
 export interface ProposalGenerationRequest {
@@ -290,7 +301,16 @@ Return a JSON object with the following structure:
     companyProfile: CompanyProfile,
     certifications: CompanyCertification[],
     insurance: CompanyInsurance[],
-    contacts: CompanyContact[]
+    contacts: CompanyContact[],
+    identifiers: CompanyIdentifier[] = [],
+    addresses: Array<{
+      type: string;
+      line1: string;
+      line2?: string;
+      city: string;
+      state: string;
+      zipCode: string;
+    }> = []
   ): Promise<CompanyDataMapping> {
     // AI-powered certification selection
     const relevantCertifications = this.selectRelevantCertifications(
@@ -342,6 +362,8 @@ Return a JSON object with the following structure:
       assignedContacts,
       businessClassifications,
       socioEconomicQualifications,
+      identifiers,
+      addresses,
     };
   }
 
@@ -350,7 +372,7 @@ Return a JSON object with the following structure:
    */
   async generateProposalContent(
     analysis: RFPAnalysisResult,
-    companyMapping: CompanyDataMapping,
+    companyMapping: CompanyDataMapping | DefaultCompanyMappingConfig,
     rfpText: string
   ): Promise<GeneratedProposalContent> {
     const companyInfo = this.formatCompanyInformation(companyMapping);
@@ -560,7 +582,9 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
     return roleMap[area] || area;
   }
 
-  private buildCompanyFacts(mapping: CompanyDataMapping): string {
+  private buildCompanyFacts(
+    mapping: CompanyDataMapping | DefaultCompanyMappingConfig
+  ): string {
     const facts = ['COMPANY FACTS TO INCLUDE:'];
 
     // Company name and business type
@@ -580,9 +604,12 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
       facts.push(`- Business Type: ${ownershipTypes.join(', ')}`);
     }
 
-    // DUNS number
-    if (mapping.profile.dunsNumber) {
-      facts.push(`- DUNS: ${mapping.profile.dunsNumber}`);
+    // DUNS number from identifiers
+    const dunsIdentifier = mapping.identifiers.find(
+      id => id.identifierType === 'duns'
+    );
+    if (dunsIdentifier) {
+      facts.push(`- DUNS: ${dunsIdentifier.identifierValue}`);
     }
 
     // Certifications
@@ -603,18 +630,31 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
       c => c.role === 'Business Owner'
     );
     if (owner) {
-      facts.push(`- Owner/President: ${owner.contact.name}`);
+      // Handle different contact structures
+      const contactName =
+        'name' in owner.contact
+          ? owner.contact.name
+          : `${owner.contact.firstName} ${owner.contact.lastName}`;
+      facts.push(`- Owner/President: ${contactName}`);
     }
 
-    // Address
-    if (mapping.profile.address) {
-      facts.push(`- Address: ${mapping.profile.address}`);
+    // Address from addresses array
+    const primaryAddress = mapping.addresses.find(
+      addr => addr.type === 'primary_mailing' || addr.type === 'physical'
+    );
+    if (primaryAddress) {
+      const addressLine = primaryAddress.line2
+        ? `${primaryAddress.line1}, ${primaryAddress.line2}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`
+        : `${primaryAddress.line1}, ${primaryAddress.city}, ${primaryAddress.state} ${primaryAddress.zipCode}`;
+      facts.push(`- Address: ${addressLine}`);
     }
 
     return facts.join('\n');
   }
 
-  private formatCompanyInformation(mapping: CompanyDataMapping): string {
+  private formatCompanyInformation(
+    mapping: CompanyDataMapping | DefaultCompanyMappingConfig
+  ): string {
     return `
 COMPANY PROFILE:
 Name: ${mapping.profile.companyName}
@@ -646,10 +686,18 @@ SOCIO-ECONOMIC QUALIFICATIONS:
 
 ASSIGNED CONTACTS:
 ${mapping.assignedContacts
-  .map(
-    assignment =>
-      `- ${assignment.role}: ${assignment.contact.name} (${assignment.contact.email})`
-  )
+  .map(assignment => {
+    // Handle different contact structures
+    const contactName =
+      'name' in assignment.contact
+        ? assignment.contact.name
+        : `${assignment.contact.firstName} ${assignment.contact.lastName}`;
+    const contactEmail =
+      'email' in assignment.contact
+        ? assignment.contact.email
+        : assignment.contact.emailAddress;
+    return `- ${assignment.role}: ${contactName} (${contactEmail})`;
+  })
   .join('\n')}
 
 INSURANCE COVERAGE:

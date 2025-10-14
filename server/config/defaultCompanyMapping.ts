@@ -85,6 +85,24 @@ export interface DefaultCompanyMappingConfig {
     veteranOwned: boolean;
     hubZone: boolean;
   };
+  identifiers: Array<{
+    id: string;
+    companyProfileId: string;
+    identifierType: string;
+    identifierValue: string;
+    issuingEntity?: string;
+    description?: string;
+    isActive: boolean;
+    createdAt: Date;
+  }>;
+  addresses: Array<{
+    type: string;
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+  }>;
 }
 
 /**
@@ -175,6 +193,44 @@ export function createDefaultCompanyMapping(): DefaultCompanyMappingConfig {
       veteranOwned: false,
       hubZone: false,
     },
+    identifiers: [
+      {
+        id: 'id-duns',
+        companyProfileId: 'default',
+        identifierType: 'duns',
+        identifierValue: '000000000',
+        issuingEntity: 'Dun & Bradstreet',
+        description: 'DUNS Number',
+        isActive: true,
+        createdAt: now,
+      },
+      {
+        id: 'id-ein',
+        companyProfileId: 'default',
+        identifierType: 'ein',
+        identifierValue: '12-3456789',
+        issuingEntity: 'IRS',
+        description: 'Employer Identification Number',
+        isActive: true,
+        createdAt: now,
+      },
+    ],
+    addresses: [
+      {
+        type: 'primary_mailing',
+        line1: '123 Main St',
+        city: 'City',
+        state: 'State',
+        zipCode: '12345',
+      },
+      {
+        type: 'physical',
+        line1: '123 Main St',
+        city: 'City',
+        state: 'State',
+        zipCode: '12345',
+      },
+    ],
   };
 }
 

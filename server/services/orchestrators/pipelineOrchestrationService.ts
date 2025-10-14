@@ -113,7 +113,7 @@ export class PipelineOrchestrationService {
     console.log('⚖️ Initializing workload balancer...');
 
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       const agents = await storage.getAllAgentRegistries();
 
       for (const agent of agents) {
@@ -225,7 +225,7 @@ export class PipelineOrchestrationService {
 
     // Store in database
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
       await storage.createPipelineOrchestration({
         orchestrationId,
         name,
@@ -641,7 +641,7 @@ export class PipelineOrchestrationService {
    */
   private async updateResourceUtilization(): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
       // Update agent workloads with actual work item counts
       const workItems = await storage.getWorkItems();
@@ -752,7 +752,7 @@ export class PipelineOrchestrationService {
     }
 
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
       for (const overloadedAgent of overloadedAgents) {
         // Find work items that can be reassigned
@@ -1036,7 +1036,7 @@ export class PipelineOrchestrationService {
    */
   private async updateAgentPerformanceMetrics(): Promise<void> {
     try {
-      const { storage } = await import('../storage');
+      const { storage } = await import('../../storage');
 
       for (const [agentId, workload] of this.workloadBalancer) {
         // Get completed work items for this agent in the last hour

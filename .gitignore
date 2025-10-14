@@ -31,3 +31,4 @@ coverage/.env.local
 
 # Attached assets
 attached_assets/
+.cursor/ndjson-ingest.json
