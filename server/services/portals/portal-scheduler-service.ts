@@ -1,5 +1,5 @@
 import * as cron from 'node-cron';
-import { parseExpression } from 'cron-parser';
+import cronParser from 'cron-parser';
 import {
   PortalMonitoringService,
   PortalScanResult,
@@ -270,7 +270,7 @@ export class PortalSchedulerService {
    */
   private getNextRun(cronExpression: string): Date | undefined {
     try {
-      const interval = parseExpression(cronExpression, {
+      const interval = cronParser.parseExpression(cronExpression, {
         currentDate: new Date(),
         tz: 'America/Chicago',
       });
