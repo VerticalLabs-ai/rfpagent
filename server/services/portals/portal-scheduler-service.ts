@@ -1,4 +1,5 @@
 import * as cron from 'node-cron';
+import { parseExpression } from 'cron-parser';
 import {
   PortalMonitoringService,
   PortalScanResult,
@@ -265,15 +266,20 @@ export class PortalSchedulerService {
   }
 
   /**
-   * Get next run time for a cron expression
+   * Get next run time for a cron expression using cron-parser
    */
   private getNextRun(cronExpression: string): Date | undefined {
     try {
-      const task = cron.schedule(cronExpression, () => {}, {});
-      // This is a simplified approach - in production you'd use a proper cron parser
-      return new Date(Date.now() + 60 * 60 * 1000); // Approximate next hour
+      const interval = parseExpression(cronExpression, {
+        currentDate: new Date(),
+        tz: 'America/Chicago',
+      });
+      return interval.next().toDate();
     } catch (error) {
-      console.error('Failed to calculate next run time:', error);
+      console.error(
+        `Failed to calculate next run time for cron expression "${cronExpression}":`,
+        error
+      );
       return undefined;
     }
   }

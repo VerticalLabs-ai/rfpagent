@@ -76,6 +76,15 @@ export interface ComplianceAnalysisResult {
  * Handles document validation, OCR, and text extraction
  */
 export class DocumentProcessorSpecialist {
+  static readonly SUPPORTED_FILE_TYPES = [
+    'pdf',
+    'docx',
+    'txt',
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain',
+  ] as const;
+
   private documentParsingService = new DocumentParsingService();
   private objectStorageService = new ObjectStorageService();
   private agentId = 'document-processor';
@@ -276,15 +285,14 @@ export class DocumentProcessorSpecialist {
       }
 
       // Check file type support
-      const supportedTypes = [
-        'pdf',
-        'docx',
-        'txt',
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'text/plain',
-      ];
-      if (!supportedTypes.includes(document.fileType.toLowerCase())) {
+      const fileType =
+        typeof document.fileType === 'string'
+          ? document.fileType.toLowerCase()
+          : '';
+      if (
+        !fileType ||
+        !DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES.includes(fileType)
+      ) {
         issues.push(`Unsupported file type: ${document.fileType}`);
         isValid = false;
       }
@@ -620,7 +628,10 @@ export class ComplianceCheckerSpecialist {
       });
 
       // Create notifications for high-risk items
-      await this.createRiskNotifications(rfp, complianceResult.riskFlags);
+      const notificationFailures = await this.createRiskNotifications(
+        rfp,
+        complianceResult.riskFlags
+      );
 
       return {
         success: true,
@@ -631,6 +642,8 @@ export class ComplianceCheckerSpecialist {
           complianceItemCount: complianceResult.complianceItems.length,
           riskFlagCount: complianceResult.riskFlags.length,
           confidenceScore: complianceResult.confidenceScore,
+          notificationFailures:
+            notificationFailures.length > 0 ? notificationFailures : undefined,
         },
       };
     } catch (error) {
@@ -789,22 +802,50 @@ export class ComplianceCheckerSpecialist {
 
   /**
    * Create notifications for high-risk items
+   * Returns array of failures for optional caller handling
    */
   private async createRiskNotifications(
     rfp: RFP,
     riskFlags: any[]
-  ): Promise<void> {
+  ): Promise<Array<{ flag: any; error: string }>> {
     const highRiskFlags = riskFlags.filter(flag => flag.type === 'high');
+    const failures: Array<{ flag: any; error: string }> = [];
 
     for (const flag of highRiskFlags) {
-      await storage.createNotification({
-        type: 'compliance',
-        title: 'High Risk Compliance Issue',
-        message: `${flag.category}: ${flag.description}`,
-        relatedEntityType: 'rfp',
-        relatedEntityId: rfp.id,
-      });
+      try {
+        await storage.createNotification({
+          type: 'compliance',
+          title: 'High Risk Compliance Issue',
+          message: `${flag.category}: ${flag.description}`,
+          relatedEntityType: 'rfp',
+          relatedEntityId: rfp.id,
+        });
+      } catch (error) {
+        const errorMessage = toErrorMessage(error);
+        console.error(
+          `Failed to create notification for risk flag (RFP: ${rfp.id}, category: ${flag.category}, description: ${flag.description}):`,
+          errorMessage
+        );
+        // Record failure but continue to next flag - don't let one failure stop others
+        failures.push({
+          flag: {
+            category: flag.category,
+            description: flag.description,
+            type: flag.type,
+          },
+          error: errorMessage,
+        });
+      }
     }
+
+    // Log summary if there were failures
+    if (failures.length > 0) {
+      console.warn(
+        `⚠️ Failed to create ${failures.length} of ${highRiskFlags.length} risk notifications for RFP ${rfp.id}`
+      );
+    }
+
+    return failures;
   }
 }
 

@@ -56,12 +56,20 @@ export interface DocumentAnalysisResult {
   estimatedCompletionTime: string;
 }
 
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
+
 export class DocumentIntelligenceService {
   private openaiClient: OpenAI;
 
   constructor() {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error(
+        'OPENAI_API_KEY environment variable is required for DocumentIntelligenceService'
+      );
+    }
     this.openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey,
     });
   }
 
@@ -194,7 +202,7 @@ Focus on iByte Enterprises LLC - a woman-owned construction/technology company w
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',
@@ -293,7 +301,7 @@ Return JSON:
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',

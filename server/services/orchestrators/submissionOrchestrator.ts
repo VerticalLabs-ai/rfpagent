@@ -1268,6 +1268,7 @@ export class SubmissionOrchestrator {
 
         if (allCompleted) {
           clearInterval(checkInterval);
+          clearTimeout(timeoutId); // Clear timeout when work completes
           await this.handlePhaseCompletion(
             pipeline.pipelineId,
             itemIds,
@@ -1280,11 +1281,25 @@ export class SubmissionOrchestrator {
           error
         );
         clearInterval(checkInterval);
+        clearTimeout(timeoutId); // Clear timeout on error
       }
     }, 5000); // Check every 5 seconds
 
-    // Set timeout for phase
-    setTimeout(() => {
+    // Set timeout for phase and store the timeout ID
+    const timeoutId = setTimeout(() => {
+      // Guard: Check if pipeline is still in the same phase and pending
+      const currentPipeline = this.activePipelines.get(pipeline.pipelineId);
+      if (!currentPipeline ||
+          currentPipeline.currentPhase !== pipeline.currentPhase ||
+          currentPipeline.status === 'completed' ||
+          currentPipeline.status === 'failed') {
+        console.log(
+          `⏭️ Skipping timeout for pipeline ${pipeline.pipelineId} - phase already completed or pipeline status changed`
+        );
+        clearInterval(checkInterval);
+        return;
+      }
+
       clearInterval(checkInterval);
       this.handlePipelineFailure(
         pipeline,

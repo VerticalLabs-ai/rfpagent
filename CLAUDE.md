@@ -104,6 +104,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
    - Follow naming: `kebab-case.md`
 
 3. **Documentation folder structure:**
+
    ```
    docs/
    ├── README.md              # Documentation index
@@ -133,6 +134,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Quick Reference
 
 **Where does my documentation go?**
+
 - AI models, agent architecture → `/docs/technical/`
 - Testing procedures, verification → `/docs/testing/`
 - Deployment, infrastructure → `/docs/deployment/`
@@ -145,14 +147,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## AI Model Configuration
 
-**IMPORTANT: Current Real Models (as of January 2025)**
+**IMPORTANT: Current Real Models (as of October 2025)**
 
 - **GPT-5**: Latest OpenAI model (released August 2025)
   - Model ID: `gpt-5`
-  - Announcement: https://openai.com/index/introducing-gpt-5/
+  - Announcement: <https://openai.com/index/introducing-gpt-5/>
 
 - **Claude Sonnet 4.5**: Latest Anthropic model (released September 2025)
-  - Model ID: `claude-sonnet-4-5-20250929`
-  - Announcement: https://www.anthropic.com/news/claude-sonnet-4-5
+  - Model ID: `claude-sonnet-4-5`
+  - Announcement: <https://www.anthropic.com/news/claude-sonnet-4-5>
 
 **See `/docs/technical/models-reference.md` for complete model documentation**

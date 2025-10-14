@@ -63,6 +63,7 @@ export interface PortalStrategy {
     successRate: number;
     averageTime: number;
     errorCount: number;
+    attempts: number;
     lastUpdated: Date;
   };
   adaptations: Array<{
@@ -414,6 +415,7 @@ export class SelfImprovingLearningService {
         successRate: outcome.outcome.success ? 1.0 : 0.0,
         averageTime: outcome.outcome.metrics?.duration || 0,
         errorCount: outcome.outcome.success ? 0 : 1,
+        attempts: 1,
         lastUpdated: new Date(),
       },
       adaptations: [],
@@ -1049,12 +1051,13 @@ export class SelfImprovingLearningService {
     newStrategy: PortalStrategy,
     success: boolean
   ): PortalStrategy {
-    // Update performance metrics
-    const totalAttempts =
-      existing.performance.errorCount + existing.performance.successRate;
-    const newSuccessRate =
-      (existing.performance.successRate * totalAttempts + (success ? 1 : 0)) /
-      (totalAttempts + 1);
+    // Update performance metrics using actual attempts count
+    const previousAttempts = existing.performance.attempts || 1;
+    const previousSuccesses = Math.round(
+      existing.performance.successRate * previousAttempts
+    );
+    const totalAttempts = previousAttempts + 1;
+    const newSuccessRate = (previousSuccesses + (success ? 1 : 0)) / totalAttempts;
 
     return {
       ...existing,
@@ -1065,6 +1068,7 @@ export class SelfImprovingLearningService {
             newStrategy.performance.averageTime) /
           2,
         errorCount: existing.performance.errorCount + (success ? 0 : 1),
+        attempts: totalAttempts,
         lastUpdated: new Date(),
       },
       strategy: {

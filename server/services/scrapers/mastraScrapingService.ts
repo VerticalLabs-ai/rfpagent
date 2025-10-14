@@ -1076,6 +1076,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           }
         }
 
+        // Ensure portalType is never undefined to prevent toLowerCase() errors
+        portalType = portalType || 'generic';
+
         console.log(`🔍 Portal type detected: ${portalType} for ${url}`);
         const filterMessage = searchFilter
           ? ` with search filter: "${searchFilter}"`

@@ -2,6 +2,35 @@ import { storage } from '../../storage';
 import { enhancedSaflaLearningEngine } from '../learning/saflaLearningEngine.enhanced';
 
 /**
+ * Prediction Log for tracking AI predictions and outcomes
+ *
+ * To fully enable prediction tracking, add this table to your schema:
+ *
+ * CREATE TABLE prediction_logs (
+ *   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+ *   timestamp TIMESTAMP NOT NULL DEFAULT NOW(),
+ *   prediction_type VARCHAR(50) NOT NULL, -- 'winProbability', 'cost', 'timeline', 'risk'
+ *   rfp_id UUID REFERENCES rfps(id),
+ *   predicted_value DECIMAL NOT NULL,
+ *   actual_value DECIMAL, -- NULL until outcome is known
+ *   metadata JSONB,
+ *   created_at TIMESTAMP DEFAULT NOW(),
+ *   updated_at TIMESTAMP DEFAULT NOW()
+ * );
+ *
+ * And add storage.getPredictionLogs() method to fetch recent/completed logs.
+ */
+export interface PredictionLog {
+  id: string;
+  timestamp: Date;
+  predictionType: 'winProbability' | 'cost' | 'timeline' | 'risk';
+  rfpId?: string;
+  predictedValue: number;
+  actualValue?: number | null;
+  metadata?: Record<string, any>;
+}
+
+/**
  * Intelligence Benchmarking System
  *
  * Comprehensive benchmarks to measure agent intelligence and learning effectiveness:
@@ -814,31 +843,65 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
   }
 
   private async getRecentPredictions(): Promise<any> {
-    // TODO: Implement prediction tracking table to store:
-    // - Win probability predictions and actual outcomes
-    // - Cost estimates and actual costs
-    // - Timeline predictions and actual durations
-    // - Risk assessments and actual risk events
-    //
-    // For now, return empty data until prediction tracking is implemented
-    return {
-      winProbability: {
-        actual: [],
-        predicted: [],
-      },
-      cost: {
-        actual: [],
-        predicted: [],
-      },
-      timeline: {
-        actual: [],
-        predicted: [],
-      },
-      risk: {
-        actual: [],
-        predicted: [],
-      },
-    };
+    try {
+      // Attempt to fetch prediction logs from persistent storage
+      const predictionLogs = await storage.getPredictionLogs?.();
+
+      if (!predictionLogs || predictionLogs.length === 0) {
+        // No prediction logs available
+        return {
+          winProbability: { actual: [], predicted: [] },
+          cost: { actual: [], predicted: [] },
+          timeline: { actual: [], predicted: [] },
+          risk: { actual: [], predicted: [] },
+        };
+      }
+
+      // Group logs by prediction type
+      const result: any = {
+        winProbability: { actual: [], predicted: [] },
+        cost: { actual: [], predicted: [] },
+        timeline: { actual: [], predicted: [] },
+        risk: { actual: [], predicted: [] },
+      };
+
+      for (const log of predictionLogs) {
+        // Only include logs that have both predicted and actual values
+        if (
+          log.predictedValue != null &&
+          log.actualValue != null &&
+          log.predictionType
+        ) {
+          const type = log.predictionType;
+
+          if (type === 'winProbability' && result.winProbability) {
+            result.winProbability.predicted.push(log.predictedValue);
+            result.winProbability.actual.push(log.actualValue);
+          } else if (type === 'cost' && result.cost) {
+            result.cost.predicted.push(log.predictedValue);
+            result.cost.actual.push(log.actualValue);
+          } else if (type === 'timeline' && result.timeline) {
+            result.timeline.predicted.push(log.predictedValue);
+            result.timeline.actual.push(log.actualValue);
+          } else if (type === 'risk' && result.risk) {
+            result.risk.predicted.push(log.predictedValue);
+            result.risk.actual.push(log.actualValue);
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      // Log error but don't throw - fall back to empty structure
+      console.error('Error fetching prediction logs:', error);
+
+      return {
+        winProbability: { actual: [], predicted: [] },
+        cost: { actual: [], predicted: [] },
+        timeline: { actual: [], predicted: [] },
+        risk: { actual: [], predicted: [] },
+      };
+    }
   }
 
   private calculateMAE(actual: number[], predicted: number[]): number {
@@ -901,8 +964,68 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
   }
 
   private calculateCalibration(actual: number[], predicted: number[]): number {
-    // Simple calibration check - would use proper calibration curve
-    return 0.75;
+    // Validate inputs
+    if (
+      actual.length !== predicted.length ||
+      actual.length === 0 ||
+      predicted.length === 0
+    ) {
+      return 0.5; // Return neutral score for invalid input
+    }
+
+    // Expected Calibration Error (ECE) calculation with binning
+    const numBins = 10;
+    const binSize = 1.0 / numBins;
+
+    // Initialize bins
+    const bins: Array<{
+      predictedSum: number;
+      actualSum: number;
+      count: number;
+    }> = Array.from({ length: numBins }, () => ({
+      predictedSum: 0,
+      actualSum: 0,
+      count: 0,
+    }));
+
+    // Assign predictions to bins
+    for (let i = 0; i < predicted.length; i++) {
+      const pred = Math.max(0, Math.min(1, predicted[i])); // Clamp to [0, 1]
+      const act = actual[i];
+
+      // Determine which bin this prediction falls into
+      const binIndex = Math.min(Math.floor(pred / binSize), numBins - 1);
+
+      bins[binIndex].predictedSum += pred;
+      bins[binIndex].actualSum += act;
+      bins[binIndex].count += 1;
+    }
+
+    // Calculate weighted ECE
+    let totalError = 0;
+    let totalCount = 0;
+
+    for (const bin of bins) {
+      if (bin.count > 0) {
+        const avgPredicted = bin.predictedSum / bin.count;
+        const avgActual = bin.actualSum / bin.count;
+
+        // Weighted by the number of samples in this bin
+        const binError = Math.abs(avgPredicted - avgActual) * bin.count;
+
+        totalError += binError;
+        totalCount += bin.count;
+      }
+    }
+
+    // Compute ECE
+    const ece = totalCount > 0 ? totalError / totalCount : 0.5;
+
+    // Convert ECE to calibration score (lower ECE = higher score)
+    // ECE ranges from 0 (perfect) to 1 (worst)
+    const calibrationScore = Math.max(0, 1 - ece);
+
+    return calibrationScore;
   }
 
   private async getRecentDecisions(): Promise<{

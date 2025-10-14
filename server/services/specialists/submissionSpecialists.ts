@@ -416,8 +416,14 @@ export class PortalAuthenticationSpecialist {
 
   private async handleMFA(
     stagehand: any,
-    portal: Partial<Portal>
+    portal: Partial<Portal>,
+    options: {
+      mfaTimeoutMs?: number;
+      mfaCallback?: () => Promise<void>;
+    } = {}
   ): Promise<any> {
+    const { mfaTimeoutMs = 60000, mfaCallback } = options; // Default 60s instead of hardcoded 30s
+
     try {
       // Check for common MFA elements
       const mfaSelectors = [
@@ -435,6 +441,7 @@ export class PortalAuthenticationSpecialist {
           const element = stagehand.page.locator(selector).first();
           if (await element.isVisible({ timeout: 2000 })) {
             mfaDetected = true;
+            console.log(`🔐 MFA detected via selector: ${selector}`);
             break;
           }
         } catch (_e) {
@@ -443,17 +450,82 @@ export class PortalAuthenticationSpecialist {
       }
 
       if (mfaDetected) {
-        console.log('🔐 MFA detected - manual intervention may be required');
+        console.log(
+          `🔐 MFA detected - waiting up to ${mfaTimeoutMs}ms for completion`
+        );
 
-        // For now, we'll wait and hope it's bypassed or handled
-        // In future, integrate with MFA providers or wait for manual completion
-        await stagehand.page.waitForTimeout(30000); // Wait 30 seconds for MFA completion
+        // Execute callback if provided (e.g., send notification)
+        if (mfaCallback) {
+          try {
+            await mfaCallback();
+          } catch (callbackError) {
+            console.error('MFA callback failed:', callbackError);
+          }
+        }
+
+        // Poll for MFA completion indicators
+        const startTime = Date.now();
+        const pollInterval = 2000; // Check every 2 seconds
+        let mfaCompleted = false;
+
+        while (Date.now() - startTime < mfaTimeoutMs) {
+          // Check if we've navigated away from MFA page
+          const currentUrl = stagehand.page.url();
+          const isMfaPage =
+            currentUrl.includes('mfa') ||
+            currentUrl.includes('verify') ||
+            currentUrl.includes('2fa');
+
+          if (!isMfaPage) {
+            console.log('✅ Navigated away from MFA page');
+            mfaCompleted = true;
+            break;
+          }
+
+          // Check for success indicators
+          const successSelectors = [
+            'text=/dashboard/i',
+            'text=/welcome/i',
+            'text=/logout/i',
+            'text=/sign out/i',
+            '.dashboard',
+            '[data-testid="user-menu"]',
+          ];
+
+          for (const selector of successSelectors) {
+            try {
+              const element = stagehand.page.locator(selector).first();
+              if (await element.isVisible({ timeout: 1000 })) {
+                console.log(`✅ MFA completion detected via: ${selector}`);
+                mfaCompleted = true;
+                break;
+              }
+            } catch (_e) {
+              // Ignore - continue checking
+            }
+          }
+
+          if (mfaCompleted) break;
+
+          // Wait before next poll
+          await stagehand.page.waitForTimeout(pollInterval);
+        }
+
+        if (!mfaCompleted) {
+          console.warn(
+            `⚠️ MFA timeout reached (${mfaTimeoutMs}ms) - completion uncertain`
+          );
+        }
+
+        return { mfaDetected: true, mfaCompleted };
       }
 
-      return { mfaDetected };
+      return { mfaDetected: false, mfaCompleted: true };
     } catch (error) {
+      console.error('Error handling MFA:', error);
       return {
         mfaDetected: false,
+        mfaCompleted: false,
         error: error instanceof Error ? error.message : String(error),
       };
     }

@@ -7,6 +7,22 @@ import { agentMemoryService } from '../agents/agentMemoryService';
 import type { WorkItem, Portal, AgentRegistry } from '@shared/schema';
 import type { DiscoveredRFP } from './portal-monitoring-service';
 
+/**
+ * Task timeout configuration (in milliseconds)
+ * Maps task types to their expected completion times
+ */
+const TASK_TIMEOUTS: Record<string, number> = {
+  portal_authentication: 5 * 60 * 1000,    // 5 minutes
+  portal_scanning: 20 * 60 * 1000,         // 20 minutes
+  rfp_extraction: 30 * 60 * 1000,          // 30 minutes
+  portal_monitoring: 10 * 60 * 1000,       // 10 minutes
+};
+
+/**
+ * Default timeout for task types not explicitly configured (in milliseconds)
+ */
+const DEFAULT_TASK_TIMEOUT = 15 * 60 * 1000; // 15 minutes
+
 export interface SpecialistAssignment {
   workItemId: string;
   agentId: string;
@@ -844,12 +860,15 @@ export class DiscoveryManager {
     agentId: string,
     taskType: string
   ): Promise<void> {
+    // Look up task-specific timeout, fall back to default
+    const timeoutMs = TASK_TIMEOUTS[taskType] ?? DEFAULT_TASK_TIMEOUT;
+
     const assignment: SpecialistAssignment = {
       workItemId,
       agentId,
       taskType,
       assignedAt: new Date(),
-      expectedCompletion: new Date(Date.now() + 15 * 60 * 1000), // 15 minutes from now
+      expectedCompletion: new Date(Date.now() + timeoutMs),
     };
 
     const existingAssignments =

@@ -7,6 +7,7 @@ import {
 } from '../processing/documentIntelligenceService';
 import { AIProposalService } from './ai-proposal-service';
 import { submissionMaterialsService } from '../processing/submissionMaterialsService';
+import { createDefaultCompanyMapping } from '../../config/defaultCompanyMapping';
 import type {
   RFP,
   CompanyProfile,
@@ -499,93 +500,11 @@ export class EnhancedProposalService {
           rfpText
         );
       } else {
-        // Create a default company mapping if no profile provided
-        const defaultMapping = {
-          profile: {
-            id: 'default',
-            companyName: 'iByte Enterprises LLC',
-            dba: null,
-            businessAddress: '123 Main St, City, State 12345',
-            mailingAddress: '123 Main St, City, State 12345',
-            phoneNumber: '(555) 123-4567',
-            emailAddress: 'contact@ibyte.com',
-            website: 'https://ibyte.com',
-            federalTaxId: '12-3456789',
-            dunsNumber: null,
-            cageCode: null,
-            primaryBusinessCategory: 'Technology Services',
-            yearEstablished: 2020,
-            numberOfEmployees: 10,
-            annualRevenue: 1000000,
-            businessDescription:
-              'Leading provider of technology and consulting services',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          },
-          relevantCertifications: [
-            {
-              id: 'cert1',
-              companyProfileId: 'default',
-              certificationType: 'Woman-Owned Business Enterprise',
-              certificationNumber: 'WBENC-12345',
-              certifyingAgency: 'WBENC',
-              issueDate: new Date('2024-01-01'),
-              expirationDate: new Date('2026-01-01'),
-              isActive: true,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          ],
-          applicableInsurance: [
-            {
-              id: 'ins1',
-              companyProfileId: 'default',
-              insuranceType: 'General Liability',
-              carrier: 'Insurance Company',
-              policyNumber: 'GL-123456',
-              coverageAmount: 2000000,
-              effectiveDate: new Date('2024-01-01'),
-              expirationDate: new Date('2025-01-01'),
-              isActive: true,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-          ],
-          assignedContacts: [
-            {
-              role: 'Primary Contact',
-              contact: {
-                id: 'contact1',
-                companyProfileId: 'default',
-                firstName: 'Jane',
-                lastName: 'Doe',
-                title: 'CEO',
-                department: 'Executive',
-                phoneNumber: '(555) 123-4567',
-                emailAddress: 'jane.doe@ibyte.com',
-                isPrimary: true,
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              },
-              reason: 'Primary business contact',
-            },
-          ],
-          businessClassifications: {
-            naics: ['541511', '541512'],
-            nigp: ['925-20', '960-50'],
-            categories: ['Technology Services', 'Consulting'],
-          },
-          socioEconomicQualifications: {
-            smallBusiness: true,
-            womanOwned: true,
-            minorityOwned: false,
-            veteranOwned: false,
-            hubZone: false,
-          },
-        };
+        // Use shared default company mapping from config
+        const defaultMapping = createDefaultCompanyMapping();
         proposalContent = await this.aiProposalService.generateProposalContent(
           aiAnalysis,
-          defaultMapping as any,
+          defaultMapping,
           rfpText
         );
       }

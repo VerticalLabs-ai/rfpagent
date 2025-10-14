@@ -99,6 +99,8 @@ export interface SubmissionMaterialsResult {
   error?: string;
 }
 
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
+
 export class SubmissionMaterialsService {
   private openai: OpenAI;
   // private mastraService = getMastraScrapingService()
@@ -535,7 +537,7 @@ export class SubmissionMaterialsService {
 
     // Use AI to analyze RFP for pricing requirements
     const pricingAnalysis = await this.openai.chat.completions.create({
-      model: 'gpt-5',
+      model: OPENAI_MODEL,
       messages: [
         {
           role: 'system',
@@ -966,7 +968,7 @@ ${content.riskManagement}
 
     try {
       const proposalResponse = await this.openai.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',

@@ -3,6 +3,10 @@ import { aiProposalService } from '../proposals/ai-proposal-service';
 import { enhancedProposalService } from '../proposals/enhancedProposalService';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import { AIService } from '../core/aiService';
+import {
+  createDefaultCompanyMapping,
+  type DefaultCompanyMappingConfig,
+} from '../../config/defaultCompanyMapping';
 import type { WorkItem, RFP, CompanyProfile } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
@@ -244,17 +248,8 @@ export class ContentGenerationSpecialist {
         executiveSummary = proposalContent.executiveSummary;
         companyOverview = proposalContent.companyOverview;
       } else {
-        // Generate with default company information
-        const defaultMapping = {
-          businessType: ['technology', 'consulting'],
-          certifications: ['WBENC', 'HUB'],
-          companyInfo: {
-            name: 'Professional Services Company',
-            description:
-              'Leading provider of technology and consulting services',
-          },
-        } as any; // Type assertion for simplified default case
-
+        // Generate with default company information using shared config
+        const defaultMapping = createDefaultCompanyMapping();
         const rfpAnalysis = await aiProposalService.analyzeRFPDocument(rfpText);
         const proposalContent = await aiProposalService.generateProposalContent(
           rfpAnalysis,
@@ -337,11 +332,83 @@ export class ContentGenerationSpecialist {
         .map(doc => doc.extractedText)
         .join('\n\n');
 
-      // Generate technical content using AI service
+      // Validate inputs before AI call
+      if (!documentContext || documentContext.trim().length === 0) {
+        console.warn(
+          `No document context available for RFP ${rfpId}, using defaults`
+        );
+      }
+
+      // Prepare requirement categories and compliance items
+      const requirementCategories =
+        rfp.requirements && typeof rfp.requirements === 'object'
+          ? rfp.requirements
+          : {};
+      const complianceItems = Array.isArray(rfp.complianceItems)
+        ? rfp.complianceItems
+        : [];
+
+      // Prepare company data (use default if not provided)
+      let companyData: DefaultCompanyMappingConfig = createDefaultCompanyMapping();
+      if (companyProfileId) {
+        const companyProfile =
+          await storage.getCompanyProfile(companyProfileId);
+        if (companyProfile) {
+          const certifications = await storage.getCompanyCertifications(
+            companyProfile.id
+          );
+          const insurance = await storage.getCompanyInsurance(
+            companyProfile.id
+          );
+          const contacts = await storage.getCompanyContacts(companyProfile.id);
+
+          // Analyze RFP to map company data
+          const rfpText = `${rfp.title}\n${rfp.description || ''}\nAgency: ${rfp.agency}`;
+          const rfpAnalysis =
+            await aiProposalService.analyzeRFPDocument(rfpText);
+          companyData = await aiProposalService.mapCompanyDataToRequirements(
+            rfpAnalysis,
+            companyProfile,
+            certifications,
+            insurance,
+            contacts
+          );
+        }
+      }
+
+      // Build a proper analysis object with validated inputs that conforms to RFPAnalysisResult
+      const analysisForGeneration = {
+        requirements: requirementCategories as {
+          businessType?: string[];
+          certifications?: string[];
+          insurance?: { types: string[]; minimumCoverage?: number };
+          contactRoles?: string[];
+          businessSize?: 'small' | 'large' | 'any';
+          socioEconomicPreferences?: string[];
+          geographicRequirements?: string[];
+          experienceRequirements?: string[];
+        },
+        complianceItems: complianceItems.map(item => ({
+          item: typeof item === 'string' ? item : (item as any).item || 'Unknown requirement',
+          category: (item as any).category || 'general',
+          required: (item as any).required !== false,
+          description: (item as any).description || '',
+        })),
+        riskFlags: [] as Array<{
+          type: 'deadline' | 'complexity' | 'requirements' | 'financial';
+          severity: 'low' | 'medium' | 'high';
+          description: string;
+        }>,
+        keyDates: {
+          deadline: rfp.deadline ? new Date(rfp.deadline) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+        },
+      };
+
+      // Generate technical content using AI service with validated inputs
       const technicalContent = await aiProposalService.generateProposalContent(
-        { requirementCategories: {}, complianceItems: [] } as any,
-        {} as any,
-        documentContext
+        analysisForGeneration,
+        companyData,
+        documentContext || 'No additional context available'
       );
 
       const technicalApproach =

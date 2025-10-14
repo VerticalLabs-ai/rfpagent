@@ -131,7 +131,7 @@ export class PersistentMemoryEngine {
       const sessionContext: CrossSessionContext = {
         sessionId: `session_${Date.now()}_${Math.random()
           .toString(36)
-          .substr(2, 9)}`,
+          .substring(2, 11)}`,
         userId: sessionRequest.userId,
         agentId: sessionRequest.agentId,
         taskType: sessionRequest.taskType,
@@ -164,10 +164,11 @@ export class PersistentMemoryEngine {
       outcomes?: any[];
       learningPoints?: any[];
       context?: any;
-    }
+    },
+    agentId?: string
   ): Promise<void> {
     try {
-      const sessionContext = await this.getSessionContext(sessionId);
+      const sessionContext = await this.getSessionContext(sessionId, agentId);
       if (!sessionContext) {
         console.warn(`Session context not found: ${sessionId}`);
         return;
@@ -201,9 +202,9 @@ export class PersistentMemoryEngine {
   /**
    * Finalize session and extract learnings for future sessions
    */
-  async finalizeSession(sessionId: string): Promise<void> {
+  async finalizeSession(sessionId: string, agentId?: string): Promise<void> {
     try {
-      const sessionContext = await this.getSessionContext(sessionId);
+      const sessionContext = await this.getSessionContext(sessionId, agentId);
       if (!sessionContext) {
         console.warn(`Session context not found: ${sessionId}`);
         return;
@@ -596,7 +597,7 @@ export class PersistentMemoryEngine {
     const patternContent = this.extractPatternContent(memoryGroup);
 
     return {
-      id: `pattern_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `pattern_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       type: this.determinePatternType(memoryGroup),
       pattern: this.generatePatternDescription(patternContent),
       confidence: this.calculatePatternConfidence(memoryGroup),
@@ -828,10 +829,17 @@ export class PersistentMemoryEngine {
   }
 
   private async getSessionContext(
-    sessionId: string
+    sessionId: string,
+    agentId?: string
   ): Promise<CrossSessionContext | null> {
+    // agentId must be provided to correctly retrieve session context
+    if (!agentId) {
+      console.error(`getSessionContext called without agentId for session ${sessionId}. agentId is required for correct memory retrieval.`);
+      return null;
+    }
+
     const memory = await agentMemoryService.getMemoryByContext(
-      'session_manager',
+      agentId,
       `session_${sessionId}`
     );
 
@@ -898,26 +906,96 @@ export class PersistentMemoryEngine {
     }
   }
 
+  /**
+   * TODO: Implement getTotalMemoryCount - Placeholder implementation
+   *
+   * Expected behavior:
+   * - Query the database to count all memory records across all agents
+   * - Should aggregate from agentMemory table: SELECT COUNT(*) FROM agent_memory
+   * - Filter by non-archived memories (where archived != true)
+   * - Return the actual count instead of hardcoded value
+   *
+   * Inputs: None
+   * Outputs: Promise<number> - Total count of active memories in storage
+   *
+   * Related: Used by compressMemories() to determine if compression is needed
+   */
   private async getTotalMemoryCount(): Promise<number> {
-    // This would query the storage for total memory count
-    return 10000; // Placeholder
+    // TODO: Query storage.getTotalMemoryCount() or db.select({ count: count() }).from(agentMemory)
+    return 10000; // Placeholder - replace with actual database query
   }
 
+  /**
+   * TODO: Implement mergeSimilarMemories - Placeholder implementation
+   *
+   * Expected behavior:
+   * - Find pairs/groups of memories with similarity > threshold (e.g., 0.85)
+   * - Use calculateMemorySimilarity() method to compute similarity scores
+   * - Merge similar memories by:
+   *   1. Combining content and metadata from similar memories
+   *   2. Keeping the memory with higher importance
+   *   3. Updating associatedMemories references
+   *   4. Marking merged memories as archived
+   * - Continue until targetCount memories are merged or no more similar pairs exist
+   *
+   * Inputs: targetCount - number of memories to merge/compress
+   * Outputs: Promise<number> - Actual number of memories merged
+   *
+   * Related: Called by compressMemories() when memory count exceeds compression ratio
+   */
   private async mergeSimilarMemories(targetCount: number): Promise<number> {
-    // Implementation would merge similar memories
-    return Math.floor(targetCount * 0.8); // Placeholder
+    // TODO: Implement similarity-based memory merging with calculateMemorySimilarity()
+    return Math.floor(targetCount * 0.8); // Placeholder - implement actual merging logic
   }
 
+  /**
+   * TODO: Implement applyMemoryDecay - Placeholder implementation
+   *
+   * Expected behavior:
+   * - Apply decay factor (this.memoryDecayRate = 0.95) to old memories
+   * - Query memories older than a threshold (e.g., 30 days)
+   * - For each old memory:
+   *   - Multiply importance by decay rate: newImportance = importance * 0.95
+   *   - Update memory record with new importance value
+   *   - Archive memories where importance drops below threshold (e.g., < 2)
+   * - Should preserve recently accessed memories (check lastAccessed field)
+   *
+   * Inputs: None (uses this.memoryDecayRate)
+   * Outputs: Promise<void>
+   *
+   * Related: Called by compressMemories() to gradually reduce importance of stale memories
+   */
   private async applyMemoryDecay(): Promise<void> {
-    // Implementation would reduce importance of old memories
-    console.log('Applying memory decay...');
+    // TODO: Query old memories and update importance *= this.memoryDecayRate
+    // TODO: Archive memories with importance < threshold
+    console.log('Applying memory decay...'); // Placeholder - implement decay algorithm
   }
 
+  /**
+   * TODO: Implement updateGlobalPatterns - Placeholder implementation
+   *
+   * Expected behavior:
+   * - Aggregate patterns extracted during consolidation across all agents
+   * - Update global pattern statistics:
+   *   - Most frequent pattern types (episodic, semantic, procedural)
+   *   - Common pattern contexts and domains
+   *   - Pattern success correlations (which patterns lead to successful outcomes)
+   * - Store aggregated stats in agentKnowledgeBase with domain='global'
+   * - Identify cross-agent patterns that can be shared
+   * - Update knowledge graph with new global pattern nodes and edges
+   *
+   * Inputs: consolidation - MemoryConsolidation object with patternsExtracted count
+   * Outputs: Promise<void>
+   *
+   * Related: Called by performMemoryConsolidation() to update system-wide learning patterns
+   */
   private async updateGlobalPatterns(
     consolidation: MemoryConsolidation
   ): Promise<void> {
-    // Implementation would update global learning patterns
-    console.log('Updating global patterns...');
+    // TODO: Aggregate consolidation.patternsExtracted stats across agents
+    // TODO: Update global knowledge base with cross-agent patterns
+    // TODO: Store in agentKnowledgeBase with agentId='global' or domain='system'
+    console.log('Updating global patterns...'); // Placeholder - implement pattern aggregation
   }
 
   private async storeConsolidationRecord(
@@ -1050,7 +1128,7 @@ export class PersistentMemoryEngine {
     }
 
     return {
-      id: `cluster_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `cluster_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       name: `Cluster: ${startNode.label}`,
       nodes: clusterNodes,
       cohesion: this.calculateClusterCohesion(clusterNodes, edges),

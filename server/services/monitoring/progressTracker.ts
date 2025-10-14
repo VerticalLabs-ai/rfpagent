@@ -197,12 +197,6 @@ class ProgressTracker extends EventEmitter {
       console.log(`📡 No existing progress found for session: ${sessionId}`);
     }
 
-    // Handle client disconnect
-    res.on('close', () => {
-      console.log(`📡 SSE client disconnected for session: ${sessionId}`);
-      this.removeSSEClient(sessionId, res);
-    });
-
     // Keep connection alive with periodic heartbeat
     const heartbeat = setInterval(() => {
       try {
@@ -211,16 +205,18 @@ class ProgressTracker extends EventEmitter {
         );
       } catch (error) {
         console.log(
-          `📡 Heartbeat failed for session ${sessionId}, removing client`
+          `📡 Heartbeat failed for session ${sessionId}, client will be removed on close`
         );
+        // Don't remove here - let the 'close' handler do it
         clearInterval(heartbeat);
-        this.removeSSEClient(sessionId, res);
       }
     }, 30000); // Send heartbeat every 30 seconds
 
-    // Clean up heartbeat when client disconnects
+    // Handle client disconnect - single consolidated handler
     res.on('close', () => {
+      console.log(`📡 SSE client disconnected for session: ${sessionId}`);
       clearInterval(heartbeat);
+      this.removeSSEClient(sessionId, res);
     });
   }
 

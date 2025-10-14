@@ -392,49 +392,53 @@ export class RetryBackoffDlqService {
       // Import storage dynamically to avoid circular imports
       const { storage } = await import('../storage');
 
-      const dlqEntry: DLQEntry = {
-        id: `dlq_${workItemId}_${Date.now()}`,
+      const lastFailureAt = new Date();
+      const enrichedMetadata = {
+        ...metadata,
+        movedToDLQAt: lastFailureAt.toISOString(),
+        retryHistory: this.activeRetries.get(workItemId) || [],
+      };
+
+      // Store in database and capture the database-assigned ID
+      const createdEntry = await storage.createDeadLetterQueueEntry({
         originalWorkItemId: workItemId,
         workItemData,
         failureReason,
         failureCount,
-        lastFailureAt: new Date(),
-        canBeReprocessed,
-        escalated: false,
-        metadata: {
-          ...metadata,
-          movedToDLQAt: new Date().toISOString(),
-          retryHistory: this.activeRetries.get(workItemId) || [],
-        },
-      };
-
-      // Store in database
-      await storage.createDeadLetterQueueEntry({
-        originalWorkItemId: workItemId,
-        workItemData: dlqEntry.workItemData,
-        failureReason,
-        failureCount,
-        lastFailureAt: new Date(),
+        lastFailureAt,
         canBeReprocessed,
         reprocessAttempts: 0,
         maxReprocessAttempts: canBeReprocessed ? 5 : 0,
-        metadata: dlqEntry.metadata,
+        metadata: enrichedMetadata,
       });
 
-      // Store in memory for quick access
-      this.dlqEntries.set(dlqEntry.id, dlqEntry);
+      // Create in-memory DLQ entry using the database-assigned ID
+      const dlqEntry: DLQEntry = {
+        id: createdEntry.id, // Use database-assigned ID
+        originalWorkItemId: workItemId,
+        workItemData,
+        failureReason,
+        failureCount,
+        lastFailureAt,
+        canBeReprocessed,
+        escalated: false,
+        metadata: enrichedMetadata,
+      };
+
+      // Store in memory for quick access using the database ID
+      this.dlqEntries.set(createdEntry.id, dlqEntry);
 
       // Clean up retry history
       this.activeRetries.delete(workItemId);
 
       console.log(
-        `💀 Moved work item ${workItemId} to Dead Letter Queue: ${failureReason}`
+        `💀 Moved work item ${workItemId} to Dead Letter Queue (ID: ${createdEntry.id}): ${failureReason}`
       );
 
       // Check if this requires immediate escalation
       if (failureCount >= 10 || this.isHighPriorityFailure(failureReason)) {
         await this.escalateDLQEntry(
-          dlqEntry.id,
+          createdEntry.id,
           'High failure count or critical error'
         );
       }

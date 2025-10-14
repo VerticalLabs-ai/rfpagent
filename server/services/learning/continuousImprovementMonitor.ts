@@ -206,8 +206,12 @@ export class ContinuousImprovementMonitor {
       const healthMetrics = await db
         .select({
           component: agentPerformanceMetrics.agentId,
-          avgSuccess: avg(agentPerformanceMetrics.metricValue),
-          avgEfficiency: avg(agentPerformanceMetrics.metricValue),
+          avgSuccess: avg(
+            sql`CASE WHEN ${agentPerformanceMetrics.metricType} = 'task_completion' THEN ${agentPerformanceMetrics.metricValue} END`
+          ),
+          avgEfficiency: avg(
+            sql`CASE WHEN ${agentPerformanceMetrics.metricType} = 'efficiency' THEN ${agentPerformanceMetrics.metricValue} END`
+          ),
           errorCount: count(agentPerformanceMetrics.id),
         })
         .from(agentPerformanceMetrics)
@@ -215,7 +219,7 @@ export class ContinuousImprovementMonitor {
           and(
             gte(agentPerformanceMetrics.recordedAt, startDate),
             lte(agentPerformanceMetrics.recordedAt, endDate),
-            eq(agentPerformanceMetrics.metricType, 'task_completion')
+            sql`${agentPerformanceMetrics.metricType} IN ('task_completion', 'efficiency')`
           )
         )
         .groupBy(agentPerformanceMetrics.agentId);
@@ -461,8 +465,12 @@ export class ContinuousImprovementMonitor {
       const performanceGaps = await db
         .select({
           component: agentPerformanceMetrics.agentId,
-          avgSuccess: avg(agentPerformanceMetrics.metricValue),
-          avgEfficiency: avg(agentPerformanceMetrics.metricValue),
+          avgSuccess: avg(
+            sql`CASE WHEN ${agentPerformanceMetrics.metricType} = 'task_completion' THEN ${agentPerformanceMetrics.metricValue} END`
+          ),
+          avgEfficiency: avg(
+            sql`CASE WHEN ${agentPerformanceMetrics.metricType} = 'efficiency' THEN ${agentPerformanceMetrics.metricValue} END`
+          ),
         })
         .from(agentPerformanceMetrics)
         .where(
@@ -471,11 +479,11 @@ export class ContinuousImprovementMonitor {
               agentPerformanceMetrics.recordedAt,
               new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
             ),
-            eq(agentPerformanceMetrics.metricType, 'task_completion')
+            sql`${agentPerformanceMetrics.metricType} IN ('task_completion', 'efficiency')`
           )
         )
         .groupBy(agentPerformanceMetrics.agentId)
-        .having(sql`AVG(${agentPerformanceMetrics.metricValue}) < 0.8`);
+        .having(sql`AVG(CASE WHEN ${agentPerformanceMetrics.metricType} = 'task_completion' THEN ${agentPerformanceMetrics.metricValue} END) < 0.8`);
 
       for (const gap of performanceGaps) {
         const successRate = Number(gap.avgSuccess) || 0;
@@ -857,11 +865,20 @@ export class ContinuousImprovementMonitor {
           currentDashboard,
           metric.metricName
         );
-        const progress =
-          (currentValue - metric.currentValue) /
-          (metric.targetValue - metric.currentValue);
 
-        if (progress >= 0.1) {
+        // Guard against divide-by-zero when targetValue equals currentValue
+        const denominator = metric.targetValue - metric.currentValue;
+        if (denominator === 0) {
+          // Target already met, count as on-track
+          onTrackMetrics++;
+          continue;
+        }
+
+        const progress =
+          (currentValue - metric.currentValue) / denominator;
+
+        // Ensure progress is finite before comparing
+        if (Number.isFinite(progress) && progress >= 0.1) {
           // At least 10% progress
           onTrackMetrics++;
         }

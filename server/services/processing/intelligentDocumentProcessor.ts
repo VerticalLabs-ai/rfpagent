@@ -881,6 +881,7 @@ export class IntelligentDocumentProcessor {
 
   /**
    * Apply ML model pattern (placeholder for future ML integration)
+   * TODO: Implement ML model-based field extraction
    */
   private applyMLModelPattern(
     content: string,
@@ -888,17 +889,12 @@ export class IntelligentDocumentProcessor {
   ): ExtractedFieldResult {
     // Placeholder for ML model integration
     // This would use trained models for field extraction
-
-    return {
-      value: null,
-      confidence: 0,
-      method: 'ml_model',
-      note: 'ML model integration not yet implemented',
-    };
+    throw new Error('applyMLModelPattern not implemented');
   }
 
   /**
    * Apply XPath pattern (for structured documents)
+   * TODO: Implement XPath-based field extraction for XML/HTML documents
    */
   private applyXPathPattern(
     content: string,
@@ -906,13 +902,7 @@ export class IntelligentDocumentProcessor {
   ): ExtractedFieldResult {
     // Placeholder for XPath implementation
     // This would parse XML/HTML and apply XPath queries
-
-    return {
-      value: null,
-      confidence: 0,
-      method: 'xpath',
-      note: 'XPath pattern not yet implemented',
-    };
+    throw new Error('applyXPathPattern not implemented');
   }
 
   // ============ VALIDATION AND POST-PROCESSING ============

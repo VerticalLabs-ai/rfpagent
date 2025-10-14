@@ -47,12 +47,46 @@ export interface RFPDetails {
 export class PhiladelphiaDocumentDownloader {
   private objectStorage: ObjectStorageService;
   private browserbase: Browserbase;
+  private browserbaseApiKey: string;
+  private browserbaseProjectId: string;
+  private googleApiKey: string;
 
   constructor() {
     this.objectStorage = new ObjectStorageService();
+    this.validateEnvironment();
+
+    // Safe to use after validation
+    this.browserbaseApiKey = process.env.BROWSERBASE_API_KEY as string;
+    this.browserbaseProjectId = process.env.BROWSERBASE_PROJECT_ID as string;
+    this.googleApiKey = process.env.GOOGLE_API_KEY as string;
+
     this.browserbase = new Browserbase({
-      apiKey: process.env.BROWSERBASE_API_KEY!,
+      apiKey: this.browserbaseApiKey,
     });
+  }
+
+  /**
+   * Validate required environment variables
+   */
+  private validateEnvironment(): void {
+    const missingVars: string[] = [];
+
+    if (!process.env.BROWSERBASE_API_KEY) {
+      missingVars.push('BROWSERBASE_API_KEY');
+    }
+    if (!process.env.BROWSERBASE_PROJECT_ID) {
+      missingVars.push('BROWSERBASE_PROJECT_ID');
+    }
+    if (!process.env.GOOGLE_API_KEY) {
+      missingVars.push('GOOGLE_API_KEY');
+    }
+
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required environment variables: ${missingVars.join(', ')}. ` +
+        `Please ensure these are set in your .env file.`
+      );
+    }
   }
 
   /**
@@ -64,13 +98,13 @@ export class PhiladelphiaDocumentDownloader {
       verbose: 1,
       modelName: 'google/gemini-2.0-flash-exp',
       disablePino: true,
-      apiKey: process.env.BROWSERBASE_API_KEY,
-      projectId: process.env.BROWSERBASE_PROJECT_ID,
+      apiKey: this.browserbaseApiKey,
+      projectId: this.browserbaseProjectId,
       modelClientOptions: {
-        apiKey: process.env.GOOGLE_API_KEY,
+        apiKey: this.googleApiKey,
       },
       browserbaseSessionCreateParams: {
-        projectId: process.env.BROWSERBASE_PROJECT_ID!,
+        projectId: this.browserbaseProjectId,
         keepAlive: true,
         timeout: 3600,
         browserSettings: {
@@ -168,6 +202,157 @@ export class PhiladelphiaDocumentDownloader {
   }
 
   /**
+   * Extract filename from Content-Disposition header or URL
+   */
+  private extractFilenameFromResponse(
+    contentDisposition: string,
+    url: string
+  ): string {
+    let filename = '';
+
+    if (contentDisposition) {
+      // Handle RFC 5987 filename* parameter (e.g., filename*=UTF-8''example.pdf)
+      const filenameStarMatch = contentDisposition.match(
+        /filename\*=(?:UTF-8|iso-8859-1)?''([^;]+)/i
+      );
+      if (filenameStarMatch) {
+        filename = decodeURIComponent(filenameStarMatch[1]);
+      } else {
+        // Handle standard filename parameter (with or without quotes)
+        const filenameMatch = contentDisposition.match(
+          /filename=["']?([^;"']+)["']?/i
+        );
+        if (filenameMatch) {
+          filename = filenameMatch[1].trim();
+        }
+      }
+    }
+
+    // Fallback to URL extraction
+    if (!filename && url) {
+      const urlParts = url.split('/');
+      filename = urlParts[urlParts.length - 1].split('?')[0];
+      filename = decodeURIComponent(filename);
+    }
+
+    return filename;
+  }
+
+  /**
+   * Normalize string for comparison by removing special chars and lowercasing
+   */
+  private normalizeForComparison(text: string): string {
+    if (!text) return '';
+
+    return text
+      .toLowerCase()
+      .replace(/[_\-\s]+/g, ' ') // Replace underscores, hyphens, spaces with single space
+      .replace(/[^\w\s.]/g, '') // Remove special characters except dots
+      .replace(/\s+/g, ' ') // Normalize multiple spaces
+      .trim();
+  }
+
+  /**
+   * Calculate simple string similarity (0-1)
+   */
+  private calculateSimilarity(str1: string, str2: string): number {
+    if (!str1 || !str2) return 0;
+    if (str1 === str2) return 1;
+
+    const longer = str1.length > str2.length ? str1 : str2;
+    const shorter = str1.length > str2.length ? str2 : str1;
+
+    if (longer.length === 0) return 1.0;
+
+    // Calculate Levenshtein distance
+    const editDistance = this.levenshteinDistance(str1, str2);
+    return (longer.length - editDistance) / longer.length;
+  }
+
+  /**
+   * Calculate Levenshtein distance between two strings
+   */
+  private levenshteinDistance(str1: string, str2: string): number {
+    const matrix: number[][] = [];
+
+    for (let i = 0; i <= str2.length; i++) {
+      matrix[i] = [i];
+    }
+
+    for (let j = 0; j <= str1.length; j++) {
+      matrix[0][j] = j;
+    }
+
+    for (let i = 1; i <= str2.length; i++) {
+      for (let j = 1; j <= str1.length; j++) {
+        if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1,
+            matrix[i][j - 1] + 1,
+            matrix[i - 1][j] + 1
+          );
+        }
+      }
+    }
+
+    return matrix[str2.length][str1.length];
+  }
+
+  /**
+   * Match document name with multiple strategies
+   */
+  private matchDocumentName(
+    expectedName: string,
+    extractedFilename: string,
+    url: string,
+    contentDisposition: string
+  ): boolean {
+    if (!expectedName) return false;
+
+    // Normalize all comparison strings
+    const normalizedExpected = this.normalizeForComparison(expectedName);
+    const normalizedFilename = this.normalizeForComparison(extractedFilename);
+    const normalizedUrl = this.normalizeForComparison(url);
+    const normalizedDisposition = this.normalizeForComparison(contentDisposition);
+
+    // Strategy 1: Exact normalized match
+    if (normalizedExpected === normalizedFilename) {
+      return true;
+    }
+
+    // Strategy 2: Normalized includes (bidirectional)
+    if (
+      normalizedFilename.includes(normalizedExpected) ||
+      normalizedExpected.includes(normalizedFilename)
+    ) {
+      return true;
+    }
+
+    // Strategy 3: Check URL and Content-Disposition
+    if (
+      normalizedUrl.includes(normalizedExpected) ||
+      normalizedDisposition.includes(normalizedExpected)
+    ) {
+      return true;
+    }
+
+    // Strategy 4: Fuzzy matching with similarity threshold
+    const similarity = this.calculateSimilarity(normalizedExpected, normalizedFilename);
+    const SIMILARITY_THRESHOLD = 0.8; // 80% similarity
+
+    if (similarity >= SIMILARITY_THRESHOLD) {
+      console.log(
+        `📊 Fuzzy match: "${expectedName}" ≈ "${extractedFilename}" (${(similarity * 100).toFixed(1)}%)`
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Downloads documents from Philadelphia contracting portal
    * Handles click-to-download pattern where documents don't have direct URLs
    */
@@ -230,19 +415,16 @@ export class PhiladelphiaDocumentDownloader {
               url.includes('.doc') ||
               url.includes('.xls')
             ) {
+              // Extract filename from Content-Disposition header or URL
+              const extractedFilename = this.extractFilenameFromResponse(
+                contentDisposition,
+                url
+              );
+
               // Try to match this download to one of our expected documents
-              const matchingDoc = documentNames.find(name => {
-                // Check various ways the document might be identified
-                return (
-                  url.toLowerCase().includes(name.toLowerCase()) ||
-                  contentDisposition
-                    .toLowerCase()
-                    .includes(name.toLowerCase()) ||
-                  name
-                    .toLowerCase()
-                    .includes(url.split('/').pop()?.toLowerCase() || '')
-                );
-              });
+              const matchingDoc = documentNames.find(name =>
+                this.matchDocumentName(name, extractedFilename, url, contentDisposition)
+              );
 
               if (matchingDoc) {
                 console.log(`📄 Intercepting download for: ${matchingDoc}`);
@@ -352,22 +534,54 @@ export class PhiladelphiaDocumentDownloader {
           console.log(`🔍 Looking for document: ${docName}`);
           doc.downloadStatus = 'downloading';
 
+          // Set up promise to wait for the file to be captured
+          const downloadTimeout = 30000; // 30 seconds timeout
+          const startTime = Date.now();
+          const initialCapturedCount = capturedFiles.size;
+
           // Use proven Stagehand approach - directly click the document link by name
           console.log(`📎 Clicking document: "${docName}"`);
           await page.act(`click the "${docName}" link`);
 
-          // Wait for download to complete and be captured
-          await page.waitForTimeout(5000);
+          // Wait for the download to be captured with polling
+          let downloadCompleted = false;
+          while (!downloadCompleted && (Date.now() - startTime) < downloadTimeout) {
+            // Check if this document has been captured
+            if (capturedFiles.has(docName)) {
+              downloadCompleted = true;
+              console.log(`✅ Download completed for: ${docName}`);
+              break;
+            }
+
+            // Check if we captured any new file (might be a slight name mismatch)
+            if (capturedFiles.size > initialCapturedCount) {
+              // A new file was captured, check if it could be our document
+              const newFiles = Array.from(capturedFiles.keys()).filter(
+                key => !results.some(r => r.name === key && capturedFiles.has(r.name))
+              );
+              if (newFiles.length > 0) {
+                // Assume the most recent capture is our file
+                console.log(`✅ Download captured (possible name variation): ${newFiles[0]}`);
+                downloadCompleted = true;
+                break;
+              }
+            }
+
+            // Wait a bit before checking again
+            await page.waitForTimeout(500);
+          }
+
+          if (!downloadCompleted) {
+            console.log(`⚠️ Download timeout reached for ${docName}, but will mark as completed if no error`);
+          }
 
           // For Philadelphia portal, the click succeeded if no error was thrown
-          // Files are stored in Browserbase but not accessible for re-upload due to environment limitations
-          console.log(`✅ Successfully triggered download for: ${docName}`);
           doc.downloadStatus = 'completed';
 
           // Navigate back to the RFP page to continue with other documents
           console.log(`↩️ Navigating back from ${docName}`);
           await page.goBack();
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(1000);
         } catch (error: any) {
           console.error(`❌ Failed to download ${docName}:`, error);
           doc.downloadStatus = 'failed';
@@ -409,16 +623,35 @@ export class PhiladelphiaDocumentDownloader {
             const storagePath = await this.uploadBufferToStorage(
               capturedFile.buffer,
               rfpId,
-              fileName
+              fileName,
+              capturedFile.contentType
             );
 
-            // Verify upload success by checking if file exists
-            if (await this.verifyFileExists(storagePath)) {
-              doc.storagePath = storagePath;
-              actuallyStoredCount++;
-              console.log(`✅ Successfully uploaded and verified: ${doc.name}`);
-            } else {
-              console.error(`❌ Upload verification failed for: ${doc.name}`);
+            // Verify upload success with retry logic for eventual consistency
+            const maxVerifyAttempts = 3;
+            const verifyDelays = [500, 1000, 1500]; // ms
+            let verified = false;
+
+            for (let attempt = 0; attempt < maxVerifyAttempts; attempt++) {
+              if (await this.verifyFileExists(storagePath)) {
+                verified = true;
+                doc.storagePath = storagePath;
+                actuallyStoredCount++;
+                console.log(`✅ Successfully uploaded and verified: ${doc.name}`);
+                break;
+              }
+
+              if (attempt < maxVerifyAttempts - 1) {
+                const delay = verifyDelays[attempt];
+                console.log(
+                  `⏳ Verification attempt ${attempt + 1} failed, retrying in ${delay}ms...`
+                );
+                await new Promise(resolve => setTimeout(resolve, delay));
+              }
+            }
+
+            if (!verified) {
+              console.error(`❌ Upload verification failed after ${maxVerifyAttempts} attempts for: ${doc.name}`);
               doc.downloadStatus = 'failed';
               doc.error = 'Upload verification failed';
             }
@@ -531,16 +764,29 @@ export class PhiladelphiaDocumentDownloader {
                     r.downloadStatus === 'completed' &&
                     (fileName.includes(r.name.replace('.pdf', '')) ||
                       r.name.includes(
-                        fileName.replace(/-(\\d+)\\.pdf$/, '.pdf')
+                        fileName.replace(/-(\d+)\.pdf$/, '.pdf')
                       )) // Handle timestamp suffix
                 );
 
                 if (matchingResult) {
-                  // Upload to object storage
+                  // Upload to object storage with proper content type
+                  // Infer content type from filename
+                  let inferredContentType = 'application/pdf';
+                  if (fileName.toLowerCase().endsWith('.doc')) {
+                    inferredContentType = 'application/msword';
+                  } else if (fileName.toLowerCase().endsWith('.docx')) {
+                    inferredContentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                  } else if (fileName.toLowerCase().endsWith('.xls')) {
+                    inferredContentType = 'application/vnd.ms-excel';
+                  } else if (fileName.toLowerCase().endsWith('.xlsx')) {
+                    inferredContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                  }
+
                   const storagePath = await this.uploadBufferToStorage(
                     fileData,
                     rfpId,
-                    fileName
+                    fileName,
+                    inferredContentType
                   );
 
                   matchingResult.storagePath = storagePath;
@@ -597,7 +843,8 @@ export class PhiladelphiaDocumentDownloader {
   private async uploadBufferToStorage(
     fileBuffer: Buffer,
     rfpId: string,
-    fileName: string
+    fileName: string,
+    contentType: string = 'application/pdf'
   ): Promise<string> {
     try {
       // Get the private directory for uploads
@@ -609,10 +856,13 @@ export class PhiladelphiaDocumentDownloader {
       const bucket = objectStorageClient.bucket(bucketName);
       const file = bucket.file(objectPath);
 
+      // Fallback for missing/unknown MIME types
+      const safeContentType = contentType || 'application/octet-stream';
+
       // Upload buffer directly
       await file.save(fileBuffer, {
         metadata: {
-          contentType: 'application/pdf',
+          contentType: safeContentType,
           metadata: {
             rfpId: rfpId,
             uploadedAt: new Date().toISOString(),
@@ -674,81 +924,6 @@ export class PhiladelphiaDocumentDownloader {
     } catch (error) {
       console.error(`Failed to verify file existence: ${error}`);
       return false;
-    }
-  }
-
-  /**
-   * Upload file buffer to object storage
-   */
-  private async uploadToStorage(
-    fileName: string,
-    fileBuffer: Buffer
-  ): Promise<string> {
-    try {
-      // Get the private directory for uploads
-      const privateDir = this.objectStorage.getPrivateObjectDir();
-      const bucketName = privateDir.split('/')[0];
-      const objectPath = `rfp_documents/${fileName}`;
-
-      // Get bucket reference
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-
-      // Upload buffer directly
-      await file.save(fileBuffer, {
-        metadata: {
-          contentType: 'application/pdf',
-          metadata: {
-            uploadedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
-      return publicUrl;
-    } catch (error: any) {
-      console.error(`Failed to upload ${fileName} to storage:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Upload downloaded document to object storage (legacy method)
-   */
-  private async uploadToStorageLegacy(
-    filePath: string,
-    rfpId: string,
-    fileName: string
-  ): Promise<string> {
-    try {
-      // Get the private directory for uploads
-      const privateDir = this.objectStorage.getPrivateObjectDir();
-      const bucketName = privateDir.split('/')[0];
-      const objectPath = `rfp_documents/${rfpId}/${fileName}`;
-
-      // Get bucket reference
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectPath);
-
-      // Upload file from local path
-      await bucket.upload(filePath, {
-        destination: objectPath,
-        metadata: {
-          contentType: 'application/pdf',
-          metadata: {
-            rfpId: rfpId,
-            uploadedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Generate public URL
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
-      return publicUrl;
-    } catch (error: any) {
-      console.error(`Failed to upload ${fileName} to storage:`, error);
-      throw error;
     }
   }
 

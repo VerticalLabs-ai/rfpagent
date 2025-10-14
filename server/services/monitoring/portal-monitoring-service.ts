@@ -519,8 +519,24 @@ export class PortalMonitoringService {
       const submitSelector =
         'input[type="submit"], button[type="submit"], button[data-testid*="login"], button[data-testid*="signin"], [role="button"][aria-label*="Login"], [role="button"][aria-label*="Sign In"]';
 
-      await page.type(usernameSelector, portal.username!);
-      await page.type(passwordSelector, portal.password!);
+      // Validate and sanitize credentials
+      if (!portal.username || !portal.password) {
+        throw new Error('Portal credentials are missing');
+      }
+
+      const sanitizedUsername = portal.username.trim();
+      const sanitizedPassword = portal.password; // Do not trim password as whitespace may be significant
+
+      if (!sanitizedUsername) {
+        throw new Error('Portal username is empty or contains only whitespace');
+      }
+
+      if (!sanitizedPassword) {
+        throw new Error('Portal password is empty');
+      }
+
+      await page.type(usernameSelector, sanitizedUsername);
+      await page.type(passwordSelector, sanitizedPassword);
       await page.click(submitSelector);
 
       await page.waitForNavigation({

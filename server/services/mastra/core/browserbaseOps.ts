@@ -19,12 +19,62 @@ import {
 } from '../../../../src/mastra/tools';
 
 /**
+ * Type definitions for Browserbase operations
+ */
+export interface UnifiedScrapeContext {
+  url: string;
+  loginRequired?: boolean;
+  credentials?: {
+    username?: string;
+    password?: string;
+  };
+  portalType?: string;
+  searchFilter?: string;
+  sessionId?: string;
+}
+
+export interface UnifiedScrapeResult {
+  opportunities: Array<{
+    title: string;
+    description?: string;
+    agency?: string;
+    deadline?: string;
+    estimatedValue?: string;
+    url?: string;
+    category?: string;
+    confidence?: number;
+  }>;
+  status: 'success' | 'error';
+  message?: string;
+  error?: string;
+  portalType?: string;
+  scrapedAt?: string;
+}
+
+export interface AuthenticationContext {
+  portalUrl: string;
+  username: string;
+  password: string;
+  authContext?: string;
+  sessionId?: string;
+  portalType?: string;
+}
+
+export interface AuthenticationResult {
+  success: boolean;
+  sessionId?: string;
+  message?: string;
+  error?: string;
+  authenticatedAt?: string;
+}
+
+/**
  * Unified Browserbase web scraping with optional authentication
  * Handles the complete flow: auth (if needed) -> navigation -> extraction
  */
 export async function unifiedBrowserbaseWebScrape(
-  context: any
-): Promise<any> {
+  context: UnifiedScrapeContext
+): Promise<UnifiedScrapeResult> {
   const {
     url,
     loginRequired,
@@ -128,10 +178,25 @@ export async function unifiedBrowserbaseWebScrape(
           : ''),
     });
 
-    const opportunities =
+    const rawOpportunities =
       extractionResult.opportunities ??
       extractionResult.data?.opportunities ??
       [];
+
+    // Filter and ensure title is always present (required by UnifiedScrapeResult)
+    const opportunities = rawOpportunities
+      .filter(opp => opp.title && typeof opp.title === 'string')
+      .map(opp => ({
+        title: opp.title!,
+        description: opp.description,
+        agency: opp.agency,
+        deadline: opp.deadline,
+        estimatedValue: opp.estimatedValue,
+        url: opp.url,
+        category: opp.category,
+        confidence: opp.confidence,
+      }));
+
     logger.info('Successfully extracted opportunities', {
       url,
       opportunitiesCount: opportunities.length,
@@ -161,8 +226,8 @@ export async function unifiedBrowserbaseWebScrape(
  * Handle portal authentication using unified Browserbase automation
  */
 export async function handleBrowserbaseAuthentication(
-  context: any
-): Promise<any> {
+  context: AuthenticationContext
+): Promise<AuthenticationResult> {
   const {
     portalUrl,
     username,

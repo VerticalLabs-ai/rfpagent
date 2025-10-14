@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { XMLParser } from 'fast-xml-parser';
+import { randomUUID } from 'crypto';
+import { logger } from '../../utils/logger';
 
 export interface FederalSearchCriteria {
   category?: string;
@@ -25,6 +28,53 @@ export interface FederalRfpResult {
 export class FederalRfpSearchService {
   private readonly USASPENDING_BASE_URL = 'https://api.usaspending.gov/api/v2';
   private readonly SAM_BASE_URL = 'https://api.sam.gov/opportunities/v2';
+  private readonly xmlParser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+  });
+
+  /**
+   * Get dynamic date range for queries
+   */
+  private getDynamicDateRange(): { start: string; end: string } {
+    const today = new Date();
+    const oneYearAgo = new Date(today);
+    oneYearAgo.setFullYear(today.getFullYear() - 1);
+
+    return {
+      start: oneYearAgo.toISOString().split('T')[0], // YYYY-MM-DD
+      end: today.toISOString().split('T')[0], // YYYY-MM-DD
+    };
+  }
+
+  /**
+   * Get current year date range for MM/DD/YYYY format
+   */
+  private getCurrentYearRange(): { from: string; to: string } {
+    const currentYear = new Date().getFullYear();
+    return {
+      from: `01/01/${currentYear}`,
+      to: `12/31/${currentYear + 1}`,
+    };
+  }
+
+  /**
+   * Get start of current year for YYYY-MM-DD format
+   */
+  private getCurrentYearStart(): string {
+    const currentYear = new Date().getFullYear();
+    const startOfYear = new Date(currentYear, 0, 1);
+    return startOfYear.toISOString().split('T')[0]; // YYYY-MM-DD
+  }
+
+  /**
+   * Calculate deadline N days from now
+   */
+  private getDeadlineFromNow(days: number): string {
+    const timeout = days * 24 * 60 * 60 * 1000;
+    const deadline = new Date(Date.now() + timeout);
+    return deadline.toISOString().split('T')[0];
+  }
 
   /**
    * Search federal contracts using USAspending.gov API
@@ -64,8 +114,18 @@ export class FederalRfpSearchService {
       );
 
       return this.parseUSASpendingResults(response.data, criteria);
-    } catch (error) {
-      console.error('USAspending.gov API error:', error);
+    } catch (error: any) {
+      logger.error('USAspending.gov API request failed', error, {
+        endpoint: `${this.USASPENDING_BASE_URL}/search/spending_by_award/`,
+        searchCriteria: {
+          category: criteria.category,
+          location: criteria.location,
+          agency: criteria.agency,
+          valueRange: criteria.valueRange,
+        },
+        httpStatus: error.response?.status,
+        errorDetails: error.response?.data,
+      });
       return [];
     }
   }
@@ -95,8 +155,18 @@ export class FederalRfpSearchService {
       });
 
       return this.parseSAMResults(response.data, criteria);
-    } catch (error) {
-      console.error('SAM.gov API error:', error);
+    } catch (error: any) {
+      logger.error('SAM.gov API request failed', error, {
+        endpoint: `${this.SAM_BASE_URL}/search`,
+        searchCriteria: {
+          category: criteria.category,
+          location: criteria.location,
+          agency: criteria.agency,
+          valueRange: criteria.valueRange,
+        },
+        httpStatus: error.response?.status,
+        errorDetails: error.response?.data,
+      });
       return [];
     }
   }
@@ -124,8 +194,18 @@ export class FederalRfpSearchService {
       });
 
       return this.parseFPDSResults(response.data, criteria);
-    } catch (error) {
-      console.error('FPDS.gov API error:', error);
+    } catch (error: any) {
+      logger.error('FPDS.gov API request failed', error, {
+        endpoint: 'https://www.fpds.gov/ezsearch/FEEDS/ATOM',
+        searchCriteria: {
+          category: criteria.category,
+          location: criteria.location,
+          agency: criteria.agency,
+        },
+        query: this.buildFPDSQuery(criteria),
+        httpStatus: error.response?.status,
+        errorDetails: error.response?.data,
+      });
       return [];
     }
   }
@@ -167,12 +247,13 @@ export class FederalRfpSearchService {
   }
 
   private buildUSASpendingQuery(criteria: FederalSearchCriteria) {
+    const dateRange = this.getDynamicDateRange();
     const filters: any = {
       award_type_codes: ['A', 'B', 'C', 'D'], // Contract types
       time_period: [
         {
-          start_date: '2024-01-01',
-          end_date: '2025-12-31',
+          start_date: dateRange.start,
+          end_date: dateRange.end,
         },
       ],
     };
@@ -217,12 +298,12 @@ export class FederalRfpSearchService {
   }
 
   private buildSAMQuery(criteria: FederalSearchCriteria) {
+    const yearRange = this.getCurrentYearRange();
     const params: any = {
-      api_key: process.env.SAM_GOV_API_KEY,
       limit: 50,
       offset: 0,
-      postedFrom: '01/01/2024',
-      postedTo: '12/31/2025',
+      postedFrom: yearRange.from,
+      postedTo: yearRange.to,
     };
 
     if (criteria.category) {
@@ -256,8 +337,9 @@ export class FederalRfpSearchService {
       }
     }
 
-    // Add date range for recent contracts
-    queryParts.push('SIGNED_DATE:[2024-01-01 TO *]');
+    // Add date range for recent contracts - dynamically set to current year start
+    const currentYearStart = this.getCurrentYearStart();
+    queryParts.push(`SIGNED_DATE:[${currentYearStart} TO *]`);
 
     return queryParts.join(' AND ');
   }
@@ -269,17 +351,15 @@ export class FederalRfpSearchService {
     if (!data?.results) return [];
 
     return data.results
-      .map((item: any, index: number) => ({
-        id: `usa_spending_${Date.now()}_${index}`,
+      .map((item: any) => ({
+        id: `usa_spending_${randomUUID()}`,
         title: item.Description || `${item['Award Type']} Contract`,
         description: item.Description || 'Federal contract opportunity',
         agency: item['Awarding Agency'] || 'Federal Agency',
         estimatedValue: parseFloat(item['Award Amount']) || 0,
         deadline:
           item['Period of Performance Current End Date'] ||
-          new Date(Date.now() + 60 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
+          this.getDeadlineFromNow(60),
         source: 'USAspending.gov',
         sourceUrl: `https://www.usaspending.gov/award/${item['Award ID']}`,
         category: criteria.category || 'Federal Contract',
@@ -295,19 +375,15 @@ export class FederalRfpSearchService {
   ): FederalRfpResult[] {
     if (!data?.opportunitiesData) return [];
 
-    return data.opportunitiesData.map((item: any, index: number) => ({
-      id: `sam_gov_${Date.now()}_${index}`,
+    return data.opportunitiesData.map((item: any) => ({
+      id: `sam_gov_${randomUUID()}`,
       title: item.title || 'Federal Opportunity',
       description:
         item.description || item.synopsis || 'Federal procurement opportunity',
       agency: item.organizationName || item.department || 'Federal Agency',
       estimatedValue:
         parseFloat(item.awardCeiling) || parseFloat(item.awardFloor) || 100000,
-      deadline:
-        item.responseDeadLine ||
-        new Date(Date.now() + 45 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0],
+      deadline: item.responseDeadLine || this.getDeadlineFromNow(45),
       source: 'SAM.gov',
       sourceUrl: `https://sam.gov/opp/${item.noticeId}/view`,
       category: criteria.category || item.naicsCode || 'Federal Opportunity',
@@ -321,28 +397,33 @@ export class FederalRfpSearchService {
     xmlData: string,
     criteria: FederalSearchCriteria
   ): FederalRfpResult[] {
-    // Parse ATOM/XML feed from FPDS
+    // Parse ATOM/XML feed from FPDS using proper XML parser
     try {
-      // Simple XML parsing - in production, use a proper XML parser
-      const entries = xmlData.match(/<entry[^>]*>[\s\S]*?<\/entry>/gi) || [];
+      const parsed = this.xmlParser.parse(xmlData);
 
-      return entries.slice(0, 10).map((entry, index) => {
-        const title = this.extractXMLValue(entry, 'title') || 'FPDS Contract';
-        const summary =
-          this.extractXMLValue(entry, 'summary') || 'Historical contract data';
+      // Handle both single entry and multiple entries
+      let entries: any[] = [];
+      if (parsed?.feed?.entry) {
+        entries = Array.isArray(parsed.feed.entry)
+          ? parsed.feed.entry
+          : [parsed.feed.entry];
+      }
+
+      return entries.slice(0, 10).map((entry: any) => {
+        const title = entry?.title || 'FPDS Contract';
+        const summary = entry?.summary || 'Historical contract data';
         const link =
-          this.extractXMLValue(entry, 'link.*href="([^"]*)"') ||
+          entry?.link?.['@_href'] ||
+          (Array.isArray(entry?.link) && entry.link[0]?.['@_href']) ||
           'https://fpds.gov';
 
         return {
-          id: `fpds_${Date.now()}_${index}`,
+          id: `fpds_${randomUUID()}`,
           title,
           description: summary,
           agency: 'Federal Agency',
           estimatedValue: 50000, // FPDS doesn't always provide amounts in feed
-          deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-            .toISOString()
-            .split('T')[0],
+          deadline: this.getDeadlineFromNow(30),
           source: 'FPDS.gov',
           sourceUrl: link,
           category: criteria.category || 'Historical Contract',
@@ -350,17 +431,12 @@ export class FederalRfpSearchService {
           confidence: 0.7,
         };
       });
-    } catch (error) {
-      console.error('Error parsing FPDS XML:', error);
+    } catch (error: any) {
+      logger.error('Error parsing FPDS XML', error, {
+        errorMessage: error?.message,
+      });
       return [];
     }
-  }
-
-  private extractXMLValue(xml: string, pattern: string): string | null {
-    const match = xml.match(
-      new RegExp(`<${pattern}[^>]*>([^<]*)</${pattern.split(' ')[0]}>`, 'i')
-    );
-    return match ? match[1].trim() : null;
   }
 
   private deduplicateAndRank(
@@ -372,7 +448,7 @@ export class FederalRfpSearchService {
       (result, index, self) =>
         index ===
         self.findIndex(
-          r => this.calculateSimilarity(r.title, result.title) < 0.8
+          r => this.calculateSimilarity(r.title, result.title) >= 0.8
         )
     );
 

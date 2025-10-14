@@ -7,14 +7,17 @@
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 import type { Memory } from '@mastra/memory';
+import type { ToolAction } from '@mastra/core/tools';
+import type { ToolExecutionContext } from '@mastra/core/tools';
 
 /**
  * Tool interface matching Mastra tool structure
+ * These are Mastra tool objects, not raw functions
  */
 interface AgentTools {
-  webScrape: any;
-  extractRFP: any;
-  authenticate: any;
+  webScrape: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
+  extractRFP: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
+  authenticate: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
 }
 
 /**

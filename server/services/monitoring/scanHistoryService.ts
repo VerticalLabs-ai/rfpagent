@@ -312,10 +312,23 @@ export class ScanHistoryService {
       duration = `${minutes}m ${seconds}s`;
     }
 
-    // Determine scan type based on pattern (manual scans might have specific patterns)
-    const scanType: 'Automated' | 'Manual' = scan.portalName.includes('Manual')
-      ? 'Manual'
-      : 'Automated';
+    // Determine scan type from explicit field with backward-compatible fallback
+    let scanType: 'Automated' | 'Manual' = 'Automated';
+    if ((scan as any).scanType) {
+      // Use explicit scanType field if available
+      scanType = (scan as any).scanType === 'Manual' ? 'Manual' : 'Automated';
+    } else {
+      // Fallback: check for specific identifiers in portal name
+      // More robust than loose includes() - check for known patterns
+      const lowerPortalName = scan.portalName.toLowerCase();
+      if (
+        lowerPortalName.startsWith('manual:') ||
+        lowerPortalName.endsWith('(manual)') ||
+        lowerPortalName === 'manual'
+      ) {
+        scanType = 'Manual';
+      }
+    }
 
     // Convert status to expected format
     let status: 'completed' | 'failed' | 'completed_with_warnings' | 'running';

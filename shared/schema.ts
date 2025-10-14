@@ -431,6 +431,7 @@ export const scans = pgTable('scans', {
     .references(() => portals.id)
     .notNull(),
   portalName: text('portal_name').notNull(),
+  scanType: text('scan_type').notNull().default('Automated'), // Automated, Manual
   status: text('status').notNull().default('running'), // running, completed, failed
   startedAt: timestamp('started_at').defaultNow().notNull(),
   completedAt: timestamp('completed_at'),

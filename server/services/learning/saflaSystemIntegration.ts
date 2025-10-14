@@ -160,6 +160,16 @@ export class SAFLASystemIntegration {
           break;
 
         case 'proposal_generation': {
+          // Prevent demo workflow pollution in production
+          if (process.env.NODE_ENV === 'production') {
+            console.warn('Demo workflow skipped in production environment');
+            recommendations.push(
+              'Demo workflow not executed in production',
+              'Use test/development environment for demonstrations'
+            );
+            break;
+          }
+
           // Create a demo proposal to learn from
           const demoRfp = await storage.createRFP({
             title: 'Demo RFP for Learning System',
@@ -175,14 +185,24 @@ export class SAFLASystemIntegration {
             content: { demo: true },
           });
 
-          // Simulate proposal outcome learning
-          await workflowCoordinator.recordProposalLearning(demoProposal.id, {
-            result: 'won',
-            feedback: 'Excellent technical approach and competitive pricing',
-            competitors: ['Competitor A', 'Competitor B'],
-            winningBid: 95000,
-            ourBid: 95000,
-          });
+          try {
+            // Simulate proposal outcome learning
+            await workflowCoordinator.recordProposalLearning(demoProposal.id, {
+              result: 'won',
+              feedback: 'Excellent technical approach and competitive pricing',
+              competitors: ['Competitor A', 'Competitor B'],
+              winningBid: 95000,
+              ourBid: 95000,
+            });
+          } finally {
+            // Clean up demo data
+            try {
+              await storage.deleteProposal(demoProposal.id);
+              await storage.deleteRFP(demoRfp.id);
+            } catch (cleanupError) {
+              console.error('Failed to clean up demo data:', cleanupError);
+            }
+          }
 
           learningEvents.push({
             type: 'proposal_outcome',

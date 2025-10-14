@@ -514,16 +514,16 @@ export class IncrementalPortalScanService {
     lastScanTime: Date | null
   ): Promise<'new' | 'updated' | 'unchanged'> {
     // Find existing RFP by source URL or source identifier
+    // Build conditions array to avoid passing undefined to or()
+    const conditions = [eq(rfps.sourceUrl, candidate.url)];
+    if (candidate.sourceIdentifier) {
+      conditions.push(
+        sql`${rfps.requirements}->>'sourceIdentifier' = ${candidate.sourceIdentifier}`
+      );
+    }
+
     const existingRfps = await (db.query as any).rfps.findMany({
-      where: and(
-        eq(rfps.portalId, portalId),
-        or(
-          eq(rfps.sourceUrl, candidate.url),
-          candidate.sourceIdentifier
-            ? sql`${rfps.requirements}->>'sourceIdentifier' = ${candidate.sourceIdentifier}`
-            : undefined
-        )
-      ),
+      where: and(eq(rfps.portalId, portalId), or(...conditions)),
     });
 
     const existingRfp = existingRfps[0];

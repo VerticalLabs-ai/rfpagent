@@ -124,19 +124,37 @@ export class DocumentParsingService {
   }
 
   private async downloadFileAsBuffer(file: any): Promise<Buffer> {
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
+      let totalSize = 0;
       const stream = file.createReadStream();
 
+      const cleanup = () => {
+        stream.removeAllListeners();
+        stream.destroy();
+      };
+
       stream.on('data', (chunk: Buffer) => {
+        totalSize += chunk.length;
+
+        if (totalSize > MAX_FILE_SIZE) {
+          cleanup();
+          reject(new Error(`File size exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes`));
+          return;
+        }
+
         chunks.push(chunk);
       });
 
       stream.on('end', () => {
+        cleanup();
         resolve(Buffer.concat(chunks));
       });
 
       stream.on('error', (error: Error) => {
+        cleanup();
         reject(error);
       });
     });

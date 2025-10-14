@@ -163,12 +163,22 @@ export interface GeneratedProposalContent {
   attachmentRecommendations: string[];
 }
 
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
+
 export class AIProposalService {
   private openaiClient: any;
+  private readonly MAX_COMPLETION_TOKENS =
+    Number(process.env.MAX_COMPLETION_TOKENS) || 4000;
 
   constructor() {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey || apiKey.trim() === '') {
+      throw new Error(
+        'OPENAI_API_KEY env var is required for AIProposalService'
+      );
+    }
     this.openaiClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: apiKey,
     });
   }
 
@@ -223,13 +233,11 @@ Return a JSON object with the following structure:
     "prebidMeeting": "2024-01-05T10:00:00.000Z",
     "questionsDeadline": "2024-01-10T17:00:00.000Z"
   }
-}
-
-Focus on information relevant to iByte Enterprises LLC, a construction/technology company that is woman-owned with certifications (WBENC, HUB, DBE, MBE, WBE).`;
+}`;
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',
@@ -242,7 +250,7 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
           },
         ],
         temperature: 0.3,
-        max_completion_tokens: 3000,
+        max_completion_tokens: Math.min(this.MAX_COMPLETION_TOKENS, 3000),
         response_format: { type: 'json_object' },
       });
 
@@ -346,8 +354,9 @@ Focus on information relevant to iByte Enterprises LLC, a construction/technolog
     rfpText: string
   ): Promise<GeneratedProposalContent> {
     const companyInfo = this.formatCompanyInformation(companyMapping);
+    const companyName = companyMapping.profile.companyName;
 
-    const prompt = `You are writing a professional proposal for iByte Enterprises LLC in response to the following RFP. Write detailed, specific content for each section based on the RFP requirements and company information provided.
+    const prompt = `You are writing a professional proposal for ${companyName} in response to the following RFP. Write detailed, specific content for each section based on the RFP requirements and company information provided.
 
 COMPANY INFORMATION:
 ${companyInfo}
@@ -360,44 +369,36 @@ ${JSON.stringify(analysis.requirements, null, 2)}
 
 INSTRUCTIONS:
 1. Write detailed, specific content for each section - do NOT use placeholder text or generic statements
-2. Reference specific RFP requirements and explain how iByte meets them
-3. Include concrete examples of iByte's experience and capabilities
+2. Reference specific RFP requirements and explain how ${companyName} meets them
+3. Include concrete examples of ${companyName}'s experience and capabilities
 4. Use professional, persuasive language appropriate for government contracting
 5. Ensure all content is substantial and informative
 
 Return a JSON object with the following structure:
 {
-  "executiveSummary": "[Write 2-3 detailed paragraphs explaining why iByte is uniquely qualified for this RFP, highlighting specific certifications, experience, and competitive advantages]",
-  "companyOverview": "[Write a comprehensive overview of iByte's business, including years of experience, key capabilities, certifications, and relevant project history]",
-  "qualifications": "[Detail iByte's specific qualifications, certifications, past performance, and technical capabilities relevant to this RFP]",
-  "approach": "[Describe iByte's specific methodology and approach for completing this project, including phases, deliverables, and quality assurance]",
+  "executiveSummary": "[Write 2-3 detailed paragraphs explaining why ${companyName} is uniquely qualified for this RFP, highlighting specific certifications, experience, and competitive advantages]",
+  "companyOverview": "[Write a comprehensive overview of ${companyName}'s business, including years of experience, key capabilities, certifications, and relevant project history]",
+  "qualifications": "[Detail ${companyName}'s specific qualifications, certifications, past performance, and technical capabilities relevant to this RFP]",
+  "approach": "[Describe ${companyName}'s specific methodology and approach for completing this project, including phases, deliverables, and quality assurance]",
   "timeline": "[Provide a realistic project timeline with specific phases, milestones, and deliverables based on the RFP requirements]",
   "certificationNarratives": ["[Array of detailed explanations for each relevant certification and its value to the government]"],
   "complianceMatrix": [
     {
       "requirement": "[Specific requirement from the RFP]",
-      "response": "[Detailed explanation of how iByte meets this requirement]",
+      "response": "[Detailed explanation of how ${companyName} meets this requirement]",
       "evidence": ["[Specific documents or certifications that support compliance]"]
     }
   ],
-  "attachmentRecommendations": ["[List of specific documents iByte should attach to support the proposal]"]
+  "attachmentRecommendations": ["[List of specific documents ${companyName} should attach to support the proposal]"]
 }
 
-COMPANY FACTS TO INCLUDE:
-- iByte Enterprises LLC is a woman-owned small business (WOSB)
-- DUNS: 118328036
-- WBENC, HUB, DBE, MBE, WBE certified
-- Expertise in construction and technology services
-- Owner/President: Valorie Rodriguez
-- Address: 11324 Four Points Dr Bldg II Ste 100, Austin, TX 78726
-- Focus on government contracting and compliance
-- Strong track record in technology modernization and infrastructure projects
+${this.buildCompanyFacts(companyMapping)}
 
-IMPORTANT: Generate actual detailed content, not placeholder text. Each section should be substantial and specific to this RFP and iByte's capabilities.`;
+IMPORTANT: Generate actual detailed content, not placeholder text. Each section should be substantial and specific to this RFP and ${companyName}'s capabilities.`;
 
     try {
       const response = await this.openaiClient.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [
           {
             role: 'system',
@@ -410,7 +411,7 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
           },
         ],
         temperature: 0.4,
-        max_completion_tokens: 4000,
+        max_completion_tokens: Math.min(this.MAX_COMPLETION_TOKENS, 4000),
         response_format: { type: 'json_object' },
       });
 
@@ -472,7 +473,7 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
         );
       });
 
-      return directMatch || socioEconomicMatch || cert.status === 'active';
+      return (directMatch || socioEconomicMatch) && cert.status === 'active';
     });
   }
 
@@ -557,6 +558,60 @@ IMPORTANT: Generate actual detailed content, not placeholder text. Each section 
     };
 
     return roleMap[area] || area;
+  }
+
+  private buildCompanyFacts(mapping: CompanyDataMapping): string {
+    const facts = ['COMPANY FACTS TO INCLUDE:'];
+
+    // Company name and business type
+    facts.push(`- ${mapping.profile.companyName}`);
+
+    // Business size and ownership
+    const ownershipTypes = [];
+    if (mapping.socioEconomicQualifications.smallBusiness)
+      ownershipTypes.push('small business');
+    if (mapping.socioEconomicQualifications.womanOwned)
+      ownershipTypes.push('woman-owned');
+    if (mapping.socioEconomicQualifications.minorityOwned)
+      ownershipTypes.push('minority-owned');
+    if (mapping.socioEconomicQualifications.veteranOwned)
+      ownershipTypes.push('veteran-owned');
+    if (ownershipTypes.length > 0) {
+      facts.push(`- Business Type: ${ownershipTypes.join(', ')}`);
+    }
+
+    // DUNS number
+    if (mapping.profile.dunsNumber) {
+      facts.push(`- DUNS: ${mapping.profile.dunsNumber}`);
+    }
+
+    // Certifications
+    if (mapping.relevantCertifications.length > 0) {
+      const certTypes = mapping.relevantCertifications
+        .map(cert => cert.certificationType)
+        .join(', ');
+      facts.push(`- Certifications: ${certTypes}`);
+    }
+
+    // Business categories
+    if (mapping.profile.primaryBusinessCategory) {
+      facts.push(`- Expertise: ${mapping.profile.primaryBusinessCategory}`);
+    }
+
+    // Key contacts
+    const owner = mapping.assignedContacts.find(
+      c => c.role === 'Business Owner'
+    );
+    if (owner) {
+      facts.push(`- Owner/President: ${owner.contact.name}`);
+    }
+
+    // Address
+    if (mapping.profile.address) {
+      facts.push(`- Address: ${mapping.profile.address}`);
+    }
+
+    return facts.join('\n');
   }
 
   private formatCompanyInformation(mapping: CompanyDataMapping): string {

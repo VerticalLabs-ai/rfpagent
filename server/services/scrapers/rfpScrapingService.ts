@@ -5,6 +5,7 @@ import { createWriteStream } from 'fs';
 import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
+import { parse, isValid } from 'date-fns';
 import { db } from '../../db';
 import { storage } from '../../storage';
 import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
@@ -86,30 +87,40 @@ export class RFPScrapingService {
 
       const extractedData = extractionResult.data as RFPExtractionData;
 
-      // Parse deadline if present
+      // Parse deadline if present using date-fns
       let deadlineDate = null;
       if (extractedData.deadline) {
         try {
-          // Try various date formats
-          deadlineDate = new Date(extractedData.deadline);
-          if (isNaN(deadlineDate.getTime())) {
-            // Try parsing with specific formats
-            const dateFormats = [
-              /(\d{1,2})\/(\d{1,2})\/(\d{4})/,
-              /(\d{4})-(\d{2})-(\d{2})/,
-              /(\w+)\s+(\d{1,2}),?\s+(\d{4})/,
-            ];
+          // Try various date formats using date-fns parse
+          const dateFormats = [
+            'MM/dd/yyyy',           // 12/31/2024
+            'M/d/yyyy',             // 1/5/2024
+            'yyyy-MM-dd',           // 2024-12-31
+            'MMMM d, yyyy',         // January 5, 2024
+            'MMM d, yyyy',          // Jan 5, 2024
+            'MMMM dd, yyyy',        // January 05, 2024
+            'MMM dd, yyyy',         // Jan 05, 2024
+            'dd/MM/yyyy',           // 31/12/2024
+            'd/M/yyyy',             // 5/1/2024
+            'MM-dd-yyyy',           // 12-31-2024
+            'M-d-yyyy',             // 1-5-2024
+          ];
 
+          // First try native Date parsing
+          const nativeDate = new Date(extractedData.deadline);
+          if (!isNaN(nativeDate.getTime())) {
+            deadlineDate = nativeDate;
+          } else {
+            // Try each format with date-fns
             for (const format of dateFormats) {
-              const match = extractedData.deadline.match(format);
-              if (match) {
-                deadlineDate = new Date(extractedData.deadline);
-                if (!isNaN(deadlineDate.getTime())) break;
+              const parsedDate = parse(extractedData.deadline, format, new Date());
+              if (isValid(parsedDate)) {
+                deadlineDate = parsedDate;
+                break;
               }
             }
 
-            if (isNaN(deadlineDate.getTime())) {
-              deadlineDate = null;
+            if (!deadlineDate) {
               errors.push(
                 `Could not parse deadline date: ${extractedData.deadline}`
               );
@@ -136,9 +147,8 @@ export class RFPScrapingService {
       }
 
       // Check if RFP already exists
-      const queryResult = db.query as any;
-      const existingRFP = await queryResult.rfps.findFirst({
-        where: (rfpsTable: any, { eq }: any) => eq(rfpsTable.sourceUrl, url),
+      const existingRFP = await db.query.rfps.findFirst({
+        where: eq(rfps.sourceUrl, url),
       });
 
       let rfpId: string;
@@ -280,9 +290,30 @@ export class RFPScrapingService {
           // Use standard download for other portals
           for (const doc of extractedData.documents) {
             try {
+              // Validate document URL
+              if (!doc.url || typeof doc.url !== 'string' || doc.url.trim() === '') {
+                errors.push(`Invalid or missing URL for document: ${doc.name}`);
+                console.warn(`⚠️ Skipping document with invalid URL: ${doc.name}`);
+                continue;
+              }
+
+              // Validate URL format
+              let validUrl: URL;
+              try {
+                validUrl = new URL(doc.url);
+                // Ensure it's an absolute URL with http/https protocol
+                if (!validUrl.protocol.startsWith('http')) {
+                  throw new Error('URL must use http or https protocol');
+                }
+              } catch (urlError) {
+                errors.push(`Invalid URL format for document: ${doc.name} - ${doc.url}`);
+                console.warn(`⚠️ Skipping document with malformed URL: ${doc.name}`);
+                continue;
+              }
+
               const documentPath = await this.downloadRFPDocument(
                 rfpId,
-                doc.url || '',
+                doc.url,
                 doc.name,
                 doc.type || 'pdf'
               );
@@ -317,9 +348,8 @@ export class RFPScrapingService {
       }
 
       // Get the final RFP data
-      const queryResult2 = db.query as any;
-      const finalRfp = await queryResult2.rfps.findFirst({
-        where: (rfpsTable: any, { eq }: any) => eq(rfpsTable.id, rfpId),
+      const finalRfp = await db.query.rfps.findFirst({
+        where: eq(rfps.id, rfpId),
       });
 
       console.log(`✅ RFP scraping completed for: ${extractedData.title}`);
@@ -554,14 +584,12 @@ export class RFPScrapingService {
 
   /**
    * Clean up the browser session
+   * Note: Sessions are managed by the session manager and cleaned up automatically after inactivity
    */
   private async cleanup() {
-    try {
-      // Session will be cleaned up automatically after inactivity
-      console.log('Session cleanup scheduled');
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
+    // Sessions are managed by the session manager (Stagehand/Browserbase)
+    // No manual cleanup needed as sessions auto-expire after inactivity
+    // This method is kept for API consistency but performs no operation
   }
 }
 

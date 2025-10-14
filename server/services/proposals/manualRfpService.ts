@@ -1,11 +1,12 @@
 import { randomUUID } from 'crypto';
 import { nanoid } from 'nanoid';
+import * as net from 'net';
 import OpenAI from 'openai';
 import { storage } from '../../storage';
-import { AustinFinanceDocumentScraper } from '../scrapers/austinFinanceDocumentScraper';
-import { DocumentIntelligenceService } from '../processing/documentIntelligenceService';
-import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { progressTracker } from '../monitoring/progressTracker';
+import { DocumentIntelligenceService } from '../processing/documentIntelligenceService';
+import { AustinFinanceDocumentScraper } from '../scrapers/austinFinanceDocumentScraper';
+import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { scrapeRFPFromUrl } from '../scrapers/rfpScrapingService';
 
 export interface ManualRfpInput {
@@ -21,6 +22,8 @@ export interface ManualRfpResult {
   error?: string;
   message: string;
 }
+
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
 
 export class ManualRfpService {
   private mastraService: ReturnType<typeof getMastraScrapingService>;
@@ -264,7 +267,7 @@ Respond with JSON only:
 }`;
 
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.1,
@@ -396,7 +399,7 @@ If any field cannot be determined, use null or empty values.`;
 
     try {
       const response = await this.openai.chat.completions.create({
-        model: 'gpt-5',
+        model: OPENAI_MODEL,
         messages: [{ role: 'user', content: prompt }],
         response_format: { type: 'json_object' },
         temperature: 0.1,
@@ -732,33 +735,25 @@ If any field cannot be determined, use null or empty values.`;
 
       // Block private/local IP ranges and localhost
       const hostname = parsedUrl.hostname.toLowerCase();
-      const blockedHosts = [
-        'localhost',
-        '127.0.0.1',
-        '::1',
-        '10.',
-        '172.16.',
-        '172.17.',
-        '172.18.',
-        '172.19.',
-        '172.20.',
-        '172.21.',
-        '172.22.',
-        '172.23.',
-        '172.24.',
-        '172.25.',
-        '172.26.',
-        '172.27.',
-        '172.28.',
-        '172.29.',
-        '172.30.',
-        '172.31.',
-        '192.168.',
-        '169.254.',
-      ];
 
-      if (blockedHosts.some(blocked => hostname.includes(blocked))) {
-        throw new Error('Access to private/local networks is not allowed');
+      // Check if hostname is an IP address
+      if (net.isIP(hostname)) {
+        // Validate that IP is not in private ranges
+        if (
+          hostname.startsWith('10.') ||
+          hostname.startsWith('192.168.') ||
+          hostname.startsWith('127.') ||
+          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+          hostname.startsWith('169.254.') ||
+          hostname === '::1'
+        ) {
+          throw new Error('Access to private/local networks is not allowed');
+        }
+      } else {
+        // For non-IP hostnames, only block exact matches
+        if (['localhost'].includes(hostname)) {
+          throw new Error('Access to private/local networks is not allowed');
+        }
       }
 
       // Fetch with security restrictions

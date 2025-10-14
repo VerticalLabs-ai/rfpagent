@@ -741,23 +741,35 @@ export class E2ETestOrchestrator {
           });
 
           // Test 3: Workflow Completion
-          const workflowState = await this.storage.updateWorkflowState(
-            `rfp-workflow-${testRFP.id}`,
-            {
-              currentPhase: 'completed',
-              status: 'completed',
-              metadata: {
-                testId,
-                completedAt: new Date(),
-                totalDuration: Date.now() - startTime,
-              },
-            }
-          );
+          // First, fetch the workflow state by workflowId to get its primary key (id)
+          const existingWorkflowState =
+            await this.storage.getWorkflowStateByWorkflowId(
+              `rfp-workflow-${testRFP.id}`
+            );
+
+          let workflowState = null;
+          if (existingWorkflowState) {
+            // Update workflow state using its id (primary key)
+            workflowState = await this.storage.updateWorkflowState(
+              existingWorkflowState.id,
+              {
+                currentPhase: 'completed',
+                status: 'completed',
+                metadata: {
+                  testId,
+                  completedAt: new Date(),
+                  totalDuration: Date.now() - startTime,
+                },
+              }
+            );
+          }
 
           validations.push({
             name: 'Workflow Completion',
             status: workflowState?.status === 'completed' ? 'passed' : 'failed',
-            message: 'Workflow marked as completed',
+            message: existingWorkflowState
+              ? 'Workflow marked as completed'
+              : 'Workflow state not found',
             expectedValue: 'completed',
             actualValue: workflowState?.status || 'unknown',
           });

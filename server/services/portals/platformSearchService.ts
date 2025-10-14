@@ -528,7 +528,7 @@ export class PlatformSearchService {
       (result, index, self) =>
         index ===
         self.findIndex(
-          r => this.calculateSimilarity(r.title, result.title) < 0.8
+          r => this.calculateSimilarity(r.title, result.title) >= 0.8
         )
     );
 

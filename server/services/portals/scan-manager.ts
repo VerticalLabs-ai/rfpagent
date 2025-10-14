@@ -67,6 +67,7 @@ export class ScanManager {
   private scanEmitters = new Map<string, EventEmitter>();
   private scanHistory = new Map<string, ScanSummary[]>(); // portalId -> recent scans
   private readonly MAX_HISTORY_PER_PORTAL = 20;
+  private readonly MAX_EVENTS_PER_SCAN = 1000;
 
   /**
    * Start a new scan and return the scanId
@@ -187,9 +188,22 @@ export class ScanManager {
    */
   completeScan(scanId: string, success: boolean): void {
     const scan = this.activeScans.get(scanId);
-    if (!scan) {
+    const emitter = this.scanEmitters.get(scanId);
+
+    // Guard against double-completion
+    if (!scan || !emitter) {
+      if (!scan && !emitter) {
+        console.warn(
+          `ScanManager: Attempted to complete non-existent or already completed scan ${scanId}`
+        );
+      }
+      return;
+    }
+
+    // Check if already completed
+    if (scan.status === 'completed' || scan.status === 'failed') {
       console.warn(
-        `ScanManager: Attempted to complete non-existent scan ${scanId}`
+        `ScanManager: Scan ${scanId} already completed with status ${scan.status}, ignoring duplicate completion`
       );
       return;
     }
@@ -236,12 +250,10 @@ export class ScanManager {
     // Add to history
     this.addToHistory(scan);
 
-    // Clean up active scan (delayed to allow event emission)
-    setTimeout(() => {
-      this.activeScans.delete(scanId);
-      this.scanEmitters.delete(scanId);
-      console.log(`ScanManager: Cleaned up scan ${scanId}`);
-    }, 500);
+    // Clean up active scan immediately after event emission
+    this.activeScans.delete(scanId);
+    this.scanEmitters.delete(scanId);
+    console.log(`ScanManager: Cleaned up scan ${scanId}`);
   }
 
   /**
@@ -291,6 +303,12 @@ export class ScanManager {
 
     if (scan && emitter) {
       scan.events.push(event);
+
+      // Enforce event limit to prevent unbounded growth
+      if (scan.events.length > this.MAX_EVENTS_PER_SCAN) {
+        scan.events.shift(); // Remove oldest event
+      }
+
       emitter.emit('event', event);
 
       // Log important events for debugging

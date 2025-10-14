@@ -119,16 +119,20 @@ export class AnalysisTestRunner {
       },
     };
 
+    // Declare cleanup variables before try block
+    let rfp: RFP | null = null;
+    let documents: Document[] = [];
+
     try {
       // Step 1: Create test RFP
       console.log('📄 Creating test RFP...');
-      const rfp = await this.createTestRFP(testCase.rfpData);
+      rfp = await this.createTestRFP(testCase.rfpData);
       result.results.rfpCreated = true;
       console.log(`✅ Created RFP: ${rfp.id}`);
 
       // Step 2: Upload test documents
       console.log('📎 Uploading test documents...');
-      const documents = await this.uploadTestDocuments(
+      documents = await this.uploadTestDocuments(
         rfp.id,
         testCase.documents
       );
@@ -216,6 +220,32 @@ export class AnalysisTestRunner {
         error instanceof Error ? error.message : 'Unknown error occurred';
       result.errors.push(`Test execution failed: ${errorMessage}`);
       console.error('❌ Test execution failed:', error);
+    } finally {
+      // Clean up test data
+      if (rfp) {
+        try {
+          console.log(`🧹 Cleaning up test data for RFP: ${rfp.id}`);
+
+          // Delete documents first
+          for (const doc of documents) {
+            try {
+              await storage.deleteDocument(doc.id);
+            } catch (deleteError) {
+              console.warn(`⚠️ Failed to delete document ${doc.id}:`, deleteError);
+            }
+          }
+
+          // Delete RFP
+          try {
+            await storage.deleteRFP(rfp.id);
+            console.log(`✅ Cleanup completed for RFP: ${rfp.id}`);
+          } catch (deleteError) {
+            console.warn(`⚠️ Failed to delete RFP ${rfp.id}:`, deleteError);
+          }
+        } catch (cleanupError) {
+          console.warn(`⚠️ Cleanup error for test ${testCase.name}:`, cleanupError);
+        }
+      }
     }
 
     result.duration = Date.now() - startTime;

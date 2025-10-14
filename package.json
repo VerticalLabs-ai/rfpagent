@@ -93,6 +93,7 @@
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
     "cron": "^4.3.3",
+    "cron-parser": "^5.4.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.6.1",
     "drizzle-kit": "^0.31.5",
@@ -102,6 +103,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.1.0",
     "express-session": "^1.18.2",
+    "fast-xml-parser": "^5.3.0",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
@@ -180,7 +182,16 @@
   "pnpm": {
     "overrides": {
       "ai": "^5.0.60"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "@sentry-internal/node-cpu-profiler",
+      "@tailwindcss/oxide",
+      "bufferutil",
+      "esbuild",
+      "protobufjs",
+      "puppeteer",
+      "unrs-resolver"
+    ]
   },
   "lint-staged": {
     "server/**/*.{ts,js}": [

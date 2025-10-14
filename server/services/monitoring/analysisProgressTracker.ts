@@ -72,13 +72,21 @@ export class AnalysisProgressTracker {
     );
 
     // Create notification for progress tracking start
-    await storage.createNotification({
-      type: 'progress',
-      title: 'Analysis Started',
-      message: `Started analysis workflow for RFP`,
-      relatedEntityType: 'rfp',
-      relatedEntityId: params.rfpId,
-    });
+    try {
+      await storage.createNotification({
+        type: 'progress',
+        title: 'Analysis Started',
+        message: `Started analysis workflow for RFP`,
+        relatedEntityType: 'rfp',
+        relatedEntityId: params.rfpId,
+      });
+    } catch (error) {
+      console.error(
+        `Failed to create notification for RFP ${params.rfpId}:`,
+        error
+      );
+      // Continue initialization even if notification fails
+    }
 
     return progress;
   }
@@ -360,9 +368,17 @@ export class AnalysisProgressTracker {
 export const analysisProgressTracker = new AnalysisProgressTracker();
 
 // Auto-cleanup every hour
-setInterval(
+const cleanupInterval = setInterval(
   () => {
     analysisProgressTracker.cleanupCompletedWorkflows();
   },
   60 * 60 * 1000
 );
+
+/**
+ * Shutdown function to clean up resources
+ */
+export function shutdownAnalysisProgressTracker(): void {
+  clearInterval(cleanupInterval);
+  console.log('Analysis progress tracker shutdown complete');
+}

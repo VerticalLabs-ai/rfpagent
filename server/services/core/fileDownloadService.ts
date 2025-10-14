@@ -2,6 +2,84 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
+import * as dns from 'dns/promises';
+
+/**
+ * Validate URL to prevent SSRF attacks
+ */
+async function validateUrl(url: string): Promise<void> {
+  let parsedUrl: URL;
+
+  // Parse URL
+  try {
+    parsedUrl = new URL(url);
+  } catch (error) {
+    throw new Error(`Invalid URL: ${url}`);
+  }
+
+  // Only allow http and https protocols
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    throw new Error(`Protocol not allowed: ${parsedUrl.protocol}`);
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+
+  // Block obvious local hostnames
+  const blockedHostnames = ['localhost', '127.0.0.1', '::1', '0.0.0.0'];
+  if (blockedHostnames.includes(hostname)) {
+    throw new Error(`Access to ${hostname} is not allowed`);
+  }
+
+  // Block private IP ranges in hostname
+  const privateRanges = [
+    /^10\./,
+    /^192\.168\./,
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+  ];
+  if (privateRanges.some(regex => regex.test(hostname))) {
+    throw new Error(`Access to private IP range is not allowed: ${hostname}`);
+  }
+
+  // Resolve hostname to IPs and validate
+  try {
+    const addresses = await dns.resolve4(hostname).catch(() => [] as string[]);
+    const addresses6 = await dns.resolve6(hostname).catch(() => [] as string[]);
+
+    const allAddresses = [...addresses, ...addresses6];
+
+    for (const ip of allAddresses) {
+      // Check for loopback
+      if (ip === '127.0.0.1' || ip === '::1') {
+        throw new Error(`Hostname resolves to loopback address: ${ip}`);
+      }
+
+      // Check for private IPv4 ranges
+      if (
+        ip.startsWith('10.') ||
+        ip.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)
+      ) {
+        throw new Error(`Hostname resolves to private IP: ${ip}`);
+      }
+
+      // Check for link-local ranges
+      if (ip.startsWith('169.254.') || ip.startsWith('fe80:')) {
+        throw new Error(`Hostname resolves to link-local address: ${ip}`);
+      }
+
+      // Check for unique local IPv6 (fc00::/7)
+      if (ip.startsWith('fc') || ip.startsWith('fd')) {
+        throw new Error(`Hostname resolves to unique local IPv6: ${ip}`);
+      }
+    }
+  } catch (error) {
+    // If DNS resolution fails, allow the request (it will fail naturally)
+    // This prevents blocking legitimate domains that might have temporary DNS issues
+    if (error instanceof Error && error.message.includes('resolves to')) {
+      throw error; // Re-throw validation errors
+    }
+  }
+}
 
 /**
  * Download a file from a URL and save it to the specified path
@@ -10,6 +88,13 @@ export async function downloadFile(
   url: string,
   filepath: string
 ): Promise<void> {
+  // Validate URL before proceeding
+  await validateUrl(url);
+
+  // Create AbortController for timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
   try {
     console.log(`⬇️ Downloading from: ${url}`);
     console.log(`💾 Saving to: ${filepath}`);
@@ -20,8 +105,11 @@ export async function downloadFile(
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    // Download the file
-    const response = await fetch(url);
+    // Download the file with timeout
+    const response = await fetch(url, { signal: controller.signal });
+
+    // Clear timeout after successful fetch
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(
@@ -40,6 +128,15 @@ export async function downloadFile(
 
     console.log(`✅ Downloaded successfully: ${path.basename(filepath)}`);
   } catch (error) {
+    // Clear timeout on error
+    clearTimeout(timeoutId);
+
+    // Check if error is due to abort/timeout
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error(`❌ Download timed out for ${url}`);
+      throw new Error(`Download timed out after 30 seconds: ${url}`);
+    }
+
     console.error(`❌ Download failed for ${url}:`, error);
     throw error;
   }
