@@ -1,6 +1,6 @@
 # Generated Documentation
 
-Generated on: 2025-10-13T22:43:37.143Z
+Generated on: 2025-10-14T21:17:01.836Z
 
 ## Scope: full
 
@@ -19,6 +19,7 @@ Generated on: 2025-10-13T22:43:37.143Z
 - [Agents Architecture](../../technical/agents-architecture.md)
 - [Incremental Scanning](../../technical/incremental-scanning.md)
 - [Logging And Observability](../../technical/logging-and-observability.md)
+- [Memory Merge Optimization](../../technical/memory-merge-optimization.md)
 - [Models Reference](../../technical/models-reference.md)
 - [Safla Metrics Guide](../../technical/safla-metrics-guide.md)
 
