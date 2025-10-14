@@ -23,7 +23,10 @@ import {
 // SAFLA Self-Improving System Integration
 import type { AgentRegistry, InsertWorkItem, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
-import { AdaptivePortalNavigator } from '../agents/adaptivePortalNavigator';
+import {
+  AdaptivePortalNavigator,
+  type NavigationAttempt,
+} from '../agents/adaptivePortalNavigator';
 import { ContinuousImprovementMonitor } from '../learning/continuousImprovementMonitor';
 import { IntelligentDocumentProcessor } from '../processing/intelligentDocumentProcessor';
 import { PersistentMemoryEngine } from '../learning/persistentMemoryEngine';
@@ -2234,13 +2237,13 @@ export class WorkflowCoordinator {
     if (!this.enableLearning) return;
 
     try {
-      await this.adaptiveNavigator.recordNavigationAttempt({
+      const normalizedAttempt = this.normalizeNavigationAttempt(
         portalId,
-        ...navigationAttempt,
-        success,
-        timestamp: new Date(),
-        context: this.learningContext,
-      });
+        navigationAttempt,
+        success
+      );
+
+      await this.adaptiveNavigator.recordNavigationAttempt(normalizedAttempt);
 
       // Also record in main learning service
       const learningOutcome = {
@@ -2276,6 +2279,76 @@ export class WorkflowCoordinator {
     } catch (error) {
       console.error('❌ Failed to record portal learning:', error);
     }
+  }
+
+  private normalizeNavigationAttempt(
+    portalId: string,
+    navigationAttempt: any,
+    success: boolean
+  ): NavigationAttempt {
+    const timestampValue = navigationAttempt?.timestamp
+      ? new Date(navigationAttempt.timestamp)
+      : new Date();
+
+    const selectors: string[] = Array.isArray(navigationAttempt?.selectors)
+      ? navigationAttempt.selectors
+      : [];
+
+    const rawSteps = Array.isArray(navigationAttempt?.steps)
+      ? navigationAttempt.steps
+      : selectors.map((selector: string) => ({
+          action: 'click',
+          selector,
+        }));
+
+    const steps = (rawSteps.length ? rawSteps : [{}]).map(
+      (step: any, index: number) => ({
+        stepIndex:
+          typeof step?.stepIndex === 'number' ? step.stepIndex : index,
+        action: step?.action ?? 'navigate',
+        selector: step?.selector ?? selectors[index],
+        success:
+          typeof step?.success === 'boolean' ? step.success : success,
+        duration:
+          typeof step?.duration === 'number'
+            ? step.duration
+            : typeof navigationAttempt?.stepDuration === 'number'
+              ? navigationAttempt.stepDuration
+              : typeof navigationAttempt?.duration === 'number'
+                ? navigationAttempt.duration
+                : 0,
+        errorDetails: step?.errorDetails ?? step?.error,
+      })
+    );
+
+    const overallDuration =
+      typeof navigationAttempt?.duration === 'number'
+        ? navigationAttempt.duration
+        : steps.reduce(
+            (total, current) =>
+              total + (typeof current.duration === 'number' ? current.duration : 0),
+            0
+          );
+
+    return {
+      portalId,
+      timestamp: timestampValue,
+      strategy: navigationAttempt?.strategy ?? 'unspecified',
+      steps,
+      overallResult: {
+        success,
+        duration: overallDuration,
+        dataExtracted: navigationAttempt?.result,
+        errorDetails:
+          navigationAttempt?.error ??
+          navigationAttempt?.errorDetails ??
+          navigationAttempt?.result?.errors,
+        adaptationsApplied:
+          navigationAttempt?.adaptations ??
+          navigationAttempt?.adaptationsApplied ??
+          [],
+      },
+    };
   }
 
   /**

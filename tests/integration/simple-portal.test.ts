@@ -17,6 +17,10 @@ describe('Simple Portal Scraping', () => {
         apiKey: process.env.BROWSERBASE_API_KEY,
         projectId: process.env.BROWSERBASE_PROJECT_ID,
         verbose: 1,
+        modelName: 'google/gemini-2.0-flash-exp', // Use Google Gemini for extraction
+        modelClientOptions: {
+          apiKey: process.env.GOOGLE_API_KEY,
+        },
         // Don't provide browserbaseSessionID - this forces a NEW session
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
@@ -88,6 +92,10 @@ describe('Simple Portal Scraping', () => {
         apiKey: process.env.BROWSERBASE_API_KEY,
         projectId: process.env.BROWSERBASE_PROJECT_ID,
         verbose: 1,
+        modelName: 'google/gemini-2.0-flash-exp', // Use Google Gemini for extraction
+        modelClientOptions: {
+          apiKey: process.env.GOOGLE_API_KEY,
+        },
         // Don't provide browserbaseSessionID - force new session
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
