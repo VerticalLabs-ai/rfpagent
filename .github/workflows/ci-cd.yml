@@ -297,7 +297,7 @@ jobs:
         with:
           environment: production
           version: ${{ github.sha }}
-          sourcemaps: './dist'
+          sourcemaps: "./dist"
           set_commits: auto
 
       - name: Upload build artifacts

@@ -1,5 +1,5 @@
 import { agentKnowledgeBase, agentMemory } from '@shared/schema';
-import { and, count, lt, sql } from 'drizzle-orm';
+import { and, asc, count, lt, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { storage } from '../../storage';
 import {
@@ -99,12 +99,91 @@ export interface KnowledgeCluster {
   keyInsights: string[];
 }
 
+interface PatternAggregationState {
+  totalPatterns: number;
+  agentSet: Set<string>;
+  patternTypeCounts: Record<string, number>;
+  domainCounts: Record<string, number>;
+  contextCounts: Record<string, number>;
+  patternAggregates: Map<string, PatternAggregateEntry>;
+  confidenceAccumulator: number;
+}
+
+interface PatternAggregateEntry {
+  pattern: string;
+  agents: Set<string>;
+  domains: Set<string>;
+  type: string;
+  successSamples: number[];
+  usage: number;
+  confidenceSum: number;
+  count: number;
+}
+
+interface GlobalPatternStatsResult {
+  aggregatedStats: {
+    generatedAt: string;
+    consolidationId: string;
+    totalPatterns: number;
+    recentPatternsExtracted: number;
+    agentCoverage: {
+      totalAgents: number;
+      agentIds: string[];
+    };
+    mostFrequentPatternTypes: Array<{
+      type: string;
+      count: number;
+      ratio: number;
+    }>;
+    commonDomains: Array<{
+      domain: string;
+      count: number;
+      ratio: number;
+    }>;
+    commonContexts: Array<{
+      context: string;
+      count: number;
+      ratio: number;
+    }>;
+    patternSuccessCorrelations: Array<{
+      pattern: string;
+      type: string;
+      domains: string[];
+      agentCount: number;
+      avgSuccessRate: number | null;
+      usage: number;
+      avgConfidence: number | null;
+    }>;
+    shareablePatterns: Array<{
+      pattern: string;
+      type: string;
+      agentIds: string[];
+      domains: string[];
+      avgSuccessRate: number | null;
+      usage: number;
+    }>;
+  };
+  aggregatedConfidence: number;
+  agentCount: number;
+  totalPatterns: number;
+  agentIds: string[];
+}
+
 export class PersistentMemoryEngine {
   private static instance: PersistentMemoryEngine;
   private consolidationEnabled: boolean = true;
   private memoryCompressionRatio: number = 0.6; // 60% compression target
   private crossSessionRetentionDays: number = 90;
   private memoryDecayRate: number = 0.95; // 5% decay per consolidation cycle
+
+  // Memory merging configuration
+  private memorySimilarityThreshold: number = 0.85; // Configurable similarity threshold
+  private mergeMaxIterations: number = 1000; // Maximum iterations to prevent unbounded loops
+  private mergeTimeoutMs: number = 60000; // 60 seconds timeout for merge operations
+  private mergeProgressLogInterval: number = 50; // Log progress every N merges
+  private mergeMaxCandidatesPerPrimary: number = 100; // Limit candidates to check per primary
+  private patternAggregationBatchSize: number = 500;
+  private patternAggregationYieldInterval: number = 5;
 
   public static getInstance(): PersistentMemoryEngine {
     if (!PersistentMemoryEngine.instance) {
@@ -925,11 +1004,19 @@ export class PersistentMemoryEngine {
     return Number(result?.count ?? 0);
   }
 
-  private async mergeSimilarMemories(targetCount: number): Promise<number> {
+  private async mergeSimilarMemories(
+    targetCount: number,
+    similarityThreshold: number = this.memorySimilarityThreshold
+  ): Promise<number> {
     if (targetCount <= 0) return 0;
 
-    const similarityThreshold = 0.85;
     const fetchLimit = Math.min(Math.max(targetCount * 4, 100), 500);
+    const startTime = Date.now();
+    let iterations = 0;
+
+    console.log(
+      `🔄 Starting memory merge: target=${targetCount}, threshold=${similarityThreshold}, maxIterations=${this.mergeMaxIterations}, timeout=${this.mergeTimeoutMs}ms`
+    );
 
     const activeMemoriesRaw = await db
       .select()
@@ -957,6 +1044,36 @@ export class PersistentMemoryEngine {
     let mergedCount = 0;
 
     while (mergedCount < targetCount && activeIds.size > 1) {
+      // Operational guard: check iteration limit
+      if (iterations >= this.mergeMaxIterations) {
+        console.warn(
+          `⚠️ Merge stopped: reached max iterations (${this.mergeMaxIterations}). Merged ${mergedCount}/${targetCount}`
+        );
+        break;
+      }
+
+      // Operational guard: check timeout
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= this.mergeTimeoutMs) {
+        console.warn(
+          `⚠️ Merge stopped: timeout (${elapsed}ms). Merged ${mergedCount}/${targetCount}`
+        );
+        break;
+      }
+
+      iterations++;
+
+      // Progress logging
+      if (
+        mergedCount > 0 &&
+        mergedCount % this.mergeProgressLogInterval === 0
+      ) {
+        const elapsed = Date.now() - startTime;
+        console.log(
+          `📊 Merge progress: ${mergedCount}/${targetCount} merged, iteration ${iterations}, elapsed ${elapsed}ms`
+        );
+      }
+
       const ids = Array.from(activeIds);
       let bestPair: {
         primaryId: string;
@@ -964,12 +1081,24 @@ export class PersistentMemoryEngine {
         similarity: number;
       } | null = null;
 
-      for (let i = 0; i < ids.length; i++) {
-        const memoryA = memoryById.get(ids[i]);
+      // Prefiltering: sample candidates if we have too many to reduce O(n²) comparisons
+      const candidateIds =
+        ids.length > this.mergeMaxCandidatesPerPrimary * 2
+          ? this.sampleCandidates(ids, this.mergeMaxCandidatesPerPrimary * 2)
+          : ids;
+
+      for (let i = 0; i < candidateIds.length; i++) {
+        const memoryA = memoryById.get(candidateIds[i]);
         if (!memoryA) continue;
 
-        for (let j = i + 1; j < ids.length; j++) {
-          const memoryB = memoryById.get(ids[j]);
+        // Limit candidates per primary to prevent excessive comparisons
+        const maxJ = Math.min(
+          candidateIds.length,
+          i + 1 + this.mergeMaxCandidatesPerPrimary
+        );
+
+        for (let j = i + 1; j < maxJ; j++) {
+          const memoryB = memoryById.get(candidateIds[j]);
           if (!memoryB) continue;
 
           const similarity = this.calculateMemorySimilarity(memoryA, memoryB);
@@ -1140,7 +1269,32 @@ export class PersistentMemoryEngine {
       activeIds.add(primaryMemory.id);
     }
 
+    // Final summary
+    const totalElapsed = Date.now() - startTime;
+    console.log(
+      `✅ Memory merge complete: ${mergedCount}/${targetCount} merged in ${iterations} iterations, ${totalElapsed}ms`
+    );
+
     return mergedCount;
+  }
+
+  /**
+   * Sample candidates from a large set to reduce comparison overhead
+   * Uses stratified sampling to maintain diversity
+   */
+  private sampleCandidates(ids: string[], sampleSize: number): string[] {
+    if (ids.length <= sampleSize) return ids;
+
+    // Stratified sampling: take every nth element to maintain diversity
+    const step = ids.length / sampleSize;
+    const sampled: string[] = [];
+
+    for (let i = 0; i < sampleSize; i++) {
+      const index = Math.floor(i * step);
+      sampled.push(ids[index]);
+    }
+
+    return sampled;
   }
 
   private mergeFieldValues(existing: any, incoming: any): any {
@@ -1293,294 +1447,469 @@ export class PersistentMemoryEngine {
     if (!consolidation.patternsExtracted) return;
 
     try {
-      const patternEntries = await db
-        .select({
-          id: agentKnowledgeBase.id,
-          agentId: agentKnowledgeBase.agentId,
-          domain: agentKnowledgeBase.domain,
-          knowledgeType: agentKnowledgeBase.knowledgeType,
-          title: agentKnowledgeBase.title,
-          tags: agentKnowledgeBase.tags,
-          content: agentKnowledgeBase.content,
-          successRate: agentKnowledgeBase.successRate,
-          usageCount: agentKnowledgeBase.usageCount,
-          confidenceScore: agentKnowledgeBase.confidenceScore,
-        })
-        .from(agentKnowledgeBase)
-        .where(
-          sql`${agentKnowledgeBase.domain} != 'global' AND (${agentKnowledgeBase.content} ? 'pattern')`
-        );
-
-      if (!patternEntries.length) {
+      const aggregationState = await this.aggregateGlobalPatternData();
+      if (!aggregationState.totalPatterns) {
         return;
       }
 
-      const totalPatterns = patternEntries.length;
-      const agentSet = new Set<string>();
-      const patternTypeCounts: Record<string, number> = {};
-      const domainCounts: Record<string, number> = {};
-      const contextCounts: Record<string, number> = {};
-      const patternAggregates = new Map<
-        string,
-        {
-          pattern: string;
-          agents: Set<string>;
-          domains: Set<string>;
-          type: string;
-          successSamples: number[];
-          usage: number;
-          confidenceSum: number;
-          count: number;
-        }
-      >();
-
-      let confidenceAccumulator = 0;
-
-      for (const entry of patternEntries) {
-        agentSet.add(entry.agentId);
-
-        const tags = entry.tags || [];
-        const patternType =
-          tags.find(tag =>
-            ['episodic', 'semantic', 'procedural', 'working'].includes(tag)
-          ) || 'semantic';
-        patternTypeCounts[patternType] =
-          (patternTypeCounts[patternType] || 0) + 1;
-
-        if (entry.domain) {
-          domainCounts[entry.domain] = (domainCounts[entry.domain] || 0) + 1;
-        }
-
-        const content = (entry.content ?? {}) as {
-          pattern?: string;
-          context?: Record<string, unknown>;
-        };
-        const context = (content.context ?? {}) as Record<string, unknown>;
-        for (const [key, value] of Object.entries(context)) {
-          if (value === undefined || value === null) continue;
-
-          let normalizedValue: string;
-          if (typeof value === 'string') {
-            normalizedValue = value.toLowerCase();
-          } else if (typeof value === 'number' || typeof value === 'boolean') {
-            normalizedValue = String(value);
-          } else if (Array.isArray(value)) {
-            normalizedValue = value.map(item => JSON.stringify(item)).join(',');
-          } else {
-            normalizedValue = JSON.stringify(value);
-          }
-
-          const contextKey = `${key}:${normalizedValue}`;
-          contextCounts[contextKey] = (contextCounts[contextKey] || 0) + 1;
-        }
-
-        const confidence = Number(entry.confidenceScore ?? 0);
-        if (!Number.isNaN(confidence)) {
-          confidenceAccumulator += confidence;
-        }
-
-        const patternLabel =
-          typeof content.pattern === 'string' ? content.pattern : entry.title;
-        const signature = patternLabel.toLowerCase();
-
-        let aggregate = patternAggregates.get(signature);
-        if (!aggregate) {
-          aggregate = {
-            pattern: patternLabel,
-            agents: new Set<string>(),
-            domains: new Set<string>(),
-            type: patternType,
-            successSamples: [],
-            usage: 0,
-            confidenceSum: 0,
-            count: 0,
-          };
-          patternAggregates.set(signature, aggregate);
-        }
-
-        aggregate.agents.add(entry.agentId);
-        aggregate.domains.add(entry.domain);
-        aggregate.count += 1;
-        aggregate.usage += Number(entry.usageCount ?? 0);
-
-        const successValue =
-          entry.successRate !== null && entry.successRate !== undefined
-            ? Number(entry.successRate)
-            : undefined;
-        if (successValue !== undefined && !Number.isNaN(successValue)) {
-          aggregate.successSamples.push(successValue);
-        }
-
-        if (!Number.isNaN(confidence)) {
-          aggregate.confidenceSum += confidence;
-        }
+      const stats = this.buildGlobalPatternStats(
+        aggregationState,
+        consolidation
+      );
+      if (!stats) {
+        return;
       }
 
-      const mostFrequentPatternTypes = Object.entries(patternTypeCounts)
-        .map(([type, count]) => ({
-          type,
-          count,
-          ratio: Number((count / totalPatterns).toFixed(2)),
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
+      await this.persistGlobalPatternKnowledge(stats);
+      await this.buildKnowledgeGraph('global');
 
-      const commonDomains = Object.entries(domainCounts)
-        .map(([domain, count]) => ({
-          domain,
-          count,
-          ratio: Number((count / totalPatterns).toFixed(2)),
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+      console.log(
+        `🌐 Updated global patterns with ${stats.totalPatterns} insights across ${stats.agentCount} agents`
+      );
+    } catch (error) {
+      console.error('❌ Failed to update global patterns:', error);
+    }
+  }
 
-      const commonContexts = Object.entries(contextCounts)
-        .map(([contextValue, count]) => ({
-          context: contextValue,
-          count,
-          ratio: Number((count / totalPatterns).toFixed(2)),
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+  private async aggregateGlobalPatternData(): Promise<PatternAggregationState> {
+    const state = this.createPatternAggregationState();
+    let offset = 0;
+    let batchIndex = 0;
 
-      const aggregateEntries = Array.from(patternAggregates.values());
+    while (true) {
+      const rows = await this.fetchPatternBatch(
+        this.patternAggregationBatchSize,
+        offset
+      );
 
-      const patternSuccessCorrelations = aggregateEntries
-        .map(entry => {
-          const avgSuccess =
-            entry.successSamples.length > 0
-              ? Number(
-                  (
-                    entry.successSamples.reduce(
-                      (sum, value) => sum + value,
-                      0
-                    ) / entry.successSamples.length
-                  ).toFixed(2)
-                )
-              : null;
+      if (!rows.length) {
+        break;
+      }
 
-          const avgConfidence =
-            entry.count > 0
-              ? Number((entry.confidenceSum / entry.count).toFixed(2))
-              : null;
+      for (const row of rows) {
+        if (!this.isPatternKnowledgeEntry(row)) {
+          continue;
+        }
+        this.updatePatternAggregation(state, row);
+      }
 
-          return {
-            pattern: entry.pattern,
-            type: entry.type,
-            domains: Array.from(entry.domains),
-            agentCount: entry.agents.size,
-            avgSuccessRate: avgSuccess,
-            usage: entry.usage,
-            avgConfidence,
-          };
-        })
-        .sort((a, b) => {
-          const successA = a.avgSuccessRate ?? 0;
-          const successB = b.avgSuccessRate ?? 0;
-          if (successB !== successA) return successB - successA;
-          return b.usage - a.usage;
-        })
-        .slice(0, 15);
+      offset += rows.length;
+      batchIndex += 1;
 
-      const shareablePatterns = aggregateEntries
-        .filter(entry => entry.agents.size > 1)
-        .map(entry => {
-          const avgSuccess =
-            entry.successSamples.length > 0
-              ? Number(
-                  (
-                    entry.successSamples.reduce(
-                      (sum, value) => sum + value,
-                      0
-                    ) / entry.successSamples.length
-                  ).toFixed(2)
-                )
-              : null;
+      if (
+        rows.length === this.patternAggregationBatchSize &&
+        batchIndex % this.patternAggregationYieldInterval === 0
+      ) {
+        await this.yieldToEventLoop();
+      }
+    }
 
-          return {
-            pattern: entry.pattern,
-            type: entry.type,
-            agentIds: Array.from(entry.agents),
-            domains: Array.from(entry.domains),
-            avgSuccessRate: avgSuccess,
-            usage: entry.usage,
-          };
-        })
-        .sort((a, b) => {
-          const successA = a.avgSuccessRate ?? 0;
-          const successB = b.avgSuccessRate ?? 0;
-          if (successB !== successA) return successB - successA;
-          return b.usage - a.usage;
-        })
-        .slice(0, 10);
+    return state;
+  }
 
-      const aggregatedConfidence =
-        totalPatterns > 0
-          ? Number((confidenceAccumulator / totalPatterns).toFixed(2))
-          : 0.5;
+  private createPatternAggregationState(): PatternAggregationState {
+    return {
+      totalPatterns: 0,
+      agentSet: new Set<string>(),
+      patternTypeCounts: {},
+      domainCounts: {},
+      contextCounts: {},
+      patternAggregates: new Map<string, PatternAggregateEntry>(),
+      confidenceAccumulator: 0,
+    };
+  }
 
-      const aggregatedStats = {
+  private isPatternKnowledgeEntry(entry: any): boolean {
+    if (!entry) return false;
+
+    const tags: string[] = Array.isArray(entry.tags)
+      ? entry.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [];
+    const content = (entry.content ?? {}) as Record<string, unknown>;
+
+    const hasPatternInContent = typeof content.pattern === 'string';
+    const hasPatternTag = tags.some((tag: string) =>
+      tag.toLowerCase().includes('pattern')
+    );
+    const isPatternKnowledgeType =
+      typeof entry.knowledgeType === 'string' &&
+      entry.knowledgeType.toLowerCase() === 'rfp_pattern';
+
+    return hasPatternInContent || isPatternKnowledgeType || hasPatternTag;
+  }
+
+  private updatePatternAggregation(
+    state: PatternAggregationState,
+    entry: any
+  ): void {
+    state.totalPatterns += 1;
+    state.agentSet.add(entry.agentId);
+
+    const tags: string[] = Array.isArray(entry.tags)
+      ? entry.tags.filter((tag): tag is string => typeof tag === 'string')
+      : [];
+    const patternType =
+      tags.find((tag: string) =>
+        ['episodic', 'semantic', 'procedural', 'working'].includes(tag)
+      ) || 'semantic';
+    state.patternTypeCounts[patternType] =
+      (state.patternTypeCounts[patternType] || 0) + 1;
+
+    if (entry.domain) {
+      state.domainCounts[entry.domain] =
+        (state.domainCounts[entry.domain] || 0) + 1;
+    }
+
+    const content = (entry.content ?? {}) as {
+      pattern?: string;
+      context?: Record<string, unknown>;
+    };
+    const context = (content.context ?? {}) as Record<string, unknown>;
+    for (const [key, value] of Object.entries(context)) {
+      if (value === undefined || value === null) continue;
+      const normalizedValue = this.normalizeContextValue(value);
+      const contextKey = `${key}:${normalizedValue}`;
+      state.contextCounts[contextKey] =
+        (state.contextCounts[contextKey] || 0) + 1;
+    }
+
+    const confidence = Number(entry.confidenceScore ?? 0);
+    if (!Number.isNaN(confidence)) {
+      state.confidenceAccumulator += confidence;
+    }
+
+    const patternLabel =
+      typeof content.pattern === 'string' ? content.pattern : entry.title;
+    const signature = patternLabel.toLowerCase();
+
+    let aggregate = state.patternAggregates.get(signature);
+    if (!aggregate) {
+      aggregate = {
+        pattern: patternLabel,
+        agents: new Set<string>(),
+        domains: new Set<string>(),
+        type: patternType,
+        successSamples: [],
+        usage: 0,
+        confidenceSum: 0,
+        count: 0,
+      };
+      state.patternAggregates.set(signature, aggregate);
+    }
+
+    aggregate.agents.add(entry.agentId);
+    if (entry.domain) {
+      aggregate.domains.add(entry.domain);
+    }
+    aggregate.count += 1;
+    aggregate.usage += Number(entry.usageCount ?? 0);
+
+    const successValue =
+      entry.successRate !== null && entry.successRate !== undefined
+        ? Number(entry.successRate)
+        : undefined;
+    if (successValue !== undefined && !Number.isNaN(successValue)) {
+      aggregate.successSamples.push(successValue);
+    }
+
+    if (!Number.isNaN(confidence)) {
+      aggregate.confidenceSum += confidence;
+    }
+  }
+
+  private normalizeContextValue(value: unknown): string {
+    if (typeof value === 'string') {
+      return value.toLowerCase();
+    }
+
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map(item => this.normalizeContextValue(item)).join(',');
+    }
+
+    if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+
+    return '';
+  }
+
+  private buildGlobalPatternStats(
+    state: PatternAggregationState,
+    consolidation: MemoryConsolidation
+  ): GlobalPatternStatsResult | null {
+    if (!state.totalPatterns) {
+      return null;
+    }
+
+    const totalPatterns = state.totalPatterns;
+    const mostFrequentPatternTypes = this.formatCountMap(
+      state.patternTypeCounts,
+      totalPatterns,
+      5,
+      'type'
+    );
+    const commonDomains = this.formatCountMap(
+      state.domainCounts,
+      totalPatterns,
+      10,
+      'domain'
+    );
+    const commonContexts = this.formatCountMap(
+      state.contextCounts,
+      totalPatterns,
+      10,
+      'context'
+    );
+
+    const aggregateEntries = Array.from(state.patternAggregates.values());
+    const patternSuccessCorrelations =
+      this.createPatternSuccessCorrelations(aggregateEntries);
+    const shareablePatterns = this.createShareablePatterns(aggregateEntries);
+
+    const aggregatedConfidence =
+      totalPatterns > 0
+        ? Number((state.confidenceAccumulator / totalPatterns).toFixed(2))
+        : 0.5;
+
+    const agentIds = Array.from(state.agentSet);
+
+    return {
+      aggregatedStats: {
         generatedAt: new Date().toISOString(),
         consolidationId: consolidation.id,
         totalPatterns,
         recentPatternsExtracted: consolidation.patternsExtracted,
         agentCoverage: {
-          totalAgents: agentSet.size,
-          agentIds: Array.from(agentSet),
+          totalAgents: state.agentSet.size,
+          agentIds,
         },
         mostFrequentPatternTypes,
         commonDomains,
         commonContexts,
         patternSuccessCorrelations,
         shareablePatterns,
-      };
+      },
+      aggregatedConfidence,
+      agentCount: state.agentSet.size,
+      totalPatterns,
+      agentIds,
+    };
+  }
 
-      const [existingGlobalKnowledge] =
-        await agentMemoryService.getAgentKnowledge(
-          'memory-engine',
-          'rfp_pattern',
-          'global',
-          1
-        );
+  private formatCountMap(
+    counts: Record<string, number>,
+    total: number,
+    limit: number,
+    label: 'type'
+  ): Array<{ type: string; count: number; ratio: number }>;
+  private formatCountMap(
+    counts: Record<string, number>,
+    total: number,
+    limit: number,
+    label: 'domain'
+  ): Array<{ domain: string; count: number; ratio: number }>;
+  private formatCountMap(
+    counts: Record<string, number>,
+    total: number,
+    limit: number,
+    label: 'context'
+  ): Array<{ context: string; count: number; ratio: number }>;
+  private formatCountMap(
+    counts: Record<string, number>,
+    total: number,
+    limit: number,
+    label: 'type' | 'domain' | 'context'
+  ):
+    | Array<{ type: string; count: number; ratio: number }>
+    | Array<{ domain: string; count: number; ratio: number }>
+    | Array<{ context: string; count: number; ratio: number }> {
+    const normalizedTotal = total || 1;
+    const baseEntries = Object.entries(counts)
+      .map(([key, count]) => ({
+        key,
+        count,
+        ratio: Number((count / normalizedTotal).toFixed(2)),
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
 
-      const knowledgePayload = {
-        title: 'Global Pattern Intelligence',
-        description: `Aggregated from ${totalPatterns} patterns across ${agentSet.size} agents`,
-        content: aggregatedStats,
-        confidenceScore: aggregatedConfidence,
-        tags: [
-          'global_pattern_stats',
-          'consolidated_pattern',
-          'system_insight',
-        ],
-      };
-
-      if (existingGlobalKnowledge) {
-        await agentMemoryService.updateKnowledge(existingGlobalKnowledge.id, {
-          ...knowledgePayload,
-        });
-      } else {
-        await agentMemoryService.storeKnowledge({
-          agentId: 'memory-engine',
-          knowledgeType: 'rfp_pattern',
-          domain: 'global',
-          title: knowledgePayload.title,
-          description: knowledgePayload.description,
-          content: knowledgePayload.content,
-          confidenceScore: knowledgePayload.confidenceScore,
-          sourceType: 'experience',
-          tags: knowledgePayload.tags,
-        });
-      }
-
-      await this.buildKnowledgeGraph('global');
-
-      console.log(
-        `🌐 Updated global patterns with ${totalPatterns} insights across ${agentSet.size} agents`
-      );
-    } catch (error) {
-      console.error('❌ Failed to update global patterns:', error);
+    if (label === 'type') {
+      return baseEntries.map(entry => ({
+        type: entry.key,
+        count: entry.count,
+        ratio: entry.ratio,
+      }));
     }
+
+    if (label === 'domain') {
+      return baseEntries.map(entry => ({
+        domain: entry.key,
+        count: entry.count,
+        ratio: entry.ratio,
+      }));
+    }
+
+    return baseEntries.map(entry => ({
+      context: entry.key,
+      count: entry.count,
+      ratio: entry.ratio,
+    }));
+  }
+
+  private createPatternSuccessCorrelations(
+    aggregates: PatternAggregateEntry[]
+  ): Array<{
+    pattern: string;
+    type: string;
+    domains: string[];
+    agentCount: number;
+    avgSuccessRate: number | null;
+    usage: number;
+    avgConfidence: number | null;
+  }> {
+    return aggregates
+      .map(entry => {
+        const avgSuccess =
+          entry.successSamples.length > 0
+            ? Number(
+                (
+                  entry.successSamples.reduce((sum, value) => sum + value, 0) /
+                  entry.successSamples.length
+                ).toFixed(2)
+              )
+            : null;
+
+        const avgConfidence =
+          entry.count > 0
+            ? Number((entry.confidenceSum / entry.count).toFixed(2))
+            : null;
+
+        return {
+          pattern: entry.pattern,
+          type: entry.type,
+          domains: Array.from(entry.domains),
+          agentCount: entry.agents.size,
+          avgSuccessRate: avgSuccess,
+          usage: entry.usage,
+          avgConfidence,
+        };
+      })
+      .sort((a, b) => {
+        const successA = a.avgSuccessRate ?? 0;
+        const successB = b.avgSuccessRate ?? 0;
+        if (successB !== successA) return successB - successA;
+        return b.usage - a.usage;
+      })
+      .slice(0, 15);
+  }
+
+  private createShareablePatterns(aggregates: PatternAggregateEntry[]): Array<{
+    pattern: string;
+    type: string;
+    agentIds: string[];
+    domains: string[];
+    avgSuccessRate: number | null;
+    usage: number;
+  }> {
+    return aggregates
+      .filter(entry => entry.agents.size > 1)
+      .map(entry => {
+        const avgSuccess =
+          entry.successSamples.length > 0
+            ? Number(
+                (
+                  entry.successSamples.reduce((sum, value) => sum + value, 0) /
+                  entry.successSamples.length
+                ).toFixed(2)
+              )
+            : null;
+
+        return {
+          pattern: entry.pattern,
+          type: entry.type,
+          agentIds: Array.from(entry.agents),
+          domains: Array.from(entry.domains),
+          avgSuccessRate: avgSuccess,
+          usage: entry.usage,
+        };
+      })
+      .sort((a, b) => {
+        const successA = a.avgSuccessRate ?? 0;
+        const successB = b.avgSuccessRate ?? 0;
+        if (successB !== successA) return successB - successA;
+        return b.usage - a.usage;
+      })
+      .slice(0, 10);
+  }
+
+  private async persistGlobalPatternKnowledge(
+    stats: GlobalPatternStatsResult
+  ): Promise<void> {
+    const [existingGlobalKnowledge] =
+      await agentMemoryService.getAgentKnowledge(
+        'memory-engine',
+        'rfp_pattern',
+        'global',
+        1
+      );
+
+    const knowledgePayload = {
+      title: 'Global Pattern Intelligence',
+      description: `Aggregated from ${stats.totalPatterns} patterns across ${stats.agentCount} agents`,
+      content: stats.aggregatedStats,
+      confidenceScore: stats.aggregatedConfidence,
+      tags: ['global_pattern_stats', 'consolidated_pattern', 'system_insight'],
+    };
+
+    if (existingGlobalKnowledge) {
+      await agentMemoryService.updateKnowledge(existingGlobalKnowledge.id, {
+        ...knowledgePayload,
+      });
+    } else {
+      await agentMemoryService.storeKnowledge({
+        agentId: 'memory-engine',
+        knowledgeType: 'rfp_pattern',
+        domain: 'global',
+        title: knowledgePayload.title,
+        description: knowledgePayload.description,
+        content: knowledgePayload.content,
+        confidenceScore: knowledgePayload.confidenceScore,
+        sourceType: 'experience',
+        tags: knowledgePayload.tags,
+      });
+    }
+  }
+
+  private async fetchPatternBatch(
+    limit: number,
+    offset: number
+  ): Promise<any[]> {
+    return await db
+      .select({
+        id: agentKnowledgeBase.id,
+        agentId: agentKnowledgeBase.agentId,
+        domain: agentKnowledgeBase.domain,
+        knowledgeType: agentKnowledgeBase.knowledgeType,
+        title: agentKnowledgeBase.title,
+        tags: agentKnowledgeBase.tags,
+        content: agentKnowledgeBase.content,
+        successRate: agentKnowledgeBase.successRate,
+        usageCount: agentKnowledgeBase.usageCount,
+        confidenceScore: agentKnowledgeBase.confidenceScore,
+      })
+      .from(agentKnowledgeBase)
+      .where(sql`${agentKnowledgeBase.domain} != 'global'`)
+      .orderBy(asc(agentKnowledgeBase.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  private async yieldToEventLoop(): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, 0));
   }
 
   private async storeConsolidationRecord(
@@ -1824,9 +2153,9 @@ export class PersistentMemoryEngine {
       }
     }
 
-    return Object.keys(tagCounts).filter(
-      tag => tagCounts[tag] >= Math.ceil(memories.length * 0.5)
-    );
+    return Object.keys(tagCounts).filter((tag: string) => {
+      return tagCounts[tag] >= Math.ceil(memories.length * 0.5);
+    });
   }
 
   private findCommonContext(memories: any[]): any {
