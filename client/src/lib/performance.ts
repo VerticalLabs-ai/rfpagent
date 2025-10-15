@@ -2,6 +2,8 @@
  * Performance monitoring utilities for tracking and optimizing frontend performance
  */
 
+import { useEffect } from 'react';
+
 export interface PerformanceMetric {
   name: string;
   value: number;
@@ -281,32 +283,36 @@ export function clearMarks(name?: string) {
 }
 
 /**
- * Hook to track component mount/unmount performance
+ * React hook to track component mount/unmount performance
  */
-export function usePerformanceTracking(componentName: string) {
-  if (typeof window === 'undefined') return;
+export function usePerformanceTracking(componentName: string): void {
+  useEffect(() => {
+    // Return early on server-side
+    if (typeof window === 'undefined') return;
 
-  const mountMark = `${componentName}-mount`;
-  const unmountMark = `${componentName}-unmount`;
+    const mountMark = `${componentName}-mount`;
+    const unmountMark = `${componentName}-unmount`;
 
-  // Mark on mount
-  mark(mountMark);
+    // Mark on mount
+    mark(mountMark);
 
-  return () => {
-    // Mark on unmount
-    mark(unmountMark);
-    const duration = measure(
-      `${componentName}-lifetime`,
-      mountMark,
-      unmountMark
-    );
-    if (duration && process.env.NODE_ENV === 'development') {
-      console.log(
-        `[Performance] ${componentName} lifetime: ${duration.toFixed(2)}ms`
+    // Cleanup function runs on unmount
+    return () => {
+      // Mark on unmount
+      mark(unmountMark);
+      const duration = measure(
+        `${componentName}-lifetime`,
+        mountMark,
+        unmountMark
       );
-    }
-    clearMarks(componentName);
-  };
+      if (duration && process.env.NODE_ENV === 'development') {
+        console.log(
+          `[Performance] ${componentName} lifetime: ${duration.toFixed(2)}ms`
+        );
+      }
+      clearMarks(componentName);
+    };
+  }, [componentName]);
 }
 
 /**
