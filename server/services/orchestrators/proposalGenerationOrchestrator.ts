@@ -4,6 +4,7 @@ import { agentRegistryService } from '../agents/agentRegistryService';
 import { aiProposalService } from '../proposals/ai-proposal-service';
 import { enhancedProposalService } from '../proposals/enhancedProposalService';
 import { agentMemoryService } from '../agents/agentMemoryService';
+import { progressTracker } from '../monitoring/progressTracker';
 import { logger } from '../../utils/logger';
 import type { RFP, Proposal, WorkItem, AgentSession } from '@shared/schema';
 import { nanoid } from 'nanoid';
@@ -136,6 +137,21 @@ export class ProposalGenerationOrchestrator {
 
       this.activePipelines.set(pipelineId, pipeline);
 
+      // Initialize progress tracking
+      await progressTracker.startTracking(
+        request.sessionId,
+        '/api/proposals/submission-materials',
+        'submission_materials'
+      );
+
+      // Update initialization step
+      await progressTracker.updateStep(
+        request.sessionId,
+        'initialization',
+        'in_progress',
+        'Setting up proposal generation pipeline'
+      );
+
       // Store pipeline in agent memory for tracking
       await agentMemoryService.storeMemory({
         agentId: 'proposal-orchestrator',
@@ -165,6 +181,14 @@ export class ProposalGenerationOrchestrator {
           sessionId: request.sessionId,
         },
       });
+
+      // Complete initialization step
+      await progressTracker.updateStep(
+        request.sessionId,
+        'initialization',
+        'completed',
+        'Pipeline initialization complete'
+      );
 
       // Start the pipeline with Phase 1: Outline Creation
       await this.executePhase1_OutlineCreation(pipeline);
@@ -196,6 +220,14 @@ export class ProposalGenerationOrchestrator {
   ): Promise<void> {
     console.log(
       `📋 Phase 1: Creating proposal outline for pipeline ${pipeline.pipelineId}`
+    );
+
+    // Update progress tracking
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'rfp_analysis',
+      'in_progress',
+      'Analyzing RFP requirements and creating proposal structure'
     );
 
     pipeline.status = 'in_progress';
@@ -244,6 +276,22 @@ export class ProposalGenerationOrchestrator {
   ): Promise<void> {
     console.log(
       `✍️ Phase 2: Content generation for pipeline ${pipeline.pipelineId}`
+    );
+
+    // Complete RFP analysis step
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'rfp_analysis',
+      'completed',
+      'RFP analysis complete'
+    );
+
+    // Start company profile step (intermediate step before content generation)
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'company_profile',
+      'in_progress',
+      'Loading company profile and context'
     );
 
     pipeline.currentPhase = 'content_generation';
@@ -324,6 +372,21 @@ export class ProposalGenerationOrchestrator {
       }),
     ]);
 
+    // Complete company profile and start content generation
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'company_profile',
+      'completed',
+      'Company profile loaded'
+    );
+
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'content_generation',
+      'in_progress',
+      'Generating proposal content with AI agents'
+    );
+
     pipeline.workItems.push(...contentWorkItems.map(item => item.id));
 
     // Schedule phase monitoring for all content work items
@@ -392,6 +455,22 @@ export class ProposalGenerationOrchestrator {
   ): Promise<void> {
     console.log(
       `✅ Phase 4: Compliance validation for pipeline ${pipeline.pipelineId}`
+    );
+
+    // Complete content generation
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'content_generation',
+      'completed',
+      'Proposal content generated'
+    );
+
+    // Start compliance check
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'compliance_check',
+      'in_progress',
+      'Validating compliance with requirements'
     );
 
     pipeline.currentPhase = 'compliance_validation';
@@ -493,6 +572,22 @@ export class ProposalGenerationOrchestrator {
       `🔧 Phase 6: Final assembly for pipeline ${pipeline.pipelineId}`
     );
 
+    // Complete compliance check
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'compliance_check',
+      'completed',
+      'Compliance validation complete'
+    );
+
+    // Start document assembly
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'document_assembly',
+      'in_progress',
+      'Assembling final proposal documents'
+    );
+
     pipeline.currentPhase = 'final_assembly';
     pipeline.progress = 85;
     pipeline.updatedAt = new Date();
@@ -544,6 +639,22 @@ export class ProposalGenerationOrchestrator {
       `🔍 Phase 7: Quality assurance for pipeline ${pipeline.pipelineId}`
     );
 
+    // Complete document assembly
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'document_assembly',
+      'completed',
+      'Document assembly complete'
+    );
+
+    // Start quality review
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'quality_review',
+      'in_progress',
+      'Performing quality review and validation'
+    );
+
     pipeline.currentPhase = 'quality_assurance';
     pipeline.progress = 95;
     pipeline.updatedAt = new Date();
@@ -584,6 +695,22 @@ export class ProposalGenerationOrchestrator {
   ): Promise<void> {
     console.log(
       `🎉 Completing proposal generation pipeline ${pipeline.pipelineId}`
+    );
+
+    // Complete quality review
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'quality_review',
+      'completed',
+      'Quality review complete'
+    );
+
+    // Mark completion step as completed
+    await progressTracker.updateStep(
+      pipeline.sessionId,
+      'completion',
+      'completed',
+      'Proposal generation complete!'
     );
 
     pipeline.currentPhase = 'completed';
@@ -650,6 +777,12 @@ export class ProposalGenerationOrchestrator {
         duration: pipeline.updatedAt.getTime() - pipeline.createdAt.getTime(),
       },
     });
+
+    // Complete progress tracking
+    await progressTracker.completeTracking(
+      pipeline.sessionId,
+      pipeline.results.proposalId || pipeline.pipelineId
+    );
 
     // Remove from active pipelines
     this.activePipelines.delete(pipeline.pipelineId);
@@ -754,6 +887,9 @@ export class ProposalGenerationOrchestrator {
     error: string
   ): Promise<void> {
     console.error(`❌ Pipeline ${pipeline.pipelineId} failed: ${error}`);
+
+    // Mark progress tracking as failed
+    await progressTracker.failTracking(pipeline.sessionId, error);
 
     pipeline.status = 'failed';
     pipeline.updatedAt = new Date();

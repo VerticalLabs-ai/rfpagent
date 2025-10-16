@@ -77,59 +77,118 @@ export function ProposalGenerationProgress({
   useEffect(() => {
     if (!isVisible || !sessionId) return;
 
+    console.log(`📡 Connecting to SSE endpoint for session: ${sessionId}`);
+
     // Start timer
     const timer = setInterval(() => {
       setElapsedTime(prev => prev + 1);
     }, 1000);
 
-    // Simulate progress tracking based on typical generation time
-    let progressTimer: NodeJS.Timeout;
-    let stepIndex = 0;
+    // Connect to Server-Sent Events for real-time progress
+    const eventSource = new EventSource(
+      `/api/proposals/submission-materials/progress/${sessionId}`
+    );
 
-    const updateProgress = () => {
-      if (stepIndex >= steps.length) {
-        setIsCompleted(true);
-        onComplete();
-        return;
-      }
-
-      const currentStepId = GENERATION_STEPS[stepIndex].id;
-
-      // Update steps
-      setSteps(prev =>
-        prev.map(step => {
-          if (step.id === currentStepId) {
-            return { ...step, status: 'in_progress' };
-          } else if (prev.findIndex(s => s.id === step.id) < stepIndex) {
-            return { ...step, status: 'completed' };
-          }
-          return step;
-        })
-      );
-
-      setCurrentStep(currentStepId);
-      setOverallProgress(
-        Math.round((stepIndex / GENERATION_STEPS.length) * 100)
-      );
-
-      stepIndex++;
-
-      // Different timing for different steps
-      let nextDelay = 8000; // Default 8 seconds
-      if (currentStepId === 'content_generator') nextDelay = 15000; // Content generation takes longer
-      if (currentStepId === 'analysis') nextDelay = 12000; // Analysis takes longer
-
-      progressTimer = setTimeout(updateProgress, nextDelay);
+    eventSource.onopen = () => {
+      console.log(`📡 SSE connection established for session: ${sessionId}`);
     };
 
-    // Start progress simulation
-    progressTimer = setTimeout(updateProgress, 2000);
+    eventSource.onmessage = event => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📡 SSE message received:', data);
+
+        if (data.type === 'connected') {
+          console.log('📡 Connected to progress stream');
+        } else if (data.type === 'progress') {
+          const progressData = data.data;
+
+          // Map backend step IDs to frontend step IDs
+          const stepMapping: Record<string, string> = {
+            initialization: 'init',
+            rfp_analysis: 'analysis',
+            company_profile: 'proposal_manager',
+            content_generation: 'content_generator',
+            compliance_check: 'compliance_checker',
+            document_assembly: 'content_generator',
+            quality_review: 'compliance_checker',
+            completion: 'finalization',
+          };
+
+          // Update overall progress
+          const progress = Math.round(
+            (progressData.completedSteps / progressData.totalSteps) * 100
+          );
+          setOverallProgress(progress);
+
+          // Update steps based on backend progress
+          setSteps(prev =>
+            prev.map(step => {
+              // Find matching backend step
+              const backendStep = progressData.steps.find((s: any) => {
+                const backendStepId = s.step
+                  .toLowerCase()
+                  .replace(/\s+/g, '_')
+                  .replace(/[^a-z0-9_]/g, '');
+                return stepMapping[backendStepId] === step.id;
+              });
+
+              if (backendStep) {
+                return {
+                  ...step,
+                  status: backendStep.status as any,
+                };
+              }
+              return step;
+            })
+          );
+
+          // Update current step
+          if (progressData.currentStep) {
+            setCurrentStep(progressData.currentStep);
+          }
+
+          // Handle completion
+          if (progressData.status === 'completed') {
+            setIsCompleted(true);
+            onComplete();
+            eventSource.close();
+          } else if (progressData.status === 'failed') {
+            setError(progressData.error || 'Proposal generation failed');
+            onError(progressData.error || 'Proposal generation failed');
+            eventSource.close();
+          }
+        } else if (data.type === 'complete') {
+          console.log('📡 Workflow complete:', data);
+          setIsCompleted(true);
+          onComplete();
+          eventSource.close();
+        } else if (data.type === 'error') {
+          console.error('📡 Workflow error:', data.error);
+          setError(data.error);
+          onError(data.error);
+          eventSource.close();
+        } else if (data.type === 'heartbeat') {
+          // Heartbeat received, connection is alive
+          console.log('📡 Heartbeat received');
+        }
+      } catch (err) {
+        console.error('Error parsing SSE message:', err);
+      }
+    };
+
+    eventSource.onerror = error => {
+      console.error('📡 SSE error:', error);
+      // Don't close immediately on error - let reconnection happen
+      // Only show error if connection repeatedly fails
+    };
 
     return () => {
+      console.log(`📡 Cleaning up SSE connection for session: ${sessionId}`);
       clearInterval(timer);
-      if (progressTimer) clearTimeout(progressTimer);
+      eventSource.close();
     };
-  }, [isVisible, sessionId, onComplete]);
+  }, [isVisible, sessionId, onComplete, onError]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
