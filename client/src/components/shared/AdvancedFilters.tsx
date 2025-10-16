@@ -26,33 +26,65 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-export interface FilterOption {
-  id: string;
-  label: string;
-  type: 'text' | 'select' | 'multiselect' | 'date' | 'daterange' | 'number';
-  options?: { value: string; label: string }[];
-  placeholder?: string;
-}
+// Discriminated union for filter value types
+export type FilterValueMap = {
+  text: string;
+  select: string;
+  multiselect: string[];
+  date: string; // ISO date string
+  daterange: [string | null, string | null]; // [from, to] ISO date strings
+  number: number | null;
+};
 
-export interface FilterValue {
-  [key: string]: any;
-}
+// Generic filter option type that enforces correct value types
+export type FilterOption<T extends keyof FilterValueMap = keyof FilterValueMap> =
+  {
+    id: string;
+    label: string;
+    placeholder?: string;
+  } & (
+    | {
+        type: 'text';
+      }
+    | {
+        type: 'select';
+        options: { value: string; label: string }[];
+      }
+    | {
+        type: 'multiselect';
+        options: { value: string; label: string }[];
+      }
+    | {
+        type: 'date';
+      }
+    | {
+        type: 'daterange';
+      }
+    | {
+        type: 'number';
+      }
+  );
 
-interface AdvancedFiltersProps {
+// Type-safe filter value map
+export type FilterValue<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>> = {
+  [K in keyof T]?: FilterValueMap[T[K]];
+};
+
+interface AdvancedFiltersProps<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>> {
   filters: FilterOption[];
-  value: FilterValue;
-  onChange: (value: FilterValue) => void;
+  value: FilterValue<T>;
+  onChange: (value: FilterValue<T>) => void;
   onReset?: () => void;
   className?: string;
 }
 
-export function AdvancedFilters({
+export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>>({
   filters,
   value,
   onChange,
   onReset,
   className = '',
-}: AdvancedFiltersProps) {
+}: AdvancedFiltersProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
 
   const activeFilterCount = useMemo(() => {
@@ -65,20 +97,20 @@ export function AdvancedFilters({
   }, [value]);
 
   const updateFilter = useCallback(
-    (filterId: string, newValue: any) => {
+    <K extends keyof T>(filterId: K, newValue: FilterValueMap[T[K]]) => {
       onChange({
         ...value,
         [filterId]: newValue,
-      });
+      } as FilterValue<T>);
     },
     [value, onChange]
   );
 
   const removeFilter = useCallback(
-    (filterId: string) => {
+    <K extends keyof T>(filterId: K) => {
       const newValue = { ...value };
       delete newValue[filterId];
-      onChange(newValue);
+      onChange(newValue as FilterValue<T>);
     },
     [value, onChange]
   );
@@ -89,26 +121,29 @@ export function AdvancedFilters({
   }, [onChange, onReset]);
 
   const renderFilterControl = (filter: FilterOption) => {
-    const currentValue = value[filter.id];
+    const currentValue = value[filter.id as keyof T];
 
     switch (filter.type) {
-      case 'text':
+      case 'text': {
+        const textValue = (currentValue as string) || '';
         return (
           <Input
             placeholder={
               filter.placeholder || `Enter ${filter.label.toLowerCase()}`
             }
-            value={currentValue || ''}
-            onChange={e => updateFilter(filter.id, e.target.value)}
+            value={textValue}
+            onChange={e => updateFilter(filter.id as keyof T, e.target.value as FilterValueMap[T[keyof T]])}
             className="w-full"
           />
         );
+      }
 
-      case 'select':
+      case 'select': {
+        const selectValue = (currentValue as string) || '';
         return (
           <Select
-            value={currentValue || ''}
-            onValueChange={val => updateFilter(filter.id, val)}
+            value={selectValue}
+            onValueChange={val => updateFilter(filter.id as keyof T, val as FilterValueMap[T[keyof T]])}
           >
             <SelectTrigger className="w-full">
               <SelectValue
@@ -118,7 +153,7 @@ export function AdvancedFilters({
               />
             </SelectTrigger>
             <SelectContent>
-              {filter.options?.map(option => (
+              {'options' in filter && filter.options?.map(option => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
@@ -126,26 +161,27 @@ export function AdvancedFilters({
             </SelectContent>
           </Select>
         );
+      }
 
       case 'multiselect': {
-        const selectedValues = Array.isArray(currentValue) ? currentValue : [];
+        const selectedValues = Array.isArray(currentValue) ? (currentValue as string[]) : [];
         return (
           <div className="space-y-2">
-            {filter.options?.map(option => (
+            {'options' in filter && filter.options?.map(option => (
               <div key={option.value} className="flex items-center space-x-2">
                 <Checkbox
                   id={`${filter.id}-${option.value}`}
                   checked={selectedValues.includes(option.value)}
                   onCheckedChange={checked => {
                     if (checked) {
-                      updateFilter(filter.id, [
+                      updateFilter(filter.id as keyof T, [
                         ...selectedValues,
                         option.value,
-                      ]);
+                      ] as FilterValueMap[T[keyof T]]);
                     } else {
                       updateFilter(
-                        filter.id,
-                        selectedValues.filter(v => v !== option.value)
+                        filter.id as keyof T,
+                        selectedValues.filter(v => v !== option.value) as FilterValueMap[T[keyof T]]
                       );
                     }
                   }}
@@ -162,7 +198,8 @@ export function AdvancedFilters({
         );
       }
 
-      case 'date':
+      case 'date': {
+        const dateValue = currentValue as string | undefined;
         return (
           <Popover>
             <PopoverTrigger asChild>
@@ -171,8 +208,8 @@ export function AdvancedFilters({
                 className="w-full justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {currentValue ? (
-                  format(new Date(currentValue), 'PPP')
+                {dateValue ? (
+                  format(new Date(dateValue), 'PPP')
                 ) : (
                   <span>Pick a date</span>
                 )}
@@ -181,17 +218,18 @@ export function AdvancedFilters({
             <PopoverContent className="w-auto p-0">
               <Calendar
                 mode="single"
-                selected={currentValue ? new Date(currentValue) : undefined}
-                onSelect={date => updateFilter(filter.id, date?.toISOString())}
+                selected={dateValue ? new Date(dateValue) : undefined}
+                onSelect={date => updateFilter(filter.id as keyof T, (date?.toISOString() ?? '') as FilterValueMap[T[keyof T]])}
                 initialFocus
               />
             </PopoverContent>
           </Popover>
         );
+      }
 
       case 'daterange': {
         const [from, to] = Array.isArray(currentValue)
-          ? currentValue
+          ? (currentValue as [string | null, string | null])
           : [null, null];
         return (
           <div className="space-y-2">
@@ -215,7 +253,7 @@ export function AdvancedFilters({
                   mode="single"
                   selected={from ? new Date(from) : undefined}
                   onSelect={date =>
-                    updateFilter(filter.id, [date?.toISOString(), to])
+                    updateFilter(filter.id as keyof T, [date?.toISOString() ?? null, to] as FilterValueMap[T[keyof T]])
                   }
                   initialFocus
                 />
@@ -237,7 +275,7 @@ export function AdvancedFilters({
                   mode="single"
                   selected={to ? new Date(to) : undefined}
                   onSelect={date =>
-                    updateFilter(filter.id, [from, date?.toISOString()])
+                    updateFilter(filter.id as keyof T, [from, date?.toISOString() ?? null] as FilterValueMap[T[keyof T]])
                   }
                   initialFocus
                 />
@@ -247,23 +285,25 @@ export function AdvancedFilters({
         );
       }
 
-      case 'number':
+      case 'number': {
+        const numberValue = (currentValue as number | null) ?? '';
         return (
           <Input
             type="number"
             placeholder={
               filter.placeholder || `Enter ${filter.label.toLowerCase()}`
             }
-            value={currentValue ?? ''}
+            value={numberValue}
             onChange={e =>
               updateFilter(
-                filter.id,
-                e.target.value ? Number(e.target.value) : null
+                filter.id as keyof T,
+                (e.target.value ? Number(e.target.value) : null) as FilterValueMap[T[keyof T]]
               )
             }
             className="w-full"
           />
         );
+      }
 
       default:
         return null;

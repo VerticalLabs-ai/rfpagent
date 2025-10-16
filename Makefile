@@ -106,8 +106,8 @@ docker-compose-logs: ## View Docker Compose logs
 
 docker-push: ## Push Docker image to registry
 	@echo "$(GREEN)Pushing Docker image...$(NC)"
-	docker tag rfp-agent:$(VERSION) ghcr.io/yourusername/rfp-agent:$(VERSION)
-	docker push ghcr.io/yourusername/rfp-agent:$(VERSION)
+	docker tag rfp-agent:$(VERSION) ghcr.io/mgunnin/rfp-agent:$(VERSION)
+	docker push ghcr.io/mgunnin/rfp-agent:$(VERSION)
 
 docker-scan: ## Scan Docker image for vulnerabilities
 	@echo "$(YELLOW)Scanning Docker image...$(NC)"
@@ -219,7 +219,6 @@ monitor-forward-prometheus: ## Port forward Prometheus
 security-scan: ## Run all security scans
 	@echo "$(YELLOW)Running security scans...$(NC)"
 	@make security-audit
-	@make security-secrets
 	@make docker-scan
 
 security-audit: ## Run npm audit

@@ -8,12 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePerformanceMonitoring } from '@/hooks/usePerformance';
+import { useQueryClient } from '@tanstack/react-query';
 import { Activity, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const { performanceScore } = usePerformanceMonitoring();
+  const queryClient = useQueryClient();
 
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
@@ -30,7 +32,7 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          {performanceScore > 0 && (
+          {performanceScore !== undefined && performanceScore !== null && (
             <Card className="border-none shadow-sm">
               <CardContent className="p-3 flex items-center gap-2">
                 <Activity className="h-4 w-4 text-green-600" />
@@ -65,7 +67,15 @@ export default function Dashboard() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => window.location.reload()}
+            onClick={async () => {
+              // Refetch data without page reload
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['metrics'] }),
+                queryClient.invalidateQueries({ queryKey: ['rfps'] }),
+                queryClient.invalidateQueries({ queryKey: ['portals'] }),
+                queryClient.invalidateQueries({ queryKey: ['activity'] })
+              ]);
+            }}
             className="gap-2"
           >
             <RefreshCw className="h-4 w-4" />

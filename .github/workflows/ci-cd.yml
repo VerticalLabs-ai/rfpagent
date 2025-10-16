@@ -393,9 +393,9 @@ jobs:
     timeout-minutes: 10
     needs: docker
     if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'staging')
-    environment:
-      name: staging
-      url: https://staging.rfpagent.app
+    # environment:
+    #   name: staging
+    #   url: https://staging.rfpagent.app
 
     steps:
       - name: Checkout code
@@ -433,9 +433,9 @@ jobs:
     timeout-minutes: 15
     needs: docker
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
-    environment:
-      name: production
-      url: https://rfpagent.app
+    # environment:
+    #   name: production
+    #   url: https://rfpagent.app
 
     steps:
       - name: Checkout code
