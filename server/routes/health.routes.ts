@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { healthCheckService } from '../services/monitoring/healthCheckService';
-import { circuitBreakerManager } from '../utils/circuitBreaker';
+import { circuitBreakerManager } from '../services/core/circuitBreaker';
+import { aiService } from '../services/core/aiService';
 import { ApiResponse } from '../utils/apiResponse';
 import { handleAsyncError } from './middleware/errorHandling';
 
@@ -45,15 +46,49 @@ router.get(
 );
 
 /**
- * Circuit breaker status
+ * Circuit breaker status (all circuits)
  * GET /api/health/circuit-breakers
  */
 router.get(
   '/circuit-breakers',
   handleAsyncError(async (req, res) => {
-    const stats = circuitBreakerManager.getAllStats();
-    return ApiResponse.success(res, stats, {
+    const allMetrics = circuitBreakerManager.getAllMetrics();
+    const healthStatus = circuitBreakerManager.getHealthStatus();
+
+    return ApiResponse.success(res, {
+      timestamp: new Date().toISOString(),
+      circuits: allMetrics,
+      summary: healthStatus,
+      hasOpenCircuits: circuitBreakerManager.hasOpenCircuits(),
+    }, {
       message: 'Circuit breaker statistics',
+    });
+  })
+);
+
+/**
+ * AI Service circuit breaker health
+ * GET /api/health/ai-circuits
+ */
+router.get(
+  '/ai-circuits',
+  handleAsyncError(async (req, res) => {
+    const aiHealth = aiService.getCircuitBreakerHealth();
+
+    const statusCode = aiHealth.overall === 'unhealthy' ? 503 : 200;
+
+    return res.status(statusCode).json({
+      success: aiHealth.overall !== 'unhealthy',
+      data: {
+        timestamp: new Date().toISOString(),
+        overall: aiHealth.overall,
+        circuits: {
+          conversation: aiHealth.conversationCircuit,
+          analysis: aiHealth.analysisCircuit,
+          generation: aiHealth.generationCircuit,
+        },
+      },
+      message: `AI services are ${aiHealth.overall}`,
     });
   })
 );

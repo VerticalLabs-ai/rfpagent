@@ -1,6 +1,7 @@
 import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
 import OpenAI from 'openai';
 import { storage } from '../../storage';
+import { circuitBreakerManager } from './circuitBreaker';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
@@ -12,6 +13,25 @@ if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
     'Warning: OpenAI API key not found. AI features will be limited.'
   );
 }
+
+// Initialize circuit breakers for different AI operations
+const conversationCircuit = circuitBreakerManager.getBreaker('openai-conversation', {
+  failureThreshold: 3,
+  timeout: 30000, // 30 sec
+  requestTimeout: 15000, // 15 sec
+});
+
+const analysisCircuit = circuitBreakerManager.getBreaker('openai-analysis', {
+  failureThreshold: 5,
+  timeout: 60000, // 1 min
+  requestTimeout: 30000, // 30 sec
+});
+
+const generationCircuit = circuitBreakerManager.getBreaker('openai-generation', {
+  failureThreshold: 5,
+  timeout: 60000, // 1 min
+  requestTimeout: 45000, // 45 sec for long generations
+});
 
 export class AIService {
   private checkApiKeyAvailable(): boolean {
@@ -58,10 +78,19 @@ export class AIService {
         { role: 'user' as const, content: latestUserMessage },
       ];
 
-      const completion = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-5',
-        messages,
-      });
+      // Execute OpenAI call with circuit breaker protection
+      const completion = await conversationCircuit.execute(
+        () =>
+          openai.chat.completions.create({
+            model: process.env.OPENAI_MODEL || 'gpt-5',
+            messages,
+          }),
+        () => {
+          // Fallback when circuit is open
+          console.warn('Circuit breaker OPEN for conversation - using fallback');
+          return { choices: [{ message: { content: this.generateFallbackReply(latestUserMessage, conversation.type) } }] } as any;
+        }
+      );
 
       const content = completion.choices[0]?.message?.content;
       if (content) {
@@ -334,11 +363,31 @@ Document text:
 ${documentText}
 `;
 
-      const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-5',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-      });
+      // Execute OpenAI call with circuit breaker protection
+      const response = await analysisCircuit.execute(
+        () =>
+          openai.chat.completions.create({
+            model: process.env.OPENAI_MODEL || 'gpt-5',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' },
+          }),
+        () => {
+          // Fallback when circuit is open
+          console.warn('Circuit breaker OPEN for document analysis - using basic compliance');
+          return {
+            choices: [{
+              message: {
+                content: JSON.stringify({
+                  requirements: [],
+                  complianceItems: [],
+                  riskFlags: [],
+                  mandatoryFields: [],
+                }),
+              },
+            }],
+          } as any;
+        }
+      );
 
       const content = response.choices[0].message.content;
       const result = content ? JSON.parse(content) : null;
@@ -479,11 +528,34 @@ Focus on water supply expertise, compliance with government regulations, and pro
 Use professional language suitable for government procurement.
 `;
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-    });
+    // Execute OpenAI call with circuit breaker protection
+    const response = await generationCircuit.execute(
+      () =>
+        openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-5',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+        }),
+      () => {
+        // Fallback when circuit is open
+        console.warn('Circuit breaker OPEN for proposal generation - using template');
+        return {
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                executiveSummary: 'Circuit breaker active - please retry later',
+                companyOverview: '',
+                technicalApproach: '',
+                projectTeam: '',
+                timeline: '',
+                qualifications: '',
+                references: '',
+              }),
+            },
+          }],
+        } as any;
+      }
+    );
 
     const content = response.choices[0].message.content;
     return content ? JSON.parse(content) : null;
@@ -527,12 +599,34 @@ Base your pricing on industry standards for:
 Target 40% gross margin. Be competitive but profitable.
 `;
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-5',
-      messages: [{ role: 'user', content: prompt }],
-      response_format: { type: 'json_object' },
-      temperature: 0.3,
-    });
+    // Execute OpenAI call with circuit breaker protection
+    const response = await generationCircuit.execute(
+      () =>
+        openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-5',
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.3,
+        }),
+      () => {
+        // Fallback when circuit is open
+        console.warn('Circuit breaker OPEN for pricing generation - using default');
+        return {
+          choices: [{
+            message: {
+              content: JSON.stringify({
+                lineItems: [],
+                subtotal: 0,
+                margin: 0,
+                totalPrice: 0,
+                defaultMargin: 40,
+                notes: ['Circuit breaker active - please retry later'],
+              }),
+            },
+          }],
+        } as any;
+      }
+    );
 
     const content = response.choices[0].message.content;
     return content ? JSON.parse(content) : null;
@@ -585,11 +679,22 @@ Source URL: ${sourceUrl}
 Content: ${scrapedContent}
 `;
 
-      const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-5',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-      });
+      // Execute OpenAI call with circuit breaker protection
+      const response = await analysisCircuit.execute(
+        () =>
+          openai.chat.completions.create({
+            model: process.env.OPENAI_MODEL || 'gpt-5',
+            messages: [{ role: 'user', content: prompt }],
+            response_format: { type: 'json_object' },
+          }),
+        () => {
+          // Fallback when circuit is open
+          console.warn('Circuit breaker OPEN for RFP extraction - returning null');
+          return null;
+        }
+      );
+
+      if (!response) return null;
 
       const content = response.choices[0].message.content;
       if (!content) return null;
@@ -618,16 +723,79 @@ Content: ${scrapedContent}
     }
 
     try {
-      const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-5',
-        messages: [{ role: 'user', content: prompt }],
-      });
+      // Execute OpenAI call with circuit breaker protection
+      const response = await generationCircuit.execute(
+        () =>
+          openai.chat.completions.create({
+            model: process.env.OPENAI_MODEL || 'gpt-5',
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        () => {
+          // Fallback when circuit is open
+          console.warn('Circuit breaker OPEN for content generation - returning fallback');
+          return {
+            choices: [{
+              message: {
+                content: 'Service temporarily unavailable. Please try again later.',
+              },
+            }],
+          } as any;
+        }
+      );
 
       return response.choices[0].message.content || '';
     } catch (error) {
       console.error('Error generating content:', error);
       throw new Error('Failed to generate content');
     }
+  }
+
+  /**
+   * Get circuit breaker health status
+   */
+  getCircuitBreakerHealth(): {
+    conversationCircuit: any;
+    analysisCircuit: any;
+    generationCircuit: any;
+    overall: 'healthy' | 'degraded' | 'unhealthy';
+  } {
+    const conversationMetrics = conversationCircuit.getMetrics();
+    const analysisMetrics = analysisCircuit.getMetrics();
+    const generationMetrics = generationCircuit.getMetrics();
+
+    // Determine overall health
+    const isHealthy =
+      conversationCircuit.isHealthy() &&
+      analysisCircuit.isHealthy() &&
+      generationCircuit.isHealthy();
+
+    const hasOpenCircuit =
+      conversationMetrics.state === 'OPEN' ||
+      analysisMetrics.state === 'OPEN' ||
+      generationMetrics.state === 'OPEN';
+
+    const overall = hasOpenCircuit
+      ? 'unhealthy'
+      : isHealthy
+        ? 'healthy'
+        : 'degraded';
+
+    return {
+      conversationCircuit: conversationMetrics,
+      analysisCircuit: analysisMetrics,
+      generationCircuit: generationMetrics,
+      overall,
+    };
+  }
+
+  /**
+   * Manually reset all circuit breakers (for admin use)
+   */
+  resetCircuitBreakers(): void {
+    console.log('[AIService] Resetting all circuit breakers');
+    conversationCircuit.reset();
+    analysisCircuit.reset();
+    generationCircuit.reset();
   }
 
   async executeSuggestion(
