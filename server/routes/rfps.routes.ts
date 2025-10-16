@@ -8,6 +8,7 @@ import { ManualRfpService } from '../services/proposals/manualRfpService';
 import { PhiladelphiaDocumentDownloader } from '../services/scrapers/philadelphiaDocumentDownloader';
 import { getMastraScrapingService } from '../services/scrapers/mastraScrapingService';
 import { progressTracker } from '../services/monitoring/progressTracker';
+import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import { storage } from '../storage';
 
 const router = Router();
@@ -390,6 +391,31 @@ router.post('/:id/download-documents', async (req, res) => {
       },
     });
 
+    // Trigger document analysis workflow if documents were successfully downloaded
+    let analysisWorkflowId = undefined;
+    if (successCount > 0 && savedDocuments.length > 0) {
+      try {
+        const sessionId = `analysis_${id}_${Date.now()}`;
+        console.log(`🔍 Starting document analysis workflow for RFP ${id}`);
+
+        const analysisResult = await analysisOrchestrator.executeAnalysisWorkflow({
+          rfpId: id,
+          sessionId,
+          priority: 8, // High priority for downloaded documents
+        });
+
+        if (analysisResult.success) {
+          analysisWorkflowId = analysisResult.metadata?.workflowId;
+          console.log(`✅ Analysis workflow started: ${analysisWorkflowId}`);
+        } else {
+          console.error(`❌ Failed to start analysis workflow: ${analysisResult.error}`);
+        }
+      } catch (analysisError) {
+        console.error('Error starting analysis workflow:', analysisError);
+        // Don't fail the download response if analysis fails
+      }
+    }
+
     res.json({
       success: true,
       rfpId: id,
@@ -400,6 +426,7 @@ router.post('/:id/download-documents', async (req, res) => {
         successful: successCount,
         failed: documentNames.length - successCount,
       },
+      analysisWorkflowId, // Include workflow ID if analysis was triggered
     });
   } catch (error) {
     console.error('Error downloading RFP documents:', error);
