@@ -229,6 +229,108 @@ router.post('/proposal-generation/execute', async (req, res) => {
 });
 
 /**
+ * Execute master orchestration workflow
+ * Supports 3 modes: discovery, proposal, full_pipeline
+ */
+router.post('/master-orchestration/execute', async (req, res) => {
+  try {
+    const { mode, portalIds, rfpId, companyProfileId, options = {} } = req.body;
+
+    // Validate mode
+    if (!mode || !['discovery', 'proposal', 'full_pipeline'].includes(mode)) {
+      return res.status(400).json({
+        error: 'Valid mode required (discovery, proposal, or full_pipeline)',
+      });
+    }
+
+    // Mode-specific validation
+    if (mode === 'discovery' && (!portalIds || portalIds.length === 0)) {
+      return res.status(400).json({
+        error: 'portalIds array required for discovery mode',
+      });
+    }
+
+    if (mode === 'proposal' && (!rfpId || !companyProfileId)) {
+      return res.status(400).json({
+        error: 'rfpId and companyProfileId required for proposal mode',
+      });
+    }
+
+    if (mode === 'full_pipeline' && (!portalIds || !companyProfileId)) {
+      return res.status(400).json({
+        error: 'portalIds and companyProfileId required for full_pipeline mode',
+      });
+    }
+
+    console.log(`🎯 Starting master orchestration workflow in ${mode} mode`);
+
+    // Import and execute master orchestration workflow
+    const { masterOrchestrationWorkflow } = await import('../../src/mastra');
+
+    const result = await masterOrchestrationWorkflow.execute({
+      input: {
+        mode,
+        portalIds,
+        rfpId,
+        companyProfileId,
+        options,
+      },
+    });
+
+    res.json({
+      success: true,
+      mode,
+      ...result,
+      message: `Master orchestration workflow (${mode}) completed successfully`,
+    });
+  } catch (error) {
+    console.error('Error executing master orchestration workflow:', error);
+    res.status(500).json({
+      error: 'Failed to execute master orchestration workflow',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * Execute proposal PDF assembly workflow
+ */
+router.post('/proposal-pdf-assembly/execute', async (req, res) => {
+  try {
+    const { proposalId, options = {} } = req.body;
+
+    if (!proposalId) {
+      return res.status(400).json({
+        error: 'proposalId is required',
+      });
+    }
+
+    console.log(`📄 Starting PDF assembly for proposal: ${proposalId}`);
+
+    // Import and execute PDF assembly workflow
+    const { proposalPDFAssemblyWorkflow } = await import('../../src/mastra');
+
+    const result = await proposalPDFAssemblyWorkflow.execute({
+      proposalId,
+      options,
+    });
+
+    res.json({
+      success: true,
+      proposalId,
+      pdfUrl: result.pdfUrl,
+      message: 'Proposal PDF assembled successfully',
+    });
+  } catch (error) {
+    console.error('Error executing PDF assembly workflow:', error);
+    res.status(500).json({
+      error: 'Failed to execute PDF assembly workflow',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * Get workflow details by ID
  */
 router.get('/:workflowId', async (req, res) => {
