@@ -30,6 +30,8 @@ export interface ProposalGenerationPipeline {
     | 'completed';
   status: 'pending' | 'in_progress' | 'suspended' | 'completed' | 'failed';
   progress: number;
+  executionMode: 'fast' | 'standard'; // NEW: Execution mode
+  enableProgressTracking: boolean; // NEW: Progress tracking toggle
   workItems: string[]; // IDs of created work items
   results: {
     outline?: any;
@@ -58,6 +60,8 @@ export interface ProposalGenerationRequest {
   deadline?: Date;
   autoSubmit?: boolean;
   qualityThreshold?: number;
+  executionMode?: 'fast' | 'standard'; // NEW: Fast mode for automated workflows
+  enableProgressTracking?: boolean; // NEW: Toggle progress tracking (disabled in fast mode by default)
   metadata?: any;
 }
 
@@ -111,6 +115,17 @@ export class ProposalGenerationOrchestrator {
         throw new Error(`RFP not found: ${request.rfpId}`);
       }
 
+      // Determine execution mode and progress tracking
+      const executionMode = request.executionMode || 'standard';
+      const enableProgressTracking =
+        request.enableProgressTracking !== undefined
+          ? request.enableProgressTracking
+          : executionMode === 'standard'; // Default: enabled for standard, disabled for fast
+
+      console.log(
+        `⚡ Execution mode: ${executionMode}, Progress tracking: ${enableProgressTracking ? 'enabled' : 'disabled'}`
+      );
+
       // Create pipeline instance
       const pipelineId = nanoid();
       const pipeline: ProposalGenerationPipeline = {
@@ -122,6 +137,8 @@ export class ProposalGenerationOrchestrator {
         currentPhase: 'outline',
         status: 'pending',
         progress: 0,
+        executionMode,
+        enableProgressTracking,
         workItems: [],
         results: {},
         metadata: {
@@ -137,20 +154,22 @@ export class ProposalGenerationOrchestrator {
 
       this.activePipelines.set(pipelineId, pipeline);
 
-      // Initialize progress tracking
-      await progressTracker.startTracking(
-        request.sessionId,
-        '/api/proposals/submission-materials',
-        'submission_materials'
-      );
+      // Initialize progress tracking only if enabled
+      if (enableProgressTracking) {
+        await progressTracker.startTracking(
+          request.sessionId,
+          '/api/proposals/submission-materials',
+          'submission_materials'
+        );
 
-      // Update initialization step
-      await progressTracker.updateStep(
-        request.sessionId,
-        'initialization',
-        'in_progress',
-        'Setting up proposal generation pipeline'
-      );
+        // Update initialization step
+        await progressTracker.updateStep(
+          request.sessionId,
+          'initialization',
+          'in_progress',
+          'Setting up proposal generation pipeline'
+        );
+      }
 
       // Store pipeline in agent memory for tracking
       await agentMemoryService.storeMemory({
@@ -182,13 +201,15 @@ export class ProposalGenerationOrchestrator {
         },
       });
 
-      // Complete initialization step
-      await progressTracker.updateStep(
-        request.sessionId,
-        'initialization',
-        'completed',
-        'Pipeline initialization complete'
-      );
+      // Complete initialization step (only if progress tracking enabled)
+      if (enableProgressTracking) {
+        await progressTracker.updateStep(
+          request.sessionId,
+          'initialization',
+          'completed',
+          'Pipeline initialization complete'
+        );
+      }
 
       // Start the pipeline with Phase 1: Outline Creation
       await this.executePhase1_OutlineCreation(pipeline);
@@ -222,13 +243,15 @@ export class ProposalGenerationOrchestrator {
       `📋 Phase 1: Creating proposal outline for pipeline ${pipeline.pipelineId}`
     );
 
-    // Update progress tracking
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'rfp_analysis',
-      'in_progress',
-      'Analyzing RFP requirements and creating proposal structure'
-    );
+    // Update progress tracking (if enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'rfp_analysis',
+        'in_progress',
+        'Analyzing RFP requirements and creating proposal structure'
+      );
+    }
 
     pipeline.status = 'in_progress';
     pipeline.currentPhase = 'outline';
@@ -278,21 +301,23 @@ export class ProposalGenerationOrchestrator {
       `✍️ Phase 2: Content generation for pipeline ${pipeline.pipelineId}`
     );
 
-    // Complete RFP analysis step
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'rfp_analysis',
-      'completed',
-      'RFP analysis complete'
-    );
+    // Complete RFP analysis step (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'rfp_analysis',
+        'completed',
+        'RFP analysis complete'
+      );
 
-    // Start company profile step (intermediate step before content generation)
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'company_profile',
-      'in_progress',
-      'Loading company profile and context'
-    );
+      // Start company profile step (intermediate step before content generation)
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'company_profile',
+        'in_progress',
+        'Loading company profile and context'
+      );
+    }
 
     pipeline.currentPhase = 'content_generation';
     pipeline.progress = 25;
@@ -372,20 +397,22 @@ export class ProposalGenerationOrchestrator {
       }),
     ]);
 
-    // Complete company profile and start content generation
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'company_profile',
-      'completed',
-      'Company profile loaded'
-    );
+    // Complete company profile and start content generation (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'company_profile',
+        'completed',
+        'Company profile loaded'
+      );
 
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'content_generation',
-      'in_progress',
-      'Generating proposal content with AI agents'
-    );
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'content_generation',
+        'in_progress',
+        'Generating proposal content with AI agents'
+      );
+    }
 
     pipeline.workItems.push(...contentWorkItems.map(item => item.id));
 
@@ -457,21 +484,23 @@ export class ProposalGenerationOrchestrator {
       `✅ Phase 4: Compliance validation for pipeline ${pipeline.pipelineId}`
     );
 
-    // Complete content generation
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'content_generation',
-      'completed',
-      'Proposal content generated'
-    );
+    // Complete content generation (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'content_generation',
+        'completed',
+        'Proposal content generated'
+      );
 
-    // Start compliance check
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'compliance_check',
-      'in_progress',
-      'Validating compliance with requirements'
-    );
+      // Start compliance check
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'compliance_check',
+        'in_progress',
+        'Validating compliance with requirements'
+      );
+    }
 
     pipeline.currentPhase = 'compliance_validation';
     pipeline.progress = 65;
@@ -572,21 +601,23 @@ export class ProposalGenerationOrchestrator {
       `🔧 Phase 6: Final assembly for pipeline ${pipeline.pipelineId}`
     );
 
-    // Complete compliance check
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'compliance_check',
-      'completed',
-      'Compliance validation complete'
-    );
+    // Complete compliance check (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'compliance_check',
+        'completed',
+        'Compliance validation complete'
+      );
 
-    // Start document assembly
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'document_assembly',
-      'in_progress',
-      'Assembling final proposal documents'
-    );
+      // Start document assembly
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'document_assembly',
+        'in_progress',
+        'Assembling final proposal documents'
+      );
+    }
 
     pipeline.currentPhase = 'final_assembly';
     pipeline.progress = 85;
@@ -639,21 +670,23 @@ export class ProposalGenerationOrchestrator {
       `🔍 Phase 7: Quality assurance for pipeline ${pipeline.pipelineId}`
     );
 
-    // Complete document assembly
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'document_assembly',
-      'completed',
-      'Document assembly complete'
-    );
+    // Complete document assembly (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'document_assembly',
+        'completed',
+        'Document assembly complete'
+      );
 
-    // Start quality review
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'quality_review',
-      'in_progress',
-      'Performing quality review and validation'
-    );
+      // Start quality review
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'quality_review',
+        'in_progress',
+        'Performing quality review and validation'
+      );
+    }
 
     pipeline.currentPhase = 'quality_assurance';
     pipeline.progress = 95;
@@ -697,21 +730,23 @@ export class ProposalGenerationOrchestrator {
       `🎉 Completing proposal generation pipeline ${pipeline.pipelineId}`
     );
 
-    // Complete quality review
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'quality_review',
-      'completed',
-      'Quality review complete'
-    );
+    // Complete quality review (if tracking enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'quality_review',
+        'completed',
+        'Quality review complete'
+      );
 
-    // Mark completion step as completed
-    await progressTracker.updateStep(
-      pipeline.sessionId,
-      'completion',
-      'completed',
-      'Proposal generation complete!'
-    );
+      // Mark completion step as completed
+      await progressTracker.updateStep(
+        pipeline.sessionId,
+        'completion',
+        'completed',
+        'Proposal generation complete!'
+      );
+    }
 
     pipeline.currentPhase = 'completed';
     pipeline.status = 'completed';
@@ -778,11 +813,13 @@ export class ProposalGenerationOrchestrator {
       },
     });
 
-    // Complete progress tracking
-    await progressTracker.completeTracking(
-      pipeline.sessionId,
-      pipeline.results.proposalId || pipeline.pipelineId
-    );
+    // Complete progress tracking (if enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.completeTracking(
+        pipeline.sessionId,
+        pipeline.results.proposalId || pipeline.pipelineId
+      );
+    }
 
     // Remove from active pipelines
     this.activePipelines.delete(pipeline.pipelineId);
@@ -841,8 +878,39 @@ export class ProposalGenerationOrchestrator {
       // Store phase results
       (pipeline.results as any)[pipeline.currentPhase] = phaseResults;
 
+      // Determine next phase based on execution mode
+      let actualNextPhase = nextPhase;
+
+      // Fast mode phase skipping logic
+      if (pipeline.executionMode === 'fast') {
+        console.log(
+          `⚡ Fast mode: Checking if phase ${nextPhase} should be skipped`
+        );
+
+        // Skip compliance, form completion, and quality assurance in fast mode
+        const skipPhases = [
+          'compliance_validation',
+          'form_completion',
+          'quality_assurance',
+        ];
+
+        if (skipPhases.includes(nextPhase)) {
+          console.log(`⚡ Fast mode: Skipping phase ${nextPhase}`);
+
+          // Fast mode phase flow: outline → content_generation → pricing_analysis → final_assembly → completed
+          const fastModePhaseFlow: Record<string, string> = {
+            compliance_validation: 'final_assembly', // After pricing, skip to assembly
+            form_completion: 'final_assembly', // Should not reach here, but safety
+            quality_assurance: 'completed', // After assembly, skip to completion
+          };
+
+          actualNextPhase = fastModePhaseFlow[nextPhase] || nextPhase;
+          console.log(`⚡ Fast mode: Transitioning to ${actualNextPhase} instead`);
+        }
+      }
+
       // Transition to next phase
-      switch (nextPhase) {
+      switch (actualNextPhase) {
         case 'content_generation':
           await this.executePhase2_ContentGeneration(pipeline);
           break;
@@ -865,7 +933,7 @@ export class ProposalGenerationOrchestrator {
           await this.completePipeline(pipeline);
           break;
         default:
-          console.warn(`⚠️ Unknown next phase: ${nextPhase}`);
+          console.warn(`⚠️ Unknown next phase: ${actualNextPhase}`);
       }
     } catch (error) {
       console.error(
@@ -888,8 +956,10 @@ export class ProposalGenerationOrchestrator {
   ): Promise<void> {
     console.error(`❌ Pipeline ${pipeline.pipelineId} failed: ${error}`);
 
-    // Mark progress tracking as failed
-    await progressTracker.failTracking(pipeline.sessionId, error);
+    // Mark progress tracking as failed (if enabled)
+    if (pipeline.enableProgressTracking) {
+      await progressTracker.failTracking(pipeline.sessionId, error);
+    }
 
     pipeline.status = 'failed';
     pipeline.updatedAt = new Date();
@@ -1105,6 +1175,8 @@ export class ProposalGenerationOrchestrator {
     autoSubmit?: boolean;
     generatePricing?: boolean;
     generateCompliance?: boolean;
+    executionMode?: 'fast' | 'standard'; // NEW: Fast mode for automated workflows
+    enableProgressTracking?: boolean; // NEW: Toggle progress tracking
   }): Promise<{
     success: boolean;
     pipelineId?: string;
@@ -1112,6 +1184,7 @@ export class ProposalGenerationOrchestrator {
     totalPhases?: number;
     workItemsCreated?: number;
     estimatedDuration?: string;
+    executionMode?: 'fast' | 'standard'; // NEW: Return execution mode
     error?: string;
   }> {
     console.log(
@@ -1122,6 +1195,17 @@ export class ProposalGenerationOrchestrator {
       // Generate sessionId for the request
       const sessionId = nanoid();
 
+      // Determine execution mode
+      const executionMode = request.executionMode || 'standard';
+      const enableProgressTracking =
+        request.enableProgressTracking !== undefined
+          ? request.enableProgressTracking
+          : executionMode === 'standard'; // Default: enabled for standard, disabled for fast
+
+      console.log(
+        `📊 API Wrapper: Creating ${executionMode} mode pipeline with progress tracking ${enableProgressTracking ? 'enabled' : 'disabled'}`
+      );
+
       // Convert to ProposalGenerationRequest format
       const proposalRequest: ProposalGenerationRequest = {
         rfpId: request.rfpId,
@@ -1130,6 +1214,8 @@ export class ProposalGenerationOrchestrator {
         proposalType: request.proposalType || 'standard',
         qualityThreshold: request.qualityThreshold || 0.8,
         autoSubmit: request.autoSubmit || false,
+        executionMode,
+        enableProgressTracking,
         metadata: {
           generatePricing: request.generatePricing !== false,
           generateCompliance: request.generateCompliance !== false,
@@ -1147,8 +1233,11 @@ export class ProposalGenerationOrchestrator {
       }
 
       // Transform to expected API response format
-      const totalPhases = 7; // outline, content_generation, pricing_analysis, compliance_validation, form_completion, final_assembly, quality_assurance
-      const estimatedDurationMinutes = totalPhases * 30; // 30 minutes per phase
+      // Fast mode: 4 phases (outline, content, pricing, assembly)
+      // Standard mode: 7 phases (outline, content, pricing, compliance, forms, assembly, QA)
+      const totalPhases = executionMode === 'fast' ? 4 : 7;
+      const phaseMinutes = executionMode === 'fast' ? 5 : 30; // Fast: ~5 min/phase, Standard: ~30 min/phase
+      const estimatedDurationMinutes = totalPhases * phaseMinutes;
 
       return {
         success: true,
@@ -1157,6 +1246,7 @@ export class ProposalGenerationOrchestrator {
         totalPhases,
         workItemsCreated: 1, // Initial work items created
         estimatedDuration: `${estimatedDurationMinutes} minutes`,
+        executionMode,
       };
     } catch (error) {
       const errorMessage =

@@ -26,7 +26,7 @@ import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
 import { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 import { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
-import { proposalGenerationWorkflow } from './workflows/proposal-generation-workflow';
+import { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
 import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
 
 // Mastra configuration with complete 3-tier agent system and workflows
@@ -59,8 +59,25 @@ export const mastra = new Mastra({
   workflows: {
     documentProcessing: documentProcessingWorkflow,
     rfpDiscovery: rfpDiscoveryWorkflow,
-    proposalGeneration: proposalGenerationWorkflow,
+    proposalPDFAssembly: proposalPDFAssemblyWorkflow,
     bonfireAuth: bonfireAuthWorkflow,
     masterOrchestration: masterOrchestrationWorkflow,
   },
 });
+
+// Export PDF utilities for external use
+export {
+  parsePDFFile,
+  parsePDFBuffer,
+  fillPDFForm,
+  getPDFFormFields,
+  assembleProposalPDF,
+  mergePDFs,
+} from './utils/pdf-processor';
+
+export type {
+  PDFParseResult,
+  PDFFormField,
+  PDFAssemblyOptions,
+  PDFSection,
+} from './utils/pdf-processor';

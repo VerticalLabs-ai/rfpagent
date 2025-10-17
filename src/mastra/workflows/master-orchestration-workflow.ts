@@ -1,10 +1,10 @@
-import { createWorkflow, createStep } from '@mastra/core';
+import { createStep, createWorkflow } from '@mastra/core';
 import { z } from 'zod';
-import { agentMemoryService } from '../../../server/services/agentMemoryService';
+import { agentMemoryService } from '../../../server/services/agents/agentMemoryService';
 import { storage } from '../../../server/storage';
+import { proposalGenerationOrchestrator } from '../../../server/services/orchestrators/proposalGenerationOrchestrator';
 import { bonfireAuthWorkflow } from './bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './document-processing-workflow';
-import { proposalGenerationWorkflow } from './proposal-generation-workflow';
 import { rfpDiscoveryWorkflow } from './rfp-discovery-workflow';
 
 // Input schema for master orchestration
@@ -120,7 +120,7 @@ const executeWorkflowStep = createStep({
                       companyName: portal.name,
                       retryCount: 0,
                       maxRetries: 3,
-                    }
+                    },
                   } as any);
 
                   // Store authentication state in Memory API for future checks
@@ -163,7 +163,7 @@ const executeWorkflowStep = createStep({
           const discoveryOutput = await rfpDiscoveryWorkflow.execute({
             input: {
               maxPortals: portalIds?.length || 10,
-            }
+            },
           } as any);
 
           results.workflows.push({
@@ -214,12 +214,16 @@ const executeWorkflowStep = createStep({
             });
           }
 
-          // Generate proposal
-          const proposalOutput = await proposalGenerationWorkflow.execute({
-            input: {
-              rfpId: rfpId!,
-            }
-          } as any);
+          // Generate proposal using orchestrator in fast mode
+          const proposalOutput =
+            await proposalGenerationOrchestrator.createProposalGenerationPipeline(
+              {
+                rfpId: rfpId!,
+                companyProfileId,
+                executionMode: 'fast',
+                enableProgressTracking: false,
+              }
+            );
 
           results.workflows.push({
             type: 'proposal-generation',
@@ -247,7 +251,7 @@ const executeWorkflowStep = createStep({
             return await rfpDiscoveryWorkflow.execute({
               input: {
                 maxPortals: portalIds?.length || 10,
-              }
+              },
             } as any);
           }
         );
@@ -291,15 +295,18 @@ const executeWorkflowStep = createStep({
                       // Generate proposal if company profile exists
                       if (companyProfileId) {
                         const proposal =
-                          await proposalGenerationWorkflow.execute({
-                            input: {
+                          await proposalGenerationOrchestrator.createProposalGenerationPipeline(
+                            {
                               rfpId: rfp.id,
+                              companyProfileId,
+                              executionMode: 'fast',
+                              enableProgressTracking: false,
                             }
-                          } as any);
+                          );
 
                         return {
                           rfpId: rfp.id,
-                          proposalId: proposal.proposalId,
+                          pipelineId: proposal.pipelineId,
                           status: 'processed',
                         };
                       }
@@ -394,11 +401,14 @@ const executeWorkflowStep = createStep({
       processedRfps: results.processedRfps,
       proposal: results.proposal,
     };
-  }
+  },
 });
 
 export const masterOrchestrationWorkflow: any = createWorkflow({
   id: 'master-orchestration',
-  description: 'Coordinates all RFP workflows end-to-end from discovery to submission',
+  description:
+    'Coordinates all RFP workflows end-to-end from discovery to submission',
   inputSchema: MasterOrchestrationInputSchema,
-} as any).then(executeWorkflowStep as any).commit();
+} as any)
+  .then(executeWorkflowStep as any)
+  .commit();
