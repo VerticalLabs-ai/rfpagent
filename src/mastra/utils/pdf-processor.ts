@@ -6,7 +6,10 @@ import {
   rgb,
   StandardFonts,
 } from 'pdf-lib';
-import pdfParse from 'pdf-parse';
+// pdf-parse is a CommonJS module, use dynamic import for ESM compatibility
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 import { logger } from '../../../server/utils/logger';
 
 export interface PDFParseResult {

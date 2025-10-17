@@ -7,14 +7,14 @@ import {
   documentProcessorSpecialist,
   requirementsExtractorSpecialist,
 } from '../specialists/analysisSpecialists';
-import { DiscoveryWorkflowProcessors } from './discoveryWorkflowProcessors';
+// LAZY IMPORT: import { DiscoveryWorkflowProcessors } from './discoveryWorkflowProcessors';
 import { documentIntelligenceService } from '../processing/documentIntelligenceService';
 import { DocumentParsingService } from '../processing/documentParsingService';
 import { EnhancedProposalService } from '../proposals/enhancedProposalService';
 import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { mastraWorkflowEngine } from './mastraWorkflowEngine';
 import { PortalMonitoringService } from '../monitoring/portal-monitoring-service';
-import { proposalGenerationOrchestrator } from '../orchestrators/proposalGenerationOrchestrator';
+// LAZY IMPORT: import { proposalGenerationOrchestrator } from '../orchestrators/proposalGenerationOrchestrator';
 import {
   complianceValidationSpecialist,
   contentGenerationSpecialist,
@@ -23,6 +23,26 @@ import {
 // SAFLA Self-Improving System Integration
 import type { AgentRegistry, InsertWorkItem, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
+
+// Lazy imports to break circular dependencies
+let _DiscoveryWorkflowProcessors: typeof import("./discoveryWorkflowProcessors").DiscoveryWorkflowProcessors | null = null;
+let _proposalGenerationOrchestrator: typeof import("../orchestrators/proposalGenerationOrchestrator").proposalGenerationOrchestrator | null = null;
+
+async function getDiscoveryWorkflowProcessors() {
+  if (!_DiscoveryWorkflowProcessors) {
+    const module = await import("./discoveryWorkflowProcessors");
+    _DiscoveryWorkflowProcessors = module.DiscoveryWorkflowProcessors;
+  }
+  return _DiscoveryWorkflowProcessors;
+}
+
+async function getProposalGenerationOrchestrator() {
+  if (!_proposalGenerationOrchestrator) {
+    const module = await import("../orchestrators/proposalGenerationOrchestrator");
+    _proposalGenerationOrchestrator = module.proposalGenerationOrchestrator;
+  }
+  return _proposalGenerationOrchestrator;
+}
 import {
   AdaptivePortalNavigator,
   type NavigationAttempt,
@@ -634,22 +654,22 @@ export class WorkflowCoordinator {
       switch (workItem.taskType) {
         // New Discovery Pipeline Tasks - Sequenced workflow
         case 'portal_authentication':
-          return await DiscoveryWorkflowProcessors.processPortalAuthentication(
+          (await getDiscoveryWorkflowProcessors()).processPortalAuthentication(
             workItem
           );
 
         case 'portal_scanning':
-          return await DiscoveryWorkflowProcessors.processPortalScanning(
+          (await getDiscoveryWorkflowProcessors()).processPortalScanning(
             workItem
           );
 
         case 'rfp_extraction':
-          return await DiscoveryWorkflowProcessors.processRFPExtraction(
+          (await getDiscoveryWorkflowProcessors()).processRFPExtraction(
             workItem
           );
 
         case 'portal_monitoring':
-          return await DiscoveryWorkflowProcessors.processPortalMonitoring(
+          (await getDiscoveryWorkflowProcessors()).processPortalMonitoring(
             workItem
           );
 
@@ -2987,8 +3007,8 @@ export class WorkflowCoordinator {
       // Notify orchestrator of completion
       const metadata = workItem.metadata as WorkItemMetadata;
       if (result.success && metadata?.pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             metadata.pipelineId!,
             [workItem.id],
             'content_generation'
@@ -3117,8 +3137,8 @@ export class WorkflowCoordinator {
       // Notify orchestrator of completion
       const metadata = workItem.metadata as WorkItemMetadata;
       if (result.success && metadata?.pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             metadata.pipelineId!,
             [workItem.id],
             'compliance_validation'
@@ -3158,8 +3178,8 @@ export class WorkflowCoordinator {
       // Notify orchestrator of completion
       const metadata = workItem.metadata as WorkItemMetadata;
       if (result.success && metadata?.pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             metadata.pipelineId!,
             [workItem.id],
             'form_completion'
@@ -3245,8 +3265,8 @@ export class WorkflowCoordinator {
 
       // Notify orchestrator of completion
       if (pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             pipelineId,
             [workItem.id],
             'final_assembly'
@@ -3372,8 +3392,8 @@ export class WorkflowCoordinator {
 
       // Notify orchestrator of completion
       if (pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             pipelineId,
             [workItem.id],
             'quality_assurance'
@@ -3486,8 +3506,8 @@ export class WorkflowCoordinator {
 
       // Notify orchestrator of completion
       if (pipelineId) {
-        setTimeout(() => {
-          proposalGenerationOrchestrator.handlePhaseCompletion(
+        setTimeout(async () => {
+          (await getProposalGenerationOrchestrator()).handlePhaseCompletion(
             pipelineId,
             [workItem.id],
             'completed'
