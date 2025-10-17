@@ -30,9 +30,7 @@
       "Bash(pwd)",
       "Bash(ls:*)"
     ],
-    "deny": [
-      "Bash(rm -rf /)"
-    ]
+    "deny": ["Bash(rm -rf /)"]
   },
   "hooks": {
     "PreToolUse": [
@@ -106,10 +104,6 @@
       }
     ]
   },
-  "includeCoAuthoredBy": true,
-  "enabledMcpjsonServers": ["claude-flow", "ruv-swarm"],
-  "statusLine": {
-    "type": "command",
-    "command": ".claude/statusline-command.sh"
-  }
+  "includeCoAuthoredBy": false,
+  "enabledMcpjsonServers": ["claude-flow", "ruv-swarm"]
 }
