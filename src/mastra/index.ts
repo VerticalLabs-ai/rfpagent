@@ -63,6 +63,18 @@ export const mastra = new Mastra({
     bonfireAuth: bonfireAuthWorkflow,
     masterOrchestration: masterOrchestrationWorkflow,
   },
+  // Bundler Configuration - Mark browser automation tools as external
+  // These are Node.js runtime dependencies that should not be bundled
+  bundler: {
+    externals: [
+      'playwright',
+      'playwright-core',
+      '@playwright/test',
+      '@browserbasehq/stagehand',
+      'puppeteer',
+      'puppeteer-core',
+    ],
+  },
 });
 
 // Export individual workflows for direct use
