@@ -27,6 +27,15 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      // Mark Node.js runtime dependencies as external for Mastra Cloud
+      // These should NOT be bundled - they're runtime-only tools
+      external: [
+        'playwright',
+        'playwright-core',
+        '@playwright/test',
+      ],
+    },
   },
   server: {
     proxy: {
