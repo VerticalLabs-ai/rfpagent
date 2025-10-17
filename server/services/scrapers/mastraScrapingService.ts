@@ -4,7 +4,7 @@ import { Memory } from '@mastra/memory';
 import type { Portal } from '@shared/schema';
 import * as cheerio from 'cheerio';
 import pLimit from 'p-limit';
-import { request } from 'undici';
+import axios from 'axios';
 import { z } from 'zod';
 import { storage } from '../../storage';
 import { AIService } from '../core/aiService';
@@ -1958,12 +1958,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         ...(cookieHeader ? { Cookie: cookieHeader } : {}),
       };
 
-      currentResponse = await request(currentUrl, {
-        method: 'GET',
+      const axiosResponse = await axios.get(currentUrl, {
         headers: requestHeaders,
-        bodyTimeout: 30000,
-        headersTimeout: 10000,
+        timeout: 30000,
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
       });
+
+      currentResponse = {
+        statusCode: axiosResponse.status,
+        headers: axiosResponse.headers as any,
+        body: { text: async () => axiosResponse.data },
+      };
 
       // Update cookies from response
       const setCookieHeaders = currentResponse.headers['set-cookie'];
@@ -2515,23 +2521,22 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   ): Promise<any> {
     return await this.requestLimiter(async () => {
       try {
-        const response = await request(url, {
-          method: 'GET',
+        const response = await axios.get(url, {
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             ...(sessionData?.cookies ? { Cookie: sessionData.cookies } : {}),
             ...(sessionData?.headers ? sessionData.headers : {}),
           },
-          bodyTimeout: 20000,
-          headersTimeout: 10000,
+          timeout: 20000,
+          validateStatus: (status) => status === 200,
         });
 
-        if (response.statusCode !== 200) {
+        if (response.status !== 200) {
           return null;
         }
 
-        const html = await response.body.text();
+        const html = response.data;
         const $ = cheerio.load(html);
 
         // Extract detailed information
@@ -2757,17 +2762,22 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       const flowJsonUrl = `https://account.bonfirehub.com/login?flow=${flowId}`;
       console.log(`📋 Step 2: Fetching flow JSON from ${flowJsonUrl}`);
 
-      const flowJsonResponse = await request(flowJsonUrl, {
-        method: 'GET',
+      const flowJsonAxiosResponse = await axios.get(flowJsonUrl, {
         headers: {
           Accept: 'application/json',
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
           ...(flowCookies ? { Cookie: flowCookies } : {}),
         },
-        bodyTimeout: 30000,
-        headersTimeout: 10000,
+        timeout: 30000,
+        validateStatus: (status) => status === 200,
       });
+
+      const flowJsonResponse = {
+        statusCode: flowJsonAxiosResponse.status,
+        headers: flowJsonAxiosResponse.headers as any,
+        body: { json: async () => flowJsonAxiosResponse.data },
+      };
 
       if (flowJsonResponse.statusCode !== 200) {
         throw new Error(
@@ -2821,21 +2831,29 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       const redactedCookies = this.redactSensitiveCookies(formCookies);
       console.log(`🍪 Using cookies for login: ${redactedCookies}`);
 
-      const loginSubmitResponse = await request(formAction, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          Referer: flowFinalUrl,
-          ...(formCookies ? { Cookie: formCookies } : {}),
-        },
-        body: new URLSearchParams(loginPayload).toString(),
-        bodyTimeout: 30000,
-        headersTimeout: 10000,
-      });
+      const loginSubmitAxiosResponse = await axios.post(
+        formAction,
+        new URLSearchParams(loginPayload).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            Referer: flowFinalUrl,
+            ...(formCookies ? { Cookie: formCookies } : {}),
+          },
+          timeout: 30000,
+          maxRedirects: 0,
+          validateStatus: (status) => status >= 200 && status < 400,
+        }
+      );
+
+      const loginSubmitResponse = {
+        statusCode: loginSubmitAxiosResponse.status,
+        headers: loginSubmitAxiosResponse.headers as any,
+      };
 
       console.log(
         `📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.statusCode}`
@@ -2987,8 +3005,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       console.log(`🍪 Using cookies for form submission: ${redactedCookies}`);
 
       // Submit login form
-      const loginResponse = await request(formData.action, {
+      const loginAxiosResponse = await axios({
         method: formData.method,
+        url: formData.action,
+        data: new URLSearchParams(payload).toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'User-Agent':
@@ -2996,10 +3016,16 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           Referer: portalUrl,
           ...(cookies ? { Cookie: cookies } : {}),
         },
-        body: new URLSearchParams(payload).toString(),
-        bodyTimeout: 30000,
-        headersTimeout: 10000,
+        timeout: 30000,
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
       });
+
+      const loginResponse = {
+        statusCode: loginAxiosResponse.status,
+        headers: loginAxiosResponse.headers as any,
+        body: { text: async () => loginAxiosResponse.data },
+      };
 
       // Extract new cookies from login response
       const sessionCookies = this.extractCookies(loginResponse);

@@ -1,6 +1,6 @@
 import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 import { AuthContext, AuthResult } from '../../types';
-import { request } from 'undici';
+import axios from 'axios';
 import * as cheerio from 'cheerio';
 
 /**
@@ -59,8 +59,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   }> {
     try {
       // Fetch login page with proper headers
-      const response = await request(url, {
-        method: 'GET',
+      const axiosResponse = await axios.get(url, {
         headers: {
           Accept:
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -68,7 +67,14 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
+        validateStatus: (status) => status < 500,
       });
+
+      const response = {
+        statusCode: axiosResponse.status,
+        headers: axiosResponse.headers as any,
+        body: { text: async () => axiosResponse.data },
+      };
 
       if (response.statusCode >= 400) {
         return {
@@ -308,8 +314,10 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       console.log(`📋 Form fields:`, this.redactSensitiveInfo(payload));
 
       // Submit login form
-      const loginResponse = await request(formData.action, {
+      const loginAxiosResponse = await axios({
         method: formData.method,
+        url: formData.action,
+        data: new URLSearchParams(payload).toString(),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           Accept:
@@ -320,8 +328,15 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
           Referer: context.portalUrl,
           Cookie: cookies,
         },
-        body: new URLSearchParams(payload).toString(),
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
       });
+
+      const loginResponse = {
+        statusCode: loginAxiosResponse.status,
+        headers: loginAxiosResponse.headers as any,
+        body: { text: async () => loginAxiosResponse.data },
+      };
 
       // Extract new cookies from login response
       const sessionCookies = this.extractCookies(loginResponse);

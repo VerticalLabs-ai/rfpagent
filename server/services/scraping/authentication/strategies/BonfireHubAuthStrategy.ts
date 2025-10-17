@@ -1,7 +1,7 @@
 import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 import { AuthContext, AuthResult } from '../../types';
 import { stagehandAuthTool } from '../../../../../src/mastra/tools';
-import { request } from 'undici';
+import axios from 'axios';
 import * as cheerio from 'cheerio';
 import {
   executeStagehandTool,
