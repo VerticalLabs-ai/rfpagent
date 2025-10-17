@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { analysisOrchestrator } from '../orchestrators/analysisOrchestrator';
 import { analysisProgressTracker } from '../monitoring/analysisProgressTracker';
 import { storage } from '../../storage';

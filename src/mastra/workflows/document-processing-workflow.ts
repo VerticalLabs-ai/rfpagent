@@ -21,6 +21,20 @@ const documentSchema = z.object({
   description: z.string().optional().describe('Document description'),
 });
 
+const processedDocumentBaseSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  extractedText: z.string(),
+  category: z.string(),
+  keyRequirements: z.array(z.string()),
+  deadlines: z.array(z.string()),
+});
+
+const processedDocumentWithFormSchema = processedDocumentBaseSchema.extend({
+  hasFormFields: z.boolean().optional(),
+  formFieldCount: z.number().optional(),
+});
+
 // Step 1: Extract document links from RFP page
 const extractDocumentLinksStep = createStep({
   id: 'extract-document-links',
@@ -264,16 +278,7 @@ const processDocumentsStep = createStep({
   }),
   outputSchema: z.object({
     rfpId: z.string(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentBaseSchema),
   }),
   execute: async ({ inputData }) => {
     const { rfpId, uploadedDocuments } = inputData;
@@ -379,31 +384,11 @@ const pdfFormEditingStep = createStep({
   description: 'Detect and prepare PDF forms for editing',
   inputSchema: z.object({
     rfpId: z.string(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentBaseSchema),
   }),
   outputSchema: z.object({
     rfpId: z.string(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-        hasFormFields: z.boolean().optional(),
-        formFieldCount: z.number().optional(),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
   execute: async ({ inputData }) => {
     const { rfpId, processedDocuments } = inputData;
@@ -444,7 +429,7 @@ const pdfFormEditingStep = createStep({
                 });
               }
             } catch (formError) {
-              logger.warn(`Error checking form fields in ${doc.fileName}:`, formError as Error, formError as Record<string, any>);
+              logger.warn(`Error checking form fields in ${doc.fileName}:`, formError as Error);
             }
           }
         }
@@ -474,33 +459,13 @@ const updateRfpStatusStep = createStep({
   description: 'Update RFP with document processing results',
   inputSchema: z.object({
     rfpId: z.string(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
   outputSchema: z.object({
     success: z.boolean(),
     message: z.string(),
     documentCount: z.number(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-        hasFormFields: z.boolean().optional(),
-        formFieldCount: z.number().optional(),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
   execute: async ({ inputData }) => {
     const { rfpId, processedDocuments } = inputData;
@@ -650,22 +615,13 @@ const finalizeResultsStep = createStep({
     success: z.boolean(),
     message: z.string(),
     documentCount: z.number(),
-    processedDocuments: z.array(
-      z.object({
-        id: z.string(),
-        fileName: z.string(),
-        extractedText: z.string(),
-        category: z.string(),
-        keyRequirements: z.array(z.string()),
-        deadlines: z.array(z.string()),
-      })
-    ),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
   outputSchema: z.object({
     success: z.boolean(),
     message: z.string(),
     documentCount: z.number(),
-    processedDocuments: z.array(z.any()),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
   execute: async ({ inputData }) => {
     return {
@@ -690,7 +646,7 @@ export const documentProcessingWorkflow = createWorkflow({
     success: z.boolean(),
     message: z.string(),
     documentCount: z.number(),
-    processedDocuments: z.array(z.any()),
+    processedDocuments: z.array(processedDocumentWithFormSchema),
   }),
 })
   .then(extractDocumentLinksStep)

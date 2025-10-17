@@ -40,6 +40,7 @@ DATABASE_URL="postgresql://user:password@localhost:5432/rfpagent"
 OPENAI_API_KEY="sk-..."
 GCS_BUCKET_NAME="rfpagent-documents"
 BROWSERBASE_API_KEY="..."
+SAM_GOV_API_KEY="SAM-..."
 
 # Run database migrations
 pnpm db:push

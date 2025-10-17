@@ -65,6 +65,14 @@ export class BrowserbaseSessionManager {
     }
   }
 
+  async cleanupSession(sessionId?: string): Promise<void> {
+    if (sessionId) {
+      await this.closeSession(sessionId);
+      return;
+    }
+    await this.cleanup();
+  }
+
   async cleanup(): Promise<void> {
     const sessionIds = Array.from(this.sessions.keys());
     await Promise.all(sessionIds.map(id => this.closeSession(id)));

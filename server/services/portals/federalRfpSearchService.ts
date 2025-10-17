@@ -139,7 +139,7 @@ export class FederalRfpSearchService {
     try {
       const apiKey = process.env.SAM_GOV_API_KEY;
       if (!apiKey) {
-        console.warn('SAM.gov API key not configured');
+        logger.warn('SAM.gov API key not configured; skipping SAM.gov search');
         return [];
       }
 

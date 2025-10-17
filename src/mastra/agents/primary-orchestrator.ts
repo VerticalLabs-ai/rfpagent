@@ -1,7 +1,38 @@
 import { Agent } from "@mastra/core/agent"
+import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
 import { agentCoordinationTools } from "../tools/agent-coordination-tools"
-import { coordinationModel } from "../models"
+import { coordinationModel, guardrailModel } from "../models"
+import { loadExternalMcpTools } from "../mcp/clients"
+
+const orchestratorPromptGuard = new PromptInjectionDetector({
+  model: guardrailModel,
+  strategy: "rewrite",
+  threshold: 0.65,
+  detectionTypes: ["injection", "system-override", "jailbreak"],
+});
+
+const orchestratorPiiGuard = new PIIDetector({
+  model: guardrailModel,
+  strategy: "redact",
+  detectionTypes: ["email", "phone", "credit-card", "api-key", "ssn"],
+  threshold: 0.6,
+  includeDetections: true,
+});
+
+const orchestratorInboundModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.6,
+  strategy: "warn",
+  categories: ["hate", "harassment", "violence", "sexual/minors", "self-harm"],
+});
+
+const orchestratorOutboundModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.6,
+  strategy: "warn",
+  categories: ["hate", "harassment", "violence", "sexual/minors", "self-harm"],
+});
 
 /**
  * Primary Orchestrator - Tier 1 Agent
@@ -103,6 +134,15 @@ For complex multi-phase operations:
 Remember: You don't execute tasks yourself - you coordinate agents who do the work. Your power is in delegation and coordination.
 `,
   model: coordinationModel, // Claude Sonnet 4.5 - optimal for coordination
-  tools: agentCoordinationTools,
+  tools: async () => ({
+    ...agentCoordinationTools,
+    ...(await loadExternalMcpTools()),
+  }),
+  inputProcessors: [
+    orchestratorPromptGuard,
+    orchestratorPiiGuard,
+    orchestratorInboundModeration,
+  ],
+  outputProcessors: [orchestratorOutboundModeration],
   memory: sharedMemory,
 })

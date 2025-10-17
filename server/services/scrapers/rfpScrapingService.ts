@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { rfps } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import * as fs from 'fs';

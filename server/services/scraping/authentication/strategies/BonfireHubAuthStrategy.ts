@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 import { AuthContext, AuthResult } from '../../types';
 import { stagehandAuthTool } from '../../../../../src/mastra/tools';

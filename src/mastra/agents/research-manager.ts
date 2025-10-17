@@ -1,12 +1,35 @@
 import { Agent } from "@mastra/core/agent"
+import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
-import { analyticalModel } from "../models"
+import { analyticalModel, guardrailModel } from "../models"
 import {
   requestSpecialist,
   checkTaskStatus,
   sendAgentMessage,
   updateWorkflowProgress
 } from "../tools/agent-coordination-tools"
+
+const researchPromptGuard = new PromptInjectionDetector({
+  model: guardrailModel,
+  strategy: "rewrite",
+  detectionTypes: ["injection", "data-exfiltration", "system-override"],
+  threshold: 0.6,
+});
+
+const researchPiiGuard = new PIIDetector({
+  model: guardrailModel,
+  strategy: "redact",
+  detectionTypes: ["email", "phone", "address", "api-key", "uuid"],
+  includeDetections: true,
+  threshold: 0.55,
+});
+
+const researchModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.55,
+  strategy: "warn",
+  categories: ["hate", "harassment", "violence", "self-harm"],
+});
 
 /**
  * Research Manager - Tier 2 Manager Agent
@@ -170,6 +193,8 @@ Build and maintain research knowledge:
 Remember: Your research drives strategic decision-making. Provide rigorous analysis, data-driven insights, and clear recommendations that maximize win probability.
 `,
   model: analyticalModel, // Claude Sonnet 4.5 - optimal for analytical research
+  inputProcessors: [researchPromptGuard, researchPiiGuard, researchModeration],
+  outputProcessors: [researchModeration],
   tools: {
     // Coordination tools
     requestSpecialist,

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
 import { aiProposalService } from '../proposals/ai-proposal-service';

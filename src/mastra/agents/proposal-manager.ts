@@ -1,12 +1,35 @@
 import { Agent } from "@mastra/core/agent"
+import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
-import { creativeModel } from "../models"
+import { creativeModel, guardrailModel } from "../models"
 import {
   requestSpecialist,
   checkTaskStatus,
   sendAgentMessage,
   updateWorkflowProgress
 } from "../tools/agent-coordination-tools"
+
+const proposalPromptGuard = new PromptInjectionDetector({
+  model: guardrailModel,
+  strategy: "rewrite",
+  detectionTypes: ["injection", "system-override", "role-manipulation"],
+  threshold: 0.6,
+});
+
+const proposalPiiGuard = new PIIDetector({
+  model: guardrailModel,
+  strategy: "redact",
+  detectionTypes: ["email", "phone", "credit-card", "api-key", "address"],
+  includeDetections: true,
+  threshold: 0.55,
+});
+
+const proposalModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.55,
+  strategy: "warn",
+  categories: ["hate", "harassment", "violence", "sexual/minors"],
+});
 
 /**
  * Proposal Manager - Tier 2 Manager Agent
@@ -147,6 +170,8 @@ Learn from outcomes:
 Remember: You orchestrate the entire proposal process but delegate execution to specialists. Your role is coordination, quality control, and strategic decision-making.
 `,
   model: creativeModel, // GPT-5 - optimal for creative proposal generation
+  inputProcessors: [proposalPromptGuard, proposalPiiGuard, proposalModeration],
+  outputProcessors: [proposalModeration],
   tools: {
     // Coordination tools
     requestSpecialist,

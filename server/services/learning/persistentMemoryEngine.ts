@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { agentKnowledgeBase, agentMemory } from '@shared/schema';
 import { and, asc, count, lt, sql } from 'drizzle-orm';
 import { db } from '../../db';

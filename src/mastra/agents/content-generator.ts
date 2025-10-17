@@ -1,10 +1,39 @@
 import { Agent } from '@mastra/core/agent';
-import { creativeModel } from '../models';
+import { PromptInjectionDetector, PIIDetector, ModerationProcessor, TokenLimiterProcessor } from '@mastra/core/processors';
+import { creativeModel, guardrailModel } from '../models';
 import {
   sendAgentMessage,
   updateWorkflowProgress,
 } from '../tools/agent-coordination-tools';
 import { sharedMemory } from '../tools/shared-memory-provider';
+
+const contentPromptGuard = new PromptInjectionDetector({
+  model: guardrailModel,
+  strategy: 'rewrite',
+  detectionTypes: ['injection', 'system-override', 'role-manipulation'],
+  threshold: 0.6,
+});
+
+const contentPiiGuard = new PIIDetector({
+  model: guardrailModel,
+  strategy: 'redact',
+  detectionTypes: ['email', 'phone', 'address', 'api-key'],
+  includeDetections: true,
+  threshold: 0.55,
+});
+
+const contentModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.55,
+  strategy: 'warn',
+  categories: ['hate', 'harassment', 'violence', 'sexual/minors'],
+});
+
+const contentTokenLimiter = new TokenLimiterProcessor({
+  limit: 2000,
+  strategy: 'truncate',
+  countMode: 'cumulative',
+});
 
 /**
  * Content Generator - Tier 3 Specialist Agent
@@ -168,6 +197,8 @@ You are a specialist agent that executes content generation tasks delegated by t
 Report all content generation progress and challenges to the Proposal Manager for coordination.
 `,
   model: creativeModel, // GPT-5 - optimal for creative proposal writing
+  inputProcessors: [contentPromptGuard, contentPiiGuard, contentModeration],
+  outputProcessors: [contentTokenLimiter, contentModeration],
   tools: {
     // Coordination tools
     sendAgentMessage,

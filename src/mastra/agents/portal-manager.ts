@@ -1,5 +1,6 @@
 import { Agent } from '@mastra/core/agent';
-import { analyticalModel } from '../models';
+import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from '@mastra/core/processors';
+import { analyticalModel, guardrailModel } from '../models';
 import {
   checkTaskStatus,
   requestSpecialist,
@@ -12,6 +13,28 @@ import { pageExtractTool } from '../tools/page-extract-tool';
 import { pageNavigateTool } from '../tools/page-navigate-tool';
 import { pageObserveTool } from '../tools/page-observe-tool';
 import { sharedMemory } from '../tools/shared-memory-provider';
+
+const portalPromptGuard = new PromptInjectionDetector({
+  model: guardrailModel,
+  strategy: 'rewrite',
+  detectionTypes: ['injection', 'tool-exfiltration', 'system-override'],
+  threshold: 0.6,
+});
+
+const portalPiiGuard = new PIIDetector({
+  model: guardrailModel,
+  strategy: 'redact',
+  detectionTypes: ['email', 'phone', 'credit-card', 'api-key'],
+  includeDetections: true,
+  threshold: 0.55,
+});
+
+const portalModeration = new ModerationProcessor({
+  model: guardrailModel,
+  threshold: 0.55,
+  strategy: 'warn',
+  categories: ['hate', 'harassment', 'violence', 'sexual/minors'],
+});
 
 /**
  * Portal Manager - Tier 2 Manager Agent
@@ -122,6 +145,8 @@ When operations fail:
 Remember: You coordinate specialists for heavy lifting, but can handle direct portal interactions when needed for efficiency.
 `,
   model: analyticalModel,
+  inputProcessors: [portalPromptGuard, portalPiiGuard, portalModeration],
+  outputProcessors: [portalModeration],
   tools: {
     // Browser automation tools
     pageNavigateTool,

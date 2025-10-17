@@ -85,6 +85,11 @@ spec:
                 secretKeyRef:
                   name: rfp-agent-secrets
                   key: browserbase-project-id
+            - name: SAM_GOV_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rfp-agent-secrets
+                  key: sam-gov-api-key
 
           resources:
             requests:

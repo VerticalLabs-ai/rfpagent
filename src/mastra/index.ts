@@ -1,4 +1,5 @@
 import { Mastra } from '@mastra/core/mastra';
+import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
 
 // Orchestrator Agent
 import { primaryOrchestrator } from './agents/primary-orchestrator';
@@ -28,9 +29,25 @@ import { documentProcessingWorkflow } from './workflows/document-processing-work
 import { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
 import { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
 import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
+import { rfpMcpServer } from './mcp/server';
+
+const envLogLevel = process.env.MASTRA_LOG_LEVEL;
+const validLogLevels = new Set<string>(Object.values(LogLevel));
+const resolvedLogLevel: LogLevel =
+  envLogLevel && validLogLevels.has(envLogLevel)
+    ? (envLogLevel as LogLevel)
+    : process.env.NODE_ENV === 'production'
+    ? LogLevel.INFO
+    : LogLevel.DEBUG;
+
+const mastraLogger = new ConsoleLogger({
+  name: 'rfp-agent-platform',
+  level: resolvedLogLevel,
+});
 
 // Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
+  logger: mastraLogger,
   // 3-Tier Agent System Configuration
   agents: {
     // Tier 1: Orchestrator (1 agent)
@@ -62,6 +79,9 @@ export const mastra = new Mastra({
     proposalPDFAssembly: proposalPDFAssemblyWorkflow,
     bonfireAuth: bonfireAuthWorkflow,
     masterOrchestration: masterOrchestrationWorkflow,
+  },
+  mcpServers: {
+    rfp: rfpMcpServer,
   },
   // Bundler Configuration - Mark runtime tools as external
   // These are Node.js runtime dependencies that should not be bundled

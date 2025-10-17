@@ -100,6 +100,12 @@ export const defaultModel = gpt5;
 export const reasoningModel = gpt5Thinking;
 
 /**
+ * Lightweight guardrail model used for moderation, PII detection, and prompt injection checks.
+ * Uses OpenAI's GPT-4.1 Nano to keep latency and cost low while preserving accuracy.
+ */
+export const guardrailModel = openai('gpt-4.1-nano');
+
+/**
  * Get optimal model for specific agent type
  */
 export function getModelForAgent(agentType: string) {

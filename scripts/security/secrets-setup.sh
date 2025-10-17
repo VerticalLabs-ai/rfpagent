@@ -44,6 +44,7 @@ create_from_1password() {
     ANTHROPIC_API_KEY=$(op read "op://RFP-Agent/${ENVIRONMENT}/anthropic-api-key")
     BROWSERBASE_API_KEY=$(op read "op://RFP-Agent/${ENVIRONMENT}/browserbase-api-key")
     BROWSERBASE_PROJECT_ID=$(op read "op://RFP-Agent/${ENVIRONMENT}/browserbase-project-id")
+    SAM_GOV_API_KEY=$(op read "op://RFP-Agent/${ENVIRONMENT}/sam-gov-api-key")
 
     kubectl create secret generic rfp-agent-secrets \
         --from-literal=database-url="${DATABASE_URL}" \
@@ -52,6 +53,7 @@ create_from_1password() {
         --from-literal=anthropic-api-key="${ANTHROPIC_API_KEY}" \
         --from-literal=browserbase-api-key="${BROWSERBASE_API_KEY}" \
         --from-literal=browserbase-project-id="${BROWSERBASE_PROJECT_ID}" \
+        --from-literal=sam-gov-api-key="${SAM_GOV_API_KEY}" \
         -n "${NAMESPACE}" \
         --dry-run=client -o yaml | kubectl apply -f -
 
