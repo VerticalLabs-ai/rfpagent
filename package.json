@@ -182,7 +182,8 @@
   },
   "pnpm": {
     "overrides": {
-      "ai": "^5.0.60"
+      "ai": "^5.0.60",
+      "google-logging-utils": "1.1.1"
     },
     "onlyBuiltDependencies": [
       "@sentry-internal/node-cpu-profiler",
