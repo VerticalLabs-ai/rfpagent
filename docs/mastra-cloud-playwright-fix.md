@@ -149,4 +149,22 @@ See [docs/mastra-cloud-next-steps.md](./mastra-cloud-next-steps.md) for support 
 4. 5878c99 - Updated documentation
 5. 395a0f8 - Downgraded cheerio (removed undici)
 6. 9d6e12e - Attempted vite.config.ts fix (didn't work)
-7. **8ab8335 - Added Mastra bundler.externals (current fix)**
+7. 8ab8335 - Added Mastra bundler.externals for playwright
+8. **0d6cee2 - Added document processing packages to externals (current fix)**
+
+## Update: Document Processing Packages
+
+After fixing playwright, Mastra's bundler encountered the same issue with `pdf-parse`:
+
+```
+Failed to analyze Mastra application:
+"default" is not exported by "pdf-parse/dist/esm/index.js"
+```
+
+**Solution:** Added all document processing packages to externals list:
+- `pdf-parse` - PDF text extraction (failed in deployment)
+- `pdf-lib` - PDF manipulation (preemptive)
+- `mammoth` - Word document processing (preemptive)
+- `adm-zip` - ZIP file handling (preemptive)
+
+These packages have CommonJS/ESM export issues similar to playwright.
