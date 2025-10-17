@@ -1,6 +1,12 @@
 import * as fs from 'fs';
+import {
+  PDFCheckBox,
+  PDFDocument,
+  PDFTextField,
+  rgb,
+  StandardFonts,
+} from 'pdf-lib';
 import pdfParse from 'pdf-parse';
-import { PDFDocument, PDFForm, PDFTextField, PDFCheckBox, rgb, StandardFonts } from 'pdf-lib';
 import { logger } from '../../../server/utils/logger';
 
 export interface PDFParseResult {
@@ -56,7 +62,9 @@ export async function parsePDFFile(filePath: string): Promise<PDFParseResult> {
     };
   } catch (error) {
     logger.error(`Failed to parse PDF: ${filePath}`, error as Error);
-    throw new Error(`PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -84,7 +92,9 @@ export async function parsePDFBuffer(buffer: Buffer): Promise<PDFParseResult> {
     };
   } catch (error) {
     logger.error('Failed to parse PDF buffer', error as Error);
-    throw new Error(`PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `PDF parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -101,7 +111,9 @@ export async function fillPDFForm(
   fields: PDFFormField[]
 ): Promise<{ success: boolean; outputPath: string; filledFields: number }> {
   try {
-    logger.info(`Filling PDF form: ${inputPath}`, { fieldCount: fields.length });
+    logger.info(`Filling PDF form: ${inputPath}`, {
+      fieldCount: fields.length,
+    });
 
     const existingPdfBytes = fs.readFileSync(inputPath);
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
@@ -115,7 +127,10 @@ export async function fillPDFForm(
           const textField = form.getTextField(field.name);
           textField.setText(field.value as string);
           filledCount++;
-        } else if (field.type === 'checkbox' && typeof field.value === 'boolean') {
+        } else if (
+          field.type === 'checkbox' &&
+          typeof field.value === 'boolean'
+        ) {
           const checkBox = form.getCheckBox(field.name);
           if (field.value) {
             checkBox.check();
@@ -150,7 +165,9 @@ export async function fillPDFForm(
     };
   } catch (error) {
     logger.error(`Failed to fill PDF form: ${inputPath}`, error as Error);
-    throw new Error(`PDF form filling failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `PDF form filling failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -190,7 +207,9 @@ export async function getPDFFormFields(
     return fieldInfo;
   } catch (error) {
     logger.error(`Failed to get PDF form fields: ${filePath}`, error as Error);
-    throw new Error(`Failed to read form fields: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `Failed to read form fields: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -238,7 +257,11 @@ export async function assembleProposalPDF(
     };
 
     // Helper function to draw text with word wrapping
-    const drawText = (text: string, fontSize: number, isBold: boolean = false) => {
+    const drawText = (
+      text: string,
+      fontSize: number,
+      isBold: boolean = false
+    ) => {
       const textFont = isBold ? boldFont : font;
       const lineHeight = fontSize * 1.2;
       const words = text.split(' ');
@@ -336,7 +359,9 @@ export async function assembleProposalPDF(
     };
   } catch (error) {
     logger.error('Failed to assemble proposal PDF', error as Error);
-    throw new Error(`PDF assembly failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `PDF assembly failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }
 
@@ -362,11 +387,11 @@ export async function mergePDFs(
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
 
       for (const page of copiedPages) {
-        mergedPdf.addPage(page);
+        mergedPdf.addPage([page.getWidth(), page.getHeight() as number]);
         totalPages++;
       }
 
-      logger.debug(`Merged PDF: ${inputPath}`, undefined, { pages: pdf.getPageCount() });
+      logger.debug(`Merged PDF: ${inputPath}`, { pages: pdf.getPageCount() });
     }
 
     const mergedPdfBytes = await mergedPdf.save();
@@ -385,6 +410,8 @@ export async function mergePDFs(
     };
   } catch (error) {
     logger.error('Failed to merge PDFs', error as Error);
-    throw new Error(`PDF merge failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    throw new Error(
+      `PDF merge failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
   }
 }

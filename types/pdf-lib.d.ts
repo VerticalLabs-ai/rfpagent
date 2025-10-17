@@ -155,19 +155,7 @@ declare module 'pdf-lib' {
     ZapfDingbats = 'ZapfDingbats',
   }
 
-  export enum PageSizes {
-    A0,
-    A1,
-    A2,
-    A3,
-    A4,
-    A5,
-    A6,
-    A7,
-    Letter,
-    Legal,
-    Tabloid,
-  }
+  export const PageSizes: Record<string, [number, number]>;
 
   export const degrees: (angle: number) => { angle: number; type: number };
   export const radians: (angle: number) => { angle: number; type: number };

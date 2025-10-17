@@ -24,7 +24,9 @@ yarn.lock
 /playwright/.cache/
 /playwright/.auth/
 
+# Environment variables
 .env
+.env.local
 
 # Coverage reports
 coverage/
@@ -32,6 +34,10 @@ coverage/
 # Attached assets
 attached_assets/
 .cursor/ndjson-ingest.json
+
+
+# Removed Windows wrapper files per user request
+hive-mind-prompt-*.txt
 
 # Claude Flow generated files
 .claude/settings.local.json

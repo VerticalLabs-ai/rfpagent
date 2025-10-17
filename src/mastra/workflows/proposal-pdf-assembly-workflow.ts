@@ -6,6 +6,7 @@ import { assembleProposalPDF, PDFSection } from '../utils/pdf-processor';
 import { storage } from '../../../server/storage';
 import { logger } from '../../../server/utils/logger';
 import { ObjectStorageService } from '../../../server/objectStorage';
+import { appConfig } from '../../../config/app';
 
 // Step 1: Gather proposal content from database
 const gatherProposalContentStep = createStep({
@@ -113,11 +114,14 @@ const gatherProposalContentStep = createStep({
 
       logger.info(`Gathered ${sections.length} proposal sections`);
 
+      // Get company name from configuration
+      const companyName = appConfig.companyName;
+
       return {
         rfpId,
         proposalId,
         rfpTitle: rfp.title,
-        companyName: 'Your Company Name', // TODO: Get from configuration
+        companyName,
         sections,
       };
     } catch (error) {
@@ -331,13 +335,9 @@ const updateProposalStep = createStep({
       };
     } catch (error) {
       logger.error('Failed to update proposal:', error as Error);
-      return {
-        success: false,
-        message: `Failed to update proposal: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        proposalId,
-        pdfUrl: '',
-        pageCount: 0,
-      };
+      throw new Error(
+        `Failed to update proposal: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   },
 });

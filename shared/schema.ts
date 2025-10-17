@@ -1553,11 +1553,16 @@ export const insertRfpSchema = createInsertSchema(rfps).omit({
   updatedAt: true,
 });
 
-export const insertProposalSchema = createInsertSchema(proposals).omit({
-  id: true,
-  generatedAt: true,
-  updatedAt: true,
-});
+export const insertProposalSchema = createInsertSchema(proposals)
+  .omit({
+    id: true,
+    generatedAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    receiptData: submissionReceiptDataSchema.nullish(),
+    submittedAt: z.date().nullish(),
+  });
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
@@ -1776,16 +1781,10 @@ export type Submission = Omit<
   receiptData: SubmissionReceiptData | null;
 };
 
-type InsertSubmissionInput = z.infer<typeof insertSubmissionSchema>;
-export type InsertSubmission = Omit<
-  InsertSubmissionInput,
-  'submissionData' | 'receiptData'
-> & {
+export type InsertSubmission = z.infer<typeof insertSubmissionSchema> & {
   rfpId: string;
   proposalId: string;
   portalId: string;
-  submissionData?: SubmissionLifecycleData | null;
-  receiptData?: SubmissionReceiptData | null;
 };
 
 // Submission Pipeline Types
