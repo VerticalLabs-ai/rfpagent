@@ -12,12 +12,17 @@ node_modules/.pnpm/google-logging-utils@0.0.2/node_modules/google-logging-utils/
 imported by "node_modules/.pnpm/google-logging-utils@0.0.2/node_modules/google-logging-utils/build/src/logging-utils.js".
 ```
 
-### Issue 2: undici
+### Issue 2: undici (ALL versions)
 ```
 Failed to analyze Mastra application:
 node_modules/.pnpm/undici@7.16.0/node_modules/undici/lib/core/util.js (2:7):
 "default" is not exported by "node:assert?commonjs-external",
 imported by "node_modules/.pnpm/undici@7.16.0/node_modules/undici/lib/core/util.js".
+
+# Same error with undici@6.22.0:
+Failed to analyze Mastra application:
+node_modules/.pnpm/undici@6.22.0/node_modules/undici/lib/core/util.js (2:7):
+"default" is not exported by "node:assert?commonjs-external"
 ```
 
 ## Root Cause
@@ -33,10 +38,11 @@ imported by "node_modules/.pnpm/undici@7.16.0/node_modules/undici/lib/core/util.
 
 ### undici Issue
 
-1. **Version Problem**: `undici@7.16.0` has CommonJS/ESM compatibility issues with Mastra Cloud's bundler
-2. **Direct Dependency**: The project uses `undici` directly in authentication strategies for HTTP requests
-3. **Transitive Dependency**: Also pulled in by `cheerio@1.1.2`
-4. **CommonJS/ESM Issue**: Version 7.x has issues with importing Node.js built-in modules (`assert`, `events`, etc.) that aren't resolved until the bundler is updated
+1. **ALL versions affected**: Both `undici@7.x` AND `undici@6.x` have CommonJS/ESM compatibility issues with Mastra Cloud's bundler
+2. **Direct Dependency**: The project used `undici` directly in authentication strategies for HTTP requests
+3. **Transitive Dependency**: `cheerio@1.1.2` depends on `undici` transitively
+4. **CommonJS/ESM Issue**: ALL undici versions import Node.js built-in modules (`assert`, `events`, etc.) in a way that Mastra's bundler cannot handle
+5. **Root Cause**: Mastra Cloud's bundler tries to analyze `undici` as application code instead of treating it as an external Node.js dependency
 
 ## Solution
 
@@ -66,16 +72,42 @@ This ensures:
 - All packages that depend on `google-logging-utils` will use version `1.1.1` (properly handles ES modules)
 - All packages that depend on `undici` will use version `6.22.0` (stable, compatible with bundlers)
 
-### 3. Downgraded undici
+### 3. Replaced undici with axios
 
-Changed the direct dependency from `7.16.0` to `6.22.0`:
+**Complete replacement** of undici with axios for ALL HTTP requests:
 
 ```diff
-- "undici": "^7.16.0"
-+ "undici": "^6.22.0"
+# In 3 files:
+- import { request } from 'undici';
++ import axios from 'axios';
+
+# Replace request() calls with axios equivalents:
+- const response = await request(url, { method: 'GET', headers: {...} });
+- const html = await response.body.text();
++ const response = await axios.get(url, { headers: {...} });
++ const html = response.data;
 ```
 
-Version 6.x is the latest stable line that's compatible with Mastra Cloud's bundler. Version 7.x introduces changes that cause CommonJS/ESM interop issues.
+Files updated:
+- `server/services/scrapers/mastraScrapingService.ts`
+- `server/services/scraping/authentication/strategies/BonfireHubAuthStrategy.ts`
+- `server/services/scraping/authentication/strategies/GenericFormAuthStrategy.ts`
+
+### 4. Force cheerio to use undici@6.22.0
+
+Since `cheerio` still depends on `undici` transitively, we override it:
+
+```json
+"overrides": {
+  "google-logging-utils": "1.1.1",
+  "cheerio>undici": "6.22.0"
+}
+```
+
+**Note**: Even with this override, if Mastra Cloud's bundler still fails, we may need to:
+1. Contact Mastra support to mark `undici` as external
+2. Replace `cheerio` with a parser that doesn't depend on `undici` (e.g., `parse5` + custom wrapper)
+3. Use a `.mastraignore` file (if Mastra supports it) to exclude `undici` from analysis
 
 ## Verification
 
