@@ -1539,18 +1539,12 @@ export const insertUserSchema = createInsertSchema(users).omit({
   activatedAt: true,
 });
 
-export const insertPortalSchema = createInsertSchema(portals)
-  .omit({
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-    lastScanned: true,
-  })
-  .extend({
-    type: z.string().default('general'),
-    isActive: z.boolean().default(true),
-    monitoringEnabled: z.boolean().default(true),
-  });
+export const insertPortalSchema = createInsertSchema(portals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastScanned: true,
+});
 
 export const insertRfpSchema = createInsertSchema(rfps).omit({
   id: true,
@@ -1559,35 +1553,23 @@ export const insertRfpSchema = createInsertSchema(rfps).omit({
   updatedAt: true,
 });
 
-export const insertProposalSchema = createInsertSchema(proposals)
-  .omit({
-    id: true,
-    generatedAt: true,
-    updatedAt: true,
-  })
-  .extend({
-    receiptData: submissionReceiptDataSchema.nullish(),
-    submittedAt: jsonDateTimeSchema.nullish(),
-  });
+export const insertProposalSchema = createInsertSchema(proposals).omit({
+  id: true,
+  generatedAt: true,
+  updatedAt: true,
+});
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,
   uploadedAt: true,
 });
 
-export const insertSubmissionSchema = createInsertSchema(submissions, {
-  status: submissionStatusSchema.default('pending'),
-})
-  .omit({
-    id: true,
-    createdAt: true,
-    submittedAt: true,
-    confirmedAt: true,
-  })
-  .extend({
-    submissionData: submissionLifecycleDataSchema.nullish(),
-    receiptData: submissionReceiptDataSchema.nullish(),
-  });
+export const insertSubmissionSchema = createInsertSchema(submissions).omit({
+  id: true,
+  createdAt: true,
+  submittedAt: true,
+  confirmedAt: true,
+});
 
 // Submission Pipeline Insert Schemas
 export const insertSubmissionPipelineSchema = createInsertSchema(

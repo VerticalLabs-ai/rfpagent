@@ -6,9 +6,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { z } from 'zod';
 import { ObjectStorageService } from '../../../server/objectStorage';
-import { downloadFile } from '../../../server/services/fileDownloadService';
-import { performWebExtraction } from '../../../server/services/stagehandTools';
+import { downloadFile } from '../../../server/services/core/fileDownloadService';
+import { performWebExtraction } from '../../../server/services/core/stagehandTools';
 import { storage } from '../../../server/storage';
+import { parsePDFFile, parsePDFBuffer, fillPDFForm, getPDFFormFields, PDFFormField } from '../utils/pdf-processor';
+import { logger } from '../../../server/utils/logger';
 
 // Document extraction schema
 const documentSchema = z.object({
@@ -298,9 +300,37 @@ const processDocumentsStep = createStep({
 
     for (const doc of uploadedDocuments) {
       try {
-        // For now, we'll simulate text extraction
-        // In production, you'd use PDF parsing libraries
-        const extractedText = `Extracted content from ${doc.fileName}`;
+        // Extract text from PDF using pdf-parse
+        let extractedText = '';
+        const fileExtension = doc.fileName.toLowerCase().split('.').pop();
+
+        if (fileExtension === 'pdf') {
+          logger.info(`Parsing PDF: ${doc.fileName}`);
+          try {
+            // Read the file from storage
+            const objectStorage = new ObjectStorageService();
+            const filePath = doc.storageUrl;
+
+            if (fs.existsSync(filePath)) {
+              const parseResult = await parsePDFFile(filePath);
+              extractedText = parseResult.text;
+
+              logger.info(`Successfully extracted text from ${doc.fileName}`, {
+                pages: parseResult.pages,
+                textLength: extractedText.length,
+              });
+            } else {
+              logger.warn(`File not found at storage path: ${filePath}`);
+              extractedText = `File not accessible: ${doc.fileName}`;
+            }
+          } catch (pdfError) {
+            logger.error(`Failed to parse PDF ${doc.fileName}:`, pdfError as Error);
+            extractedText = `Error parsing PDF: ${doc.fileName}`;
+          }
+        } else {
+          logger.info(`Non-PDF document: ${doc.fileName}, skipping text extraction`);
+          extractedText = `Document type not supported for text extraction: ${doc.fileName}`;
+        }
 
         const analysis = await documentProcessor.generateVNext([
           {
@@ -343,7 +373,102 @@ const processDocumentsStep = createStep({
   },
 });
 
-// Step 5: Update RFP status
+// Step 5: PDF Form Detection and Editing
+const pdfFormEditingStep = createStep({
+  id: 'pdf-form-editing',
+  description: 'Detect and prepare PDF forms for editing',
+  inputSchema: z.object({
+    rfpId: z.string(),
+    processedDocuments: z.array(
+      z.object({
+        id: z.string(),
+        fileName: z.string(),
+        extractedText: z.string(),
+        category: z.string(),
+        keyRequirements: z.array(z.string()),
+        deadlines: z.array(z.string()),
+      })
+    ),
+  }),
+  outputSchema: z.object({
+    rfpId: z.string(),
+    processedDocuments: z.array(
+      z.object({
+        id: z.string(),
+        fileName: z.string(),
+        extractedText: z.string(),
+        category: z.string(),
+        keyRequirements: z.array(z.string()),
+        deadlines: z.array(z.string()),
+        hasFormFields: z.boolean().optional(),
+        formFieldCount: z.number().optional(),
+      })
+    ),
+  }),
+  execute: async ({ inputData }) => {
+    const { rfpId, processedDocuments } = inputData;
+    const updatedDocuments = [];
+
+    logger.info(`Checking for PDF forms in ${processedDocuments.length} documents`);
+
+    for (const doc of processedDocuments) {
+      let hasFormFields = false;
+      let formFieldCount = 0;
+
+      try {
+        // Get the document from storage
+        const dbDoc = await storage.getDocument(doc.id);
+        if (dbDoc && dbDoc.objectPath) {
+          const filePath = dbDoc.objectPath;
+
+          // Check if file exists and is a PDF
+          if (fs.existsSync(filePath) && doc.fileName.toLowerCase().endsWith('.pdf')) {
+            try {
+              const formFields = await getPDFFormFields(filePath);
+              hasFormFields = formFields.length > 0;
+              formFieldCount = formFields.length;
+
+              if (hasFormFields) {
+                logger.info(`Found ${formFieldCount} form fields in ${doc.fileName}`);
+
+                // Store form field information in parsedData
+                await storage.updateDocument(doc.id, {
+                  parsedData: JSON.stringify({
+                    hasFormFields,
+                    formFieldCount,
+                    formFields: formFields.map(f => ({
+                      name: f.name,
+                      type: f.type,
+                    })),
+                  }) as any,
+                });
+              }
+            } catch (formError) {
+              logger.warn(`Error checking form fields in ${doc.fileName}:`, formError as Error, formError as Record<string, any>);
+            }
+          }
+        }
+      } catch (error) {
+        logger.error(`Failed to check form fields for ${doc.fileName}:`, error as Error);
+      }
+
+      updatedDocuments.push({
+        ...doc,
+        hasFormFields,
+        formFieldCount,
+      });
+    }
+
+    logger.info(`Completed form detection for ${updatedDocuments.length} documents`);
+
+    return {
+      rfpId,
+      processedDocuments: updatedDocuments,
+    };
+  },
+});
+
+// Step 6: Update RFP status
 const updateRfpStatusStep = createStep({
   id: 'update-rfp-status',
   description: 'Update RFP with document processing results',
@@ -372,6 +497,8 @@ const updateRfpStatusStep = createStep({
         category: z.string(),
         keyRequirements: z.array(z.string()),
         deadlines: z.array(z.string()),
+        hasFormFields: z.boolean().optional(),
+        formFieldCount: z.number().optional(),
       })
     ),
   }),
@@ -573,6 +700,7 @@ export const documentProcessingWorkflow = createWorkflow({
   .then(uploadToStorageStep)
   .then(passUploadResultsStep)
   .then(processDocumentsStep)
+  .then(pdfFormEditingStep)
   .then(updateRfpStatusStep)
   .then(finalizeResultsStep)
   .commit();

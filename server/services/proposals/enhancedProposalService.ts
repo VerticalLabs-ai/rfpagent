@@ -180,7 +180,7 @@ export class EnhancedProposalService {
 
       try {
         // Import singleton submissionService to avoid duplicate instantiation
-        const { submissionService } = await import('./submissionService');
+        const { submissionService } = await import('../core/submissionService');
 
         if (!rfp.portalId) {
           throw new Error('RFP portal is not configured for auto submission');

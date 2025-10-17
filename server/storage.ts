@@ -998,7 +998,7 @@ export class DatabaseStorage implements IStorage {
       setImmediate(async () => {
         try {
           const { complianceIntegrationService } = await import(
-            './services/complianceIntegrationService'
+            './services/core/complianceIntegrationService'
           );
           await complianceIntegrationService.onRFPDiscovered(newRfp.id);
         } catch (error) {

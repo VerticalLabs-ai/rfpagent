@@ -65,6 +65,13 @@ export const mastra = new Mastra({
   },
 });
 
+// Export individual workflows for direct use
+export { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
+export { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
+export { documentProcessingWorkflow } from './workflows/document-processing-workflow';
+export { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
+export { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
+
 // Export PDF utilities for external use
 export {
   parsePDFFile,

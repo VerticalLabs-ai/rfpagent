@@ -23,7 +23,7 @@ import {
   StagehandActionResultSchema,
   StagehandAuthResultSchema,
   StagehandExtractionResultSchema,
-} from './scraping/utils/stagehand';
+} from '../scraping/utils/stagehand';
 import { logger } from '../../utils/logger';
 import {
   detectFileType,

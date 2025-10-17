@@ -1,11 +1,11 @@
 import { eq, and, gte, desc, or, sql } from 'drizzle-orm';
-import { db } from '../db';
+import { db } from '../../db';
 import { portals, rfps, scans, scanEvents } from '@shared/schema';
 import { storage } from '../../storage';
 import { pageExtractTool } from '../../../src/mastra/tools';
 import { z } from 'zod';
-import { PortalUrlResolver } from './scraping/portal/PortalUrlResolver';
-import { AustinFinanceContentExtractor } from './scraping/extraction/extractors/AustinFinanceContentExtractor';
+import { PortalUrlResolver } from '../scraping/portal/PortalUrlResolver';
+import { AustinFinanceContentExtractor } from '../scraping/extraction/extractors/AustinFinanceContentExtractor';
 import { sessionManager } from '../../../src/mastra/tools/session-manager';
 
 /**

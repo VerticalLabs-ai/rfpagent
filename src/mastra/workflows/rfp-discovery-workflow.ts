@@ -198,7 +198,7 @@ const scrapePortalStep = createStep({
 
     try {
       // Use incremental scanning service
-      const { incrementalPortalScanService } = await import('../../../server/services/incrementalPortalScanService');
+      const { incrementalPortalScanService } = await import('../../../server/services/portals/incrementalPortalScanService');
 
       const scanResult = await incrementalPortalScanService.scanPortal({
         portalId: portal.id,

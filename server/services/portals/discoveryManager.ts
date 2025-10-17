@@ -5,7 +5,7 @@ import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { PortalMonitoringService } from '../monitoring/portal-monitoring-service';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import type { WorkItem, Portal, AgentRegistry } from '@shared/schema';
-import type { DiscoveredRFP } from './portal-monitoring-service';
+import type { DiscoveredRFP } from '../monitoring/portal-monitoring-service';
 
 /**
  * Task timeout configuration (in milliseconds)

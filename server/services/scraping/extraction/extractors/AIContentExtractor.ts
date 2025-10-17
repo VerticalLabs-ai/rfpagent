@@ -1,6 +1,6 @@
 import { BaseContentExtractor } from '../ContentExtractor';
 import { RFPOpportunity } from '../../types';
-import { AIService } from '../../../aiService';
+import { AIService } from '../../../core/aiService';
 
 /**
  * AI-powered content extractor using the AIService

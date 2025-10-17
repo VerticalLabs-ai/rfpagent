@@ -3,7 +3,7 @@ import cronParser from 'cron-parser';
 import {
   PortalMonitoringService,
   PortalScanResult,
-} from './portal-monitoring-service';
+} from '../monitoring/portal-monitoring-service';
 import { IStorage } from '../../storage';
 import { Portal, PublicPortal } from '@shared/schema';
 
