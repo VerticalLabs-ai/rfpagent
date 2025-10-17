@@ -1,6 +1,6 @@
 # Generated Documentation
 
-Generated on: 2025-10-14T21:17:01.836Z
+Generated on: 2025-10-17T13:41:52.978Z
 
 ## Scope: full
 
@@ -30,6 +30,9 @@ Generated on: 2025-10-14T21:17:01.836Z
 - [PORTAL_SCANNING_TESTS](../../testing/PORTAL_SCANNING_TESTS.md)
 - [REMAINING_TYPE_ERRORS_PROMPT](../../testing/REMAINING_TYPE_ERRORS_PROMPT.md)
 - [SESSION_SUMMARY](../../testing/SESSION_SUMMARY.md)
+- [Document Processing Integration Test](../../testing/document-processing-integration-test.md)
+- [Integration Testing Checklist](../../testing/integration-testing-checklist.md)
+- [Workflow Api Tests](../../testing/workflow-api-tests.md)
 
 ### Deployment
 
@@ -46,6 +49,7 @@ Generated on: 2025-10-14T21:17:01.836Z
 ### API
 
 - [README](../../api/README.md)
+- [Workflow Endpoints](../../api/workflow-endpoints.md)
 
 ## Root Documentation
 
