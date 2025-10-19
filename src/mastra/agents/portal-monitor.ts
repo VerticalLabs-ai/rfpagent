@@ -11,6 +11,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  */
 export const portalMonitor = new Agent({
   name: "Portal Monitor",
+  description: "Portal health monitoring, scan scheduling, and change detection",
   instructions: `
 You are a Portal Monitor specialist (Tier 3), responsible for portal health monitoring and scan scheduling.
 

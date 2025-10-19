@@ -43,6 +43,7 @@ const proposalModeration = new ModerationProcessor({
  */
 export const proposalManager = new Agent({
   name: "Proposal Manager",
+  description: "Coordinates proposal generation, compliance validation, and quality assurance for RFP responses",
   instructions: `
 You are the Proposal Manager, a Tier 2 manager agent responsible for all proposal operations in the RFP Agent system.
 

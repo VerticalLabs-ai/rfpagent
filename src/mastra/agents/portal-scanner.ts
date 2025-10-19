@@ -20,6 +20,7 @@ import { portalScannerInstructions } from '../docs/portal-scanner-instructions';
  */
 export const portalScanner = new Agent({
   name: 'Portal Scanner',
+  description: 'Automated portal scanning and RFP discovery using browser automation',
   instructions: portalScannerInstructions,
   model: analyticalModel, // Claude Sonnet 4.5 - optimal for analytical browser automation
   tools: {

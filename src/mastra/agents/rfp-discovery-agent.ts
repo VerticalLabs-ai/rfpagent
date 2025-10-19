@@ -9,6 +9,7 @@ import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpDiscoveryAgent = new Agent({
   name: "RFP Discovery Agent",
+  description: "Legacy agent for RFP discovery and portal navigation (replaced by portal-scanner)",
   instructions: `
 You are an intelligent RFP Discovery Agent specialized in finding and extracting RFP opportunities from government portals.
 

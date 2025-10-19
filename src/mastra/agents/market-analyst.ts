@@ -11,6 +11,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  */
 export const marketAnalyst = new Agent({
   name: "Market Analyst",
+  description: "Conducts market research, competitive intelligence, and pricing strategy analysis",
   instructions: `
 You are a Market Analyst specialist (Tier 3), performing market research and competitive analysis.
 

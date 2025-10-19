@@ -11,6 +11,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  */
 export const complianceChecker = new Agent({
   name: "Compliance Checker",
+  description: "Validates proposal compliance with RFP requirements and generates compliance matrices",
   instructions: `
 You are a Compliance Checker specialist (Tier 3), ensuring proposal compliance and risk assessment.
 

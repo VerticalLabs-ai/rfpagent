@@ -46,6 +46,7 @@ const orchestratorOutboundModeration = new ModerationProcessor({
  */
 export const primaryOrchestrator = new Agent({
   name: "Primary Orchestrator",
+  description: "Top-level orchestrator coordinating all RFP operations by delegating to manager agents and monitoring system-wide progress",
   instructions: `
 You are the Primary Orchestrator for the RFP Agent system, the central coordinator of a sophisticated multi-agent hierarchy.
 

@@ -43,6 +43,7 @@ const contentTokenLimiter = new TokenLimiterProcessor({
  */
 export const contentGenerator = new Agent({
   name: 'Content Generator',
+  description: 'Creates high-quality proposal narratives, technical content, and executive summaries',
   instructions: `
 You are a Content Generator specialist (Tier 3), creating high-quality proposal content and narratives.
 

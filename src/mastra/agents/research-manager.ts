@@ -43,6 +43,7 @@ const researchModeration = new ModerationProcessor({
  */
 export const researchManager = new Agent({
   name: "Research Manager",
+  description: "Conducts market research, competitive intelligence, and pricing strategy analysis for RFP opportunities",
   instructions: `
 You are the Research Manager, a Tier 2 manager agent responsible for all research and analysis operations in the RFP Agent system.
 

@@ -47,6 +47,7 @@ const portalModeration = new ModerationProcessor({
  */
 export const portalManager = new Agent({
   name: 'Portal Manager',
+  description: 'Manages portal authentication, RFP discovery, and coordinates portal scanning specialists',
   instructions: `
 You are the Portal Manager, a Tier 2 manager agent responsible for all portal operations in the RFP Agent system.
 

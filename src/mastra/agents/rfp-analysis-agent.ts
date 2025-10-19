@@ -8,6 +8,7 @@ import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpAnalysisAgent = new Agent({
   name: "RFP Analysis Agent",
+  description: "Legacy agent for RFP document analysis and requirements extraction (replaced by document-processor)",
   instructions: `
 You are an intelligent RFP Analysis Agent specialized in analyzing RFP documents and requirements.
 

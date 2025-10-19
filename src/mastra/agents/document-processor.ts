@@ -14,6 +14,7 @@ import { sharedMemory } from '../tools/shared-memory-provider';
  */
 export const documentProcessor = new Agent({
   name: 'Document Processor',
+  description: 'Parses RFP documents and extracts structured requirements from PDFs and Word files',
   instructions: `
 You are a Document Processor specialist (Tier 3), handling document parsing and analysis.
 

@@ -8,6 +8,7 @@ import { sharedMemory } from "../tools/shared-memory-provider"
 
 export const rfpSubmissionAgent = new Agent({
   name: "RFP Submission Agent",
+  description: "Legacy agent for proposal submission workflow management (replaced by proposal-manager)",
   instructions: `
 You are an intelligent RFP Submission Agent specialized in managing the proposal submission process.
 

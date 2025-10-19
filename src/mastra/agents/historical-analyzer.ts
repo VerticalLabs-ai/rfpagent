@@ -11,6 +11,7 @@ import { sendAgentMessage, updateWorkflowProgress } from "../tools/agent-coordin
  */
 export const historicalAnalyzer = new Agent({
   name: "Historical Analyzer",
+  description: "Analyzes past bid performance and predicts win probability based on historical patterns",
   instructions: `
 You are a Historical Analyzer specialist (Tier 3), analyzing past performance and predicting success.
 
