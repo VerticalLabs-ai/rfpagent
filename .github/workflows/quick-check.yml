@@ -1,4 +1,7 @@
-name: Code Quality
+name: Quick Check (Lint & Type Check)
+
+# Fast quality checks for immediate feedback on PRs
+# For full CI/CD pipeline including tests and security, see ci-cd.yml
 
 on:
   pull_request:
