@@ -115,21 +115,19 @@ npx claude-flow@alpha neural predict --model-id model_prediction_1760909747334 -
 
 ```javascript
 // Retrieve trained models
-mcp__claude -
-  flow__memory_usage({
-    action: 'retrieve',
-    namespace: 'neural',
-    key: 'trained_models',
-  });
+mcp__claude_flow__memory_usage({
+  action: 'retrieve',
+  namespace: 'neural',
+  key: 'trained_models',
+});
 
 // Run inference
-mcp__claude -
-  flow__inference_run({
-    modelId: 'model_prediction_1760909747334',
-    data: [
-      /* input data */
-    ],
-  });
+mcp__claude_flow__inference_run({
+  modelId: 'model_prediction_1760909747334',
+  data: [
+    /* input data */
+  ],
+});
 ```
 
 ## Training Configuration

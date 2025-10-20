@@ -124,10 +124,19 @@ export class SharedMemoryProvider {
   /**
    * Store conversation messages using agentMemoryService
    * This provides custom storage integration beyond Mastra's built-in memory
+   *
+   * @param sessionId - The session identifier for this conversation
+   * @param messages - Array of conversation messages to store
+   * @param agentId - Optional agent identifier. If provided, creates a composite key
+   *                  "agent_{agentId}_session_{sessionId}" to track agent-specific
+   *                  conversations. If omitted, uses "session_{sessionId}" for
+   *                  session-level storage. This ensures stored memories can be
+   *                  queried by real agent identity without ambiguity.
    */
   public static async storeConversation(
     sessionId: string,
-    messages: any[]
+    messages: any[],
+    agentId?: string
   ): Promise<void> {
     // Generate safe session ID to prevent cross-contamination
     let safeSessionId = sessionId;
@@ -138,29 +147,45 @@ export class SharedMemoryProvider {
       );
     }
 
+    // Create deterministic composite key for agentId parameter
+    // - If agentId is provided: "agent_{agentId}_session_{sessionId}"
+    // - If agentId is absent: "session_{sessionId}"
+    // This separates agent-specific conversations from session-level conversations
+    const compositeAgentId = agentId
+      ? `agent_${agentId}_session_${safeSessionId}`
+      : `session_${safeSessionId}`;
+
     // Filter out sensitive credentials before storing
     const sanitizedMessages = messages.map(msg =>
       SharedMemoryProvider.sanitizeMessage(msg)
     );
 
     await agentMemoryService.storeMemory({
-      agentId: safeSessionId,
+      agentId: compositeAgentId,
       memoryType: 'working',
       contextKey: `conversation_${safeSessionId}`,
-      title: `Conversation Memory`,
-      content: { messages: sanitizedMessages, timestamp: Date.now() },
+      title: agentId ? `Conversation Memory (Agent: ${agentId})` : `Conversation Memory`,
+      content: { messages: sanitizedMessages, timestamp: Date.now(), agentId, sessionId: safeSessionId },
       importance: 6,
-      tags: ['conversation', 'shared'],
+      tags: ['conversation', 'shared', ...(agentId ? [`agent:${agentId}`] : [])],
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     });
   }
 
   /**
    * Retrieve conversation messages using agentMemoryService
+   *
+   * @param sessionId - The session identifier for this conversation
+   * @param limit - Maximum number of memory entries to retrieve (default: 50)
+   * @param agentId - Optional agent identifier. If provided, retrieves conversation
+   *                  using composite key "agent_{agentId}_session_{sessionId}".
+   *                  If omitted, retrieves using "session_{sessionId}".
+   *                  Must match the agentId used in storeConversation.
    */
   public static async retrieveConversation(
     sessionId: string,
-    limit?: number
+    limit?: number,
+    agentId?: string
   ): Promise<any[]> {
     // No fallback ID generation during retrieval to prevent cross-contamination
     if (!sessionId || sessionId.trim() === '' || sessionId === 'default') {
@@ -170,8 +195,15 @@ export class SharedMemoryProvider {
       return [];
     }
 
+    // Create the same composite key used in storeConversation
+    // - If agentId is provided: "agent_{agentId}_session_{sessionId}"
+    // - If agentId is absent: "session_{sessionId}"
+    const compositeAgentId = agentId
+      ? `agent_${agentId}_session_${sessionId}`
+      : `session_${sessionId}`;
+
     const memories = await agentMemoryService.getAgentMemories(
-      sessionId,
+      compositeAgentId,
       'working',
       limit || 50
     );
