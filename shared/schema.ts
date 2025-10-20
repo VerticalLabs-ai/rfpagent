@@ -13,6 +13,9 @@ import {
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
+// Helper to fix drizzle-zod type compatibility with newer Zod versions
+const asZodType = <T>(schema: any): z.ZodType<T> => schema as unknown as z.ZodType<T>;
+
 export const users = pgTable('users', {
   id: varchar('id')
     .primaryKey()
@@ -1465,13 +1468,15 @@ export const workflowStateRelations = relations(workflowState, ({ one }) => ({
 }));
 
 // Insert schemas for Agent Memory and Knowledge
-export const insertAgentMemorySchema = createInsertSchema(agentMemory).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  accessCount: true,
-  lastAccessed: true,
-});
+export const insertAgentMemorySchema = asZodType<typeof agentMemory.$inferInsert>(
+  createInsertSchema(agentMemory).omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    accessCount: true,
+    lastAccessed: true,
+  })
+);
 
 export const insertAgentKnowledgeSchema = createInsertSchema(
   agentKnowledgeBase
@@ -1516,42 +1521,42 @@ export const insertAgentRegistrySchema = createInsertSchema(agentRegistry).omit(
   }
 );
 
-export const insertWorkItemSchema = createInsertSchema(workItems).omit({
+export const insertWorkItemSchema = asZodType(createInsertSchema(workItems).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   completedAt: true,
-});
+}));
 
-export const insertAgentSessionSchema = createInsertSchema(agentSessions).omit({
+export const insertAgentSessionSchema = asZodType(createInsertSchema(agentSessions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   completedAt: true,
   lastActivity: true,
-});
+}));
 
 // Insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({
+export const insertUserSchema = asZodType(createInsertSchema(users).omit({
   id: true,
   createdAt: true,
   lastLoginAt: true,
   activatedAt: true,
-});
+}));
 
-export const insertPortalSchema = createInsertSchema(portals).omit({
+export const insertPortalSchema = asZodType(createInsertSchema(portals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
   lastScanned: true,
-});
+}));
 
-export const insertRfpSchema = createInsertSchema(rfps).omit({
+export const insertRfpSchema = asZodType(createInsertSchema(rfps).omit({
   id: true,
   createdAt: true,
   discoveredAt: true,
   updatedAt: true,
-});
+}));
 
 export const insertProposalSchema = createInsertSchema(proposals)
   .omit({
@@ -1564,17 +1569,17 @@ export const insertProposalSchema = createInsertSchema(proposals)
     submittedAt: z.date().nullish(),
   });
 
-export const insertDocumentSchema = createInsertSchema(documents).omit({
+export const insertDocumentSchema = asZodType(createInsertSchema(documents).omit({
   id: true,
   uploadedAt: true,
-});
+}));
 
-export const insertSubmissionSchema = createInsertSchema(submissions).omit({
+export const insertSubmissionSchema = asZodType(createInsertSchema(submissions).omit({
   id: true,
   createdAt: true,
   submittedAt: true,
   confirmedAt: true,
-});
+}));
 
 // Submission Pipeline Insert Schemas
 export const insertSubmissionPipelineSchema = createInsertSchema(
@@ -1602,26 +1607,26 @@ export const insertSubmissionStatusHistorySchema = createInsertSchema(
   createdAt: true,
 });
 
-export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+export const insertAuditLogSchema = asZodType(createInsertSchema(auditLogs).omit({
   id: true,
   timestamp: true,
-});
+}));
 
-export const insertNotificationSchema = createInsertSchema(notifications).omit({
+export const insertNotificationSchema = asZodType(createInsertSchema(notifications).omit({
   id: true,
   createdAt: true,
-});
+}));
 
 // Scan Insert Schemas
-export const insertScanSchema = createInsertSchema(scans).omit({
+export const insertScanSchema = asZodType(createInsertSchema(scans).omit({
   id: true,
   createdAt: true,
-});
+}));
 
-export const insertScanEventSchema = createInsertSchema(scanEvents).omit({
+export const insertScanEventSchema = asZodType(createInsertSchema(scanEvents).omit({
   id: true,
   createdAt: true,
-});
+}));
 
 // Company Profile Insert Schemas
 export const insertCompanyProfileSchema = createInsertSchema(
@@ -1707,14 +1712,14 @@ export const insertDeadLetterQueueSchema = createInsertSchema(
 ).omit({
   id: true,
   createdAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
 export const insertPhaseStateTransitionsSchema = createInsertSchema(
   phaseStateTransitions
 ).omit({
   id: true,
   createdAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
 export const insertPipelineOrchestrationSchema = createInsertSchema(
   pipelineOrchestration
@@ -1722,26 +1727,28 @@ export const insertPipelineOrchestrationSchema = createInsertSchema(
   id: true,
   createdAt: true,
   updatedAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
-export const insertSystemHealthSchema = createInsertSchema(systemHealth).omit({
+export const insertSystemHealthSchema = createInsertSchema(
+  systemHealth
+).omit({
   id: true,
   createdAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
 export const insertPipelineMetricsSchema = createInsertSchema(
   pipelineMetrics
 ).omit({
   id: true,
   calculatedAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
 export const insertWorkflowDependenciesSchema = createInsertSchema(
   workflowDependencies
 ).omit({
   id: true,
   createdAt: true,
-});
+}) as unknown as z.ZodType<any>;
 
 // Types
 export type User = typeof users.$inferSelect;

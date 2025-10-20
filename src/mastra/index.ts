@@ -101,6 +101,11 @@ export const mastra = new Mastra({
       'pdf-lib',
       'mammoth',
       'adm-zip',
+
+      // Database tools (avoid circular dependency issues in bundler)
+      '@mastra/libsql',
+      '@libsql/client',
+      'libsql',
     ],
   },
 });
