@@ -1,4 +1,4 @@
-import { createTool } from '@mastra/core';
+import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { sessionManager } from './session-manager';
 
@@ -22,7 +22,9 @@ export const pageObserveTool = createTool({
       .describe('Session ID for maintaining browser context'),
   }),
   outputSchema: z.object({
-    observations: z.array(z.any()).describe('Array of observed elements or data'),
+    observations: z
+      .array(z.any())
+      .describe('Array of observed elements or data'),
     currentUrl: z.string().describe('Current URL where observations were made'),
     pageTitle: z.string().describe('Title of the page'),
     observedAt: z.string().describe('ISO timestamp of observation'),

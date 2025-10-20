@@ -1,4 +1,4 @@
-import { createTool } from '@mastra/core';
+import { createTool } from '@mastra/core/tools';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';

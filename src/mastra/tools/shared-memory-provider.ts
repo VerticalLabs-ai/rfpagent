@@ -164,10 +164,21 @@ export class SharedMemoryProvider {
       agentId: compositeAgentId,
       memoryType: 'working',
       contextKey: `conversation_${safeSessionId}`,
-      title: agentId ? `Conversation Memory (Agent: ${agentId})` : `Conversation Memory`,
-      content: { messages: sanitizedMessages, timestamp: Date.now(), agentId, sessionId: safeSessionId },
+      title: agentId
+        ? `Conversation Memory (Agent: ${agentId})`
+        : `Conversation Memory`,
+      content: {
+        messages: sanitizedMessages,
+        timestamp: Date.now(),
+        agentId,
+        sessionId: safeSessionId,
+      },
       importance: 6,
-      tags: ['conversation', 'shared', ...(agentId ? [`agent:${agentId}`] : [])],
+      tags: [
+        'conversation',
+        'shared',
+        ...(agentId ? [`agent:${agentId}`] : []),
+      ],
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     });
   }

@@ -1,11 +1,11 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables before anything else
+// Load environment variables before anything else - .env first, then .env.local overrides
 const envLocalPath = path.join(process.cwd(), '.env.local');
 const envPath = path.join(process.cwd(), '.env');
-dotenv.config({ path: envLocalPath });
 dotenv.config({ path: envPath });
+dotenv.config({ path: envLocalPath, override: true });
 
 import { Pool as NeonPool, neonConfig } from '@neondatabase/serverless';
 import * as schema from '@shared/schema';
