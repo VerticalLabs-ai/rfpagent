@@ -21,6 +21,12 @@ export const pageActTool = createTool({
       .optional()
       .describe('Session ID for maintaining browser context'),
   }),
+  outputSchema: z.object({
+    success: z.boolean().describe('Whether the action was successful'),
+    message: z.string().describe('Result message of the action'),
+    currentUrl: z.string().describe('Current URL after the action'),
+    actionedAt: z.string().describe('ISO timestamp of the action'),
+  }),
   execute: async ({ context }) => {
     const { url, action, sessionId } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);

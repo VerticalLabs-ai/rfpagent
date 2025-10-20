@@ -21,6 +21,12 @@ export const pageObserveTool = createTool({
       .optional()
       .describe('Session ID for maintaining browser context'),
   }),
+  outputSchema: z.object({
+    observations: z.array(z.any()).describe('Array of observed elements or data'),
+    currentUrl: z.string().describe('Current URL where observations were made'),
+    pageTitle: z.string().describe('Title of the page'),
+    observedAt: z.string().describe('ISO timestamp of observation'),
+  }),
   execute: async ({ context }) => {
     const { url, instruction, sessionId } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);

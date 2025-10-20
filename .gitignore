@@ -35,7 +35,6 @@ coverage/
 attached_assets/
 .cursor/ndjson-ingest.json
 
-
 # Removed Windows wrapper files per user request
 hive-mind-prompt-*.txt
 
@@ -63,5 +62,4 @@ coordination/orchestration/*
 *.sqlite-journal
 *.sqlite-wal
 claude-flow
-# Removed Windows wrapper files per user request
-hive-mind-prompt-*.txt
+

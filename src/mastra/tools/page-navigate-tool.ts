@@ -17,6 +17,12 @@ export const pageNavigateTool = createTool({
       .default('domcontentloaded')
       .describe('Wait condition after navigation'),
   }),
+  outputSchema: z.object({
+    success: z.boolean().describe('Whether navigation was successful'),
+    currentUrl: z.string().describe('Current URL after navigation'),
+    pageTitle: z.string().describe('Title of the loaded page'),
+    navigatedAt: z.string().describe('ISO timestamp of navigation'),
+  }),
   execute: async ({ context }) => {
     const { url, sessionId, waitFor } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);

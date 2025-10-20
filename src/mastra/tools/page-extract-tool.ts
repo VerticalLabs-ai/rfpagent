@@ -22,11 +22,19 @@ export const pageExtractTool = createTool({
         z.instanceof(z.ZodObject), // Pre-built Zod object
       ])
       .optional()
-      .describe('Zod schema definition for data extraction - accepts either a plain object field map or a pre-built ZodObject'),
+      .describe(
+        'Zod schema definition for data extraction - accepts either a plain object field map or a pre-built ZodObject'
+      ),
     sessionId: z
       .string()
       .optional()
       .describe('Session ID for maintaining browser context'),
+  }),
+  outputSchema: z.object({
+    data: z.any().describe('Extracted data matching the provided schema'),
+    currentUrl: z.string().describe('Current URL where data was extracted'),
+    pageTitle: z.string().describe('Title of the page'),
+    extractedAt: z.string().describe('ISO timestamp of extraction'),
   }),
   execute: async ({ context }) => {
     const { url, instruction, schema, sessionId } = context;

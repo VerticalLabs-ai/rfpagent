@@ -38,6 +38,14 @@ export const pageAuthTool = createTool({
       .describe('1Password vault name (default: "Browserbase Agent")'),
     onePasswordItem: z.string().optional().describe('1Password item name'),
   }),
+  outputSchema: z.object({
+    success: z.boolean().describe('Whether authentication was successful'),
+    message: z.string().describe('Authentication result message'),
+    sessionId: z.string().describe('Session ID for maintaining state'),
+    currentUrl: z.string().describe('Current URL after authentication'),
+    pageTitle: z.string().describe('Title of the authenticated page'),
+    authenticatedAt: z.string().describe('ISO timestamp of authentication'),
+  }),
   execute: async ({ context }) => {
     const {
       loginUrl,

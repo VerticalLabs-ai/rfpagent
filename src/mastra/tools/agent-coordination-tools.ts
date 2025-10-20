@@ -42,10 +42,18 @@ function mapPriorityToScore(priority: string): number {
   }
 }
 
-const WORK_ITEM_STATUSES = ['pending', 'running', 'completed', 'failed', 'suspended'] as const;
+const WORK_ITEM_STATUSES = [
+  'pending',
+  'running',
+  'completed',
+  'failed',
+  'suspended',
+] as const;
 type WorkItemStatus = (typeof WORK_ITEM_STATUSES)[number];
 
-function normalizeWorkItemStatus(status?: string | null): WorkItemStatus | undefined {
+function normalizeWorkItemStatus(
+  status?: string | null
+): WorkItemStatus | undefined {
   if (!status) {
     return undefined;
   }
@@ -202,7 +210,9 @@ export const delegateToManager = createTool({
   inputSchema: delegateToManagerSchema,
   outputSchema: delegationResultSchema,
   execute: async (
-    { context }: ToolExecuteParams<InferContext<typeof delegateToManagerSchema>>,
+    {
+      context,
+    }: ToolExecuteParams<InferContext<typeof delegateToManagerSchema>>,
     { abortSignal }: { abortSignal?: AbortSignal } = {}
   ) => {
     const {
@@ -304,17 +314,19 @@ export const checkTaskStatus = createTool({
         success: true,
         workItemId: workItem.id,
         status: normalizeWorkItemStatus(workItem.status),
-        progress: (workItem.metadata as Record<string, unknown>)?.progress as
-          | number
-          | undefined || 0,
+        progress:
+          ((workItem.metadata as Record<string, unknown>)?.progress as
+            | number
+            | undefined) || 0,
         assignedAgent: workItem.assignedAgentId ?? undefined,
         result: workItem.result as Record<string, unknown> | null,
         error: workItem.error ?? undefined,
-        updatedAt: workItem.updatedAt instanceof Date
-          ? workItem.updatedAt
-          : workItem.updatedAt
-          ? new Date(workItem.updatedAt)
-          : undefined,
+        updatedAt:
+          workItem.updatedAt instanceof Date
+            ? workItem.updatedAt
+            : workItem.updatedAt
+              ? new Date(workItem.updatedAt)
+              : undefined,
         message: `Status retrieved for work item ${workItem.id}`,
       };
     } catch (error) {
@@ -353,7 +365,9 @@ export const requestSpecialist = createTool({
   inputSchema: requestSpecialistSchema,
   outputSchema: specialistResultSchema,
   execute: async (
-    { context }: ToolExecuteParams<InferContext<typeof requestSpecialistSchema>>,
+    {
+      context,
+    }: ToolExecuteParams<InferContext<typeof requestSpecialistSchema>>,
     { abortSignal }: { abortSignal?: AbortSignal } = {}
   ) => {
     const {
@@ -418,7 +432,10 @@ const sendAgentMessageSchema = z.object({
   content: z.record(z.any()).describe('Message content'),
   sessionId: z.string().optional().describe('Session ID'),
   workflowId: z.string().optional().describe('Workflow ID'),
-  agentId: z.string().optional().describe('ID of the agent sending the message'),
+  agentId: z
+    .string()
+    .optional()
+    .describe('ID of the agent sending the message'),
 });
 
 export const sendAgentMessage = createTool({
@@ -477,7 +494,10 @@ const getAgentMessagesSchema = z.object({
     .number()
     .default(10)
     .describe('Maximum number of messages to retrieve'),
-  agentId: z.string().optional().describe('ID of the agent to retrieve messages for'),
+  agentId: z
+    .string()
+    .optional()
+    .describe('ID of the agent to retrieve messages for'),
 });
 
 export const getAgentMessages = createTool({
@@ -511,8 +531,8 @@ export const getAgentMessages = createTool({
             log.startedAt instanceof Date
               ? log.startedAt
               : log.startedAt
-              ? new Date(log.startedAt)
-              : undefined,
+                ? new Date(log.startedAt)
+                : undefined,
         })),
         message: `Retrieved ${messages.length} message(s) for ${agentId}`,
       };
@@ -545,7 +565,10 @@ const createCoordinatedWorkflowSchema = z.object({
     )
     .describe('Workflow phases in order'),
   sessionId: z.string().optional().describe('Session ID'),
-  agentId: z.string().optional().describe('ID of the agent creating the workflow'),
+  agentId: z
+    .string()
+    .optional()
+    .describe('ID of the agent creating the workflow'),
 });
 
 export const createCoordinatedWorkflow = createTool({
@@ -555,7 +578,9 @@ export const createCoordinatedWorkflow = createTool({
   inputSchema: createCoordinatedWorkflowSchema,
   outputSchema: coordinatedWorkflowResultSchema,
   execute: async (
-    { context }: ToolExecuteParams<InferContext<typeof createCoordinatedWorkflowSchema>>,
+    {
+      context,
+    }: ToolExecuteParams<InferContext<typeof createCoordinatedWorkflowSchema>>,
     { abortSignal }: { abortSignal?: AbortSignal } = {}
   ) => {
     const {
@@ -652,7 +677,9 @@ export const updateWorkflowProgress = createTool({
   inputSchema: updateWorkflowProgressSchema,
   outputSchema: workflowProgressResultSchema,
   execute: async (
-    { context }: ToolExecuteParams<InferContext<typeof updateWorkflowProgressSchema>>,
+    {
+      context,
+    }: ToolExecuteParams<InferContext<typeof updateWorkflowProgressSchema>>,
     { abortSignal }: { abortSignal?: AbortSignal } = {}
   ) => {
     const { workflowId, progress, currentPhase, status } = context;

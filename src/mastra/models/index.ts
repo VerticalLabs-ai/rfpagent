@@ -17,11 +17,13 @@ import { openai } from '@ai-sdk/openai';
 
 // OpenAI GPT-5 (Latest unified model - Released August 7, 2025)
 export const gpt5 = openai('gpt-5');
-export const gpt5Thinking = openai('gpt-5-thinking'); // Deep reasoning variant
+export const gpt5Thinking = openai('gpt-5-pro-2025-10-06'); // Deep reasoning variant
 
 // Claude Sonnet 4.5 (Best coding model - Released September 29, 2025)
 export const claudeSonnet45 = anthropic('claude-sonnet-4-5-20250929');
-export const claudeSonnet45Thinking = anthropic('claude-sonnet-4-5-20250929-thinking'); // Extended reasoning
+export const claudeSonnet45Thinking = anthropic(
+  'claude-sonnet-4-5-20250929-thinking'
+); // Extended reasoning
 
 // Claude Opus 4.1 (Maximum capability - Released August 2025)
 export const claudeOpus41 = anthropic('claude-opus-4-1-20250805');

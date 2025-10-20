@@ -1,88 +1,32 @@
-// @ts-nocheck
 import { Memory } from '@mastra/memory';
 import { agentMemoryService } from '../../../server/services/agents/agentMemoryService';
 
 /**
  * Centralized Memory Provider for all Mastra agents
  * Uses agentMemoryService for persistence and provides credential security
+ *
+ * Note: This is a simplified implementation using Mastra's built-in memory.
+ * For custom storage integration, use @mastra/pg, @mastra/upstash, etc.
  */
 export class SharedMemoryProvider {
   private static instance: Memory;
 
   /**
    * Get or create the shared Memory instance
+   *
+   * Using Mastra's built-in memory with options for:
+   * - lastMessages: Number of recent messages to include
+   * - semanticRecall: Disabled for now (requires vector storage)
+   * - workingMemory: Disabled (requires special template)
    */
   public static getSharedMemory(): Memory {
     if (!SharedMemoryProvider.instance) {
-      console.log(
-        '🧠 Creating shared Memory instance with agentMemoryService integration'
-      );
+      console.log('🧠 Creating shared Memory instance with built-in storage');
 
       SharedMemoryProvider.instance = new Memory({
-        provider: {
-          // Custom memory provider that integrates with agentMemoryService
-          store: async (sessionId: string, messages: any[]) => {
-            // Generate safe session ID to prevent cross-contamination
-            let safeSessionId = sessionId;
-            if (
-              !sessionId ||
-              sessionId.trim() === '' ||
-              sessionId === 'default'
-            ) {
-              safeSessionId = `anonymous_${Date.now()}_${Math.random().toString(36).substring(2)}`;
-              console.warn(
-                `⚠️ Using fallback session ID: ${safeSessionId}. Consider providing explicit sessionId to prevent potential cross-contamination.`
-              );
-            }
-
-            // Filter out sensitive credentials before storing
-            const sanitizedMessages = messages.map(msg =>
-              SharedMemoryProvider.sanitizeMessage(msg)
-            );
-
-            await agentMemoryService.storeMemory({
-              agentId: safeSessionId,
-              memoryType: 'working',
-              contextKey: `conversation_${safeSessionId}`, // Use sessionId for consistency
-              title: `Conversation Memory`,
-              content: { messages: sanitizedMessages, timestamp: Date.now() },
-              importance: 6,
-              tags: ['conversation', 'shared'],
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-            });
-          },
-
-          retrieve: async (sessionId: string, limit?: number) => {
-            // No fallback ID generation during retrieval to prevent cross-contamination
-            if (
-              !sessionId ||
-              sessionId.trim() === '' ||
-              sessionId === 'default'
-            ) {
-              // For retrieval, we can't generate a new ID, so return empty to prevent cross-contamination
-              console.warn(
-                `⚠️ Empty sessionId provided for memory retrieval - returning empty messages to prevent cross-contamination`
-              );
-              return [];
-            }
-
-            const memories = await agentMemoryService.getAgentMemories(
-              sessionId,
-              'working',
-              limit || 50
-            );
-
-            // Sort memories by timestamp to maintain chronological order
-            const sortedMemories = memories
-              .filter(memory => memory.content?.messages)
-              .sort(
-                (a, b) =>
-                  (a.content?.timestamp || 0) - (b.content?.timestamp || 0)
-              )
-              .flatMap(memory => memory.content?.messages || []);
-
-            return sortedMemories;
-          },
+        options: {
+          lastMessages: 10, // Keep last 10 messages in context
+          semanticRecall: false, // Disabled - requires vector storage (PgVector, etc.)
         },
       });
     }
@@ -129,6 +73,7 @@ export class SharedMemoryProvider {
 
   /**
    * Store agent-specific knowledge for long-term retention
+   * Uses the agentMemoryService for persistent storage
    */
   public static async storeAgentKnowledge(
     agentId: string,
@@ -146,6 +91,7 @@ export class SharedMemoryProvider {
       confidence?: number;
     }
   ): Promise<void> {
+    console.log(`💾 Storing knowledge for ${agentId}: ${knowledge.title}`);
     await agentMemoryService.storeKnowledge({
       agentId,
       knowledgeType: knowledge.type,
@@ -161,6 +107,7 @@ export class SharedMemoryProvider {
 
   /**
    * Retrieve relevant knowledge for agent decision making
+   * Uses the agentMemoryService for knowledge retrieval
    */
   public static async getRelevantKnowledge(
     agentId: string,
@@ -170,7 +117,72 @@ export class SharedMemoryProvider {
       type?: string;
     }
   ): Promise<any[]> {
+    console.log(`🔍 Retrieving knowledge for ${agentId}`, context);
     return await agentMemoryService.getRelevantKnowledge(agentId, context, 10);
+  }
+
+  /**
+   * Store conversation messages using agentMemoryService
+   * This provides custom storage integration beyond Mastra's built-in memory
+   */
+  public static async storeConversation(
+    sessionId: string,
+    messages: any[]
+  ): Promise<void> {
+    // Generate safe session ID to prevent cross-contamination
+    let safeSessionId = sessionId;
+    if (!sessionId || sessionId.trim() === '' || sessionId === 'default') {
+      safeSessionId = `anonymous_${Date.now()}_${Math.random().toString(36).substring(2)}`;
+      console.warn(
+        `⚠️ Using fallback session ID: ${safeSessionId}. Consider providing explicit sessionId.`
+      );
+    }
+
+    // Filter out sensitive credentials before storing
+    const sanitizedMessages = messages.map(msg =>
+      SharedMemoryProvider.sanitizeMessage(msg)
+    );
+
+    await agentMemoryService.storeMemory({
+      agentId: safeSessionId,
+      memoryType: 'working',
+      contextKey: `conversation_${safeSessionId}`,
+      title: `Conversation Memory`,
+      content: { messages: sanitizedMessages, timestamp: Date.now() },
+      importance: 6,
+      tags: ['conversation', 'shared'],
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+    });
+  }
+
+  /**
+   * Retrieve conversation messages using agentMemoryService
+   */
+  public static async retrieveConversation(
+    sessionId: string,
+    limit?: number
+  ): Promise<any[]> {
+    // No fallback ID generation during retrieval to prevent cross-contamination
+    if (!sessionId || sessionId.trim() === '' || sessionId === 'default') {
+      console.warn(
+        `⚠️ Empty sessionId provided - returning empty messages to prevent cross-contamination`
+      );
+      return [];
+    }
+
+    const memories = await agentMemoryService.getAgentMemories(
+      sessionId,
+      'working',
+      limit || 50
+    );
+
+    // Sort memories by timestamp to maintain chronological order
+    const sortedMemories = memories
+      .filter(memory => memory.content?.messages)
+      .sort((a, b) => (a.content?.timestamp || 0) - (b.content?.timestamp || 0))
+      .flatMap(memory => memory.content?.messages || []);
+
+    return sortedMemories;
   }
 }
 
