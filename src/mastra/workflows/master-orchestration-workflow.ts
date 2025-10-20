@@ -6,6 +6,11 @@ import { proposalGenerationOrchestrator } from '../../../server/services/orchest
 import { bonfireAuthWorkflow } from './bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './document-processing-workflow';
 import { rfpDiscoveryWorkflow } from './rfp-discovery-workflow';
+import {
+  executeWithPooledAgent,
+  executeParallelWithPool,
+  getPoolStatistics,
+} from '../utils/pool-integration';
 
 // Input schema for master orchestration
 const MasterOrchestrationInputSchema = z.object({
@@ -194,9 +199,17 @@ const executeWorkflowStep = createStep({
             throw new Error(`RFP ${rfpId} not found`);
           }
 
-          // Process documents if needed
+          // Process documents if needed (using document-processor pool)
           const rfpAny = rfp as any;
           if (rfpAny.documentUrls && rfpAny.documentUrls.length > 0) {
+            // Log pool statistics before processing
+            const poolStats = getPoolStatistics('proposal-workers');
+            if (poolStats) {
+              console.log(
+                `📊 proposal-workers pool: ${poolStats.totalInstances} instances, ${(poolStats.utilization * 100).toFixed(1)}% utilization`
+              );
+            }
+
             const docResults = await parallel(
               rfpAny.documentUrls.map((url: string, index: number) =>
                 step.run(`process-doc-${index}`, async () => {
@@ -261,14 +274,22 @@ const executeWorkflowStep = createStep({
           output: pipelineDiscovery,
         });
 
-        // Phase 2: Process discovered RFPs
+        // Phase 2: Process discovered RFPs (using proposal-workers pool)
         if (pipelineDiscovery.rfps && pipelineDiscovery.rfps.length > 0) {
           const rfpProcessingResults = await step.run(
             'pipeline-process-rfps',
             async () => {
               console.log(
-                `📊 Phase 2: Processing ${pipelineDiscovery.rfps.length} RFPs`
+                `📊 Phase 2: Processing ${pipelineDiscovery.rfps.length} RFPs using proposal-workers pool`
               );
+
+              // Log initial pool statistics
+              const poolStats = getPoolStatistics('proposal-workers');
+              if (poolStats) {
+                console.log(
+                  `📊 proposal-workers pool: ${poolStats.totalInstances} instances, ${(poolStats.utilization * 100).toFixed(1)}% utilization`
+                );
+              }
 
               // Process RFPs in parallel (limit to 3 concurrent)
               const batchSize = 3;
@@ -320,6 +341,14 @@ const executeWorkflowStep = createStep({
                 );
 
                 processedRfps.push(...batchResults);
+
+                // Log pool stats after each batch
+                const updatedStats = getPoolStatistics('proposal-workers');
+                if (updatedStats) {
+                  console.log(
+                    `📊 After batch ${Math.floor(i / batchSize) + 1}: ${updatedStats.totalInstances} instances, ${(updatedStats.utilization * 100).toFixed(1)}% utilization`
+                  );
+                }
               }
 
               return processedRfps;

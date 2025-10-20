@@ -179,8 +179,84 @@ if (featureFlags.useAgentRegistry) {
   mastraLogger.debug('Agent Registry is disabled (USE_AGENT_REGISTRY=false)');
 }
 
-// Export registry for external use
+// ============================================================================
+// PHASE 2: Agent Pool Initialization
+// ============================================================================
+
+/**
+ * Initialize Agent Pools (if enabled via feature flag)
+ * Creates agent pools for load balancing and auto-scaling
+ */
+if (featureFlags.useAgentPools) {
+  mastraLogger.info('🏊 Initializing Agent Pool Manager...');
+
+  // Import pool manager and bindings
+  const { agentPoolManager } = await import('./coordination/agent-pool-manager');
+  const { workflowAgentBindings } = await import('./config/workflow-agent-bindings');
+
+  // Create pools from workflow bindings
+  let poolsCreated = 0;
+  for (const binding of Object.values(workflowAgentBindings)) {
+    if (!binding.agentPools) continue;
+
+    for (const poolDef of binding.agentPools) {
+      try {
+        // Find min/max instances from requiredAgents
+        const agentConfigs = poolDef.agentIds.map((agentId) => {
+          const agentReq = binding.requiredAgents.find((a) => a.agentId === agentId);
+          return {
+            agentId,
+            minInstances: agentReq?.minInstances || 1,
+            maxInstances: agentReq?.maxInstances || 5,
+          };
+        });
+
+        // Calculate pool size from agent configurations
+        const minSize = Math.max(...agentConfigs.map((c) => c.minInstances));
+        const maxSize = Math.max(...agentConfigs.map((c) => c.maxInstances));
+
+        // Create pool with auto-scaling configuration
+        agentPoolManager.createPool({
+          name: poolDef.poolName,
+          agentIds: poolDef.agentIds,
+          minSize,
+          maxSize,
+          strategy: poolDef.strategy,
+          autoScale: {
+            enabled: true,
+            scaleUpThreshold: 0.8,
+            scaleDownThreshold: 0.3,
+            cooldownPeriod: 30000, // 30 seconds
+          },
+        });
+
+        poolsCreated++;
+        if (featureFlags.verboseRegistryLogging) {
+          mastraLogger.debug(
+            `✅ Created pool: ${poolDef.poolName} (${poolDef.agentIds.join(', ')})`
+          );
+        }
+      } catch (error) {
+        mastraLogger.error(`❌ Failed to create pool ${poolDef.poolName}:`, error);
+      }
+    }
+  }
+
+  const poolStats = agentPoolManager.getAllPoolStats();
+  mastraLogger.info(`✅ Agent Pools initialized: ${poolsCreated} pools created`, {
+    pools: poolStats.map((p) => ({
+      name: p.poolName,
+      size: p.totalInstances,
+      utilization: `${(p.utilization * 100).toFixed(1)}%`,
+    })),
+  });
+} else {
+  mastraLogger.debug('Agent Pools are disabled (USE_AGENT_POOLS=false)');
+}
+
+// Export registry and pool manager for external use
 export { agentRegistry } from './registry/agent-registry';
+export { agentPoolManager } from './coordination/agent-pool-manager';
 export { agentHierarchyConfig } from './config/agent-hierarchy';
 export { workflowAgentBindings } from './config/workflow-agent-bindings';
 export { featureFlags } from './config/feature-flags';
