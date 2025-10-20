@@ -1,6 +1,6 @@
 # Generated Documentation
 
-Generated on: 2025-10-19T17:32:33.472Z
+Generated on: 2025-10-20T14:28:32.960Z
 
 ## Scope: full
 
