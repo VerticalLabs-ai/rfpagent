@@ -398,17 +398,20 @@ router.post('/:id/download-documents', async (req, res) => {
         const sessionId = `analysis_${id}_${Date.now()}`;
         console.log(`🔍 Starting document analysis workflow for RFP ${id}`);
 
-        const analysisResult = await analysisOrchestrator.executeAnalysisWorkflow({
-          rfpId: id,
-          sessionId,
-          priority: 8, // High priority for downloaded documents
-        });
+        const analysisResult =
+          await analysisOrchestrator.executeAnalysisWorkflow({
+            rfpId: id,
+            sessionId,
+            priority: 8, // High priority for downloaded documents
+          });
 
         if (analysisResult.success) {
           analysisWorkflowId = analysisResult.metadata?.workflowId;
           console.log(`✅ Analysis workflow started: ${analysisWorkflowId}`);
         } else {
-          console.error(`❌ Failed to start analysis workflow: ${analysisResult.error}`);
+          console.error(
+            `❌ Failed to start analysis workflow: ${analysisResult.error}`
+          );
         }
       } catch (analysisError) {
         console.error('Error starting analysis workflow:', analysisError);

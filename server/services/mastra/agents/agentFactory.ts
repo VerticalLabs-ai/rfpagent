@@ -15,9 +15,27 @@ import type { ToolExecutionContext } from '@mastra/core/tools';
  * These are Mastra tool objects, not raw functions
  */
 interface AgentTools {
-  webScrape: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
-  extractRFP: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
-  authenticate: ToolAction<any, any, any, any, ToolExecutionContext<any, any, any>>;
+  webScrape: ToolAction<
+    any,
+    any,
+    any,
+    any,
+    ToolExecutionContext<any, any, any>
+  >;
+  extractRFP: ToolAction<
+    any,
+    any,
+    any,
+    any,
+    ToolExecutionContext<any, any, any>
+  >;
+  authenticate: ToolAction<
+    any,
+    any,
+    any,
+    any,
+    ToolExecutionContext<any, any, any>
+  >;
 }
 
 /**

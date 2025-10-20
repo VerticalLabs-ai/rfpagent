@@ -99,7 +99,9 @@ export class CircuitBreaker {
       // Transition to half-open to test recovery
       this.state = CircuitState.HALF_OPEN;
       this.consecutiveSuccesses = 0;
-      console.log(`[Circuit Breaker ${this.name}] Transitioning to HALF_OPEN - testing recovery`);
+      console.log(
+        `[Circuit Breaker ${this.name}] Transitioning to HALF_OPEN - testing recovery`
+      );
     }
 
     try {

@@ -29,7 +29,9 @@ export function usePerformanceMonitoring() {
     // Track resource sizes
     if (typeof window !== 'undefined') {
       const sizes = trackResourceTiming();
-      setResourceSizes(sizes);
+      requestAnimationFrame(() => {
+        setResourceSizes(sizes);
+      });
     }
 
     // Update memory usage periodically
@@ -45,7 +47,9 @@ export function usePerformanceMonitoring() {
     // Calculate performance score when metrics update
     if (Object.keys(metrics).length > 0) {
       const score = calculatePerformanceScore(metrics);
-      setPerformanceScore(score);
+      requestAnimationFrame(() => {
+        setPerformanceScore(score);
+      });
     }
   }, [metrics]);
 
@@ -109,8 +113,10 @@ export function useNetworkStatus() {
     // Get network information if available
     if ('connection' in navigator) {
       const connection = (navigator as any).connection;
-      setEffectiveType(connection.effectiveType || '4g');
-      setDownlink(connection.downlink || 10);
+      requestAnimationFrame(() => {
+        setEffectiveType(connection.effectiveType || '4g');
+        setDownlink(connection.downlink || 10);
+      });
 
       const handleConnectionChange = () => {
         setEffectiveType(connection.effectiveType || '4g');

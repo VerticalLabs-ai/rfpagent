@@ -1,0 +1,67 @@
+name: AI Code Review
+
+on:
+    pull_request:
+        types: [opened, synchronize]
+
+jobs:
+    review:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            pull-requests: write
+
+        steps:
+            - name: Checkout PR
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Get full history for better analysis
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+
+            - name: Get Changed Files
+              id: changed-files
+              uses: tj-actions/changed-files@v46
+
+            - name: Analyze Changes
+              id: analyze
+              run: |
+                  # Count changed files by type
+                  total_files=$(echo "${{ steps.changed-files.outputs.all_changed_files }}" | wc -w)
+
+                  # Create basic analysis
+                  cat > review_comment.md << 'EOF'
+                  ## 📊 Code Change Summary
+
+                  **Files Changed:** $total_files
+
+                  ### Changed Files:
+                  ${{ steps.changed-files.outputs.all_changed_files }}
+
+                  ### Recommendations:
+                  - ✅ Ensure all changes have corresponding tests
+                  - ✅ Review for potential security issues
+                  - ✅ Verify type safety and error handling
+                  - ✅ Check for code duplication
+                  - ✅ Validate documentation updates
+
+                  ---
+                  *Automated PR Analysis*
+                  EOF
+
+            - name: Post Review Comment
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const fs = require('fs');
+                      const comment = fs.readFileSync('review_comment.md', 'utf8');
+
+                      await github.rest.issues.createComment({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        body: comment
+                      });

@@ -73,7 +73,7 @@ export default function Dashboard() {
                 queryClient.invalidateQueries({ queryKey: ['metrics'] }),
                 queryClient.invalidateQueries({ queryKey: ['rfps'] }),
                 queryClient.invalidateQueries({ queryKey: ['portals'] }),
-                queryClient.invalidateQueries({ queryKey: ['activity'] })
+                queryClient.invalidateQueries({ queryKey: ['activity'] }),
               ]);
             }}
             className="gap-2"

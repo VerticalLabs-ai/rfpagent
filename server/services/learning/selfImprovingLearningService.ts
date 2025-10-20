@@ -1057,7 +1057,8 @@ export class SelfImprovingLearningService {
       existing.performance.successRate * previousAttempts
     );
     const totalAttempts = previousAttempts + 1;
-    const newSuccessRate = (previousSuccesses + (success ? 1 : 0)) / totalAttempts;
+    const newSuccessRate =
+      (previousSuccesses + (success ? 1 : 0)) / totalAttempts;
 
     return {
       ...existing,

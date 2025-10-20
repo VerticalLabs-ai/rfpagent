@@ -55,7 +55,10 @@ export function detectFileType(filename: string): string {
 /**
  * Parse agent response and extract opportunities
  */
-export function parseAgentResponse(response: string, extractJsonBlocks: (text: string) => string[]): any[] {
+export function parseAgentResponse(
+  response: string,
+  extractJsonBlocks: (text: string) => string[]
+): any[] {
   try {
     console.log('🤖 Parsing AI agent response...');
     console.log(`📝 Agent response length: ${response.length} characters`);

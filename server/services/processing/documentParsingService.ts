@@ -141,7 +141,11 @@ export class DocumentParsingService {
 
         if (totalSize > MAX_FILE_SIZE) {
           cleanup();
-          reject(new Error(`File size exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes`));
+          reject(
+            new Error(
+              `File size exceeds maximum allowed size of ${MAX_FILE_SIZE} bytes`
+            )
+          );
           return;
         }
 

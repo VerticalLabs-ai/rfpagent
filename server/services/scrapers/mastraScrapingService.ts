@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
@@ -1963,7 +1962,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         headers: requestHeaders,
         timeout: 30000,
         maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400,
+        validateStatus: status => status >= 200 && status < 400,
       });
 
       currentResponse = {
@@ -2530,7 +2529,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             ...(sessionData?.headers ? sessionData.headers : {}),
           },
           timeout: 20000,
-          validateStatus: (status) => status === 200,
+          validateStatus: status => status === 200,
         });
 
         if (response.status !== 200) {
@@ -2771,7 +2770,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           ...(flowCookies ? { Cookie: flowCookies } : {}),
         },
         timeout: 30000,
-        validateStatus: (status) => status === 200,
+        validateStatus: status => status === 200,
       });
 
       const flowJsonResponse = {
@@ -2847,7 +2846,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           },
           timeout: 30000,
           maxRedirects: 0,
-          validateStatus: (status) => status >= 200 && status < 400,
+          validateStatus: status => status >= 200 && status < 400,
         }
       );
 
@@ -3019,7 +3018,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         },
         timeout: 30000,
         maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400,
+        validateStatus: status => status >= 200 && status < 400,
       });
 
       const loginResponse = {

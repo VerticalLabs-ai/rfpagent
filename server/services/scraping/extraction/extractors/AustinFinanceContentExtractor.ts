@@ -328,9 +328,12 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
    */
   private extractTitle(text: string, solicitationId: string): string {
     // First, remove common prefixes that get concatenated
-    let cleanedText = text
+    const cleanedText = text
       .replace(/^view\s+details\s*/i, '')
-      .replace(/^due\s+date:\s*\d{1,2}\/\d{1,2}\/\d{4}\s+at\s+\d{1,2}[AP]M\s*/i, '')
+      .replace(
+        /^due\s+date:\s*\d{1,2}\/\d{1,2}\/\d{4}\s+at\s+\d{1,2}[AP]M\s*/i,
+        ''
+      )
       .trim();
 
     // Try to find title after the ID

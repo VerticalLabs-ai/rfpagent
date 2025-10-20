@@ -15,11 +15,14 @@ if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
 }
 
 // Initialize circuit breakers for different AI operations
-const conversationCircuit = circuitBreakerManager.getBreaker('openai-conversation', {
-  failureThreshold: 3,
-  timeout: 30000, // 30 sec
-  requestTimeout: 15000, // 15 sec
-});
+const conversationCircuit = circuitBreakerManager.getBreaker(
+  'openai-conversation',
+  {
+    failureThreshold: 3,
+    timeout: 30000, // 30 sec
+    requestTimeout: 15000, // 15 sec
+  }
+);
 
 const analysisCircuit = circuitBreakerManager.getBreaker('openai-analysis', {
   failureThreshold: 5,
@@ -27,11 +30,14 @@ const analysisCircuit = circuitBreakerManager.getBreaker('openai-analysis', {
   requestTimeout: 30000, // 30 sec
 });
 
-const generationCircuit = circuitBreakerManager.getBreaker('openai-generation', {
-  failureThreshold: 5,
-  timeout: 60000, // 1 min
-  requestTimeout: 45000, // 45 sec for long generations
-});
+const generationCircuit = circuitBreakerManager.getBreaker(
+  'openai-generation',
+  {
+    failureThreshold: 5,
+    timeout: 60000, // 1 min
+    requestTimeout: 45000, // 45 sec for long generations
+  }
+);
 
 export class AIService {
   private checkApiKeyAvailable(): boolean {
@@ -87,8 +93,21 @@ export class AIService {
           }),
         () => {
           // Fallback when circuit is open
-          console.warn('Circuit breaker OPEN for conversation - using fallback');
-          return { choices: [{ message: { content: this.generateFallbackReply(latestUserMessage, conversation.type) } }] } as any;
+          console.warn(
+            'Circuit breaker OPEN for conversation - using fallback'
+          );
+          return {
+            choices: [
+              {
+                message: {
+                  content: this.generateFallbackReply(
+                    latestUserMessage,
+                    conversation.type
+                  ),
+                },
+              },
+            ],
+          } as any;
         }
       );
 
@@ -373,18 +392,22 @@ ${documentText}
           }),
         () => {
           // Fallback when circuit is open
-          console.warn('Circuit breaker OPEN for document analysis - using basic compliance');
+          console.warn(
+            'Circuit breaker OPEN for document analysis - using basic compliance'
+          );
           return {
-            choices: [{
-              message: {
-                content: JSON.stringify({
-                  requirements: [],
-                  complianceItems: [],
-                  riskFlags: [],
-                  mandatoryFields: [],
-                }),
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    requirements: [],
+                    complianceItems: [],
+                    riskFlags: [],
+                    mandatoryFields: [],
+                  }),
+                },
               },
-            }],
+            ],
           } as any;
         }
       );
@@ -538,21 +561,26 @@ Use professional language suitable for government procurement.
         }),
       () => {
         // Fallback when circuit is open
-        console.warn('Circuit breaker OPEN for proposal generation - using template');
+        console.warn(
+          'Circuit breaker OPEN for proposal generation - using template'
+        );
         return {
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                executiveSummary: 'Circuit breaker active - please retry later',
-                companyOverview: '',
-                technicalApproach: '',
-                projectTeam: '',
-                timeline: '',
-                qualifications: '',
-                references: '',
-              }),
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  executiveSummary:
+                    'Circuit breaker active - please retry later',
+                  companyOverview: '',
+                  technicalApproach: '',
+                  projectTeam: '',
+                  timeline: '',
+                  qualifications: '',
+                  references: '',
+                }),
+              },
             },
-          }],
+          ],
         } as any;
       }
     );
@@ -610,20 +638,24 @@ Target 40% gross margin. Be competitive but profitable.
         }),
       () => {
         // Fallback when circuit is open
-        console.warn('Circuit breaker OPEN for pricing generation - using default');
+        console.warn(
+          'Circuit breaker OPEN for pricing generation - using default'
+        );
         return {
-          choices: [{
-            message: {
-              content: JSON.stringify({
-                lineItems: [],
-                subtotal: 0,
-                margin: 0,
-                totalPrice: 0,
-                defaultMargin: 40,
-                notes: ['Circuit breaker active - please retry later'],
-              }),
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  lineItems: [],
+                  subtotal: 0,
+                  margin: 0,
+                  totalPrice: 0,
+                  defaultMargin: 40,
+                  notes: ['Circuit breaker active - please retry later'],
+                }),
+              },
             },
-          }],
+          ],
         } as any;
       }
     );
@@ -689,7 +721,9 @@ Content: ${scrapedContent}
           }),
         () => {
           // Fallback when circuit is open
-          console.warn('Circuit breaker OPEN for RFP extraction - returning null');
+          console.warn(
+            'Circuit breaker OPEN for RFP extraction - returning null'
+          );
           return null;
         }
       );
@@ -732,13 +766,18 @@ Content: ${scrapedContent}
           }),
         () => {
           // Fallback when circuit is open
-          console.warn('Circuit breaker OPEN for content generation - returning fallback');
+          console.warn(
+            'Circuit breaker OPEN for content generation - returning fallback'
+          );
           return {
-            choices: [{
-              message: {
-                content: 'Service temporarily unavailable. Please try again later.',
+            choices: [
+              {
+                message: {
+                  content:
+                    'Service temporarily unavailable. Please try again later.',
+                },
               },
-            }],
+            ],
           } as any;
         }
       );

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { DocumentParsingService } from '../processing/documentParsingService';
 import { DocumentIntelligenceService } from '../processing/documentIntelligenceService';
 import { AIService } from '../core/aiService';

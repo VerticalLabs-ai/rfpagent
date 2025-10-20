@@ -132,10 +132,7 @@ export async function unifiedBrowserbaseWebScrape(
                   .optional()
                   .describe('Description or summary'),
                 agency: z.string().optional().describe('Issuing agency'),
-                deadline: z
-                  .string()
-                  .optional()
-                  .describe('Submission deadline'),
+                deadline: z.string().optional().describe('Submission deadline'),
                 estimatedValue: z
                   .string()
                   .optional()
@@ -228,14 +225,8 @@ export async function unifiedBrowserbaseWebScrape(
 export async function handleBrowserbaseAuthentication(
   context: AuthenticationContext
 ): Promise<AuthenticationResult> {
-  const {
-    portalUrl,
-    username,
-    password,
-    authContext,
-    sessionId,
-    portalType,
-  } = context;
+  const { portalUrl, username, password, authContext, sessionId, portalType } =
+    context;
 
   try {
     console.log(
@@ -327,10 +318,7 @@ export async function scrapeBrowserbaseContent(
             .array(
               z.object({
                 title: z.string().describe('Opportunity title or RFP name'),
-                deadline: z
-                  .string()
-                  .optional()
-                  .describe('Submission deadline'),
+                deadline: z.string().optional().describe('Submission deadline'),
                 agency: z
                   .string()
                   .optional()
@@ -343,10 +331,7 @@ export async function scrapeBrowserbaseContent(
                   .string()
                   .optional()
                   .describe('Contract value or budget amount'),
-                url: z
-                  .string()
-                  .optional()
-                  .describe('Link to full RFP details'),
+                url: z.string().optional().describe('Link to full RFP details'),
                 category: z
                   .string()
                   .optional()

@@ -84,7 +84,7 @@ export class PhiladelphiaDocumentDownloader {
     if (missingVars.length > 0) {
       throw new Error(
         `Missing required environment variables: ${missingVars.join(', ')}. ` +
-        `Please ensure these are set in your .env file.`
+          `Please ensure these are set in your .env file.`
       );
     }
   }
@@ -315,7 +315,8 @@ export class PhiladelphiaDocumentDownloader {
     const normalizedExpected = this.normalizeForComparison(expectedName);
     const normalizedFilename = this.normalizeForComparison(extractedFilename);
     const normalizedUrl = this.normalizeForComparison(url);
-    const normalizedDisposition = this.normalizeForComparison(contentDisposition);
+    const normalizedDisposition =
+      this.normalizeForComparison(contentDisposition);
 
     // Strategy 1: Exact normalized match
     if (normalizedExpected === normalizedFilename) {
@@ -339,7 +340,10 @@ export class PhiladelphiaDocumentDownloader {
     }
 
     // Strategy 4: Fuzzy matching with similarity threshold
-    const similarity = this.calculateSimilarity(normalizedExpected, normalizedFilename);
+    const similarity = this.calculateSimilarity(
+      normalizedExpected,
+      normalizedFilename
+    );
     const SIMILARITY_THRESHOLD = 0.8; // 80% similarity
 
     if (similarity >= SIMILARITY_THRESHOLD) {
@@ -423,7 +427,12 @@ export class PhiladelphiaDocumentDownloader {
 
               // Try to match this download to one of our expected documents
               const matchingDoc = documentNames.find(name =>
-                this.matchDocumentName(name, extractedFilename, url, contentDisposition)
+                this.matchDocumentName(
+                  name,
+                  extractedFilename,
+                  url,
+                  contentDisposition
+                )
               );
 
               if (matchingDoc) {
@@ -545,7 +554,10 @@ export class PhiladelphiaDocumentDownloader {
 
           // Wait for the download to be captured with polling
           let downloadCompleted = false;
-          while (!downloadCompleted && (Date.now() - startTime) < downloadTimeout) {
+          while (
+            !downloadCompleted &&
+            Date.now() - startTime < downloadTimeout
+          ) {
             // Check if this document has been captured
             if (capturedFiles.has(docName)) {
               downloadCompleted = true;
@@ -557,11 +569,16 @@ export class PhiladelphiaDocumentDownloader {
             if (capturedFiles.size > initialCapturedCount) {
               // A new file was captured, check if it could be our document
               const newFiles = Array.from(capturedFiles.keys()).filter(
-                key => !results.some(r => r.name === key && capturedFiles.has(r.name))
+                key =>
+                  !results.some(
+                    r => r.name === key && capturedFiles.has(r.name)
+                  )
               );
               if (newFiles.length > 0) {
                 // Assume the most recent capture is our file
-                console.log(`✅ Download captured (possible name variation): ${newFiles[0]}`);
+                console.log(
+                  `✅ Download captured (possible name variation): ${newFiles[0]}`
+                );
                 downloadCompleted = true;
                 break;
               }
@@ -572,7 +589,9 @@ export class PhiladelphiaDocumentDownloader {
           }
 
           if (!downloadCompleted) {
-            console.log(`⚠️ Download timeout reached for ${docName}, but will mark as completed if no error`);
+            console.log(
+              `⚠️ Download timeout reached for ${docName}, but will mark as completed if no error`
+            );
           }
 
           // For Philadelphia portal, the click succeeded if no error was thrown
@@ -637,7 +656,9 @@ export class PhiladelphiaDocumentDownloader {
                 verified = true;
                 doc.storagePath = storagePath;
                 actuallyStoredCount++;
-                console.log(`✅ Successfully uploaded and verified: ${doc.name}`);
+                console.log(
+                  `✅ Successfully uploaded and verified: ${doc.name}`
+                );
                 break;
               }
 
@@ -651,7 +672,9 @@ export class PhiladelphiaDocumentDownloader {
             }
 
             if (!verified) {
-              console.error(`❌ Upload verification failed after ${maxVerifyAttempts} attempts for: ${doc.name}`);
+              console.error(
+                `❌ Upload verification failed after ${maxVerifyAttempts} attempts for: ${doc.name}`
+              );
               doc.downloadStatus = 'failed';
               doc.error = 'Upload verification failed';
             }
@@ -763,9 +786,7 @@ export class PhiladelphiaDocumentDownloader {
                   r =>
                     r.downloadStatus === 'completed' &&
                     (fileName.includes(r.name.replace('.pdf', '')) ||
-                      r.name.includes(
-                        fileName.replace(/-(\d+)\.pdf$/, '.pdf')
-                      )) // Handle timestamp suffix
+                      r.name.includes(fileName.replace(/-(\d+)\.pdf$/, '.pdf'))) // Handle timestamp suffix
                 );
 
                 if (matchingResult) {
@@ -775,11 +796,13 @@ export class PhiladelphiaDocumentDownloader {
                   if (fileName.toLowerCase().endsWith('.doc')) {
                     inferredContentType = 'application/msword';
                   } else if (fileName.toLowerCase().endsWith('.docx')) {
-                    inferredContentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                    inferredContentType =
+                      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
                   } else if (fileName.toLowerCase().endsWith('.xls')) {
                     inferredContentType = 'application/vnd.ms-excel';
                   } else if (fileName.toLowerCase().endsWith('.xlsx')) {
-                    inferredContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                    inferredContentType =
+                      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
                   }
 
                   const storagePath = await this.uploadBufferToStorage(

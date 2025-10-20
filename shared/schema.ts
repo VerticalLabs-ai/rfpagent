@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { relations, sql } from 'drizzle-orm';
 import {
   boolean,

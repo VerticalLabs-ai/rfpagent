@@ -483,7 +483,9 @@ export class ContinuousImprovementMonitor {
           )
         )
         .groupBy(agentPerformanceMetrics.agentId)
-        .having(sql`AVG(CASE WHEN ${agentPerformanceMetrics.metricType} = 'task_completion' THEN ${agentPerformanceMetrics.metricValue} END) < 0.8`);
+        .having(
+          sql`AVG(CASE WHEN ${agentPerformanceMetrics.metricType} = 'task_completion' THEN ${agentPerformanceMetrics.metricValue} END) < 0.8`
+        );
 
       for (const gap of performanceGaps) {
         const successRate = Number(gap.avgSuccess) || 0;
@@ -874,8 +876,7 @@ export class ContinuousImprovementMonitor {
           continue;
         }
 
-        const progress =
-          (currentValue - metric.currentValue) / denominator;
+        const progress = (currentValue - metric.currentValue) / denominator;
 
         // Ensure progress is finite before comparing
         if (Number.isFinite(progress) && progress >= 0.1) {

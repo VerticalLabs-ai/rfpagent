@@ -24,7 +24,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 // Discriminated union for filter value types
 export type FilterValueMap = {
@@ -37,40 +37,51 @@ export type FilterValueMap = {
 };
 
 // Generic filter option type that enforces correct value types
-export type FilterOption<T extends keyof FilterValueMap = keyof FilterValueMap> =
-  {
-    id: string;
-    label: string;
-    placeholder?: string;
-  } & (
-    | {
-        type: 'text';
-      }
-    | {
-        type: 'select';
-        options: { value: string; label: string }[];
-      }
-    | {
-        type: 'multiselect';
-        options: { value: string; label: string }[];
-      }
-    | {
-        type: 'date';
-      }
-    | {
-        type: 'daterange';
-      }
-    | {
-        type: 'number';
-      }
-  );
+export type FilterOption<
+  T extends keyof FilterValueMap = keyof FilterValueMap,
+> = {
+  id: string;
+  label: string;
+  placeholder?: string;
+} & (
+  | {
+      type: 'text';
+    }
+  | {
+      type: 'select';
+      options: { value: string; label: string }[];
+    }
+  | {
+      type: 'multiselect';
+      options: { value: string; label: string }[];
+    }
+  | {
+      type: 'date';
+    }
+  | {
+      type: 'daterange';
+    }
+  | {
+      type: 'number';
+    }
+);
 
 // Type-safe filter value map
-export type FilterValue<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>> = {
+export type FilterValue<
+  T extends Record<string, keyof FilterValueMap> = Record<
+    string,
+    keyof FilterValueMap
+  >,
+> = {
   [K in keyof T]?: FilterValueMap[T[K]];
 };
 
-interface AdvancedFiltersProps<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>> {
+interface AdvancedFiltersProps<
+  T extends Record<string, keyof FilterValueMap> = Record<
+    string,
+    keyof FilterValueMap
+  >,
+> {
   filters: FilterOption[];
   value: FilterValue<T>;
   onChange: (value: FilterValue<T>) => void;
@@ -78,7 +89,12 @@ interface AdvancedFiltersProps<T extends Record<string, keyof FilterValueMap> = 
   className?: string;
 }
 
-export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> = Record<string, keyof FilterValueMap>>({
+export function AdvancedFilters<
+  T extends Record<string, keyof FilterValueMap> = Record<
+    string,
+    keyof FilterValueMap
+  >,
+>({
   filters,
   value,
   onChange,
@@ -132,7 +148,12 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
               filter.placeholder || `Enter ${filter.label.toLowerCase()}`
             }
             value={textValue}
-            onChange={e => updateFilter(filter.id as keyof T, e.target.value as FilterValueMap[T[keyof T]])}
+            onChange={e =>
+              updateFilter(
+                filter.id as keyof T,
+                e.target.value as FilterValueMap[T[keyof T]]
+              )
+            }
             className="w-full"
           />
         );
@@ -143,7 +164,12 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
         return (
           <Select
             value={selectValue}
-            onValueChange={val => updateFilter(filter.id as keyof T, val as FilterValueMap[T[keyof T]])}
+            onValueChange={val =>
+              updateFilter(
+                filter.id as keyof T,
+                val as FilterValueMap[T[keyof T]]
+              )
+            }
           >
             <SelectTrigger className="w-full">
               <SelectValue
@@ -153,47 +179,56 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
               />
             </SelectTrigger>
             <SelectContent>
-              {'options' in filter && filter.options?.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              {'options' in filter &&
+                filter.options?.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         );
       }
 
       case 'multiselect': {
-        const selectedValues = Array.isArray(currentValue) ? (currentValue as string[]) : [];
+        const selectedValues = Array.isArray(currentValue)
+          ? (currentValue as string[])
+          : [];
         return (
           <div className="space-y-2">
-            {'options' in filter && filter.options?.map(option => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`${filter.id}-${option.value}`}
-                  checked={selectedValues.includes(option.value)}
-                  onCheckedChange={checked => {
-                    if (checked) {
-                      updateFilter(filter.id as keyof T, [
-                        ...selectedValues,
-                        option.value,
-                      ] as FilterValueMap[T[keyof T]]);
-                    } else {
-                      updateFilter(
-                        filter.id as keyof T,
-                        selectedValues.filter(v => v !== option.value) as FilterValueMap[T[keyof T]]
-                      );
-                    }
-                  }}
-                />
-                <label
-                  htmlFor={`${filter.id}-${option.value}`}
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {option.label}
-                </label>
-              </div>
-            ))}
+            {'options' in filter &&
+              filter.options?.map(option => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`${filter.id}-${option.value}`}
+                    checked={selectedValues.includes(option.value)}
+                    onCheckedChange={checked => {
+                      if (checked) {
+                        updateFilter(
+                          filter.id as keyof T,
+                          [
+                            ...selectedValues,
+                            option.value,
+                          ] as FilterValueMap[T[keyof T]]
+                        );
+                      } else {
+                        updateFilter(
+                          filter.id as keyof T,
+                          selectedValues.filter(
+                            v => v !== option.value
+                          ) as FilterValueMap[T[keyof T]]
+                        );
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor={`${filter.id}-${option.value}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    {option.label}
+                  </label>
+                </div>
+              ))}
           </div>
         );
       }
@@ -219,7 +254,12 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
               <Calendar
                 mode="single"
                 selected={dateValue ? new Date(dateValue) : undefined}
-                onSelect={date => updateFilter(filter.id as keyof T, (date?.toISOString() ?? '') as FilterValueMap[T[keyof T]])}
+                onSelect={date =>
+                  updateFilter(
+                    filter.id as keyof T,
+                    (date?.toISOString() ?? '') as FilterValueMap[T[keyof T]]
+                  )
+                }
                 initialFocus
               />
             </PopoverContent>
@@ -253,7 +293,13 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
                   mode="single"
                   selected={from ? new Date(from) : undefined}
                   onSelect={date =>
-                    updateFilter(filter.id as keyof T, [date?.toISOString() ?? null, to] as FilterValueMap[T[keyof T]])
+                    updateFilter(
+                      filter.id as keyof T,
+                      [
+                        date?.toISOString() ?? null,
+                        to,
+                      ] as FilterValueMap[T[keyof T]]
+                    )
                   }
                   initialFocus
                 />
@@ -275,7 +321,13 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
                   mode="single"
                   selected={to ? new Date(to) : undefined}
                   onSelect={date =>
-                    updateFilter(filter.id as keyof T, [from, date?.toISOString() ?? null] as FilterValueMap[T[keyof T]])
+                    updateFilter(
+                      filter.id as keyof T,
+                      [
+                        from,
+                        date?.toISOString() ?? null,
+                      ] as FilterValueMap[T[keyof T]]
+                    )
                   }
                   initialFocus
                 />
@@ -297,7 +349,9 @@ export function AdvancedFilters<T extends Record<string, keyof FilterValueMap> =
             onChange={e =>
               updateFilter(
                 filter.id as keyof T,
-                (e.target.value ? Number(e.target.value) : null) as FilterValueMap[T[keyof T]]
+                (e.target.value
+                  ? Number(e.target.value)
+                  : null) as FilterValueMap[T[keyof T]]
               )
             }
             className="w-full"
@@ -425,16 +479,18 @@ export function SearchBar({
   debounceMs = 300,
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     setLocalValue(value);
   }, [value]);
 
   const debouncedOnChange = useMemo(() => {
-    let timeout: NodeJS.Timeout;
     return (val: string) => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => onChange(val), debounceMs);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      timeoutRef.current = setTimeout(() => onChange(val), debounceMs);
     };
   }, [onChange, debounceMs]);
 

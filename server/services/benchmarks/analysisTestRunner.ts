@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { analysisOrchestrator } from '../orchestrators/analysisOrchestrator';
 import { analysisProgressTracker } from '../monitoring/analysisProgressTracker';
 import { storage } from '../../storage';
@@ -133,10 +132,7 @@ export class AnalysisTestRunner {
 
       // Step 2: Upload test documents
       console.log('📎 Uploading test documents...');
-      documents = await this.uploadTestDocuments(
-        rfp.id,
-        testCase.documents
-      );
+      documents = await this.uploadTestDocuments(rfp.id, testCase.documents);
       result.results.documentsUploaded = true;
       result.metrics.documentsProcessed = documents.length;
       console.log(`✅ Uploaded ${documents.length} documents`);
@@ -232,7 +228,10 @@ export class AnalysisTestRunner {
             try {
               await storage.deleteDocument(doc.id);
             } catch (deleteError) {
-              console.warn(`⚠️ Failed to delete document ${doc.id}:`, deleteError);
+              console.warn(
+                `⚠️ Failed to delete document ${doc.id}:`,
+                deleteError
+              );
             }
           }
 
@@ -244,7 +243,10 @@ export class AnalysisTestRunner {
             console.warn(`⚠️ Failed to delete RFP ${rfp.id}:`, deleteError);
           }
         } catch (cleanupError) {
-          console.warn(`⚠️ Cleanup error for test ${testCase.name}:`, cleanupError);
+          console.warn(
+            `⚠️ Cleanup error for test ${testCase.name}:`,
+            cleanupError
+          );
         }
       }
     }

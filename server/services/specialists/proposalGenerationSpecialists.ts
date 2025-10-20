@@ -393,7 +393,10 @@ export class ContentGenerationSpecialist {
           experienceRequirements?: string[];
         },
         complianceItems: complianceItems.map(item => ({
-          item: typeof item === 'string' ? item : (item as any).item || 'Unknown requirement',
+          item:
+            typeof item === 'string'
+              ? item
+              : (item as any).item || 'Unknown requirement',
           category: (item as any).category || 'general',
           required: (item as any).required !== false,
           description: (item as any).description || '',
@@ -404,7 +407,9 @@ export class ContentGenerationSpecialist {
           description: string;
         }>,
         keyDates: {
-          deadline: rfp.deadline ? new Date(rfp.deadline) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+          deadline: rfp.deadline
+            ? new Date(rfp.deadline)
+            : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         },
       };
 

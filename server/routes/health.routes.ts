@@ -55,14 +55,18 @@ router.get(
     const allMetrics = circuitBreakerManager.getAllMetrics();
     const healthStatus = circuitBreakerManager.getHealthStatus();
 
-    return ApiResponse.success(res, {
-      timestamp: new Date().toISOString(),
-      circuits: allMetrics,
-      summary: healthStatus,
-      hasOpenCircuits: circuitBreakerManager.hasOpenCircuits(),
-    }, {
-      message: 'Circuit breaker statistics',
-    });
+    return ApiResponse.success(
+      res,
+      {
+        timestamp: new Date().toISOString(),
+        circuits: allMetrics,
+        summary: healthStatus,
+        hasOpenCircuits: circuitBreakerManager.hasOpenCircuits(),
+      },
+      {
+        message: 'Circuit breaker statistics',
+      }
+    );
   })
 );
 

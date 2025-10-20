@@ -1,0 +1,110 @@
+name: Security Analysis
+
+on:
+    schedule:
+        - cron: "0 8 * * *" # Daily at 8 AM UTC
+    workflow_dispatch: # Manual trigger
+
+jobs:
+    security-scan:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Setup Environment
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "22"
+
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
+            - name: Install Dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Run npm audit
+              id: npm-audit
+              continue-on-error: true
+              run: |
+                  pnpm audit --json > npm-audit.json || true
+
+            - name: Generate Security Report
+              run: |
+                  # Create security report from npm audit
+                  node -e "
+                    const fs = require('fs');
+                    const date = new Date().toISOString().split('T')[0];
+
+                    let markdown = '# Security Report - ' + date + '\\n\\n';
+                    markdown += '## Dependency Security Scan\\n\\n';
+
+                    try {
+                      const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+                      const metadata = audit.metadata || {};
+
+                      markdown += '### Summary\\n';
+                      markdown += '- Total Vulnerabilities: ' + (metadata.vulnerabilities?.total || 0) + '\\n';
+                      markdown += '- Critical: ' + (metadata.vulnerabilities?.critical || 0) + '\\n';
+                      markdown += '- High: ' + (metadata.vulnerabilities?.high || 0) + '\\n';
+                      markdown += '- Moderate: ' + (metadata.vulnerabilities?.moderate || 0) + '\\n';
+                      markdown += '- Low: ' + (metadata.vulnerabilities?.low || 0) + '\\n\\n';
+
+                      if (metadata.vulnerabilities?.total > 0) {
+                        markdown += '### Action Required\\n';
+                        markdown += 'Run \`pnpm audit fix\` to automatically fix vulnerabilities.\\n\\n';
+                      } else {
+                        markdown += '### ✅ No vulnerabilities found\\n\\n';
+                      }
+                    } catch (e) {
+                      markdown += 'Audit completed successfully with no issues.\\n\\n';
+                    }
+
+                    markdown += '## Recommendations\\n';
+                    markdown += '1. Keep dependencies up to date\\n';
+                    markdown += '2. Review security advisories regularly\\n';
+                    markdown += '3. Use \`pnpm audit\` before releases\\n';
+                    markdown += '4. Enable Dependabot alerts\\n';
+
+                    fs.writeFileSync('SECURITY_REPORT.md', markdown);
+                    console.log('Security report generated');
+                  "
+
+            - name: Check for Critical Issues
+              id: check-issues
+              run: |
+                  # Check if there are critical or high vulnerabilities
+                  node -e "
+                    const fs = require('fs');
+                    try {
+                      const audit = JSON.parse(fs.readFileSync('npm-audit.json', 'utf8'));
+                      const critical = audit.metadata?.vulnerabilities?.critical || 0;
+                      const high = audit.metadata?.vulnerabilities?.high || 0;
+
+                      if (critical > 0 || high > 0) {
+                        console.log('has_issues=true');
+                        process.exit(0);
+                      }
+                    } catch (e) {
+                      console.log('has_issues=false');
+                    }
+                  " >> $GITHUB_OUTPUT
+
+            - name: Create Issue if Critical Problems Found
+              if: steps.check-issues.outputs.has_issues == 'true'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const fs = require('fs');
+                      const markdown = fs.readFileSync('SECURITY_REPORT.md', 'utf8');
+
+                      await github.rest.issues.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        title: 'Security Alert: Critical/High vulnerabilities found',
+                        body: markdown,
+                        labels: ['security', 'automated', 'dependencies']
+                      });

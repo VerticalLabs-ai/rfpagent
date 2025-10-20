@@ -1289,10 +1289,12 @@ export class SubmissionOrchestrator {
     const timeoutId = setTimeout(() => {
       // Guard: Check if pipeline is still in the same phase and pending
       const currentPipeline = this.activePipelines.get(pipeline.pipelineId);
-      if (!currentPipeline ||
-          currentPipeline.currentPhase !== pipeline.currentPhase ||
-          currentPipeline.status === 'completed' ||
-          currentPipeline.status === 'failed') {
+      if (
+        !currentPipeline ||
+        currentPipeline.currentPhase !== pipeline.currentPhase ||
+        currentPipeline.status === 'completed' ||
+        currentPipeline.status === 'failed'
+      ) {
         console.log(
           `⏭️ Skipping timeout for pipeline ${pipeline.pipelineId} - phase already completed or pipeline status changed`
         );

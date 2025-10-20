@@ -905,7 +905,9 @@ export class ProposalGenerationOrchestrator {
           };
 
           actualNextPhase = fastModePhaseFlow[nextPhase] || nextPhase;
-          console.log(`⚡ Fast mode: Transitioning to ${actualNextPhase} instead`);
+          console.log(
+            `⚡ Fast mode: Transitioning to ${actualNextPhase} instead`
+          );
         }
       }
 

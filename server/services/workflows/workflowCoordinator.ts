@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
 import { aiProposalService } from '../proposals/ai-proposal-service';
@@ -26,12 +25,16 @@ import type { AgentRegistry, InsertWorkItem, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
 // Lazy imports to break circular dependencies
-let _DiscoveryWorkflowProcessors: typeof import("./discoveryWorkflowProcessors").DiscoveryWorkflowProcessors | null = null;
-let _proposalGenerationOrchestrator: typeof import("../orchestrators/proposalGenerationOrchestrator").proposalGenerationOrchestrator | null = null;
+let _DiscoveryWorkflowProcessors:
+  | typeof import('./discoveryWorkflowProcessors').DiscoveryWorkflowProcessors
+  | null = null;
+let _proposalGenerationOrchestrator:
+  | typeof import('../orchestrators/proposalGenerationOrchestrator').proposalGenerationOrchestrator
+  | null = null;
 
 async function getDiscoveryWorkflowProcessors() {
   if (!_DiscoveryWorkflowProcessors) {
-    const module = await import("./discoveryWorkflowProcessors");
+    const module = await import('./discoveryWorkflowProcessors');
     _DiscoveryWorkflowProcessors = module.DiscoveryWorkflowProcessors;
   }
   return _DiscoveryWorkflowProcessors;
@@ -39,7 +42,9 @@ async function getDiscoveryWorkflowProcessors() {
 
 async function getProposalGenerationOrchestrator() {
   if (!_proposalGenerationOrchestrator) {
-    const module = await import("../orchestrators/proposalGenerationOrchestrator");
+    const module = await import(
+      '../orchestrators/proposalGenerationOrchestrator'
+    );
     _proposalGenerationOrchestrator = module.proposalGenerationOrchestrator;
   }
   return _proposalGenerationOrchestrator;
@@ -658,21 +663,25 @@ export class WorkflowCoordinator {
           (await getDiscoveryWorkflowProcessors()).processPortalAuthentication(
             workItem
           );
+          break;
 
         case 'portal_scanning':
           (await getDiscoveryWorkflowProcessors()).processPortalScanning(
             workItem
           );
+          break;
 
         case 'rfp_extraction':
           (await getDiscoveryWorkflowProcessors()).processRFPExtraction(
             workItem
           );
+          break;
 
         case 'portal_monitoring':
           (await getDiscoveryWorkflowProcessors()).processPortalMonitoring(
             workItem
           );
+          break;
 
         // Legacy Discovery Phase Tasks
         case 'portal_scan':
@@ -2324,12 +2333,10 @@ export class WorkflowCoordinator {
 
     const steps = (rawSteps.length ? rawSteps : [{}]).map(
       (step: any, index: number) => ({
-        stepIndex:
-          typeof step?.stepIndex === 'number' ? step.stepIndex : index,
+        stepIndex: typeof step?.stepIndex === 'number' ? step.stepIndex : index,
         action: step?.action ?? 'navigate',
         selector: step?.selector ?? selectors[index],
-        success:
-          typeof step?.success === 'boolean' ? step.success : success,
+        success: typeof step?.success === 'boolean' ? step.success : success,
         duration:
           typeof step?.duration === 'number'
             ? step.duration
@@ -2347,7 +2354,8 @@ export class WorkflowCoordinator {
         ? navigationAttempt.duration
         : steps.reduce(
             (total, current) =>
-              total + (typeof current.duration === 'number' ? current.duration : 0),
+              total +
+              (typeof current.duration === 'number' ? current.duration : 0),
             0
           );
 

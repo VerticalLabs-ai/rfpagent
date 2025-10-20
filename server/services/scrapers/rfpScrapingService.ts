@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { rfps } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import * as fs from 'fs';
@@ -94,17 +93,17 @@ export class RFPScrapingService {
         try {
           // Try various date formats using date-fns parse
           const dateFormats = [
-            'MM/dd/yyyy',           // 12/31/2024
-            'M/d/yyyy',             // 1/5/2024
-            'yyyy-MM-dd',           // 2024-12-31
-            'MMMM d, yyyy',         // January 5, 2024
-            'MMM d, yyyy',          // Jan 5, 2024
-            'MMMM dd, yyyy',        // January 05, 2024
-            'MMM dd, yyyy',         // Jan 05, 2024
-            'dd/MM/yyyy',           // 31/12/2024
-            'd/M/yyyy',             // 5/1/2024
-            'MM-dd-yyyy',           // 12-31-2024
-            'M-d-yyyy',             // 1-5-2024
+            'MM/dd/yyyy', // 12/31/2024
+            'M/d/yyyy', // 1/5/2024
+            'yyyy-MM-dd', // 2024-12-31
+            'MMMM d, yyyy', // January 5, 2024
+            'MMM d, yyyy', // Jan 5, 2024
+            'MMMM dd, yyyy', // January 05, 2024
+            'MMM dd, yyyy', // Jan 05, 2024
+            'dd/MM/yyyy', // 31/12/2024
+            'd/M/yyyy', // 5/1/2024
+            'MM-dd-yyyy', // 12-31-2024
+            'M-d-yyyy', // 1-5-2024
           ];
 
           // First try native Date parsing
@@ -114,7 +113,11 @@ export class RFPScrapingService {
           } else {
             // Try each format with date-fns
             for (const format of dateFormats) {
-              const parsedDate = parse(extractedData.deadline, format, new Date());
+              const parsedDate = parse(
+                extractedData.deadline,
+                format,
+                new Date()
+              );
               if (isValid(parsedDate)) {
                 deadlineDate = parsedDate;
                 break;
@@ -292,9 +295,15 @@ export class RFPScrapingService {
           for (const doc of extractedData.documents) {
             try {
               // Validate document URL
-              if (!doc.url || typeof doc.url !== 'string' || doc.url.trim() === '') {
+              if (
+                !doc.url ||
+                typeof doc.url !== 'string' ||
+                doc.url.trim() === ''
+              ) {
                 errors.push(`Invalid or missing URL for document: ${doc.name}`);
-                console.warn(`⚠️ Skipping document with invalid URL: ${doc.name}`);
+                console.warn(
+                  `⚠️ Skipping document with invalid URL: ${doc.name}`
+                );
                 continue;
               }
 
@@ -307,8 +316,12 @@ export class RFPScrapingService {
                   throw new Error('URL must use http or https protocol');
                 }
               } catch (urlError) {
-                errors.push(`Invalid URL format for document: ${doc.name} - ${doc.url}`);
-                console.warn(`⚠️ Skipping document with malformed URL: ${doc.name}`);
+                errors.push(
+                  `Invalid URL format for document: ${doc.name} - ${doc.url}`
+                );
+                console.warn(
+                  `⚠️ Skipping document with malformed URL: ${doc.name}`
+                );
                 continue;
               }
 

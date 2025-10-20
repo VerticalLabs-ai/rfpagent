@@ -67,7 +67,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
-        validateStatus: (status) => status < 500,
+        validateStatus: status => status < 500,
       });
 
       const response = {
@@ -329,7 +329,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
           Cookie: cookies,
         },
         maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400,
+        validateStatus: status => status >= 200 && status < 400,
       });
 
       const loginResponse = {

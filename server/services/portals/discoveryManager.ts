@@ -12,10 +12,10 @@ import type { DiscoveredRFP } from '../monitoring/portal-monitoring-service';
  * Maps task types to their expected completion times
  */
 const TASK_TIMEOUTS: Record<string, number> = {
-  portal_authentication: 5 * 60 * 1000,    // 5 minutes
-  portal_scanning: 20 * 60 * 1000,         // 20 minutes
-  rfp_extraction: 30 * 60 * 1000,          // 30 minutes
-  portal_monitoring: 10 * 60 * 1000,       // 10 minutes
+  portal_authentication: 5 * 60 * 1000, // 5 minutes
+  portal_scanning: 20 * 60 * 1000, // 20 minutes
+  rfp_extraction: 30 * 60 * 1000, // 30 minutes
+  portal_monitoring: 10 * 60 * 1000, // 10 minutes
 };
 
 /**

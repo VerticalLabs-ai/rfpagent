@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as cron from 'node-cron';
 import cronParser from 'cron-parser';
 import {

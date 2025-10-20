@@ -29,7 +29,11 @@ export default function NotificationToast({
       notifications.length > previousNotificationCount
     ) {
       const newNotification = notifications[0]; // Show the most recent
-      setVisibleNotification(newNotification);
+
+      // Use requestAnimationFrame to defer state update
+      requestAnimationFrame(() => {
+        setVisibleNotification(newNotification);
+      });
 
       // Auto-hide after 5 seconds
       const timer = setTimeout(() => {
@@ -40,7 +44,10 @@ export default function NotificationToast({
     }
 
     if (Array.isArray(notifications)) {
-      setPreviousNotificationCount(notifications.length);
+      // Use requestAnimationFrame to defer state update
+      requestAnimationFrame(() => {
+        setPreviousNotificationCount(notifications.length);
+      });
     }
   }, [notifications, previousNotificationCount]);
 
@@ -175,11 +182,15 @@ export function NotificationSystem() {
       );
 
       if (newNotifications.length > 0) {
-        setRecentNotifications(prev =>
-          [...newNotifications, ...prev].slice(0, 5)
-        );
+        // Use requestAnimationFrame to defer state update
+        requestAnimationFrame(() => {
+          setRecentNotifications(prev =>
+            [...newNotifications, ...prev].slice(0, 5)
+          );
+        });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifications]);
 
   return (
