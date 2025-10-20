@@ -52,6 +52,7 @@ docker-compose ps
 ```
 
 You should see:
+
 - `rfp-agent-postgres` - running on port 5432
 - `rfp-agent-redis` - running on port 6379
 
@@ -69,7 +70,7 @@ pnpm db:migrate
 pnpm dev
 ```
 
-The application will be available at http://localhost:5001
+The application will be available at <http://localhost:5000>
 
 ## Database Configuration
 
@@ -178,17 +179,20 @@ docker-compose logs -f
 If you see `ECONNREFUSED` errors:
 
 1. Verify Docker services are running:
+
    ```bash
    docker-compose ps
    ```
 
 2. Check if ports are available:
+
    ```bash
    lsof -i :5432  # PostgreSQL
    lsof -i :6379  # Redis
    ```
 
 3. Restart Docker services:
+
    ```bash
    docker-compose restart postgres redis
    ```
@@ -198,6 +202,7 @@ If you see `ECONNREFUSED` errors:
 If migrations fail:
 
 1. Check database connection:
+
    ```bash
    docker exec -it rfp-agent-postgres pg_isready -U rfpuser
    ```
@@ -212,10 +217,12 @@ If ports 5432 or 6379 are already in use:
 
 1. Stop conflicting services
 2. Or modify ports in `docker-compose.yml`:
+
    ```yaml
    ports:
-     - "5433:5432"  # Use 5433 instead
+     - '5433:5432' # Use 5433 instead
    ```
+
    Then update `DATABASE_URL` accordingly.
 
 ## Development Workflow

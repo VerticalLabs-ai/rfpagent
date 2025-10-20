@@ -88,11 +88,17 @@ export const mastra = new Mastra({
   // They have CommonJS/ESM interop issues or use Node.js built-in modules
   bundler: {
     externals: [
+      // AI SDK packages - MUST be external (pure ESM, no default exports)
+      /^@ai-sdk\//,
+      'ai',
+      'openai',
+
       // Browser automation tools (use Node.js built-ins)
       'playwright',
       'playwright-core',
       '@playwright/test',
       '@browserbasehq/stagehand',
+      '@browserbasehq/sdk',
       'puppeteer',
       'puppeteer-core',
 
@@ -101,6 +107,28 @@ export const mastra = new Mastra({
       'pdf-lib',
       'mammoth',
       'adm-zip',
+      'cheerio',
+      'domhandler',
+      'fast-xml-parser',
+
+      // Server/backend dependencies
+      /^\.\.\/\.\.\/\.\.\/server\//,
+
+      // Database and storage
+      'pg',
+      'drizzle-orm',
+      '@neondatabase/serverless',
+      '@google-cloud/storage',
+
+      // Node.js built-ins
+      /^node:/,
+      'fs',
+      'path',
+      'stream',
+      'buffer',
+      'util',
+      'crypto',
+      'events',
     ],
   },
 });

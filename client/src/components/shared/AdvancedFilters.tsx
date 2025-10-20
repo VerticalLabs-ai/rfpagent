@@ -494,6 +494,15 @@ export function SearchBar({
     };
   }, [onChange, debounceMs]);
 
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = undefined;
+      }
+    };
+  }, []);
+
   const handleChange = (newValue: string) => {
     setLocalValue(newValue);
     debouncedOnChange(newValue);

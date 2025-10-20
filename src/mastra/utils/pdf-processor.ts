@@ -6,11 +6,17 @@ import {
   rgb,
   StandardFonts,
 } from 'pdf-lib';
-// pdf-parse is a CommonJS module, use dynamic import for ESM compatibility
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
 import { logger } from '../../../server/utils/logger';
+
+// pdf-parse is a CommonJS module - load it dynamically to avoid bundler conflicts
+let pdfParse: any;
+async function loadPdfParse() {
+  if (!pdfParse) {
+    const module = await import('pdf-parse');
+    pdfParse = module.default || module;
+  }
+  return pdfParse;
+}
 
 export interface PDFParseResult {
   text: string;
@@ -49,8 +55,9 @@ export async function parsePDFFile(filePath: string): Promise<PDFParseResult> {
   try {
     logger.info(`Starting PDF parsing for: ${filePath}`);
 
+    const parser = await loadPdfParse();
     const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdfParse(dataBuffer);
+    const data = await parser(dataBuffer);
 
     logger.info(`Successfully parsed PDF: ${filePath}`, {
       pages: data.numpages,
@@ -80,7 +87,8 @@ export async function parsePDFBuffer(buffer: Buffer): Promise<PDFParseResult> {
   try {
     logger.info('Starting PDF parsing from buffer');
 
-    const data = await pdfParse(buffer);
+    const parser = await loadPdfParse();
+    const data = await parser(buffer);
 
     logger.info('Successfully parsed PDF from buffer', {
       pages: data.numpages,
