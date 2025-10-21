@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const storageModulePath = '../server/storage';
-const workflowCoordinatorModulePath = '../server/services/workflowCoordinator';
+const workflowCoordinatorModulePath = '../server/services/workflows/workflowCoordinator';
 const agentMonitoringModulePath = '../server/services/agentMonitoringService';
 
 type AgentMonitoringModule = typeof import('../server/services/agentMonitoringService');

@@ -14,7 +14,7 @@ export default {
     }]
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(p-limit|yocto-queue|nanoid)/)'
+    'node_modules/(?!(p-limit|p-retry|yocto-queue|nanoid|is-network-error|@mastra)/)'
   ],
   collectCoverageFrom: [
     'server/**/*.{ts,js}',

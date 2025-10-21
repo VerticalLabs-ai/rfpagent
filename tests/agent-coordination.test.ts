@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { storage } from '../server/storage';
 import { agentCoordinationTools } from '../src/mastra/tools/agent-coordination-tools';
-import { saflaLearningEngine } from '../server/services/saflaLearningEngine';
+import { saflaLearningEngine } from '../server/services/learning/saflaLearningEngine';
 import { nanoid } from 'nanoid';
 import { createTestSession, cleanupTestData, type TestSession } from './helpers/testDatabase';
 
