@@ -161,9 +161,9 @@ function buildPoolHealthMetricsFromStats(
   const status = calculatePoolHealth(stats);
   const { warnings, recommendations } = generateInsights(stats);
 
-  const totalTasks = stats.totalTasksCompleted + stats.totalTasksFailed;
+  const totalTasks = stats.totalTasks + stats.totalErrors;
   const successRate =
-    totalTasks > 0 ? stats.totalTasksCompleted / totalTasks : 1.0;
+    totalTasks > 0 ? stats.totalTasks / totalTasks : 1.0;
 
   return {
     poolName: stats.poolName,
@@ -174,8 +174,8 @@ function buildPoolHealthMetricsFromStats(
     busyInstances: stats.busyInstances,
     failedInstances: stats.failedInstances,
     avgExecutionTime: stats.avgExecutionTime,
-    totalTasksCompleted: stats.totalTasksCompleted,
-    totalTasksFailed: stats.totalTasksFailed,
+    totalTasksCompleted: stats.totalTasks,
+    totalTasksFailed: stats.totalErrors,
     successRate,
     warnings,
     recommendations,
@@ -228,7 +228,7 @@ export function logPoolHealth(poolName?: string): void {
   }
 
   const healthMetrics = poolName
-    ? [getPoolHealth(poolName)].filter(Boolean)
+    ? [getPoolHealth(poolName)].filter((m): m is PoolHealthMetrics => m !== null)
     : getAllPoolsHealth();
 
   if (healthMetrics.length === 0) {

@@ -47,7 +47,7 @@ export function releasePooledAgent(
   taskResult: {
     success: boolean;
     executionTime?: number;
-    error?: string;
+    error?: Error;
   }
 ): void {
   if (featureFlags.useAgentPools) {
@@ -100,7 +100,7 @@ export async function executeWithPooledAgent<T>(
     releasePooledAgent(poolName, agent, {
       success: false,
       executionTime,
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error : new Error(String(error)),
     });
 
     throw error;
