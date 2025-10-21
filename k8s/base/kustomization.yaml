@@ -15,5 +15,5 @@ commonLabels:
   managed-by: kustomize
 
 images:
-  - name: ghcr.io/mgunnin/rfpagent
+  - name: ghcr.io/VerticalLabs-ai/rfpagent
     newTag: sha-${COMMIT_SHA}

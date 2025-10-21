@@ -209,7 +209,6 @@ export class EnhancedProposalService {
           proposalId: proposal.id,
           rfpId: request.rfpId,
           portalId: portal.id,
-          status: 'pending',
           submissionData: submissionLifecycleData,
         });
 

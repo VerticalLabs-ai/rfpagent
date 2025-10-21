@@ -2923,7 +2923,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         }
       } else if (loginSubmitResponse.statusCode === 200) {
         // Check if we got an error response
-        const responseText = await loginSubmitResponse.body.text();
+        const responseText = await (loginSubmitResponse as any).body.text();
         if (
           responseText.toLowerCase().includes('error') ||
           responseText.toLowerCase().includes('invalid')

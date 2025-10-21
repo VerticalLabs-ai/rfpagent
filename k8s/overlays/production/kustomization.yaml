@@ -14,7 +14,7 @@ replicas:
     count: 3
 
 images:
-  - name: ghcr.io/mgunnin/rfpagent
+  - name: ghcr.io/VerticalLabs-ai/rfpagent
     newTag: v1.0.0 # or commit SHA for reproducibility
 
 patches:

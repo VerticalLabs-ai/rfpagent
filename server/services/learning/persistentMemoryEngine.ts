@@ -1523,7 +1523,7 @@ export class PersistentMemoryEngine {
     if (!entry) return false;
 
     const tags: string[] = Array.isArray(entry.tags)
-      ? entry.tags.filter((tag): tag is string => typeof tag === 'string')
+      ? entry.tags.filter((tag: any): tag is string => typeof tag === 'string')
       : [];
     const content = (entry.content ?? {}) as Record<string, unknown>;
 
@@ -1546,7 +1546,7 @@ export class PersistentMemoryEngine {
     state.agentSet.add(entry.agentId);
 
     const tags: string[] = Array.isArray(entry.tags)
-      ? entry.tags.filter((tag): tag is string => typeof tag === 'string')
+      ? entry.tags.filter((tag: any): tag is string => typeof tag === 'string')
       : [];
     const patternType =
       tags.find((tag: string) =>

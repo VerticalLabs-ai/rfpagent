@@ -291,7 +291,7 @@ export class DocumentProcessorSpecialist {
           : '';
       if (
         !fileType ||
-        !DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES.includes(fileType)
+        !DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES.includes(fileType as any)
       ) {
         issues.push(`Unsupported file type: ${document.fileType}`);
         isValid = false;

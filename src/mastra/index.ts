@@ -1,6 +1,11 @@
 import { Mastra } from '@mastra/core/mastra';
 import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
 
+// Agent Registry System (Phase 1)
+import { agentRegistry } from './registry/agent-registry';
+import { agentHierarchyConfig } from './config/agent-hierarchy';
+import { featureFlags, logFeatureFlags } from './config/feature-flags';
+
 // Orchestrator Agent
 import { primaryOrchestrator } from './agents/primary-orchestrator';
 
@@ -44,6 +49,11 @@ const mastraLogger = new ConsoleLogger({
   name: 'rfp-agent-platform',
   level: resolvedLogLevel,
 });
+
+// Log feature flags status in development/debug mode
+if (featureFlags.isDevelopment || resolvedLogLevel === LogLevel.DEBUG) {
+  logFeatureFlags(mastraLogger);
+}
 
 // Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
@@ -109,6 +119,71 @@ export const mastra = new Mastra({
     ],
   },
 });
+
+// ============================================================================
+// PHASE 1: Agent Registry Initialization
+// ============================================================================
+
+/**
+ * Initialize Agent Registry (if enabled via feature flag)
+ * Registers all agents with their metadata for hierarchical management
+ */
+if (featureFlags.useAgentRegistry) {
+  mastraLogger.info('🔧 Initializing Agent Registry System...');
+
+  // Map of agent instance names to agent instances
+  const agentInstances: Record<string, any> = {
+    'primary-orchestrator': primaryOrchestrator,
+    'portal-manager': portalManager,
+    'proposal-manager': proposalManager,
+    'research-manager': researchManager,
+    'portal-scanner': portalScanner,
+    'portal-monitor': portalMonitor,
+    'content-generator': contentGenerator,
+    'compliance-checker': complianceChecker,
+    'document-processor': documentProcessor,
+    'market-analyst': marketAnalyst,
+    'historical-analyzer': historicalAnalyzer,
+    'rfp-discovery-agent': rfpDiscoveryAgent,
+    'rfp-analysis-agent': rfpAnalysisAgent,
+    'rfp-submission-agent': rfpSubmissionAgent,
+  };
+
+  // Register all agents with their metadata
+  let registeredCount = 0;
+  for (const [agentId, metadata] of Object.entries(agentHierarchyConfig)) {
+    const agentInstance = agentInstances[agentId];
+
+    if (agentInstance) {
+      try {
+        agentRegistry.register(agentId, agentInstance, metadata);
+        registeredCount++;
+
+        if (featureFlags.verboseRegistryLogging) {
+          mastraLogger.debug(`✅ Registered agent: ${agentId} (${metadata.name})`);
+        }
+      } catch (error) {
+        mastraLogger.error(`❌ Failed to register agent ${agentId}:`, error);
+      }
+    } else {
+      mastraLogger.warn(`⚠️  Agent instance not found for ID: ${agentId}`);
+    }
+  }
+
+  const stats = agentRegistry.getStats();
+  mastraLogger.info(
+    `✅ Agent Registry initialized: ${registeredCount} agents registered`,
+    stats
+  );
+} else {
+  mastraLogger.debug('Agent Registry is disabled (USE_AGENT_REGISTRY=false)');
+}
+
+// Export registry for external use
+export { agentRegistry } from './registry/agent-registry';
+export { agentHierarchyConfig } from './config/agent-hierarchy';
+export { workflowAgentBindings } from './config/workflow-agent-bindings';
+export { featureFlags } from './config/feature-flags';
 
 // Export individual workflows for direct use
 export { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';

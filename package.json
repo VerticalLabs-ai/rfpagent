@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VerticalLabs-ai/rfpagent.git"
+  },
   "scripts": {
     "dev": "concurrently \"NODE_ENV=development tsx server/index.ts\" \"wait-on http://localhost:3000 && vite\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "dev:backend": "NODE_ENV=development tsx server/index.ts",
@@ -162,6 +166,7 @@
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
     "typescript": "5.9.3",
+    "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
   },
   "optionalDependencies": {
