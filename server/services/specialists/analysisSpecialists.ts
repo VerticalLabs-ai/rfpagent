@@ -1,10 +1,10 @@
-import { DocumentParsingService } from '../processing/documentParsingService';
-import { DocumentIntelligenceService } from '../processing/documentIntelligenceService';
-import { AIService } from '../core/aiService';
+import type { Document, RFP, WorkItem } from '@shared/schema';
+import { ObjectStorageService } from '../../objectStorage';
 import { storage } from '../../storage';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import { ObjectStorageService } from '../../objectStorage';
-import type { Document, RFP, WorkItem } from '@shared/schema';
+import { AIService } from '../core/aiService';
+import { DocumentIntelligenceService } from '../processing/documentIntelligenceService';
+import { DocumentParsingService } from '../processing/documentParsingService';
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
@@ -291,7 +291,9 @@ export class DocumentProcessorSpecialist {
           : '';
       if (
         !fileType ||
-        !DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES.includes(fileType)
+        !DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES.includes(
+          fileType as (typeof DocumentProcessorSpecialist.SUPPORTED_FILE_TYPES)[number]
+        )
       ) {
         issues.push(`Unsupported file type: ${document.fileType}`);
         isValid = false;

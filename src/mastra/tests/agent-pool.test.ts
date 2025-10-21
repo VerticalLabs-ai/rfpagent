@@ -409,18 +409,22 @@ describe('AgentPoolManager', () => {
     });
 
     it('should scale up when utilization exceeds threshold', async () => {
+      vi.useFakeTimers();
+
       // Mark most agents as busy (80%+ utilization)
       poolManager.getAgent('auto-pool'); // 50% busy
       poolManager.getAgent('auto-pool'); // 100% busy
 
-      // Wait for cooldown
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Advance timers by the exact cooldown period
+      vi.advanceTimersByTime(100);
 
       // Next getAgent should trigger scale-up
       poolManager.getAgent('auto-pool');
 
       const stats = poolManager.getPoolStats('auto-pool');
       expect(stats!.totalInstances).toBeGreaterThan(2);
+
+      vi.useRealTimers();
     });
 
     it('should scale down when utilization below threshold', async () => {

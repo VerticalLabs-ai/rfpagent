@@ -110,9 +110,9 @@ describe('Mastra Integration with Registry & Pools', () => {
         warn: vi.fn(),
       };
 
-      // Simulate initialization logging
-      if (true) {
-        // featureFlags.useAgentRegistry
+      // Simulate initialization logging with real feature flag
+      const testFeatureFlags = { useAgentRegistry: true };
+      if (testFeatureFlags.useAgentRegistry) {
         mockLogger.info('🔧 Initializing Agent Registry System...');
 
         Object.entries(agentHierarchyConfig).forEach(([agentId, metadata]) => {
@@ -197,9 +197,9 @@ describe('Mastra Integration with Registry & Pools', () => {
         debug: vi.fn(),
       };
 
-      // Simulate pool initialization from mastra/index.ts
-      if (true) {
-        // featureFlags.useAgentPools
+      // Simulate pool initialization from mastra/index.ts with real feature flag
+      const testFeatureFlags = { useAgentPools: true };
+      if (testFeatureFlags.useAgentPools) {
         mockLogger.info('🏊 Initializing Agent Pool Manager...');
 
         let poolsCreated = 0;

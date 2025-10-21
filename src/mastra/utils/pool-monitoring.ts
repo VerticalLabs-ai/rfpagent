@@ -33,9 +33,37 @@ export interface PoolHealthMetrics {
 }
 
 /**
+ * Pool performance summary
+ */
+export interface PoolPerformanceSummary {
+  poolCounts: {
+    total: number;
+    healthy: number;
+    warning: number;
+    critical: number;
+  };
+  instanceCounts: {
+    total: number;
+    busy: number;
+    idle: number;
+    failed: number;
+  };
+  taskMetrics: {
+    completed: number;
+    failed: number;
+    total: number;
+    successRate: number;
+  };
+  overallUtilization: number;
+  healthStatus: PoolHealthStatus;
+}
+
+/**
  * Calculate pool health status based on metrics
  */
-function calculatePoolHealth(stats: ReturnType<typeof agentPoolManager.getPoolStats>): PoolHealthStatus {
+function calculatePoolHealth(
+  stats: ReturnType<typeof agentPoolManager.getPoolStats>
+): PoolHealthStatus {
   if (!stats) return 'critical';
 
   const { utilization, failedInstances, totalInstances } = stats;
@@ -77,7 +105,9 @@ function generateInsights(
   // High utilization warnings
   if (utilization > 0.95) {
     warnings.push('Pool is near capacity (>95% utilization)');
-    recommendations.push('Consider increasing maxSize or optimizing task execution time');
+    recommendations.push(
+      'Consider increasing maxSize or optimizing task execution time'
+    );
   } else if (utilization > 0.85) {
     warnings.push('Pool utilization is high (>85%)');
     recommendations.push('Monitor closely for potential capacity issues');
@@ -85,8 +115,12 @@ function generateInsights(
 
   // Failed instances
   if (failureRate > 0.3) {
-    warnings.push(`High failure rate: ${(failureRate * 100).toFixed(1)}% of agents failed`);
-    recommendations.push('Investigate agent failures and consider restarting pool');
+    warnings.push(
+      `High failure rate: ${(failureRate * 100).toFixed(1)}% of agents failed`
+    );
+    recommendations.push(
+      'Investigate agent failures and consider restarting pool'
+    );
   } else if (failedInstances > 0) {
     warnings.push(`${failedInstances} agent(s) in failed state`);
     recommendations.push('Check agent error logs for failure causes');
@@ -107,32 +141,29 @@ function generateInsights(
   // No instances available
   if (totalInstances === 0) {
     warnings.push('No agent instances in pool');
-    recommendations.push('Pool initialization may have failed - check configuration');
+    recommendations.push(
+      'Pool initialization may have failed - check configuration'
+    );
   }
 
   return { warnings, recommendations };
 }
 
 /**
- * Get comprehensive health metrics for a pool
- * @param poolName - Pool to monitor
- * @returns Health metrics or null if pool doesn't exist
+ * Build PoolHealthMetrics from pool stats
+ * @private
  */
-export function getPoolHealth(poolName: string): PoolHealthMetrics | null {
-  if (!featureFlags.useAgentPools) {
-    return null;
-  }
-
-  const stats = agentPoolManager.getPoolStats(poolName);
-  if (!stats) {
-    return null;
-  }
+function buildPoolHealthMetricsFromStats(
+  stats: ReturnType<typeof agentPoolManager.getPoolStats>
+): PoolHealthMetrics | null {
+  if (!stats) return null;
 
   const status = calculatePoolHealth(stats);
   const { warnings, recommendations } = generateInsights(stats);
 
   const totalTasks = stats.totalTasksCompleted + stats.totalTasksFailed;
-  const successRate = totalTasks > 0 ? stats.totalTasksCompleted / totalTasks : 1.0;
+  const successRate =
+    totalTasks > 0 ? stats.totalTasksCompleted / totalTasks : 1.0;
 
   return {
     poolName: stats.poolName,
@@ -152,6 +183,20 @@ export function getPoolHealth(poolName: string): PoolHealthMetrics | null {
 }
 
 /**
+ * Get comprehensive health metrics for a pool
+ * @param poolName - Pool to monitor
+ * @returns Health metrics or null if pool doesn't exist
+ */
+export function getPoolHealth(poolName: string): PoolHealthMetrics | null {
+  if (!featureFlags.useAgentPools) {
+    return null;
+  }
+
+  const stats = agentPoolManager.getPoolStats(poolName);
+  return buildPoolHealthMetricsFromStats(stats);
+}
+
+/**
  * Get health metrics for all pools
  * @returns Array of pool health metrics
  */
@@ -163,29 +208,8 @@ export function getAllPoolsHealth(): PoolHealthMetrics[] {
   const allStats = agentPoolManager.getAllPoolStats();
 
   return allStats
-    .map((stats) => {
-      const status = calculatePoolHealth(stats);
-      const { warnings, recommendations } = generateInsights(stats);
-
-      const totalTasks = stats.totalTasksCompleted + stats.totalTasksFailed;
-      const successRate = totalTasks > 0 ? stats.totalTasksCompleted / totalTasks : 1.0;
-
-      return {
-        poolName: stats.poolName,
-        status,
-        utilization: stats.utilization,
-        totalInstances: stats.totalInstances,
-        idleInstances: stats.idleInstances,
-        busyInstances: stats.busyInstances,
-        failedInstances: stats.failedInstances,
-        avgExecutionTime: stats.avgExecutionTime,
-        totalTasksCompleted: stats.totalTasksCompleted,
-        totalTasksFailed: stats.totalTasksFailed,
-        successRate,
-        warnings,
-        recommendations,
-      };
-    })
+    .map(stats => buildPoolHealthMetricsFromStats(stats))
+    .filter((metrics): metrics is PoolHealthMetrics => metrics !== null)
     .sort((a, b) => {
       // Sort by health status (critical first, then warning, then healthy)
       const statusOrder = { critical: 0, warning: 1, healthy: 2 };
@@ -240,12 +264,12 @@ export function logPoolHealth(poolName?: string): void {
 
     if (metrics.warnings.length > 0) {
       console.log('   ⚠️  Warnings:');
-      metrics.warnings.forEach((w) => console.log(`      - ${w}`));
+      metrics.warnings.forEach(w => console.log(`      - ${w}`));
     }
 
     if (metrics.recommendations.length > 0) {
       console.log('   💡 Recommendations:');
-      metrics.recommendations.forEach((r) => console.log(`      - ${r}`));
+      metrics.recommendations.forEach(r => console.log(`      - ${r}`));
     }
 
     console.log('');
@@ -290,7 +314,7 @@ export function startPoolMonitoring(
  * Get pool performance summary for all pools
  * @returns Performance summary
  */
-export function getPoolPerformanceSummary() {
+export function getPoolPerformanceSummary(): PoolPerformanceSummary | null {
   if (!featureFlags.useAgentPools) {
     return null;
   }
@@ -298,9 +322,9 @@ export function getPoolPerformanceSummary() {
   const allHealth = getAllPoolsHealth();
 
   const totalPools = allHealth.length;
-  const healthyPools = allHealth.filter((h) => h.status === 'healthy').length;
-  const warningPools = allHealth.filter((h) => h.status === 'warning').length;
-  const criticalPools = allHealth.filter((h) => h.status === 'critical').length;
+  const healthyPools = allHealth.filter(h => h.status === 'healthy').length;
+  const warningPools = allHealth.filter(h => h.status === 'warning').length;
+  const criticalPools = allHealth.filter(h => h.status === 'critical').length;
 
   const totalInstances = allHealth.reduce(
     (sum, h) => sum + h.totalInstances,
@@ -320,8 +344,10 @@ export function getPoolPerformanceSummary() {
   );
 
   const totalTasks = totalTasksCompleted + totalTasksFailed;
-  const overallSuccessRate = totalTasks > 0 ? totalTasksCompleted / totalTasks : 1.0;
-  const overallUtilization = totalInstances > 0 ? totalBusy / totalInstances : 0;
+  const overallSuccessRate =
+    totalTasks > 0 ? totalTasksCompleted / totalTasks : 1.0;
+  const overallUtilization =
+    totalInstances > 0 ? totalBusy / totalInstances : 0;
 
   return {
     poolCounts: {
