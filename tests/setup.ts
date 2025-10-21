@@ -1,14 +1,19 @@
 import { jest } from '@jest/globals';
 import dotenv from 'dotenv';
 
-// Load environment variables from .env file
+// Load test environment variables first (overrides .env)
+dotenv.config({ path: '.env.test' });
+
+// Load main environment variables as fallback
 dotenv.config();
 
-// Override NODE_ENV and DATABASE_URL for tests
+// Override NODE_ENV for tests
 process.env.NODE_ENV = 'test';
-// Use CI DATABASE_URL if set, otherwise use local Supabase
+
+// Fallback DATABASE_URL for CI/CD or if not set
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = 'postgresql://postgres:postgres@127.0.0.1:54422/postgres';
+  console.warn('⚠️  DATABASE_URL not set, using fallback test database');
+  process.env.DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/rfpagent_test';
 }
 
 // Only set OPENAI_API_KEY if not already in .env
