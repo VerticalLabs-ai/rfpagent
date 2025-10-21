@@ -26,7 +26,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/rfpagent.git
+git clone https://github.com/VerticalLabs-ai/rfpagent.git
 cd rfpagent
 
 # Install dependencies
@@ -66,9 +66,9 @@ Embed RFP discovery directly in your application:
     apiKey: 'your-api-key',
     theme: 'light',
     features: ['discovery', 'proposals'],
-    onRFPDiscovered: (rfp) => {
+    onRFPDiscovered: rfp => {
       console.log('New RFP discovered:', rfp);
-    }
+    },
   });
 </script>
 ```
@@ -83,20 +83,20 @@ import { RFPAgentClient } from '@rfpagent/client';
 
 const rfpAgent = new RFPAgentClient({
   apiUrl: process.env.RFP_AGENT_URL,
-  apiKey: process.env.RFP_AGENT_API_KEY
+  apiKey: process.env.RFP_AGENT_API_KEY,
 });
 
 // Discover RFPs
 const rfps = await rfpAgent.discover({
   portals: ['austin', 'philadelphia'],
   categories: ['technology', 'consulting'],
-  minValue: 100000
+  minValue: 100000,
 });
 
 // Generate proposal
 const proposal = await rfpAgent.generateProposal({
   rfpId: rfps[0].id,
-  companyProfile: yourCompanyProfile
+  companyProfile: yourCompanyProfile,
 });
 ```
 
@@ -127,7 +127,7 @@ app.post('/webhooks/rfp-agent', (req, res) => {
 // Register webhook with RFP Agent
 await rfpAgent.registerWebhook({
   url: 'https://your-app.com/webhooks/rfp-agent',
-  events: ['rfp.discovered', 'proposal.generated', 'submission.completed']
+  events: ['rfp.discovered', 'proposal.generated', 'submission.completed'],
 });
 ```
 
@@ -146,7 +146,7 @@ cron.schedule('0 */4 * * *', async () => {
   const lastSync = await getLastSyncTime();
   const newRFPs = await rfpAgent.getRFPs({
     discoveredAfter: lastSync,
-    status: 'discovered'
+    status: 'discovered',
   });
 
   // Process each RFP
@@ -780,10 +780,10 @@ const webhook = await fetch('http://localhost:3000/api/webhooks', {
       'rfp.updated',
       'proposal.generated',
       'proposal.approved',
-      'submission.completed'
+      'submission.completed',
     ],
-    secret: 'your-webhook-secret'
-  })
+    secret: 'your-webhook-secret',
+  }),
 });
 ```
 
@@ -798,10 +798,7 @@ const app = express();
 function verifyWebhookSignature(payload, signature, secret) {
   const hmac = crypto.createHmac('sha256', secret);
   const digest = hmac.update(JSON.stringify(payload)).digest('hex');
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(digest)
-  );
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(digest));
 }
 
 app.post('/webhooks/rfp-agent', express.json(), async (req, res) => {
@@ -851,7 +848,7 @@ async function handleRFPDiscovered(rfp) {
     title: rfp.title,
     agency: rfp.agency,
     value: rfp.estimatedValue,
-    url: `/rfps/${rfp.id}`
+    url: `/rfps/${rfp.id}`,
   });
 
   // Auto-generate proposal if criteria met
@@ -1125,11 +1122,9 @@ describe('RFPService', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        rfps: [
-          { id: '1', title: 'Test RFP', agency: 'Test Agency' }
-        ],
-        total: 1
-      })
+        rfps: [{ id: '1', title: 'Test RFP', agency: 'Test Agency' }],
+        total: 1,
+      }),
     });
 
     const result = await service.getRFPs({ status: 'discovered' });
@@ -1142,7 +1137,7 @@ describe('RFPService', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({ error: 'Server error' })
+      json: async () => ({ error: 'Server error' }),
     });
 
     await expect(service.getRFPs()).rejects.toThrow();
@@ -1230,7 +1225,7 @@ test.describe('RFP Submission Flow', () => {
 
     // Wait for generation to complete
     await expect(page.locator('.proposal-status')).toContainText('Completed', {
-      timeout: 60000
+      timeout: 60000,
     });
 
     // Verify proposal is created
@@ -1286,7 +1281,7 @@ services:
   rfp-agent:
     build: .
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - DATABASE_URL=${DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -1308,7 +1303,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
 
 volumes:
   postgres_data:
@@ -1333,40 +1328,40 @@ spec:
         app: rfp-agent
     spec:
       containers:
-      - name: rfp-agent
-        image: rfpagent/api:latest
-        ports:
-        - containerPort: 3000
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: rfp-agent-secrets
-              key: database-url
-        - name: OPENAI_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: rfp-agent-secrets
-              key: openai-api-key
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /api/system/health
-            port: 3000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /api/system/health
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
+        - name: rfp-agent
+          image: rfpagent/api:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: rfp-agent-secrets
+                  key: database-url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rfp-agent-secrets
+                  key: openai-api-key
+          resources:
+            requests:
+              memory: '256Mi'
+              cpu: '250m'
+            limits:
+              memory: '512Mi'
+              cpu: '500m'
+          livenessProbe:
+            httpGet:
+              path: /api/system/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /api/system/health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 5
 
 ---
 apiVersion: v1
@@ -1377,9 +1372,9 @@ spec:
   selector:
     app: rfp-agent
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 3000
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
   type: LoadBalancer
 ```
 
@@ -1393,10 +1388,12 @@ spec:
 // server/index.ts
 import cors from 'cors';
 
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+    credentials: true,
+  })
+);
 ```
 
 #### 2. Session Issues
@@ -1407,7 +1404,7 @@ const response = await fetch('/api/auth/login', {
   method: 'POST',
   credentials: 'include', // Important!
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ username, password })
+  body: JSON.stringify({ username, password }),
 });
 ```
 
@@ -1474,7 +1471,7 @@ async function trackAPICall(name, fn) {
       window.analytics.track('API Call', {
         name,
         duration,
-        success: true
+        success: true,
       });
     }
 
@@ -1489,7 +1486,7 @@ async function trackAPICall(name, fn) {
         name,
         duration,
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
 
@@ -1506,7 +1503,8 @@ const rfps = await trackAPICall('getRFPs', () =>
 ## Support
 
 For integration support:
+
 - Email: integrations@rfpagent.com
 - Slack: [RFP Agent Community](https://rfpagent.slack.com)
 - Documentation: https://docs.rfpagent.com
-- GitHub: https://github.com/rfpagent/api
+- GitHub: https://github.com/VerticalLabs-ai/rfpagent
