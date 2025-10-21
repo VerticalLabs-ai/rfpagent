@@ -197,7 +197,7 @@ router.post(
  */
 router.put(
   '/:id',
-  validateRequest(insertProposalSchema.partial()),
+  validateRequest(insertProposalSchema.partial() as any),
   handleAsyncError(async (req, res) => {
     const updatedProposal = await storage.updateProposal(
       req.params.id,

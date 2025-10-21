@@ -1302,7 +1302,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<SubmissionPipeline> {
     const [newPipeline] = await db
       .insert(submissionPipelines)
-      .values(pipeline)
+      .values(pipeline as any)
       .returning();
     return toSubmissionPipeline(newPipeline);
   }

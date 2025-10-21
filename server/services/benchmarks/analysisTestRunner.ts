@@ -224,16 +224,17 @@ export class AnalysisTestRunner {
           console.log(`🧹 Cleaning up test data for RFP: ${rfp.id}`);
 
           // Delete documents first
-          for (const doc of documents) {
-            try {
-              await storage.deleteDocument(doc.id);
-            } catch (deleteError) {
-              console.warn(
-                `⚠️ Failed to delete document ${doc.id}:`,
-                deleteError
-              );
-            }
-          }
+          // Note: deleteDocument method doesn't exist in storage interface - skipping deletion
+          // for (const doc of documents) {
+          //   try {
+          //     await storage.deleteDocument(doc.id);
+          //   } catch (deleteError) {
+          //     console.warn(
+          //       `⚠️ Failed to delete document ${doc.id}:`,
+          //       deleteError
+          //     );
+          //   }
+          // }
 
           // Delete RFP
           try {

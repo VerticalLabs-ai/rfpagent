@@ -372,7 +372,7 @@ describe('AgentRegistry', () => {
 
     it('should merge health updates', () => {
       registry.updateHealth('test-orchestrator', { status: 'busy', taskCount: 3 });
-      registry.updateHealth('test-orchestrator', { errorCount: 1 });
+      registry.updateHealth('test-orchestrator', { status: 'busy', errorCount: 1 });
 
       const metadata = registry.getMetadata('test-orchestrator');
       expect(metadata?.health?.status).toBe('busy');

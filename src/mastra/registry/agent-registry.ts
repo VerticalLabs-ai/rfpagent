@@ -280,7 +280,7 @@ export class AgentRegistry {
    */
   updateHealth(
     agentId: string,
-    health: AgentMetadata['health']
+    health: Partial<NonNullable<AgentMetadata['health']>> & { status: 'active' | 'idle' | 'busy' | 'failed' }
   ): void {
     const entry = this.agents.get(agentId);
     if (!entry) {

@@ -307,12 +307,21 @@ router.post('/proposal-pdf-assembly/execute', async (req, res) => {
 
     console.log(`📄 Starting PDF assembly for proposal: ${proposalId}`);
 
+    // Get proposal to fetch rfpId
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) {
+      return res.status(404).json({
+        error: 'Proposal not found',
+      });
+    }
+
     // Import and execute PDF assembly workflow
     const { proposalPDFAssemblyWorkflow } = await import('../../src/mastra');
 
     const result = await proposalPDFAssemblyWorkflow.execute({
+      rfpId: proposal.rfpId,
       proposalId,
-      options,
+      ...options,
     });
 
     res.json({
