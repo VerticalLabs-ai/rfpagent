@@ -1,8 +1,7 @@
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
-import { MastraScrapingService } from '../../../server/services/scrapers/mastraScrapingService';
 import { storage } from '../../../server/storage';
-import { pageAuthTool, pageExtractTool } from '../tools';
+import { getPoolStatistics } from '../utils/pool-integration';
 
 /**
  * Calculate dynamic confidence score for extracted RFP opportunity
@@ -130,6 +129,7 @@ const portalConfigSchema = z.object({
 
 // RFP opportunity schema
 const opportunitySchema = z.object({
+  id: z.string(),
   title: z.string(),
   description: z.string().optional(),
   agency: z.string().optional(),
@@ -187,18 +187,22 @@ const scrapePortalStep = createStep({
     portalId: z.string(),
     status: z.enum(['success', 'error']),
     message: z.string().optional(),
-    scanMetrics: z.object({
-      newRfps: z.number(),
-      updatedRfps: z.number(),
-      unchangedRfps: z.number(),
-    }).optional(),
+    scanMetrics: z
+      .object({
+        newRfps: z.number(),
+        updatedRfps: z.number(),
+        unchangedRfps: z.number(),
+      })
+      .optional(),
   }),
   execute: async ({ inputData: portal }) => {
     console.log(`🔍 Incrementally scanning ${portal.name} (${portal.url})`);
 
     try {
       // Use incremental scanning service
-      const { incrementalPortalScanService } = await import('../../../server/services/portals/incrementalPortalScanService');
+      const { incrementalPortalScanService } = await import(
+        '../../../server/services/portals/incrementalPortalScanService'
+      );
 
       const scanResult = await incrementalPortalScanService.scanPortal({
         portalId: portal.id,
@@ -215,6 +219,7 @@ const scrapePortalStep = createStep({
         .filter(rfp => rfp.addedBy === 'automatic')
         .slice(0, 50)
         .map((rfp: any) => ({
+          id: rfp.id,
           title: rfp.title,
           description: rfp.description || undefined,
           agency: rfp.agency,
@@ -261,11 +266,15 @@ const processDiscoveredRfpsStep = createStep({
   inputSchema: z.object({
     allOpportunities: z.array(opportunitySchema),
     portalsScanned: z.number(),
-    scanResults: z.array(z.object({
-      newRfps: z.number(),
-      updatedRfps: z.number(),
-      unchangedRfps: z.number(),
-    })).optional(),
+    scanResults: z
+      .array(
+        z.object({
+          newRfps: z.number(),
+          updatedRfps: z.number(),
+          unchangedRfps: z.number(),
+        })
+      )
+      .optional(),
   }),
   outputSchema: z.object({
     newRfps: z.number(),
@@ -375,14 +384,28 @@ export const rfpDiscoveryWorkflow = createWorkflow({
       outputSchema: z.object({
         allOpportunities: z.array(opportunitySchema),
         portalsScanned: z.number(),
-        scanResults: z.array(z.object({
-          newRfps: z.number(),
-          updatedRfps: z.number(),
-          unchangedRfps: z.number(),
-        })).optional(),
+        scanResults: z
+          .array(
+            z.object({
+              newRfps: z.number(),
+              updatedRfps: z.number(),
+              unchangedRfps: z.number(),
+            })
+          )
+          .optional(),
       }),
       execute: async ({ inputData }) => {
-        // Execute scraping in parallel for each portal
+        // Log scanner-pool statistics before parallel execution
+        const poolStats = getPoolStatistics('scanner-pool');
+        if (poolStats) {
+          console.log(
+            `📊 scanner-pool: ${poolStats.totalInstances} instances, ${(poolStats.utilization * 100).toFixed(1)}% utilization before scanning`
+          );
+        } else {
+          console.log('📋 Using direct agent references (pools disabled)');
+        }
+
+        // Execute scraping in parallel for each portal (pool-aware execution)
         const scrapePromises = inputData.portalBatches.map((portal: any) =>
           scrapePortalStep.execute({
             inputData: portal,
@@ -411,6 +434,14 @@ export const rfpDiscoveryWorkflow = createWorkflow({
             console.warn(`Portal scraping failed for batch ${index}`);
           }
         });
+
+        // Log final pool statistics after parallel execution
+        const finalPoolStats = getPoolStatistics('scanner-pool');
+        if (finalPoolStats) {
+          console.log(
+            `📊 scanner-pool after scanning: ${finalPoolStats.totalInstances} instances, ${(finalPoolStats.utilization * 100).toFixed(1)}% utilization`
+          );
+        }
 
         return {
           allOpportunities,
