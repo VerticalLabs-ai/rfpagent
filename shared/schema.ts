@@ -1727,9 +1727,7 @@ export const insertPipelineOrchestrationSchema = createInsertSchema(
   updatedAt: true,
 }) as unknown as z.ZodType<any>;
 
-export const insertSystemHealthSchema = createInsertSchema(
-  systemHealth
-).omit({
+export const insertSystemHealthSchema = createInsertSchema(systemHealth).omit({
   id: true,
   createdAt: true,
 }) as unknown as z.ZodType<any>;
@@ -1836,7 +1834,9 @@ export type InsertSubmissionPipeline = Omit<
 };
 
 export type SubmissionEvent = typeof submissionEvents.$inferSelect;
-export type InsertSubmissionEvent = z.infer<typeof insertSubmissionEventSchema & any>;
+export type InsertSubmissionEvent = z.infer<
+  typeof insertSubmissionEventSchema & any
+>;
 
 export type SubmissionStatusHistory =
   typeof submissionStatusHistory.$inferSelect;
@@ -1893,13 +1893,19 @@ export type InsertScanEvent = z.infer<typeof insertScanEventSchema & any>;
 
 // Company Profile Types
 export type CompanyProfile = typeof companyProfiles.$inferSelect;
-export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema & any>;
+export type InsertCompanyProfile = z.infer<
+  typeof insertCompanyProfileSchema & any
+>;
 
 export type CompanyAddress = typeof companyAddresses.$inferSelect;
-export type InsertCompanyAddress = z.infer<typeof insertCompanyAddressSchema & any>;
+export type InsertCompanyAddress = z.infer<
+  typeof insertCompanyAddressSchema & any
+>;
 
 export type CompanyContact = typeof companyContacts.$inferSelect;
-export type InsertCompanyContact = z.infer<typeof insertCompanyContactSchema & any>;
+export type InsertCompanyContact = z.infer<
+  typeof insertCompanyContactSchema & any
+>;
 
 export type CompanyIdentifier = typeof companyIdentifiers.$inferSelect;
 export type InsertCompanyIdentifier = z.infer<
@@ -1918,7 +1924,9 @@ export type InsertCompanyInsurance = z.infer<
 
 // AI Conversation Types
 export type AiConversation = typeof aiConversations.$inferSelect;
-export type InsertAiConversation = z.infer<typeof insertAiConversationSchema & any>;
+export type InsertAiConversation = z.infer<
+  typeof insertAiConversationSchema & any
+>;
 
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type InsertConversationMessage = z.infer<
@@ -1926,14 +1934,20 @@ export type InsertConversationMessage = z.infer<
 >;
 
 export type ResearchFinding = typeof researchFindings.$inferSelect;
-export type InsertResearchFinding = z.infer<typeof insertResearchFindingSchema & any>;
+export type InsertResearchFinding = z.infer<
+  typeof insertResearchFindingSchema & any
+>;
 
 export type HistoricalBid = typeof historicalBids.$inferSelect;
-export type InsertHistoricalBid = z.infer<typeof insertHistoricalBidSchema & any>;
+export type InsertHistoricalBid = z.infer<
+  typeof insertHistoricalBidSchema & any
+>;
 
 // 3-Tier Agentic System Types
 export type AgentRegistry = typeof agentRegistry.$inferSelect;
-export type InsertAgentRegistry = z.infer<typeof insertAgentRegistrySchema & any>;
+export type InsertAgentRegistry = z.infer<
+  typeof insertAgentRegistrySchema & any
+>;
 
 export type WorkItem = typeof workItems.$inferSelect;
 export type InsertWorkItem = z.infer<typeof insertWorkItemSchema & any>;
@@ -1943,7 +1957,9 @@ export type InsertAgentSession = z.infer<typeof insertAgentSessionSchema & any>;
 
 // Enhanced Orchestration Types
 export type DeadLetterQueue = typeof deadLetterQueue.$inferSelect;
-export type InsertDeadLetterQueue = z.infer<typeof insertDeadLetterQueueSchema & any>;
+export type InsertDeadLetterQueue = z.infer<
+  typeof insertDeadLetterQueueSchema & any
+>;
 
 export type PhaseStateTransition = typeof phaseStateTransitions.$inferSelect;
 export type InsertPhaseStateTransition = z.infer<
@@ -1959,7 +1975,9 @@ export type SystemHealth = typeof systemHealth.$inferSelect;
 export type InsertSystemHealth = z.infer<typeof insertSystemHealthSchema & any>;
 
 export type PipelineMetrics = typeof pipelineMetrics.$inferSelect;
-export type InsertPipelineMetrics = z.infer<typeof insertPipelineMetricsSchema & any>;
+export type InsertPipelineMetrics = z.infer<
+  typeof insertPipelineMetricsSchema & any
+>;
 
 export type WorkflowDependency = typeof workflowDependencies.$inferSelect;
 export type InsertWorkflowDependency = z.infer<

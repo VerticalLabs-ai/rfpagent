@@ -873,8 +873,9 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
   private async getRecentPredictions(): Promise<RecentPredictions> {
     try {
       // Attempt to fetch prediction logs from persistent storage
-      const predictionLogs: PredictionLogEntry[] | undefined =
-        await (storage as any).getPredictionLogs?.();
+      const predictionLogs: PredictionLogEntry[] | undefined = await (
+        storage as any
+      ).getPredictionLogs?.();
 
       if (!predictionLogs || predictionLogs.length === 0) {
         // No prediction logs available

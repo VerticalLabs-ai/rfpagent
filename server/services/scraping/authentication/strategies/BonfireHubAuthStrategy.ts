@@ -200,7 +200,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
             Cookie: flowResponse.cookieHeader,
           },
           maxRedirects: 0,
-          validateStatus: (status) => status < 400,
+          validateStatus: status => status < 400,
         }
       );
 
@@ -256,9 +256,10 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           };
         }
       } else if (loginSubmitResponse.status === 200) {
-        const responseText = typeof loginSubmitResponse.data === 'string'
-          ? loginSubmitResponse.data
-          : JSON.stringify(loginSubmitResponse.data);
+        const responseText =
+          typeof loginSubmitResponse.data === 'string'
+            ? loginSubmitResponse.data
+            : JSON.stringify(loginSubmitResponse.data);
 
         if (
           responseText.includes('Invalid credentials') ||
@@ -343,7 +344,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
           Cookie: cookieHeader,
         },
         maxRedirects: 0,
-        validateStatus: (status) => status < 400,
+        validateStatus: status => status < 400,
       });
 
       finalResponse = response;
