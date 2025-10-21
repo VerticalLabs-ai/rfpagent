@@ -235,13 +235,19 @@ export class AgentRegistry {
   getHierarchyPath(agentId: string): string[] {
     const path: string[] = [agentId];
     let currentId = agentId;
+    const visited = new Set<string>([agentId]);
 
     while (currentId) {
       const metadata = this.getMetadata(currentId);
       if (!metadata?.reportsTo) break;
-
-      path.push(metadata.reportsTo);
-      currentId = metadata.reportsTo;
+      const parentId = metadata.reportsTo;
+      if (visited.has(parentId)) {
+        // break on cycle; optionally log here
+        break;
+      }
+      path.push(parentId);
+      visited.add(parentId);
+      currentId = parentId;
     }
 
     return path;
