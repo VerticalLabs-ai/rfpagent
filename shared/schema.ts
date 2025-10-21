@@ -1556,16 +1556,30 @@ export const insertRfpSchema = createInsertSchema(rfps).omit({
   updatedAt: true,
 });
 
-export const insertProposalSchema = createInsertSchema(proposals)
-  .omit({
-    id: true,
-    generatedAt: true,
-    updatedAt: true,
+export const insertProposalSchema = z
+  .object({
+    rfpId: z.string(),
+    content: z.record(z.any()).default({}),
+    narratives: z.record(z.any()).default({}),
+    pricingTables: z.record(z.any()).default({}),
+    forms: z.record(z.any()).default({}),
+    attachments: z.record(z.any()).default({}),
+    proposalData: z.record(z.any()).default({}),
+    status: z
+      .enum([
+        'draft',
+        'in_progress',
+        'ready_for_review',
+        'submitted',
+        'awarded',
+        'rejected',
+        'withdrawn',
+      ])
+      .default('draft'),
+    receiptData: submissionReceiptDataSchema.nullish(),
+    submittedAt: z.coerce.date().nullish(),
   })
-  .extend({
-    receiptData: submissionReceiptDataSchema.nullish() as any,
-    submittedAt: z.date().nullish() as any,
-  });
+  .passthrough();
 
 export const insertDocumentSchema = createInsertSchema(documents).omit({
   id: true,

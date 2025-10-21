@@ -86,6 +86,27 @@ class Logger {
   }
 
   /**
+   * Add to existing context
+   */
+  addContext(context: LogContext): void {
+    this.context = { ...this.context, ...context };
+  }
+
+  /**
+   * Get current context
+   */
+  getContext(): LogContext {
+    return { ...this.context };
+  }
+
+  /**
+   * Clear all context
+   */
+  clearContext(): void {
+    this.context = {};
+  }
+
+  /**
    * Create child logger with additional context
    */
   child(context: LogContext): Logger {
