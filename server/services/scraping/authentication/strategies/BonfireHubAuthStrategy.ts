@@ -147,8 +147,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       const flowJsonUrl = `https://account.bonfirehub.com/login?flow=${flowId}`;
       console.log(`📋 Step 2: Getting form structure from ${flowJsonUrl}`);
 
-      const flowDataResponse = await request(flowJsonUrl, {
-        method: 'GET',
+      const flowDataResponse = await axios.get(flowJsonUrl, {
         headers: {
           Accept: 'application/json',
           'User-Agent':
@@ -157,7 +156,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
         },
       });
 
-      const flowData = (await flowDataResponse.body.json()) as any;
+      const flowData = flowDataResponse.data as any;
       console.log(
         `📋 Form structure received for flow ${flowId.substring(0, 8)}...`
       );
@@ -187,26 +186,30 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       console.log(`📤 Step 3: Submitting credentials`, redactedPayload);
 
       // Step 3: Submit credentials to form action
-      const loginSubmitResponse = await request(formAction, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Cookie: flowResponse.cookieHeader,
-        },
-        body: new URLSearchParams(loginPayload).toString(),
-      });
+      const loginSubmitResponse = await axios.post(
+        formAction,
+        new URLSearchParams(loginPayload).toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Cookie: flowResponse.cookieHeader,
+          },
+          maxRedirects: 0,
+          validateStatus: status => status < 400,
+        }
+      );
 
       console.log(
-        `📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.statusCode}`
+        `📡 Step 3: Login submit response: HTTP ${loginSubmitResponse.status}`
       );
 
       // Step 4: Follow redirects to complete authentication
-      if ([302, 303, 307, 308].includes(loginSubmitResponse.statusCode)) {
+      if ([302, 303, 307, 308].includes(loginSubmitResponse.status)) {
         console.log(
           `🔄 Step 4: Following redirects to complete authentication`
         );
@@ -252,8 +255,11 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
             error: 'Authentication failed - not redirected to vendor portal',
           };
         }
-      } else if (loginSubmitResponse.statusCode === 200) {
-        const responseText = await loginSubmitResponse.body.text();
+      } else if (loginSubmitResponse.status === 200) {
+        const responseText =
+          typeof loginSubmitResponse.data === 'string'
+            ? loginSubmitResponse.data
+            : JSON.stringify(loginSubmitResponse.data);
 
         if (
           responseText.includes('Invalid credentials') ||
@@ -275,7 +281,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
         }
       } else {
         throw new Error(
-          `Unexpected login response: HTTP ${loginSubmitResponse.statusCode}`
+          `Unexpected login response: HTTP ${loginSubmitResponse.status}`
         );
       }
     } catch (error) {
@@ -328,8 +334,7 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
     while (redirectCount < maxRedirects) {
       console.log(`🔄 Following redirect ${redirectCount + 1}: ${currentUrl}`);
 
-      const response = await request(currentUrl, {
-        method: 'GET',
+      const response = await axios.get(currentUrl, {
         headers: {
           Accept:
             'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -338,6 +343,8 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           Cookie: cookieHeader,
         },
+        maxRedirects: 0,
+        validateStatus: status => status < 400,
       });
 
       finalResponse = response;
@@ -349,13 +356,13 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
       }
 
       // Check for redirect
-      if ([301, 302, 303, 307, 308].includes(response.statusCode)) {
+      if ([301, 302, 303, 307, 308].includes(response.status)) {
         const locationHeader = Array.isArray(response.headers.location)
           ? response.headers.location[0]
           : response.headers.location;
         if (!locationHeader) {
           throw new Error(
-            `Redirect response without location header: ${response.statusCode}`
+            `Redirect response without location header: ${response.status}`
           );
         }
 

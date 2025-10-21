@@ -1,16 +1,12 @@
 import { createStep, createWorkflow } from '@mastra/core';
 import { z } from 'zod';
 import { agentMemoryService } from '../../../server/services/agents/agentMemoryService';
-import { storage } from '../../../server/storage';
 import { proposalGenerationOrchestrator } from '../../../server/services/orchestrators/proposalGenerationOrchestrator';
+import { storage } from '../../../server/storage';
+import { getPoolStatistics } from '../utils/pool-integration';
 import { bonfireAuthWorkflow } from './bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './document-processing-workflow';
 import { rfpDiscoveryWorkflow } from './rfp-discovery-workflow';
-import {
-  executeWithPooledAgent,
-  executeParallelWithPool,
-  getPoolStatistics,
-} from '../utils/pool-integration';
 
 // Input schema for master orchestration
 const MasterOrchestrationInputSchema = z.object({
@@ -43,146 +39,152 @@ const executeWorkflowStep = createStep({
 
     // Step 1: Execute based on mode
     switch (mode) {
-      case 'discovery':
+      case 'discovery': {
         // Discovery mode: Find new RFPs from portals
         if (!portalIds || portalIds.length === 0) {
           throw new Error('Portal IDs required for discovery mode');
         }
 
-        const discoveryResult = await step.run('discovery-phase', async () => {
-          console.log('🔍 Starting RFP discovery phase...');
+        const discoveryResult = await step.run(
+          'discovery-phase',
+          async (): Promise<any> => {
+            console.log('🔍 Starting RFP discovery phase...');
 
-          // Handle BonfireHub authentication if needed
-          const allPortals = await storage.getAllPortals();
-          const bonfirePortals = allPortals.filter(
-            (p: any) => p.type === 'bonfirehub'
-          );
-          const bonfireIds = bonfirePortals
-            .map((p: any) => p.id)
-            .filter((id: string) => portalIds.includes(id));
+            // Handle BonfireHub authentication if needed
+            const allPortals = await storage.getAllPortals();
+            const bonfirePortals = allPortals.filter(
+              (p: any) => p.type === 'bonfirehub'
+            );
+            const bonfireIds = bonfirePortals
+              .map((p: any) => p.id)
+              .filter((id: string) => portalIds.includes(id));
 
-          if (bonfireIds.length > 0) {
-            // Authenticate BonfireHub portals first
-            const authResults = await parallel(
-              bonfireIds.map((portalId: string) =>
-                step.run(`auth-bonfire-${portalId}`, async () => {
-                  const portal =
-                    await storage.getPortalWithCredentials(portalId);
-                  if (!portal) return null;
+            if (bonfireIds.length > 0) {
+              // Authenticate BonfireHub portals first
+              const authResults = await parallel(
+                bonfireIds.map((portalId: string) =>
+                  step.run(`auth-bonfire-${portalId}`, async () => {
+                    const portal =
+                      await storage.getPortalWithCredentials(portalId);
+                    if (!portal) return null;
 
-                  // Check authentication state from Memory API
-                  const authContextKey = `bonfire_auth_state_${portalId}`;
-                  const existingAuthState =
-                    await agentMemoryService.getMemoryByContext(
-                      'master-orchestrator',
-                      authContextKey
-                    );
-
-                  // Validate existing authentication state
-                  if (existingAuthState?.content) {
-                    const { authenticated, timestamp, expiresAt } =
-                      existingAuthState.content;
-                    const now = Date.now();
-                    const authTimestamp = new Date(timestamp).getTime();
-                    const authExpiry = expiresAt
-                      ? new Date(expiresAt).getTime()
-                      : null;
-
-                    // Check if auth is valid (authenticated, not expired, and within 24 hours)
-                    const isValid =
-                      authenticated &&
-                      (!authExpiry || authExpiry > now) &&
-                      now - authTimestamp < 24 * 60 * 60 * 1000;
-
-                    if (isValid) {
-                      console.log(
-                        `✅ Valid authentication found for ${portal.name}, skipping re-auth`
+                    // Check authentication state from Memory API
+                    const authContextKey = `bonfire_auth_state_${portalId}`;
+                    const existingAuthState =
+                      await agentMemoryService.getMemoryByContext(
+                        'master-orchestrator',
+                        authContextKey
                       );
-                      return {
-                        success: true,
-                        portalId,
-                        authenticated: true,
-                        cached: true,
-                        timestamp: existingAuthState.content.timestamp,
-                      };
+
+                    // Validate existing authentication state
+                    if (existingAuthState?.content) {
+                      const { authenticated, timestamp, expiresAt } =
+                        existingAuthState.content;
+                      const now = Date.now();
+                      const authTimestamp = new Date(timestamp).getTime();
+                      const authExpiry = expiresAt
+                        ? new Date(expiresAt).getTime()
+                        : null;
+
+                      // Check if auth is valid (authenticated, not expired, and within 24 hours)
+                      const isValid =
+                        authenticated &&
+                        (!authExpiry || authExpiry > now) &&
+                        now - authTimestamp < 24 * 60 * 60 * 1000;
+
+                      if (isValid) {
+                        console.log(
+                          `✅ Valid authentication found for ${portal.name}, skipping re-auth`
+                        );
+                        return {
+                          success: true,
+                          portalId,
+                          authenticated: true,
+                          cached: true,
+                          timestamp: existingAuthState.content.timestamp,
+                        };
+                      } else {
+                        console.log(
+                          `⏰ Authentication expired for ${portal.name}, re-authenticating...`
+                        );
+                      }
                     } else {
                       console.log(
-                        `⏰ Authentication expired for ${portal.name}, re-authenticating...`
+                        `🔐 No authentication state found for ${portal.name}, authenticating...`
                       );
                     }
-                  } else {
-                    console.log(
-                      `🔐 No authentication state found for ${portal.name}, authenticating...`
-                    );
-                  }
 
-                  // Run authentication workflow if no valid session exists
-                  const authResult = await bonfireAuthWorkflow.execute({
-                    input: {
-                      portalId,
-                      username: (portal as any).username || '',
-                      password: (portal as any).password || '',
-                      companyName: portal.name,
-                      retryCount: 0,
-                      maxRetries: 3,
-                    },
-                  } as any);
-
-                  // Store authentication state in Memory API for future checks
-                  if (authResult.success && authResult.authenticated) {
-                    await agentMemoryService.storeMemory({
-                      agentId: 'master-orchestrator',
-                      memoryType: 'working',
-                      contextKey: authContextKey,
-                      title: `BonfireHub Auth State: ${portal.name}`,
-                      content: {
+                    // Run authentication workflow if no valid session exists
+                    const authResult = await bonfireAuthWorkflow.execute({
+                      input: {
                         portalId,
-                        authenticated: true,
-                        timestamp: new Date().toISOString(),
-                        expiresAt: new Date(
-                          Date.now() + 24 * 60 * 60 * 1000
-                        ).toISOString(), // 24 hours
-                        sessionId: authResult.sessionId,
+                        username: (portal as any).username || '',
+                        password: (portal as any).password || '',
+                        companyName: portal.name,
+                        retryCount: 0,
+                        maxRetries: 3,
                       },
-                      importance: 8,
-                      tags: ['authentication', 'bonfirehub', portalId],
-                      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours TTL
-                    });
-                    console.log(
-                      `💾 Stored authentication state for ${portal.name}`
-                    );
-                  }
+                    } as any);
 
-                  return authResult;
-                })
-              )
-            );
+                    // Store authentication state in Memory API for future checks
+                    if (authResult.success && authResult.authenticated) {
+                      await agentMemoryService.storeMemory({
+                        agentId: 'master-orchestrator',
+                        memoryType: 'working',
+                        contextKey: authContextKey,
+                        title: `BonfireHub Auth State: ${portal.name}`,
+                        content: {
+                          portalId,
+                          authenticated: true,
+                          timestamp: new Date().toISOString(),
+                          expiresAt: new Date(
+                            Date.now() + 24 * 60 * 60 * 1000
+                          ).toISOString(), // 24 hours
+                          sessionId: authResult.sessionId,
+                        },
+                        importance: 8,
+                        tags: ['authentication', 'bonfirehub', portalId],
+                        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours TTL
+                      });
+                      console.log(
+                        `💾 Stored authentication state for ${portal.name}`
+                      );
+                    }
+
+                    return authResult;
+                  })
+                )
+              );
+
+              results.workflows.push({
+                type: 'bonfire-auth',
+                results: authResults,
+              });
+            }
+
+            // Execute discovery workflow
+            const discoveryOutput = await rfpDiscoveryWorkflow.execute({
+              input: {
+                maxPortals: portalIds?.length || 10,
+              },
+            } as any);
 
             results.workflows.push({
-              type: 'bonfire-auth',
-              results: authResults,
+              type: 'rfp-discovery',
+              output: discoveryOutput,
             });
+
+            return discoveryOutput;
           }
+        );
 
-          // Execute discovery workflow
-          const discoveryOutput = await rfpDiscoveryWorkflow.execute({
-            input: {
-              maxPortals: portalIds?.length || 10,
-            },
-          } as any);
-
-          results.workflows.push({
-            type: 'rfp-discovery',
-            output: discoveryOutput,
-          });
-
-          return discoveryOutput;
-        });
-
-        results.discoveredRfps = discoveryResult.rfps || [];
+        results.discoveredRfps = Array.isArray((discoveryResult as any).rfps)
+          ? (discoveryResult as any).rfps
+          : [];
         break;
+      }
 
-      case 'proposal':
+      case 'proposal': {
         // Proposal mode: Generate proposal for specific RFP
         if (!rfpId || !companyProfileId) {
           throw new Error(
@@ -231,7 +233,7 @@ const executeWorkflowStep = createStep({
           const proposalOutput =
             await proposalGenerationOrchestrator.createProposalGenerationPipeline(
               {
-                rfpId: rfpId!,
+                rfpId: rfpId,
                 companyProfileId,
                 executionMode: 'fast',
                 enableProgressTracking: false,
@@ -248,8 +250,9 @@ const executeWorkflowStep = createStep({
 
         results.proposal = proposalResult;
         break;
+      }
 
-      case 'full_pipeline':
+      case 'full_pipeline': {
         // Full pipeline: Discovery -> Analysis -> Proposal -> Submission
         if (!portalIds || portalIds.length === 0) {
           throw new Error('Portal IDs required for full pipeline mode');
@@ -359,6 +362,7 @@ const executeWorkflowStep = createStep({
         }
 
         break;
+      }
 
       default:
         throw new Error(`Invalid orchestration mode: ${mode}`);

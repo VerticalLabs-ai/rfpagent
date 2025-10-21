@@ -10,6 +10,7 @@ because pnpm-lock.yaml is not up to date with <ROOT>/package.json
 ```
 
 **Root causes:**
+
 1. `pnpm-lock.yaml` was out of sync with `package.json`
 2. Peer dependency conflicts with `zod` and `ai` packages
 3. Missing root-level `mastra.config.ts` for cloud tool discovery
@@ -25,6 +26,7 @@ pnpm install --no-frozen-lockfile
 ```
 
 **Result:**
+
 - Removed 77 packages (unused dependencies)
 - Updated lockfile to match current package.json spec
 - Build now passes in CI/CD frozen lockfile mode
@@ -32,6 +34,7 @@ pnpm install --no-frozen-lockfile
 ### 2. Peer Dependency Resolution ✅
 
 **Problem packages:**
+
 - `zod`: ^3.25.76 (conflicted with Stagehand requirement: <3.25.68)
 - `ai`: ^5.0.76 (conflicted with @mastra/core requirement: ^5.0.0)
 
@@ -40,17 +43,17 @@ pnpm install --no-frozen-lockfile
 ```json
 {
   "dependencies": {
-    "ai": "^5.0.0",      // was: ^5.0.76
-    "zod": "^3.25.0"     // was: ^3.25.76
+    "ai": "^5.0.0", // was: ^5.0.76
+    "zod": "^3.25.0" // was: ^3.25.76
   },
   "pnpm": {
     "overrides": {
       "google-logging-utils": "1.1.1",
-      "zod": "3.25.67"   // NEW: Pin to compatible version
+      "zod": "3.25.67" // NEW: Pin to compatible version
     },
     "peerDependencyRules": {
       "allowedVersions": {
-        "zod": ">=3.25.0"  // NEW: Allow newer zod versions
+        "zod": ">=3.25.0" // NEW: Allow newer zod versions
       }
     }
   }
@@ -58,6 +61,7 @@ pnpm install --no-frozen-lockfile
 ```
 
 **Result:**
+
 - Zod pinned to 3.25.67 (satisfies Stagehand's <3.25.68 requirement)
 - AI package compatible with @mastra/core
 - No breaking peer dependency warnings
@@ -65,6 +69,7 @@ pnpm install --no-frozen-lockfile
 ### 3. Mastra Configuration (Previously Fixed) ✅
 
 **Files created/updated:**
+
 - ✅ `mastra.config.ts` - Root configuration for Mastra Cloud
 - ✅ `package.json` - Added mastra:dev, mastra:build, mastra:deploy scripts
 - ✅ `docs/MASTRA_CONFIGURATION.md` - Comprehensive setup guide
@@ -72,6 +77,7 @@ pnpm install --no-frozen-lockfile
 ## Verification
 
 ### Local Build ✅
+
 ```bash
 $ npm run build
 ✓ 2812 modules transformed.
@@ -81,6 +87,7 @@ dist/index.js  970.7kb
 ```
 
 ### Git Status ✅
+
 ```bash
 $ git status
 On branch main
@@ -88,6 +95,7 @@ Your branch is up to date with 'origin/main'
 ```
 
 ### Deployment Ready ✅
+
 ```bash
 $ git log --oneline -1
 0666765 fix: sync pnpm lockfile and resolve peer dependency conflicts
@@ -98,6 +106,7 @@ $ git log --oneline -1
 **Commit:** `0666765`
 
 **Files modified:**
+
 - `package.json` - Dependency version fixes, pnpm overrides
 - `pnpm-lock.yaml` - Regenerated and synchronized
 - `mastra.config.ts` - Root configuration (previously added)
@@ -108,6 +117,7 @@ $ git log --oneline -1
 ### 1. Trigger Mastra Cloud Build
 
 The deployment should now succeed. The build will:
+
 1. ✅ Clone from main branch
 2. ✅ Run `pnpm install` with frozen lockfile (will pass)
 3. ✅ Build Mastra agents and tools
@@ -116,6 +126,7 @@ The deployment should now succeed. The build will:
 ### 2. Verify in Mastra Dashboard
 
 After deployment, verify:
+
 - [ ] Project "rfp-agent-platform" appears
 - [ ] 12 tools are visible:
   - 5 page automation tools
@@ -129,6 +140,7 @@ After deployment, verify:
 ### 3. Monitor First Deployment
 
 Check for:
+
 - Build completion time
 - Any runtime warnings
 - Tool discovery status
@@ -137,6 +149,7 @@ Check for:
 ## Dependency Summary
 
 ### Removed (19 packages)
+
 ```
 @jridgewell/trace-mapping, @sendgrid/mail, connect-pg-simple,
 cron, express-session, framer-motion, memorystore, next-themes,
@@ -146,11 +159,13 @@ zod-validation-error, @types/connect-pg-simple, @types/express-session,
 ```
 
 ### Added (2 packages)
+
 ```
 @eslint/js@^9.17.0, domhandler@^5.0.3
 ```
 
 ### Version Changes
+
 ```
 ai: ^5.0.76 → ^5.0.0
 zod: ^3.25.76 → ^3.25.67 (via override)
@@ -159,45 +174,54 @@ zod: ^3.25.76 → ^3.25.67 (via override)
 ## Known Issues (Non-Critical)
 
 ### Warning: Missing Stagehand Binary
+
 ```
 WARN Failed to create bin at .../evals
 ```
+
 **Impact:** None - evals CLI is optional development tool
 **Action:** Can be ignored
 
 ### Warning: Peer Dependency
+
 ```
 @mastra/core → @openrouter/ai-sdk-provider
   unmet peer ai@^5.0.0: found 4.3.19 in @mastra/core
 ```
+
 **Impact:** None - Internal @mastra/core dependency
 **Action:** Can be ignored (will be fixed in future @mastra/core update)
 
 ### Security Alerts (GitHub)
+
 ```
 4 vulnerabilities (3 moderate, 1 low)
 ```
+
 **Impact:** Development dependencies
 **Action:** Review Dependabot alerts and update when appropriate
-**URL:** https://github.com/mgunnin/rfpagent/security/dependabot
+**URL:** https://github.com/VerticalLabs-ai/rfpagent/security/dependabot
 
 ## Troubleshooting
 
 ### If Build Still Fails
 
 **Check 1: Lockfile committed**
+
 ```bash
 git log --oneline -1 -- pnpm-lock.yaml
 # Should show: 0666765 fix: sync pnpm lockfile...
 ```
 
 **Check 2: No local changes**
+
 ```bash
 git status
 # Should show: nothing to commit, working tree clean
 ```
 
 **Check 3: Remote is up to date**
+
 ```bash
 git log --oneline origin/main -1
 # Should show: 0666765 fix: sync pnpm lockfile...
@@ -208,6 +232,7 @@ git log --oneline origin/main -1
 **Cause:** Deployment pipeline may be using cached version
 
 **Solution:**
+
 1. Trigger fresh deployment (not cached)
 2. Or wait for cache to expire (~5-10 minutes)
 3. Check deployment logs for correct commit hash

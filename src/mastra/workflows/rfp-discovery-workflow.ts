@@ -1,8 +1,6 @@
 import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
-import { MastraScrapingService } from '../../../server/services/scrapers/mastraScrapingService';
 import { storage } from '../../../server/storage';
-import { pageAuthTool, pageExtractTool } from '../tools';
 import { getPoolStatistics } from '../utils/pool-integration';
 
 /**
@@ -131,6 +129,7 @@ const portalConfigSchema = z.object({
 
 // RFP opportunity schema
 const opportunitySchema = z.object({
+  id: z.string(),
   title: z.string(),
   description: z.string().optional(),
   agency: z.string().optional(),
@@ -220,6 +219,7 @@ const scrapePortalStep = createStep({
         .filter(rfp => rfp.addedBy === 'automatic')
         .slice(0, 50)
         .map((rfp: any) => ({
+          id: rfp.id,
           title: rfp.title,
           description: rfp.description || undefined,
           agency: rfp.agency,

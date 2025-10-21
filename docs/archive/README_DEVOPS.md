@@ -1,7 +1,7 @@
 # RFP Agent - Production-Ready DevOps Infrastructure
 
-[![CI/CD](https://github.com/yourusername/rfpagent/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/yourusername/rfpagent/actions)
-[![Security](https://github.com/yourusername/rfpagent/workflows/Security%20Scan/badge.svg)](https://github.com/yourusername/rfpagent/actions)
+[![CI/CD](https://github.com/VerticalLabs-ai/rfpagent/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/VerticalLabs-ai/rfpagent/actions)
+[![Security](https://github.com/VerticalLabs-ai/rfpagent/workflows/Security%20Scan/badge.svg)](https://github.com/VerticalLabs-ai/rfpagent/actions)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## One-Click Deployment
@@ -19,6 +19,7 @@ make deploy-production VERSION=v1.0.0
 This repository now includes a **complete, production-ready DevOps infrastructure** with:
 
 ### 🚀 CI/CD Pipeline
+
 - **9 GitHub Actions workflows** with automated testing, security scanning, and deployment
 - **Multi-stage testing**: Unit, integration, E2E (Playwright)
 - **Security scanning**: SAST, dependency check, secret detection, container scanning
@@ -26,12 +27,14 @@ This repository now includes a **complete, production-ready DevOps infrastructur
 - **Automatic rollback** on failure
 
 ### 🐳 Docker Containerization
+
 - **Multi-stage builds** optimized for production (200MB final image)
 - **Security hardened**: Non-root user, minimal base image, vulnerability scanning
 - **Multi-architecture support**: AMD64 and ARM64
 - **Complete local stack**: PostgreSQL + Redis + App + Nginx
 
 ### ☸️ Kubernetes Deployment
+
 - **10 production-ready manifests** for complete orchestration
 - **Auto-scaling**: 3-10 replicas based on CPU/memory
 - **Zero-downtime deployments** with rolling updates
@@ -39,24 +42,28 @@ This repository now includes a **complete, production-ready DevOps infrastructur
 - **Health checks**: Liveness, readiness, and startup probes
 
 ### 📊 Monitoring & Observability
+
 - **Prometheus** for metrics collection
 - **Grafana** dashboards for visualization
 - **AlertManager** for intelligent alerting
 - **Alert rules** for critical issues (errors, crashes, resource exhaustion)
 
 ### 🔒 Security Hardening
+
 - **Container security**: Trivy/Grype scanning, non-root execution
 - **Secret management**: 1Password integration, Kubernetes secrets encryption
 - **Automated scanning**: Dependencies, SAST, secrets, licenses
 - **TLS everywhere**: Automated certificate management
 
 ### 🔄 Automation Scripts
+
 - **Deployment automation** (`deploy.sh`) with health checks
 - **Rollback procedures** (`rollback.sh`) with version history
 - **Secret management** (`secrets-setup.sh`) with rotation
 - **Database backups** (`db-backup.sh`) with encryption
 
 ### 📚 Comprehensive Documentation
+
 - **Deployment Runbook** (DEPLOYMENT.md) - Step-by-step procedures
 - **DevOps Guide** (DEVOPS.md) - Complete infrastructure documentation
 - **Security Policy** (SECURITY.md) - Security standards and procedures
@@ -81,7 +88,7 @@ This repository now includes a **complete, production-ready DevOps infrastructur
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/rfpagent.git
+git clone https://github.com/VerticalLabs-ai/rfpagent.git
 cd rfpagent
 
 # Setup environment
@@ -247,11 +254,13 @@ Run `make help` for complete list.
 ### Alerts
 
 **Critical** (PagerDuty + Slack):
+
 - Pod crash loops
 - High error rates (>5%)
 - Database connection failures
 
 **Warning** (Slack):
+
 - High resource usage (>90%)
 - Slow response times (>2s)
 
@@ -398,6 +407,7 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ## Acknowledgments
 
 Built with:
+
 - Docker & Kubernetes
 - GitHub Actions
 - Prometheus & Grafana

@@ -1,6 +1,7 @@
 # RFP Agent - Deployment Runbook
 
 ## Table of Contents
+
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
 - [Deployment Environments](#deployment-environments)
@@ -14,6 +15,7 @@
 ## Prerequisites
 
 ### Required Tools
+
 - Docker 24+
 - Kubernetes 1.28+
 - kubectl
@@ -22,6 +24,7 @@
 - Node.js 20+
 
 ### Required Access
+
 - GitHub Container Registry access
 - Kubernetes cluster access
 - Database credentials (Neon PostgreSQL)
@@ -33,7 +36,7 @@
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/rfpagent.git
+git clone https://github.com/VerticalLabs-ai/rfpagent.git
 cd rfpagent
 
 # Set up environment variables
@@ -60,12 +63,14 @@ open http://localhost:5000
 ## Deployment Environments
 
 ### Staging
+
 - **URL**: https://staging.rfpagent.app
 - **Namespace**: rfp-agent-staging
 - **Replicas**: 2-5 (auto-scaling)
 - **Database**: Neon PostgreSQL (staging)
 
 ### Production
+
 - **URL**: https://rfpagent.app
 - **Namespace**: rfp-agent-production
 - **Replicas**: 3-10 (auto-scaling)
@@ -127,11 +132,13 @@ OP_SERVICE_ACCOUNT_TOKEN=...
 ### Initial Setup
 
 1. **Create Namespace**
+
    ```bash
    kubectl create namespace rfp-agent-production
    ```
 
 2. **Setup Secrets**
+
    ```bash
    # Using 1Password (recommended)
    ./scripts/security/secrets-setup.sh production setup
@@ -143,6 +150,7 @@ OP_SERVICE_ACCOUNT_TOKEN=...
    ```
 
 3. **Deploy Application**
+
    ```bash
    # Using deployment script
    ./scripts/deployment/deploy.sh production v1.0.0
@@ -451,6 +459,7 @@ kubectl scale deployment rfp-agent --replicas=3 -n rfp-agent-production
 ### Zero-Downtime Updates
 
 Deployment uses rolling updates by default:
+
 - `maxSurge: 1` - One extra pod during update
 - `maxUnavailable: 0` - No pods removed until new ones are ready
 

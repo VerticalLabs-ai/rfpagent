@@ -92,17 +92,69 @@ export class AgentRegistry {
    * @param agentId - Unique identifier for the agent
    * @param agent - Agent instance
    * @param metadata - Agent metadata including tier, role, capabilities
-   * @throws Error if agent ID already exists
+   * @throws Error if agent ID already exists or validation fails
    */
   register(agentId: string, agent: Agent, metadata: AgentMetadata): void {
     if (this.agents.has(agentId)) {
       throw new Error(`Agent with ID '${agentId}' is already registered`);
     }
 
-    // Validate metadata
+    // Validate metadata ID matches
     if (metadata.id !== agentId) {
       throw new Error(
         `Metadata ID '${metadata.id}' does not match agent ID '${agentId}'`
+      );
+    }
+
+    // Validate tier
+    if (metadata.tier < 1 || metadata.tier > 5) {
+      throw new Error(
+        `Invalid tier ${metadata.tier} for agent '${agentId}' (must be 1-5)`
+      );
+    }
+
+    // Validate role matches tier
+    const tierRoleMap: Record<number, string> = {
+      1: 'orchestrator',
+      2: 'manager',
+      3: 'specialist',
+      4: 'sub-specialist',
+      5: 'sub-specialist',
+    };
+
+    if (metadata.role !== tierRoleMap[metadata.tier]) {
+      throw new Error(
+        `Role '${metadata.role}' doesn't match tier ${metadata.tier} for agent '${agentId}'`
+      );
+    }
+
+    // Validate capabilities
+    if (!metadata.capabilities || metadata.capabilities.length === 0) {
+      throw new Error(`Agent '${agentId}' must have at least one capability`);
+    }
+
+    // Validate scaling config
+    if (metadata.scaling) {
+      if (metadata.scaling.min > metadata.scaling.max) {
+        throw new Error(
+          `Invalid scaling config for '${agentId}': min (${metadata.scaling.min}) > max (${metadata.scaling.max})`
+        );
+      }
+      if (metadata.scaling.min < 0 || metadata.scaling.max < 1) {
+        throw new Error(
+          `Invalid scaling config for '${agentId}': min must be >= 0, max must be >= 1`
+        );
+      }
+    }
+
+    // Warn if reportsTo agent doesn't exist (skip for tier 1 orchestrators)
+    if (
+      metadata.tier > 1 &&
+      metadata.reportsTo &&
+      !this.agents.has(metadata.reportsTo)
+    ) {
+      console.warn(
+        `Agent '${agentId}' reports to '${metadata.reportsTo}' which is not yet registered`
       );
     }
 
@@ -235,13 +287,29 @@ export class AgentRegistry {
   getHierarchyPath(agentId: string): string[] {
     const path: string[] = [agentId];
     let currentId = agentId;
+    const visited = new Set<string>([agentId]);
+    const maxDepth = 10; // Safety limit to prevent infinite loops
 
-    while (currentId) {
+    while (currentId && path.length < maxDepth) {
       const metadata = this.getMetadata(currentId);
       if (!metadata?.reportsTo) break;
+      const parentId = metadata.reportsTo;
 
-      path.push(metadata.reportsTo);
-      currentId = metadata.reportsTo;
+      // Check for cycles before adding
+      if (visited.has(parentId)) {
+        console.warn(`Cycle detected in hierarchy: ${agentId} -> ${parentId}`);
+        break;
+      }
+
+      visited.add(parentId); // Add to visited BEFORE pushing to path
+      path.push(parentId);
+      currentId = parentId;
+    }
+
+    if (path.length >= maxDepth) {
+      console.warn(
+        `Maximum hierarchy depth (${maxDepth}) reached for agent: ${agentId}`
+      );
     }
 
     return path;
@@ -280,7 +348,11 @@ export class AgentRegistry {
    */
   updateHealth(
     agentId: string,
-    health: AgentMetadata['health']
+    health: {
+      status: 'active' | 'idle' | 'busy' | 'failed';
+      taskCount?: number;
+      errorCount?: number;
+    }
   ): void {
     const entry = this.agents.get(agentId);
     if (!entry) {
@@ -288,8 +360,9 @@ export class AgentRegistry {
     }
 
     entry.metadata.health = {
-      ...entry.metadata.health,
-      ...health,
+      status: health.status,
+      taskCount: health.taskCount ?? entry.metadata.health?.taskCount ?? 0,
+      errorCount: health.errorCount ?? entry.metadata.health?.errorCount ?? 0,
       lastSeen: new Date(),
     };
   }
@@ -321,21 +394,30 @@ export class AgentRegistry {
   } {
     const entries = Array.from(this.agents.values());
 
-    const byTier = entries.reduce((acc, { metadata }) => {
-      acc[metadata.tier] = (acc[metadata.tier] || 0) + 1;
-      return acc;
-    }, {} as Record<number, number>);
+    const byTier = entries.reduce(
+      (acc, { metadata }) => {
+        acc[metadata.tier] = (acc[metadata.tier] || 0) + 1;
+        return acc;
+      },
+      {} as Record<number, number>
+    );
 
-    const byRole = entries.reduce((acc, { metadata }) => {
-      acc[metadata.role] = (acc[metadata.role] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byRole = entries.reduce(
+      (acc, { metadata }) => {
+        acc[metadata.role] = (acc[metadata.role] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const byHealthStatus = entries.reduce((acc, { metadata }) => {
-      const status = metadata.health?.status || 'unknown';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const byHealthStatus = entries.reduce(
+      (acc, { metadata }) => {
+        const status = metadata.health?.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return {
       totalAgents: entries.length,

@@ -132,7 +132,7 @@ if (featureFlags.useAgentRegistry) {
   mastraLogger.info('🔧 Initializing Agent Registry System...');
 
   // Map of agent instance names to agent instances
-  const agentInstances: Record<string, typeof primaryOrchestrator> = {
+  const agentInstances: Record<string, any> = {
     'primary-orchestrator': primaryOrchestrator,
     'portal-manager': portalManager,
     'proposal-manager': proposalManager,

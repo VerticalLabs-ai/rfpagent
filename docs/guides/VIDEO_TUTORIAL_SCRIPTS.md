@@ -2306,7 +2306,7 @@ These practices ensure robust, performant integrations!"
 **Resources:**
 
 - 📚 Full API docs: <https://docs.rfpagent.com/api>
-- 💻 Code examples: <https://github.com/rfpagent/examples>
+- 💻 Code examples: <https://github.com/VerticalLabs-ai/rfpagent>
 - 🤝 Community: <https://rfpagent.slack.com>
 - 📧 Support: <developers@rfpagent.com>
 

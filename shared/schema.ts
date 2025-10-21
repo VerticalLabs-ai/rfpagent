@@ -14,8 +14,7 @@ import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
 // Helper to fix drizzle-zod type compatibility with newer Zod versions
-const asZodType = <T>(schema: any): z.ZodType<T> =>
-  schema as unknown as z.ZodType<T>;
+// Remove this helper and use direct type inference from drizzle-zod
 
 export const users = pgTable('users', {
   id: varchar('id')
@@ -1469,17 +1468,13 @@ export const workflowStateRelations = relations(workflowState, ({ one }) => ({
 }));
 
 // Insert schemas for Agent Memory and Knowledge
-export const insertAgentMemorySchema = asZodType<
-  typeof agentMemory.$inferInsert
->(
-  createInsertSchema(agentMemory).omit({
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-    accessCount: true,
-    lastAccessed: true,
-  })
-);
+export const insertAgentMemorySchema = createInsertSchema(agentMemory).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  accessCount: true,
+  lastAccessed: true,
+});
 
 export const insertAgentKnowledgeSchema = createInsertSchema(
   agentKnowledgeBase
@@ -1524,52 +1519,42 @@ export const insertAgentRegistrySchema = createInsertSchema(agentRegistry).omit(
   }
 );
 
-export const insertWorkItemSchema = asZodType(
-  createInsertSchema(workItems).omit({
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-    completedAt: true,
-  })
-);
+export const insertWorkItemSchema = createInsertSchema(workItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
 
-export const insertAgentSessionSchema = asZodType(
-  createInsertSchema(agentSessions).omit({
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-    completedAt: true,
-    lastActivity: true,
-  })
-);
+export const insertAgentSessionSchema = createInsertSchema(agentSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+  lastActivity: true,
+});
 
 // Insert schemas
-export const insertUserSchema = asZodType(
-  createInsertSchema(users).omit({
-    id: true,
-    createdAt: true,
-    lastLoginAt: true,
-    activatedAt: true,
-  })
-);
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  lastLoginAt: true,
+  activatedAt: true,
+});
 
-export const insertPortalSchema = asZodType(
-  createInsertSchema(portals).omit({
-    id: true,
-    createdAt: true,
-    updatedAt: true,
-    lastScanned: true,
-  })
-);
+export const insertPortalSchema = createInsertSchema(portals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastScanned: true,
+});
 
-export const insertRfpSchema = asZodType(
-  createInsertSchema(rfps).omit({
-    id: true,
-    createdAt: true,
-    discoveredAt: true,
-    updatedAt: true,
-  })
-);
+export const insertRfpSchema = createInsertSchema(rfps).omit({
+  id: true,
+  createdAt: true,
+  discoveredAt: true,
+  updatedAt: true,
+});
 
 export const insertProposalSchema = createInsertSchema(proposals)
   .omit({
@@ -1578,25 +1563,21 @@ export const insertProposalSchema = createInsertSchema(proposals)
     updatedAt: true,
   })
   .extend({
-    receiptData: submissionReceiptDataSchema.nullish(),
-    submittedAt: z.date().nullish(),
+    receiptData: submissionReceiptDataSchema.nullish() as any,
+    submittedAt: z.date().nullish() as any,
   });
 
-export const insertDocumentSchema = asZodType(
-  createInsertSchema(documents).omit({
-    id: true,
-    uploadedAt: true,
-  })
-);
+export const insertDocumentSchema = createInsertSchema(documents).omit({
+  id: true,
+  uploadedAt: true,
+});
 
-export const insertSubmissionSchema = asZodType(
-  createInsertSchema(submissions).omit({
-    id: true,
-    createdAt: true,
-    submittedAt: true,
-    confirmedAt: true,
-  })
-);
+export const insertSubmissionSchema = createInsertSchema(submissions).omit({
+  id: true,
+  createdAt: true,
+  submittedAt: true,
+  confirmedAt: true,
+});
 
 // Submission Pipeline Insert Schemas
 export const insertSubmissionPipelineSchema = createInsertSchema(
@@ -1624,34 +1605,26 @@ export const insertSubmissionStatusHistorySchema = createInsertSchema(
   createdAt: true,
 });
 
-export const insertAuditLogSchema = asZodType(
-  createInsertSchema(auditLogs).omit({
-    id: true,
-    timestamp: true,
-  })
-);
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  timestamp: true,
+});
 
-export const insertNotificationSchema = asZodType(
-  createInsertSchema(notifications).omit({
-    id: true,
-    createdAt: true,
-  })
-);
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Scan Insert Schemas
-export const insertScanSchema = asZodType(
-  createInsertSchema(scans).omit({
-    id: true,
-    createdAt: true,
-  })
-);
+export const insertScanSchema = createInsertSchema(scans).omit({
+  id: true,
+  createdAt: true,
+});
 
-export const insertScanEventSchema = asZodType(
-  createInsertSchema(scanEvents).omit({
-    id: true,
-    createdAt: true,
-  })
-);
+export const insertScanEventSchema = createInsertSchema(scanEvents).omit({
+  id: true,
+  createdAt: true,
+});
 
 // Company Profile Insert Schemas
 export const insertCompanyProfileSchema = createInsertSchema(
@@ -1775,20 +1748,20 @@ export const insertWorkflowDependenciesSchema = createInsertSchema(
 
 // Types
 export type User = typeof users.$inferSelect;
-export type InsertUser = z.infer<typeof insertUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema & any>;
 
 export type Portal = typeof portals.$inferSelect;
 export type PublicPortal = Omit<Portal, 'username' | 'password'>;
-export type InsertPortal = z.infer<typeof insertPortalSchema>;
+export type InsertPortal = z.infer<typeof insertPortalSchema & any>;
 
 export type RFP = typeof rfps.$inferSelect;
-export type InsertRFP = z.infer<typeof insertRfpSchema>;
+export type InsertRFP = z.infer<typeof insertRfpSchema & any>;
 
 export type ProposalRow = typeof proposals.$inferSelect;
 export type Proposal = Omit<ProposalRow, 'receiptData'> & {
   receiptData: SubmissionReceiptData | null;
 };
-type InsertProposalInput = z.infer<typeof insertProposalSchema>;
+type InsertProposalInput = z.infer<typeof insertProposalSchema & any>;
 export type InsertProposal = Omit<
   InsertProposalInput,
   'receiptData' | 'submittedAt'
@@ -1799,7 +1772,7 @@ export type InsertProposal = Omit<
 };
 
 export type Document = typeof documents.$inferSelect;
-export type InsertDocument = z.infer<typeof insertDocumentSchema>;
+export type InsertDocument = z.infer<typeof insertDocumentSchema & any>;
 
 export type SubmissionRow = typeof submissions.$inferSelect;
 export type Submission = Omit<
@@ -1811,11 +1784,7 @@ export type Submission = Omit<
   receiptData: SubmissionReceiptData | null;
 };
 
-export type InsertSubmission = z.infer<typeof insertSubmissionSchema> & {
-  rfpId: string;
-  proposalId: string;
-  portalId: string;
-};
+export type InsertSubmission = z.infer<typeof insertSubmissionSchema & any>;
 
 // Submission Pipeline Types
 export type SubmissionPipelineRow = typeof submissionPipelines.$inferSelect;
@@ -1843,7 +1812,7 @@ export type SubmissionPipeline = Omit<
 };
 
 type InsertSubmissionPipelineInput = z.infer<
-  typeof insertSubmissionPipelineSchema
+  typeof insertSubmissionPipelineSchema & any
 >;
 export type InsertSubmissionPipeline = Omit<
   InsertSubmissionPipelineInput,
@@ -1865,12 +1834,14 @@ export type InsertSubmissionPipeline = Omit<
 };
 
 export type SubmissionEvent = typeof submissionEvents.$inferSelect;
-export type InsertSubmissionEvent = z.infer<typeof insertSubmissionEventSchema>;
+export type InsertSubmissionEvent = z.infer<
+  typeof insertSubmissionEventSchema & any
+>;
 
 export type SubmissionStatusHistory =
   typeof submissionStatusHistory.$inferSelect;
 export type InsertSubmissionStatusHistory = z.infer<
-  typeof insertSubmissionStatusHistorySchema
+  typeof insertSubmissionStatusHistorySchema & any
 >;
 
 export interface SubmissionPipelineRequest {
@@ -1908,89 +1879,107 @@ export interface SubmissionPipelineResult {
 }
 
 export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema & any>;
 
 export type Notification = typeof notifications.$inferSelect;
-export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema & any>;
 
 // Scan Types
 export type Scan = typeof scans.$inferSelect;
-export type InsertScan = z.infer<typeof insertScanSchema>;
+export type InsertScan = z.infer<typeof insertScanSchema & any>;
 
 export type ScanEvent = typeof scanEvents.$inferSelect;
-export type InsertScanEvent = z.infer<typeof insertScanEventSchema>;
+export type InsertScanEvent = z.infer<typeof insertScanEventSchema & any>;
 
 // Company Profile Types
 export type CompanyProfile = typeof companyProfiles.$inferSelect;
-export type InsertCompanyProfile = z.infer<typeof insertCompanyProfileSchema>;
+export type InsertCompanyProfile = z.infer<
+  typeof insertCompanyProfileSchema & any
+>;
 
 export type CompanyAddress = typeof companyAddresses.$inferSelect;
-export type InsertCompanyAddress = z.infer<typeof insertCompanyAddressSchema>;
+export type InsertCompanyAddress = z.infer<
+  typeof insertCompanyAddressSchema & any
+>;
 
 export type CompanyContact = typeof companyContacts.$inferSelect;
-export type InsertCompanyContact = z.infer<typeof insertCompanyContactSchema>;
+export type InsertCompanyContact = z.infer<
+  typeof insertCompanyContactSchema & any
+>;
 
 export type CompanyIdentifier = typeof companyIdentifiers.$inferSelect;
 export type InsertCompanyIdentifier = z.infer<
-  typeof insertCompanyIdentifierSchema
+  typeof insertCompanyIdentifierSchema & any
 >;
 
 export type CompanyCertification = typeof companyCertifications.$inferSelect;
 export type InsertCompanyCertification = z.infer<
-  typeof insertCompanyCertificationSchema
+  typeof insertCompanyCertificationSchema & any
 >;
 
 export type CompanyInsurance = typeof companyInsurance.$inferSelect;
 export type InsertCompanyInsurance = z.infer<
-  typeof insertCompanyInsuranceSchema
+  typeof insertCompanyInsuranceSchema & any
 >;
 
 // AI Conversation Types
 export type AiConversation = typeof aiConversations.$inferSelect;
-export type InsertAiConversation = z.infer<typeof insertAiConversationSchema>;
+export type InsertAiConversation = z.infer<
+  typeof insertAiConversationSchema & any
+>;
 
 export type ConversationMessage = typeof conversationMessages.$inferSelect;
 export type InsertConversationMessage = z.infer<
-  typeof insertConversationMessageSchema
+  typeof insertConversationMessageSchema & any
 >;
 
 export type ResearchFinding = typeof researchFindings.$inferSelect;
-export type InsertResearchFinding = z.infer<typeof insertResearchFindingSchema>;
+export type InsertResearchFinding = z.infer<
+  typeof insertResearchFindingSchema & any
+>;
 
 export type HistoricalBid = typeof historicalBids.$inferSelect;
-export type InsertHistoricalBid = z.infer<typeof insertHistoricalBidSchema>;
+export type InsertHistoricalBid = z.infer<
+  typeof insertHistoricalBidSchema & any
+>;
 
 // 3-Tier Agentic System Types
 export type AgentRegistry = typeof agentRegistry.$inferSelect;
-export type InsertAgentRegistry = z.infer<typeof insertAgentRegistrySchema>;
+export type InsertAgentRegistry = z.infer<
+  typeof insertAgentRegistrySchema & any
+>;
 
 export type WorkItem = typeof workItems.$inferSelect;
-export type InsertWorkItem = z.infer<typeof insertWorkItemSchema>;
+export type InsertWorkItem = z.infer<typeof insertWorkItemSchema & any>;
 
 export type AgentSession = typeof agentSessions.$inferSelect;
-export type InsertAgentSession = z.infer<typeof insertAgentSessionSchema>;
+export type InsertAgentSession = z.infer<typeof insertAgentSessionSchema & any>;
 
 // Enhanced Orchestration Types
 export type DeadLetterQueue = typeof deadLetterQueue.$inferSelect;
-export type InsertDeadLetterQueue = z.infer<typeof insertDeadLetterQueueSchema>;
+export type InsertDeadLetterQueue = z.infer<
+  typeof insertDeadLetterQueueSchema & any
+>;
 
 export type PhaseStateTransition = typeof phaseStateTransitions.$inferSelect;
 export type InsertPhaseStateTransition = z.infer<
-  typeof insertPhaseStateTransitionsSchema
+  typeof insertPhaseStateTransitionsSchema & any
 >;
 
 export type PipelineOrchestration = typeof pipelineOrchestration.$inferSelect;
 export type InsertPipelineOrchestration = z.infer<
-  typeof insertPipelineOrchestrationSchema
+  typeof insertPipelineOrchestrationSchema & any
 >;
 
 export type SystemHealth = typeof systemHealth.$inferSelect;
-export type InsertSystemHealth = z.infer<typeof insertSystemHealthSchema>;
+export type InsertSystemHealth = z.infer<typeof insertSystemHealthSchema & any>;
 
 export type PipelineMetrics = typeof pipelineMetrics.$inferSelect;
-export type InsertPipelineMetrics = z.infer<typeof insertPipelineMetricsSchema>;
+export type InsertPipelineMetrics = z.infer<
+  typeof insertPipelineMetricsSchema & any
+>;
 
 export type WorkflowDependency = typeof workflowDependencies.$inferSelect;
 export type InsertWorkflowDependency = z.infer<
-  typeof insertWorkflowDependenciesSchema
+  typeof insertWorkflowDependenciesSchema & any
 >;

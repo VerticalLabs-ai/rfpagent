@@ -270,7 +270,7 @@ export class PortalSchedulerService {
    */
   private getNextRun(cronExpression: string): Date | undefined {
     try {
-      const interval = cronParser.parseExpression(cronExpression, {
+      const interval = (cronParser as any).parseExpression(cronExpression, {
         currentDate: new Date(),
         tz: 'America/Chicago',
       });

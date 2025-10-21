@@ -660,28 +660,24 @@ export class WorkflowCoordinator {
       switch (workItem.taskType) {
         // New Discovery Pipeline Tasks - Sequenced workflow
         case 'portal_authentication':
-          (await getDiscoveryWorkflowProcessors()).processPortalAuthentication(
-            workItem
-          );
-          break;
+          return await (
+            await getDiscoveryWorkflowProcessors()
+          ).processPortalAuthentication(workItem);
 
         case 'portal_scanning':
-          (await getDiscoveryWorkflowProcessors()).processPortalScanning(
-            workItem
-          );
-          break;
+          return await (
+            await getDiscoveryWorkflowProcessors()
+          ).processPortalScanning(workItem);
 
         case 'rfp_extraction':
-          (await getDiscoveryWorkflowProcessors()).processRFPExtraction(
-            workItem
-          );
-          break;
+          return await (
+            await getDiscoveryWorkflowProcessors()
+          ).processRFPExtraction(workItem);
 
         case 'portal_monitoring':
-          (await getDiscoveryWorkflowProcessors()).processPortalMonitoring(
-            workItem
-          );
-          break;
+          return await (
+            await getDiscoveryWorkflowProcessors()
+          ).processPortalMonitoring(workItem);
 
         // Legacy Discovery Phase Tasks
         case 'portal_scan':
@@ -2353,7 +2349,7 @@ export class WorkflowCoordinator {
       typeof navigationAttempt?.duration === 'number'
         ? navigationAttempt.duration
         : steps.reduce(
-            (total, current) =>
+            (total: number, current: any) =>
               total +
               (typeof current.duration === 'number' ? current.duration : 0),
             0

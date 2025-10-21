@@ -41,9 +41,9 @@ curl -X GET https://api.rfpagent.com/api/system/health
 const response = await fetch('http://localhost:3000/api/rfps', {
   method: 'GET',
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   },
-  credentials: 'include' // For session-based auth
+  credentials: 'include', // For session-based auth
 });
 
 const { rfps, total } = await response.json();
@@ -77,13 +77,13 @@ const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
   credentials: 'include',
   body: JSON.stringify({
     username: 'your-username',
-    password: 'your-password'
-  })
+    password: 'your-password',
+  }),
 });
 
 // Future requests will include session cookie automatically
 const rfpsResponse = await fetch('http://localhost:3000/api/rfps', {
-  credentials: 'include'
+  credentials: 'include',
 });
 ```
 
@@ -102,6 +102,7 @@ curl -H "Authorization: Bearer YOUR_API_TOKEN" \
 RFPs are the core entity representing government procurement opportunities.
 
 **Lifecycle:**
+
 - `discovered` - Found by portal scanning
 - `parsing` - Documents being processed
 - `drafting` - Proposal being generated
@@ -115,6 +116,7 @@ RFPs are the core entity representing government procurement opportunities.
 AI-generated proposals linked to RFPs.
 
 **Components:**
+
 - Content (narratives, technical sections)
 - Pricing tables
 - Compliance checklists
@@ -125,6 +127,7 @@ AI-generated proposals linked to RFPs.
 Government procurement portals that are monitored for RFPs.
 
 **Types:**
+
 - Federal (SAM.gov)
 - State (various state portals)
 - Municipal (city/county portals)
@@ -166,12 +169,14 @@ GET /api/rfps?status=discovered&page=1&limit=20
 ```
 
 **Query Parameters:**
+
 - `status` - Filter by status (discovered, parsing, drafting, review, approved, submitted, closed)
 - `portalId` - Filter by portal UUID
 - `page` - Page number (default: 1)
 - `limit` - Items per page (default: 20, max: 100)
 
 **Response:**
+
 ```json
 {
   "rfps": [
@@ -222,6 +227,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -245,6 +251,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "scanId": "scan_abc123def456",
@@ -260,6 +267,7 @@ Accept: text/event-stream
 ```
 
 **Event Stream:**
+
 ```
 data: {"type":"scan_started","scanId":"scan_123","portalName":"Austin Finance Online"}
 
@@ -291,6 +299,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -338,6 +347,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -353,6 +363,7 @@ GET /api/submissions/{submissionId}/status
 ```
 
 **Response:**
+
 ```json
 {
   "id": "sub_123",
@@ -388,6 +399,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "response": "I found 5 technology RFPs from Austin with estimated values over $100,000. The highest value is a Cloud Infrastructure RFP at $500,000 with a deadline of December 31, 2024.",
@@ -413,10 +425,10 @@ const eventSource = new EventSource(
   `/api/portals/${portalId}/scan/stream?scanId=${scanId}`
 );
 
-eventSource.addEventListener('message', (event) => {
+eventSource.addEventListener('message', event => {
   const data = JSON.parse(event.data);
 
-  switch(data.type) {
+  switch (data.type) {
     case 'scan_started':
       console.log(`Scan started for ${data.portalName}`);
       break;
@@ -433,7 +445,7 @@ eventSource.addEventListener('message', (event) => {
   }
 });
 
-eventSource.onerror = (error) => {
+eventSource.onerror = error => {
   console.error('SSE Error:', error);
   eventSource.close();
 };
@@ -446,7 +458,7 @@ const eventSource = new EventSource(
   `/api/proposals/submission-materials/stream/${sessionId}`
 );
 
-eventSource.onmessage = (event) => {
+eventSource.onmessage = event => {
   const progress = JSON.parse(event.data);
   console.log(`${progress.currentStep}: ${progress.progress}%`);
 
@@ -496,7 +508,7 @@ async function handleAPIRequest() {
     const response = await fetch('/api/rfps', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(rfpData)
+      body: JSON.stringify(rfpData),
     });
 
     if (!response.ok) {
@@ -551,7 +563,7 @@ function getRateLimitInfo(headers) {
   return {
     limit: parseInt(headers.get('X-RateLimit-Limit')),
     remaining: parseInt(headers.get('X-RateLimit-Remaining')),
-    resetAt: new Date(parseInt(headers.get('X-RateLimit-Reset')) * 1000)
+    resetAt: new Date(parseInt(headers.get('X-RateLimit-Reset')) * 1000),
   };
 }
 
@@ -586,9 +598,7 @@ async function getAllRFPs() {
   let hasMore = true;
 
   while (hasMore) {
-    const response = await fetch(
-      `/api/rfps?page=${page}&limit=100`
-    );
+    const response = await fetch(`/api/rfps?page=${page}&limit=100`);
     const { rfps, total } = await response.json();
 
     allRFPs.push(...rfps);
@@ -635,7 +645,7 @@ function monitorScan(scanId, portalId) {
       `/api/portals/${portalId}/scan/stream?scanId=${scanId}`
     );
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       const data = JSON.parse(event.data);
 
       if (data.type === 'scan_completed') {
@@ -647,7 +657,7 @@ function monitorScan(scanId, portalId) {
       }
     };
 
-    eventSource.onerror = (error) => {
+    eventSource.onerror = error => {
       eventSource.close();
       reject(error);
     };
@@ -671,8 +681,8 @@ await fetch('/api/proposals/pipeline/generate', {
   body: JSON.stringify({
     rfpIds: ['id1', 'id2', 'id3'],
     companyProfileId: 'profile123',
-    parallelExecution: true
-  })
+    parallelExecution: true,
+  }),
 });
 
 // Avoid: Individual requests in a loop
@@ -700,8 +710,8 @@ class RFPAgent {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers
-      }
+        ...options.headers,
+      },
     });
 
     if (!response.ok) {
@@ -716,7 +726,7 @@ class RFPAgent {
   async submitRFP(url, notes) {
     return this.fetch('/rfps/manual', {
       method: 'POST',
-      body: JSON.stringify({ url, userNotes: notes })
+      body: JSON.stringify({ url, userNotes: notes }),
     });
   }
 
@@ -748,9 +758,9 @@ class RFPAgent {
           generatePricing: true,
           generateCompliance: true,
           proposalType: 'technical',
-          qualityThreshold: 0.85
-        }
-      })
+          qualityThreshold: 0.85,
+        },
+      }),
     });
   }
 
@@ -761,9 +771,11 @@ class RFPAgent {
         `${this.baseURL}/proposals/submission-materials/stream/${sessionId}`
       );
 
-      eventSource.onmessage = (event) => {
+      eventSource.onmessage = event => {
         const progress = JSON.parse(event.data);
-        console.log(`Progress: ${progress.progress}% - ${progress.currentStep}`);
+        console.log(
+          `Progress: ${progress.progress}% - ${progress.currentStep}`
+        );
 
         if (progress.status === 'completed') {
           eventSource.close();
@@ -774,7 +786,7 @@ class RFPAgent {
         }
       };
 
-      eventSource.onerror = (error) => {
+      eventSource.onerror = error => {
         eventSource.close();
         reject(error);
       };
@@ -786,14 +798,13 @@ class RFPAgent {
     // Create submission
     const submission = await this.fetch('/submissions', {
       method: 'POST',
-      body: JSON.stringify({ rfpId, proposalId, portalId })
+      body: JSON.stringify({ rfpId, proposalId, portalId }),
     });
 
     // Execute submission pipeline
-    const pipeline = await this.fetch(
-      `/submissions/${submission.id}/execute`,
-      { method: 'POST' }
-    );
+    const pipeline = await this.fetch(`/submissions/${submission.id}/execute`, {
+      method: 'POST',
+    });
 
     return { submission, pipelineId: pipeline.pipelineId };
   }
@@ -803,9 +814,7 @@ class RFPAgent {
     while (true) {
       const status = await this.fetch(`/submissions/${submissionId}/status`);
 
-      console.log(
-        `Submission ${status.currentPhase}: ${status.progress}%`
-      );
+      console.log(`Submission ${status.currentPhase}: ${status.progress}%`);
 
       if (status.status === 'completed') {
         return status;
@@ -844,9 +853,8 @@ async function main() {
 
     // 4. Monitor generation
     console.log('Monitoring proposal generation...');
-    const proposalProgress = await agent.monitorProposalGeneration(
-      proposalSessionId
-    );
+    const proposalProgress =
+      await agent.monitorProposalGeneration(proposalSessionId);
     console.log('Proposal generated successfully!');
 
     // 5. Get proposal
@@ -867,7 +875,6 @@ async function main() {
 
     console.log('Submission completed!');
     console.log('Receipt:', submissionResult.submissionReceipt);
-
   } catch (error) {
     console.error('Workflow failed:', error);
   }
@@ -983,11 +990,12 @@ if __name__ == '__main__':
 - **Documentation**: https://docs.rfpagent.com
 - **API Status**: https://status.rfpagent.com
 - **Support Email**: support@rfpagent.com
-- **GitHub Issues**: https://github.com/rfpagent/api/issues
+- **GitHub Issues**: https://github.com/VerticalLabs-ai/rfpagent/issues
 
 ## Changelog
 
 ### Version 1.0.0 (Current)
+
 - Initial API release
 - Session-based authentication
 - Core RFP, Proposal, and Portal endpoints
@@ -995,6 +1003,7 @@ if __name__ == '__main__':
 - 3-tier agent system
 
 ### Upcoming Features
+
 - JWT authentication
 - Webhooks for async notifications
 - GraphQL API

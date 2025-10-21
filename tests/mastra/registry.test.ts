@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentRegistry, AgentMetadata } from '../registry/agent-registry';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+import { AgentRegistry, AgentMetadata } from '../../src/mastra/registry/agent-registry';
 import { Agent } from '@mastra/core/agent';
 
 describe('AgentRegistry', () => {

@@ -151,9 +151,11 @@ export class RFPScrapingService {
       }
 
       // Check if RFP already exists
-      const existingRFP = await db.query.rfps.findFirst({
-        where: eq(rfps.sourceUrl, url),
-      });
+      const [existingRFP] = await db
+        .select()
+        .from(rfps)
+        .where(eq(rfps.sourceUrl, url))
+        .limit(1);
 
       let rfpId: string;
 
@@ -362,9 +364,11 @@ export class RFPScrapingService {
       }
 
       // Get the final RFP data
-      const finalRfp = await db.query.rfps.findFirst({
-        where: eq(rfps.id, rfpId),
-      });
+      const [finalRfp] = await db
+        .select()
+        .from(rfps)
+        .where(eq(rfps.id, rfpId))
+        .limit(1);
 
       console.log(`✅ RFP scraping completed for: ${extractedData.title}`);
 

@@ -72,7 +72,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Manages portal authentication, RFP discovery, and monitoring',
+      description:
+        'Manages portal authentication, RFP discovery, and monitoring',
     },
   },
 
@@ -98,8 +99,9 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
       strategy: 'demand', // Scale based on proposal workload
     },
     metadata: {
-      model: 'gpt-5',
-      description: 'Orchestrates proposal generation, compliance, and submissions',
+      model: 'gpt-4-turbo',
+      description:
+        'Orchestrates proposal generation, compliance, and submissions',
     },
   },
 
@@ -126,7 +128,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Coordinates market research, competitive analysis, and historical data',
+      description:
+        'Coordinates market research, competitive analysis, and historical data',
     },
   },
 
@@ -157,7 +160,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Automated portal scanning and RFP discovery using browser automation',
+      description:
+        'Automated portal scanning and RFP discovery using browser automation',
     },
   },
 
@@ -182,7 +186,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Portal health monitoring, scan scheduling, and change detection',
+      description:
+        'Portal health monitoring, scan scheduling, and change detection',
     },
   },
 
@@ -208,8 +213,9 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
       strategy: 'demand', // High parallelization for proposal sections
     },
     metadata: {
-      model: 'gpt-5',
-      description: 'Creates high-quality proposal narratives, technical content, and summaries',
+      model: 'gpt-4-turbo',
+      description:
+        'Creates high-quality proposal narratives, technical content, and summaries',
     },
   },
 
@@ -259,7 +265,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Parses RFP documents and extracts structured requirements (95%+ accuracy)',
+      description:
+        'Parses RFP documents and extracts structured requirements (95%+ accuracy)',
     },
   },
 
@@ -286,7 +293,8 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
     },
     metadata: {
       model: 'claude-sonnet-4.5',
-      description: 'Conducts market research, competitive intelligence, and trend analysis',
+      description:
+        'Conducts market research, competitive intelligence, and trend analysis',
     },
   },
 
@@ -388,10 +396,13 @@ export const getActiveAgents = (): Record<string, AgentMetadata> => {
 /**
  * Get agents by tier
  */
-export const getAgentsByTier = (tier: 1 | 2 | 3 | 4 | 5): Record<string, AgentMetadata> => {
+export const getAgentsByTier = (
+  tier: 1 | 2 | 3 | 4 | 5
+): Record<string, AgentMetadata> => {
   return Object.fromEntries(
     Object.entries(agentHierarchyConfig).filter(
-      ([_, metadata]) => metadata.tier === tier && !metadata.metadata?.deprecated
+      ([_, metadata]) =>
+        metadata.tier === tier && !metadata.metadata?.deprecated
     )
   );
 };
