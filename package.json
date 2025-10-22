@@ -8,7 +8,7 @@
     "url": "https://github.com/VerticalLabs-ai/rfpagent.git"
   },
   "scripts": {
-    "dev": "concurrently \"NODE_ENV=development tsx server/index.ts\" \"wait-on http://localhost:3000 && vite\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "dev": "concurrently \"NODE_ENV=development tsx server/index.ts\" \"wait-on http://localhost:5001 && vite\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "dev:backend": "NODE_ENV=development tsx server/index.ts",
     "dev:frontend": "vite",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --tree-shaking=true --minify --outdir=dist",
