@@ -1,14 +1,14 @@
-// IMPORTANT: Import Sentry instrumentation FIRST, before any other imports
-import './instrument';
-
+// Load environment variables FIRST, before any other imports (including Sentry)
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env.local first (takes precedence), then .env
 const envLocalPath = path.join(process.cwd(), '.env.local');
 const envPath = path.join(process.cwd(), '.env');
 dotenv.config({ path: envLocalPath });
 dotenv.config({ path: envPath });
+
+// NOW import Sentry instrumentation (after env vars are loaded)
+import './instrument';
 
 import { setupExpressErrorHandler } from '@sentry/node';
 import express, { NextFunction, type Request, Response } from 'express';
