@@ -141,7 +141,7 @@ export default function ScanHistoryPage() {
     } as const;
 
     return (
-      <Badge variant={variants[status as keyof typeof variants] || 'outline'}>
+      <Badge variant={variants[status as keyof typeof variants] || 'outline-solid'}>
         {status.replace('_', ' ')}
       </Badge>
     );

@@ -1,5 +1,6 @@
 import type { Document, RFP } from '@shared/schema';
 import OpenAI from 'openai';
+import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 
 export interface FormField {
@@ -244,6 +245,23 @@ Focus on iByte Enterprises LLC - a woman-owned construction/technology company w
       return analysis;
     } catch (error) {
       console.error(`Error analyzing document ${document.filename}:`, error);
+
+      // Capture to Sentry with document context
+      withScope(scope => {
+        scope.setTag('service', 'document-intelligence');
+        scope.setTag('operation', 'analyze-document');
+        scope.setTag('document_id', document.id);
+        scope.setTag('document_type', document.type || 'unknown');
+        scope.setContext('document_details', {
+          documentId: document.id,
+          filename: document.filename,
+          fileType: document.type,
+          rfpId: document.rfpId,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       return {
         formFields: [],
         humanOversightItems: [],
@@ -326,6 +344,21 @@ Return JSON:
       return JSON.parse(content);
     } catch (error) {
       console.error('Error researching competitive pricing:', error);
+
+      // Capture to Sentry with warning level (non-critical, has fallback)
+      withScope(scope => {
+        scope.setTag('service', 'document-intelligence');
+        scope.setTag('operation', 'competitive-pricing-research');
+        scope.setTag('rfp_id', rfp.id);
+        scope.setContext('pricing_research', {
+          rfpId: rfp.id,
+          rfpTitle: rfp.title,
+          estimatedValue: rfp.estimatedValue,
+          hasFallback: true,
+        });
+        scope.setLevel('warning');
+        captureException(error);
+      });
 
       // Return default analysis if AI fails
       const estimatedValue = rfp.estimatedValue

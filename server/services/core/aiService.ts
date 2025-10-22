@@ -1,5 +1,6 @@
 import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
 import OpenAI from 'openai';
+import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 import { circuitBreakerManager } from './circuitBreaker';
 
@@ -428,6 +429,20 @@ ${documentText}
       return result;
     } catch (error) {
       console.error('Error analyzing document compliance:', error);
+
+      // Capture to Sentry with document context
+      withScope(scope => {
+        scope.setTag('service', 'ai-service');
+        scope.setTag('operation', 'analyze-compliance');
+        scope.setTag('rfp_id', rfpContext?.id || 'unknown');
+        scope.setContext('compliance_analysis', {
+          rfpId: rfpContext?.id || 'unknown',
+          documentLength: documentText?.length || 0,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       throw new Error('Failed to analyze document compliance');
     }
   }
@@ -503,6 +518,20 @@ ${documentText}
       });
     } catch (error) {
       console.error('Error generating proposal:', error);
+
+      // Capture to Sentry with RFP context
+      withScope(scope => {
+        scope.setTag('service', 'ai-service');
+        scope.setTag('operation', 'generate-proposal');
+        scope.setTag('rfp_id', rfp.id);
+        scope.setContext('proposal_generation', {
+          rfpId: rfp.id,
+          rfpTitle: rfp.title,
+          agency: rfp.agency,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
 
       // Update RFP status to indicate error
       await storage.updateRFP(rfp.id, {
@@ -785,6 +814,18 @@ Content: ${scrapedContent}
       return response.choices[0].message.content || '';
     } catch (error) {
       console.error('Error generating content:', error);
+
+      // Capture to Sentry with context
+      withScope(scope => {
+        scope.setTag('service', 'ai-service');
+        scope.setTag('operation', 'generate-content');
+        scope.setContext('content_generation', {
+          promptLength: prompt?.length || 0,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       throw new Error('Failed to generate content');
     }
   }

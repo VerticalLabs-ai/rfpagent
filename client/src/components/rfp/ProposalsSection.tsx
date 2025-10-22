@@ -1352,7 +1352,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                   </h4>
                                   <div className="space-y-3">
                                     <div className="flex items-start gap-3">
-                                      <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                                      <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 shrink-0" />
                                       <div>
                                         <div className="font-medium text-gray-200">
                                           Technical Specifications
@@ -1364,7 +1364,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                      <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                                      <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 shrink-0" />
                                       <div>
                                         <div className="font-medium text-gray-200">
                                           Delivery Schedule
@@ -1376,7 +1376,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                      <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                                      <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
                                       <div>
                                         <div className="font-medium text-gray-200">
                                           Insurance Requirements
@@ -1388,7 +1388,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                                       </div>
                                     </div>
                                     <div className="flex items-start gap-3">
-                                      <Clock className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                                      <Clock className="w-5 h-5 text-blue-400 mt-0.5 shrink-0" />
                                       <div>
                                         <div className="font-medium text-gray-200">
                                           Minority Business Certification

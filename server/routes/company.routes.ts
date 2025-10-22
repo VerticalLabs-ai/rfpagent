@@ -74,10 +74,10 @@ router.post('/profiles', async (req, res) => {
     res.status(201).json(profile);
   } catch (error) {
     if (error instanceof ZodError) {
-      console.error('Validation error creating company profile:', error.errors);
+      console.error('Validation error creating company profile:', error.issues);
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company profile:', error);
     res.status(500).json({ error: 'Failed to create company profile' });
@@ -102,7 +102,7 @@ router.put('/profiles/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company profile:', error);
     res.status(500).json({ error: 'Failed to update company profile' });
@@ -159,7 +159,7 @@ router.post('/profiles/:companyProfileId/addresses', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company address:', error);
     res.status(500).json({ error: 'Failed to create company address' });
@@ -183,7 +183,7 @@ router.put('/addresses/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company address:', error);
     res.status(500).json({ error: 'Failed to update company address' });
@@ -236,7 +236,7 @@ router.post('/profiles/:companyProfileId/contacts', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company contact:', error);
     res.status(500).json({ error: 'Failed to create company contact' });
@@ -260,7 +260,7 @@ router.put('/contacts/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company contact:', error);
     res.status(500).json({ error: 'Failed to update company contact' });
@@ -313,7 +313,7 @@ router.post('/profiles/:companyProfileId/identifiers', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company identifier:', error);
     res.status(500).json({ error: 'Failed to create company identifier' });
@@ -337,7 +337,7 @@ router.put('/identifiers/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company identifier:', error);
     res.status(500).json({ error: 'Failed to update company identifier' });
@@ -408,7 +408,7 @@ router.post('/profiles/:companyProfileId/certifications', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company certification:', error);
     res.status(500).json({ error: 'Failed to create company certification' });
@@ -432,7 +432,7 @@ router.put('/certifications/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company certification:', error);
     res.status(500).json({ error: 'Failed to update company certification' });
@@ -501,7 +501,7 @@ router.post('/profiles/:companyProfileId/insurance', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error creating company insurance:', error);
     res.status(500).json({ error: 'Failed to create company insurance' });
@@ -525,7 +525,7 @@ router.put('/insurance/:id', async (req, res) => {
     if (error instanceof ZodError) {
       return res
         .status(400)
-        .json({ error: 'Invalid input data', details: error.errors });
+        .json({ error: 'Invalid input data', details: error.issues });
     }
     console.error('Error updating company insurance:', error);
     res.status(500).json({ error: 'Failed to update company insurance' });

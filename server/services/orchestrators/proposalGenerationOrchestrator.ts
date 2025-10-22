@@ -20,7 +20,7 @@ export interface ProposalGenerationPipeline {
     | 'construction'
     | 'professional_services';
   currentPhase:
-    | 'outline'
+    | 'outline-solid'
     | 'content_generation'
     | 'pricing_analysis'
     | 'compliance_validation'
@@ -134,7 +134,7 @@ export class ProposalGenerationOrchestrator {
         sessionId: request.sessionId,
         companyProfileId: request.companyProfileId,
         proposalType: request.proposalType || 'standard',
-        currentPhase: 'outline',
+        currentPhase: 'outline-solid',
         status: 'pending',
         progress: 0,
         executionMode,
@@ -240,7 +240,7 @@ export class ProposalGenerationOrchestrator {
     pipeline: ProposalGenerationPipeline
   ): Promise<void> {
     console.log(
-      `📋 Phase 1: Creating proposal outline for pipeline ${pipeline.pipelineId}`
+      `📋 Phase 1: Creating proposal outline-solid for pipeline ${pipeline.pipelineId}`
     );
 
     // Update progress tracking (if enabled)
@@ -254,7 +254,7 @@ export class ProposalGenerationOrchestrator {
     }
 
     pipeline.status = 'in_progress';
-    pipeline.currentPhase = 'outline';
+    pipeline.currentPhase = 'outline-solid';
     pipeline.progress = 10;
     pipeline.updatedAt = new Date();
 
@@ -277,7 +277,7 @@ export class ProposalGenerationOrchestrator {
       deadline: new Date(Date.now() + this.phaseTimeout),
       contextRef: pipeline.rfpId,
       createdByAgentId: 'proposal-orchestrator',
-      metadata: { phase: 'outline', pipelineId: pipeline.pipelineId },
+      metadata: { phase: 'outline-solid', pipelineId: pipeline.pipelineId },
     });
 
     pipeline.workItems.push(outlineWorkItem.id);
@@ -1277,7 +1277,7 @@ export class ProposalGenerationOrchestrator {
    */
   private getPhaseNumber(phase: string): number {
     const phases = [
-      'outline',
+      'outline-solid',
       'content_generation',
       'pricing_analysis',
       'compliance_validation',
@@ -1293,7 +1293,7 @@ export class ProposalGenerationOrchestrator {
    */
   private getNextSteps(pipeline: ProposalGenerationPipeline): string[] {
     switch (pipeline.currentPhase) {
-      case 'outline':
+      case 'outline-solid':
         return [
           'Analyzing RFP requirements',
           'Creating proposal structure',

@@ -23,7 +23,7 @@ export function RiskFlags({ riskFlags }: RiskFlagsProps) {
               className="flex items-start gap-2"
               data-testid={`risk-${index}`}
             >
-              <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+              <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
               <span className="text-sm">
                 {typeof risk === 'string' ? risk : risk.flag}
               </span>

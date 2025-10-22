@@ -353,7 +353,7 @@ export default function AIChat() {
                   data-testid={`action-suggestion-${suggestion.id}`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
+                    <div className="shrink-0 mt-0.5">
                       {getSuggestionIcon(suggestion.icon)}
                     </div>
                     <div className="flex-1 min-w-0">

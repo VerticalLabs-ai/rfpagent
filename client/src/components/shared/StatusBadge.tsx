@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 
 interface StatusBadgeProps {
   status: string;
-  variant?: 'default' | 'secondary' | 'destructive' | 'outline';
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline-solid';
   className?: string;
   testId?: string;
 }
@@ -30,7 +30,7 @@ export function StatusBadge({
       case 'discovered':
         return 'secondary';
       default:
-        return 'outline';
+        return 'outline-solid';
     }
   };
 

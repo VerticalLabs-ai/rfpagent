@@ -1,5 +1,6 @@
 import * as cron from 'node-cron';
 import cronParser from 'cron-parser';
+import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import {
   PortalMonitoringService,
   PortalScanResult,
@@ -141,6 +142,21 @@ export class PortalSchedulerService {
       }
     } catch (error) {
       console.error(`[SCHEDULER] Failed to scan portal ${portalName}:`, error);
+
+      // Capture to Sentry with portal context
+      withScope(scope => {
+        scope.setTag('service', 'portal-scheduler');
+        scope.setTag('operation', 'scheduled-scan');
+        scope.setTag('portal_id', portalId);
+        scope.setTag('portal_name', portalName);
+        scope.setContext('scan_details', {
+          portalId,
+          portalName,
+          scanType: 'scheduled',
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
 
       // Create error notification
       await this.storage.createNotification({

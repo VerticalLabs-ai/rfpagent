@@ -172,7 +172,7 @@ function ActivityItem({
       data-testid={`activity-item-${notification.id}`}
     >
       <div
-        className={`w-2 h-2 ${activityIcon.color.replace('text-', 'bg-')} rounded-full mt-2 flex-shrink-0`}
+        className={`w-2 h-2 ${activityIcon.color.replace('text-', 'bg-')} rounded-full mt-2 shrink-0`}
       ></div>
       <div className="flex-1 min-w-0">
         <p
@@ -228,7 +228,7 @@ function ComplianceAlert({ rfp, index }: { rfp: any; index: number }) {
       data-testid={`compliance-alert-${rfp.id}`}
     >
       <i
-        className={`${getRiskIcon(primaryFlag.category)} text-red-500 mt-1 flex-shrink-0`}
+        className={`${getRiskIcon(primaryFlag.category)} text-red-500 mt-1 shrink-0`}
       ></i>
       <div className="flex-1 min-w-0">
         <p
@@ -274,7 +274,7 @@ function ComplianceNotificationAlert({
       className={`flex items-start space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-900`}
       data-testid={`compliance-notification-${notification.id}`}
     >
-      <i className="fas fa-exclamation-circle text-orange-500 mt-1 flex-shrink-0"></i>
+      <i className="fas fa-exclamation-circle text-orange-500 mt-1 shrink-0"></i>
       <div className="flex-1 min-w-0">
         <p
           className="text-sm font-medium text-orange-800 dark:text-orange-200"

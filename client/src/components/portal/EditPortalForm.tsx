@@ -76,7 +76,7 @@ export function EditPortalForm({
           control={form.control}
           name="loginRequired"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-xs">
               <div className="space-y-0.5">
                 <FormLabel>Requires Login</FormLabel>
               </div>

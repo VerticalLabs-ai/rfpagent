@@ -280,7 +280,7 @@ export default function WorkflowManagement() {
                 variant={
                   humanInput.action === 'approve_submission'
                     ? 'default'
-                    : 'outline'
+                    : 'outline-solid'
                 }
               >
                 Approve Submission
@@ -293,7 +293,7 @@ export default function WorkflowManagement() {
                 variant={
                   humanInput.action === 'request_changes'
                     ? 'default'
-                    : 'outline'
+                    : 'outline-solid'
                 }
               >
                 Request Changes

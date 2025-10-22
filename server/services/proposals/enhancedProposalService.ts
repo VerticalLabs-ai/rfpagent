@@ -1,3 +1,4 @@
+import { captureException, addBreadcrumb, withScope, startSpan } from '@sentry/node';
 import { storage } from '../../storage';
 import {
   documentIntelligenceService,
@@ -275,6 +276,23 @@ export class EnhancedProposalService {
         }
       } catch (error) {
         console.error(`❌ Error during auto-submission:`, error);
+
+        // Capture to Sentry with context
+        withScope(scope => {
+          scope.setTag('service', 'proposal-generation');
+          scope.setTag('operation', 'auto-submission');
+          scope.setTag('rfp_id', request.rfpId);
+          scope.setTag('proposal_id', proposal.id);
+          scope.setContext('submission_details', {
+            rfpId: request.rfpId,
+            proposalId: proposal.id,
+            autoSubmit: request.autoSubmit,
+            companyProfileId: request.companyProfileId,
+          });
+          scope.setLevel('error');
+          captureException(error);
+        });
+
         submissionResult = {
           status: 'submission_error',
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -417,6 +435,22 @@ export class EnhancedProposalService {
     } catch (error) {
       console.error(`💥 Error in enhanced proposal generation:`, error);
 
+      // Capture to Sentry with full context
+      withScope(scope => {
+        scope.setTag('service', 'proposal-generation');
+        scope.setTag('operation', 'generate-enhanced-proposal');
+        scope.setTag('rfp_id', params.rfpId);
+        scope.setTag('session_id', params.sessionId);
+        scope.setContext('generation_params', {
+          rfpId: params.rfpId,
+          companyProfileId: params.companyProfileId,
+          sessionId: params.sessionId,
+          generatePricing: params.generatePricing,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       // Update RFP status to indicate failure
       await storage.updateRFP(params.rfpId, {
         status: 'draft',
@@ -516,6 +550,20 @@ export class EnhancedProposalService {
       };
     } catch (error) {
       console.error('Error generating AI narrative content:', error);
+
+      // Capture to Sentry with warning level (non-critical, has fallback)
+      withScope(scope => {
+        scope.setTag('service', 'proposal-generation');
+        scope.setTag('operation', 'generate-narrative');
+        scope.setTag('rfp_id', rfp.id);
+        scope.setContext('narrative_generation', {
+          rfpId: rfp.id,
+          rfpTitle: rfp.title,
+          hasFallback: true,
+        });
+        scope.setLevel('warning');
+        captureException(error);
+      });
 
       // Return basic content if AI fails
       return {

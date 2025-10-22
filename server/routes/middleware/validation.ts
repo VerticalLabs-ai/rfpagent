@@ -51,13 +51,13 @@ export const commonSchemas = {
       .transform(val => parseInt(val, 10))
       .pipe(z.number().min(1).max(100))
       .optional()
-      .default('50'),
+      .default(50),
     offset: z
       .string()
       .transform(val => parseInt(val, 10))
       .pipe(z.number().min(0))
       .optional()
-      .default('0'),
+      .default(0),
     page: z
       .string()
       .transform(val => parseInt(val, 10))
@@ -199,7 +199,7 @@ export const portalSchemas = {
     type: z.enum(['municipal', 'federal', 'state', 'private']),
     enabled: z.boolean().optional().default(true),
     scanInterval: z.number().min(3600).max(86400).optional(), // 1 hour to 1 day
-    config: z.record(z.any()).optional(),
+    config: z.record(z.string(), z.any()).optional(),
   }),
 
   update: z.object({
@@ -208,7 +208,7 @@ export const portalSchemas = {
     type: z.enum(['municipal', 'federal', 'state', 'private']).optional(),
     enabled: z.boolean().optional(),
     scanInterval: z.number().min(3600).max(86400).optional(),
-    config: z.record(z.any()).optional(),
+    config: z.record(z.string(), z.any()).optional(),
   }),
 };
 
@@ -219,7 +219,7 @@ export const rfpSchemas = {
   manual: z.object({
     url: z.string().url('Invalid URL format'),
     portalId: z.string().uuid('Invalid portal ID'),
-    additionalData: z.record(z.any()).optional(),
+    additionalData: z.record(z.string(), z.any()).optional(),
   }),
 
   filters: z.object({

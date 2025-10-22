@@ -1559,12 +1559,12 @@ export const insertRfpSchema = createInsertSchema(rfps).omit({
 export const insertProposalSchema = z
   .object({
     rfpId: z.string(),
-    content: z.record(z.any()).default({}),
-    narratives: z.record(z.any()).default({}),
-    pricingTables: z.record(z.any()).default({}),
-    forms: z.record(z.any()).default({}),
-    attachments: z.record(z.any()).default({}),
-    proposalData: z.record(z.any()).default({}),
+    content: z.record(z.string(), z.any()).default({}),
+    narratives: z.record(z.string(), z.any()).default({}),
+    pricingTables: z.record(z.string(), z.any()).default({}),
+    forms: z.record(z.string(), z.any()).default({}),
+    attachments: z.record(z.string(), z.any()).default({}),
+    proposalData: z.record(z.string(), z.any()).default({}),
     status: z
       .enum([
         'draft',

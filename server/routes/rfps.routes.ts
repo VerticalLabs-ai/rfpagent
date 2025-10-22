@@ -207,7 +207,7 @@ router.post('/manual', async (req, res) => {
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid input data',
-        details: validationResult.error.errors.map((e: any) => ({
+        details: validationResult.error.issues.map((e: any) => ({
           field: e.path.join('.'),
           message: e.message,
         })),

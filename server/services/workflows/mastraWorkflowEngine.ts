@@ -28,8 +28,8 @@ const WorkflowStateSchema = z.object({
   status: z.enum(['pending', 'running', 'suspended', 'completed', 'failed']),
   currentStep: z.string().optional(),
   progress: z.number().min(0).max(1),
-  results: z.record(z.any()).optional(),
-  context: z.record(z.any()).optional(),
+  results: z.record(z.string(), z.any()).optional(),
+  context: z.record(z.string(), z.any()).optional(),
 });
 
 const ActionSuggestionSchema = z.object({
@@ -40,7 +40,7 @@ const ActionSuggestionSchema = z.object({
   estimatedTime: z.string(),
   description: z.string(),
   icon: z.string(),
-  payload: z.record(z.any()).optional(),
+  payload: z.record(z.string(), z.any()).optional(),
 });
 
 export interface WorkflowState {

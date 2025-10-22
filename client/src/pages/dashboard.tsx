@@ -33,7 +33,7 @@ export default function Dashboard() {
 
         <div className="flex items-center gap-3">
           {performanceScore !== undefined && performanceScore !== null && (
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-xs">
               <CardContent className="p-3 flex items-center gap-2">
                 <Activity className="h-4 w-4 text-green-600" />
                 <div className="text-sm">

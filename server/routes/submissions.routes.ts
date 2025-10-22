@@ -42,7 +42,7 @@ const SubmissionPipelineStartRequestSchema = z.object({
       timeout: z.number().int().min(30000).max(600000).optional(),
     })
     .optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 const SubmissionPipelineStatusParamsSchema = z.object({
@@ -67,7 +67,7 @@ const SubmissionRetryRequestSchema = z.object({
       retryDelay: z.number().int().min(1000).max(300000).optional(),
     })
     .optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -84,7 +84,7 @@ router.post('/pipeline/start', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid request data',
-        details: validationResult.error.errors
+        details: validationResult.error.issues
           .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', '),
       });
@@ -166,7 +166,7 @@ router.get('/pipeline/status/:pipelineId', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid pipeline ID',
-        details: validationResult.error.errors
+        details: validationResult.error.issues
           .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', '),
       });
@@ -257,7 +257,7 @@ router.delete('/pipeline/:pipelineId', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid pipeline ID',
-        details: validationResult.error.errors
+        details: validationResult.error.issues
           .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', '),
       });
@@ -351,7 +351,7 @@ router.post('/retry', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid request data',
-        details: validationResult.error.errors
+        details: validationResult.error.issues
           .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', '),
       });
@@ -409,7 +409,7 @@ router.get('/pipeline/workflows', async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid query parameters',
-        details: validationResult.error.errors
+        details: validationResult.error.issues
           .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', '),
       });

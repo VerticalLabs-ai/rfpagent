@@ -46,7 +46,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <div className="w-64 bg-card border-r border-border flex-shrink-0 sidebar-nav">
+    <div className="w-64 bg-card border-r border-border shrink-0 sidebar-nav">
       <div className="p-6">
         <h1 className="text-xl font-bold text-primary flex items-center">
           <i className="fas fa-robot mr-2"></i>

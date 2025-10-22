@@ -1,3 +1,4 @@
+import { captureException, addBreadcrumb, withScope, startSpan } from '@sentry/node';
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
 import { aiProposalService } from '../proposals/ai-proposal-service';
@@ -1303,6 +1304,7 @@ export class WorkflowCoordinator {
       agency?: string;
       category?: string;
     };
+    portalIds?: string[];
     conversationId?: string;
     userId?: string;
   }): Promise<WorkflowResult> {
@@ -1411,6 +1413,22 @@ export class WorkflowCoordinator {
       };
     } catch (error) {
       console.error(`❌ RFP Discovery Workflow failed:`, error);
+
+      // Capture to Sentry with workflow context
+      withScope(scope => {
+        scope.setTag('service', 'workflow-coordinator');
+        scope.setTag('workflow', 'rfp-discovery');
+        scope.setTag('workflow_id', context.workflowId);
+        scope.setContext('workflow_details', {
+          workflowId: context.workflowId,
+          phase: context.currentPhase,
+          searchCriteria: params.searchCriteria,
+          portalsScanned: params.portalIds?.length || 0,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       context.status = 'failed';
       context.data.error =
         error instanceof Error ? error.message : 'Unknown error';
@@ -1428,6 +1446,7 @@ export class WorkflowCoordinator {
    */
   async executeProposalGenerationWorkflow(params: {
     rfpId: string;
+    companyProfileId?: string;
     conversationId?: string;
     userId?: string;
   }): Promise<WorkflowResult> {
@@ -1528,6 +1547,23 @@ export class WorkflowCoordinator {
       };
     } catch (error) {
       console.error(`❌ Proposal Generation Workflow failed:`, error);
+
+      // Capture to Sentry with workflow context
+      withScope(scope => {
+        scope.setTag('service', 'workflow-coordinator');
+        scope.setTag('workflow', 'proposal-generation');
+        scope.setTag('workflow_id', context.workflowId);
+        scope.setTag('rfp_id', params.rfpId);
+        scope.setContext('workflow_details', {
+          workflowId: context.workflowId,
+          rfpId: params.rfpId,
+          phase: context.currentPhase,
+          companyProfileId: params.companyProfileId,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
+
       context.status = 'failed';
       context.data.error =
         error instanceof Error ? error.message : 'Unknown error';
@@ -3002,7 +3038,7 @@ export class WorkflowCoordinator {
     workItem: WorkItem
   ): Promise<WorkflowResult> {
     console.log(
-      `📋 Processing proposal outline creation for work item ${workItem.id}`
+      `📋 Processing proposal outline-solid creation for work item ${workItem.id}`
     );
 
     try {
@@ -3027,7 +3063,7 @@ export class WorkflowCoordinator {
         error: result.error,
       };
     } catch (error) {
-      console.error('❌ Proposal outline creation failed:', error);
+      console.error('❌ Proposal outline-solid creation failed:', error);
       return {
         success: false,
         error:
@@ -3352,7 +3388,7 @@ export class WorkflowCoordinator {
             compliance
           ),
           generationPhases: [
-            'outline',
+            'outline-solid',
             'content',
             'pricing',
             'compliance',

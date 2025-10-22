@@ -279,7 +279,7 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">Filter:</span>
               <Button
-                variant={selectedPortal ? 'outline' : 'default'}
+                variant={selectedPortal ? 'outline-solid' : 'default'}
                 size="sm"
                 onClick={() => setSelectedPortal(null)}
                 data-testid="filter-all-portals"
@@ -291,7 +291,7 @@ export function ScanHistory({ portalId }: ScanHistoryProps) {
                   <Button
                     key={portal.id}
                     variant={
-                      selectedPortal === portal.id ? 'default' : 'outline'
+                      selectedPortal === portal.id ? 'default' : 'outline-solid'
                     }
                     size="sm"
                     onClick={() => setSelectedPortal(portal.id)}

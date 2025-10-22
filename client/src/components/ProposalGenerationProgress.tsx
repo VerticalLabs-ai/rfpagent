@@ -247,7 +247,7 @@ export function ProposalGenerationProgress({
               }`}
             >
               {/* Status Icon */}
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 {step.status === 'completed' && (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 )}
@@ -283,7 +283,7 @@ export function ProposalGenerationProgress({
               </div>
 
               {/* Step Badge */}
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <Badge
                   variant={
                     step.status === 'completed'
@@ -292,7 +292,7 @@ export function ProposalGenerationProgress({
                         ? 'secondary'
                         : step.status === 'error'
                           ? 'destructive'
-                          : 'outline'
+                          : 'outline-solid'
                   }
                   className="text-xs"
                 >

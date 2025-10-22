@@ -87,7 +87,7 @@ export class ContentGenerationSpecialist {
   ): Promise<SpecialistWorkResult> {
     const inputs = workItem.inputs as OutlineGenerationInputs;
     console.log(
-      `📋 Content Specialist: Creating proposal outline for ${inputs.rfpId}`
+      `📋 Content Specialist: Creating proposal outline-solid for ${inputs.rfpId}`
     );
 
     try {
@@ -168,10 +168,10 @@ export class ContentGenerationSpecialist {
           rfp_analysis: rfpAnalysis,
         },
         qualityScore: 0.85,
-        metadata: { phase: 'outline', specialist: 'content-generator' },
+        metadata: { phase: 'outline-solid', specialist: 'content-generator' },
       };
     } catch (error) {
-      console.error('❌ Content Specialist outline generation failed:', error);
+      console.error('❌ Content Specialist outline-solid generation failed:', error);
       return {
         success: false,
         error:

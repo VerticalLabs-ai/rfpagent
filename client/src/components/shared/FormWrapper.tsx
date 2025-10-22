@@ -8,7 +8,7 @@ interface FormAction {
   variant?:
     | 'default'
     | 'destructive'
-    | 'outline'
+    | 'outline-solid'
     | 'secondary'
     | 'ghost'
     | 'link';

@@ -6,6 +6,7 @@ import * as cheerio from 'cheerio';
 import pLimit from 'p-limit';
 import axios from 'axios';
 import { z } from 'zod';
+import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 import { AIService } from '../core/aiService';
 // Removed Puppeteer - now using unified Browserbase through Mastra
@@ -819,6 +820,23 @@ export class MastraScrapingService {
       );
     } catch (error) {
       console.error(`Error in intelligent scraping ${portal.name}:`, error);
+
+      // Capture to Sentry with detailed context
+      withScope(scope => {
+        scope.setTag('service', 'portal-scraping');
+        scope.setTag('portal_id', portal.id);
+        scope.setTag('portal_name', portal.name);
+        scope.setTag('portal_url', portal.url);
+        scope.setContext('portal_details', {
+          portalId: portal.id,
+          portalName: portal.name,
+          portalUrl: portal.url,
+          searchFilter: options.searchFilter,
+          incrementalScan: options.incrementalScan,
+        });
+        scope.setLevel('error');
+        captureException(error);
+      });
 
       // Update portal status to indicate error
       await storage.updatePortal(portal.id, {

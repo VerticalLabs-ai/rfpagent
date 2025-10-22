@@ -22,7 +22,7 @@ export function ComplianceChecklist({
               className="flex items-start gap-2"
               data-testid={`compliance-${index}`}
             >
-              <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
               <span className="text-sm">
                 {typeof item === 'string' ? item : item.item}
               </span>

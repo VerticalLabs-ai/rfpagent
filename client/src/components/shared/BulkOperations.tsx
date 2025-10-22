@@ -293,7 +293,7 @@ export function SelectableItem({
         <Checkbox
           checked={selected}
           onCheckedChange={checked => onSelectionChange(checked as boolean)}
-          className="bg-background border-2 shadow-sm"
+          className="bg-background border-2 shadow-xs"
           onClick={e => e.stopPropagation()}
         />
       </div>

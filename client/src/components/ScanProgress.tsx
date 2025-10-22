@@ -254,7 +254,7 @@ export function ScanProgress({
                       className="flex items-start space-x-2 text-xs"
                     >
                       <EventIcon
-                        className={`h-3 w-3 mt-0.5 ${eventColor} flex-shrink-0`}
+                        className={`h-3 w-3 mt-0.5 ${eventColor} shrink-0`}
                       />
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">

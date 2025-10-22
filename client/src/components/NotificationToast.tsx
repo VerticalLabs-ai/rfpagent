@@ -76,7 +76,7 @@ export default function NotificationToast({
       case 'approval':
         return 'secondary';
       case 'submission':
-        return 'outline';
+        return 'outline-solid';
       case 'compliance':
         return 'destructive';
       default:
@@ -103,7 +103,7 @@ export default function NotificationToast({
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
             <div
-              className={`w-2 h-2 ${notificationIcon.color.replace('text-', 'bg-')} rounded-full mt-2 flex-shrink-0`}
+              className={`w-2 h-2 ${notificationIcon.color.replace('text-', 'bg-')} rounded-full mt-2 shrink-0`}
             ></div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between mb-2">

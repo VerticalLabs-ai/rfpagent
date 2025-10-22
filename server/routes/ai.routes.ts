@@ -133,7 +133,7 @@ const ExecuteActionRequestSchema = z.object({
     id: z.string(),
     label: z.string(),
     action: z.string(),
-    parameters: z.record(z.any()).optional(),
+    parameters: z.record(z.string(), z.any()).optional(),
   }),
 });
 

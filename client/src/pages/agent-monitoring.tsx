@@ -389,7 +389,7 @@ export default function AgentMonitoring() {
                           className="flex items-center justify-between p-3 border border-purple-700/30 rounded-lg bg-purple-950/20 hover:bg-purple-950/30 transition-colors"
                         >
                           <div className="flex items-center space-x-3">
-                            <div className="w-2 h-2 rounded-full bg-purple-500 shadow-sm shadow-purple-500/50" />
+                            <div className="w-2 h-2 rounded-full bg-purple-500 shadow-xs shadow-purple-500/50" />
                             <div>
                               <div className="font-medium text-foreground">
                                 {agent.displayName}
@@ -430,7 +430,7 @@ export default function AgentMonitoring() {
                           className="flex flex-col p-3 border border-blue-700/30 rounded-lg bg-blue-950/20 hover:bg-blue-950/30 transition-colors"
                         >
                           <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-sm shadow-blue-500/50" />
+                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
                             <div className="font-medium text-sm text-foreground">
                               {agent.displayName}
                             </div>
@@ -470,7 +470,7 @@ export default function AgentMonitoring() {
                           className="flex flex-col p-3 border border-emerald-700/30 rounded-lg bg-emerald-950/20 hover:bg-emerald-950/30 transition-colors"
                         >
                           <div className="flex items-center space-x-2 mb-2">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50" />
                             <div className="font-medium text-sm text-foreground">
                               {agent.displayName}
                             </div>
@@ -646,7 +646,7 @@ export default function AgentMonitoring() {
                       <Badge
                         variant={
                           status === 'failed'
-                            ? 'outline'
+                            ? 'outline-solid'
                             : status === 'completed'
                               ? 'default'
                               : 'secondary'
@@ -829,7 +829,7 @@ export default function AgentMonitoring() {
                       <Badge
                         variant={
                           status === 'failed'
-                            ? 'outline'
+                            ? 'outline-solid'
                             : status === 'completed'
                               ? 'default'
                               : 'secondary'

@@ -291,7 +291,7 @@ export function RFPProcessingProgressModal({
                       className="flex items-start gap-3 p-3 rounded-md border bg-card transition-all"
                     >
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 ${
+                        className={`w-5 h-5 rounded-full flex items-center justify-center text-sm font-medium shrink-0 ${
                           step.status === 'completed'
                             ? 'bg-green-500 text-white'
                             : step.status === 'in_progress'
