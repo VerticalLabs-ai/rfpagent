@@ -1,3 +1,0 @@
-ALTER TABLE proposals
-  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP,
-  ADD COLUMN IF NOT EXISTS receipt_data JSONB;

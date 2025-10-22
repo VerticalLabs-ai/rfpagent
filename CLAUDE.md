@@ -1,4 +1,116 @@
-# Claude Code Configuration - SPARC Development Environment
+# Claude Code Configuration - RFP Agent Platform
+
+**Last Updated**: January 2025
+
+---
+
+## 📱 About RFP Agent
+
+**RFP Agent** is an AI-powered platform for automated discovery, processing, and response generation for government Request for Proposal (RFP) opportunities. The system uses a sophisticated 3-tier AI agent architecture to monitor procurement portals, extract requirements, generate compliant proposals, and manage the submission process.
+
+### What It Does
+
+- **Automated Portal Monitoring** - Scans government procurement portals (federal, state, municipal) for new RFP opportunities
+- **Intelligent Document Processing** - Uses AI to parse PDF/Word documents and extract requirements, deadlines, and evaluation criteria
+- **AI-Powered Proposal Generation** - Generates high-quality, compliant proposals using GPT-4 and Claude 4.5
+- **Compliance Validation** - Automatically checks proposals against RFP requirements and generates compliance matrices
+- **Submission Management** - Handles the complete submission pipeline including authentication and document upload
+
+### Technology Stack
+
+**Frontend**: React 18, TypeScript, TailwindCSS, shadcn/ui, Vite
+**Backend**: Express, Node.js, TypeScript, Drizzle ORM
+**Database**: PostgreSQL 16+ with JSONB indexing
+**AI**: OpenAI GPT-4/5, Anthropic Claude 4.5, Mastra.ai agent framework
+**Automation**: Browserbase, Stagehand (browser automation)
+**Real-time**: WebSocket, Server-Sent Events (SSE)
+
+### 3-Tier Agent System
+
+The platform uses a hierarchical multi-agent system:
+
+**Tier 1 - Primary Orchestrator** (1 agent)
+- Coordinates all workflows and delegates to manager agents
+
+**Tier 2 - Manager Agents** (3 agents)
+- **Portal Manager**: Portal authentication and RFP discovery
+- **Proposal Manager**: Proposal generation and compliance
+- **Research Manager**: Market research and competitive intelligence
+
+**Tier 3 - Specialist Agents** (7 agents)
+- **Portal Scanner**: Automated portal scanning
+- **Portal Monitor**: Health monitoring and scheduling
+- **Content Generator**: AI proposal writing
+- **Compliance Checker**: Requirements validation
+- **Document Processor**: PDF/Word parsing
+- **Market Analyst**: Pricing and competitive analysis
+- **Historical Analyzer**: Win probability prediction
+
+## 📁 Project Structure & Directory CLAUDE.md Files
+
+Each major directory has its own detailed CLAUDE.md file explaining its purpose and organization:
+
+### Core Application Directories
+
+- **[client/CLAUDE.md](client/CLAUDE.md)** - React frontend application (UI components, hooks, pages)
+- **[server/CLAUDE.md](server/CLAUDE.md)** - Express backend API (routes, services, agents, workflows)
+- **[shared/CLAUDE.md](shared/CLAUDE.md)** - Shared code and database schema (Drizzle ORM)
+- **[migrations/CLAUDE.md](migrations/CLAUDE.md)** - Database migration management
+- **[config/CLAUDE.md](config/CLAUDE.md)** - Application configuration (Mastra.ai, environment)
+- **[scripts/CLAUDE.md](scripts/CLAUDE.md)** - Utility scripts (testing, database, deployment)
+- **[tests/CLAUDE.md](tests/CLAUDE.md)** - Test suite (unit, integration, E2E)
+
+### Documentation
+
+- **[docs/README.md](docs/README.md)** - Complete documentation index
+- **[docs/api/README.md](docs/api/README.md)** - REST API reference
+- **[docs/technical/agents-architecture.md](docs/technical/agents-architecture.md)** - Agent system design
+
+### Quick Reference
+
+```
+rfpagent/
+├── client/           # React frontend (UI, components, pages)
+├── server/           # Express backend (API, agents, services)
+├── shared/           # Database schema (Drizzle ORM)
+├── migrations/       # Database migrations
+├── config/           # Configuration files
+├── scripts/          # Utility scripts
+├── tests/            # Test suite
+├── docs/             # Documentation
+└── CLAUDE.md        # This file
+```
+
+## 🔑 Key Features
+
+### RFP Discovery
+- Automated portal scanning with cron scheduling
+- Browser automation for complex portals
+- 2FA authentication support
+- Incremental scanning for efficiency
+- Real-time progress via SSE
+
+### Document Processing
+- PDF and Word document parsing
+- AI-powered requirement extraction
+- Compliance checklist generation
+- Metadata extraction (deadlines, budget, agency)
+
+### Proposal Generation
+- Multi-section generation (executive summary, technical approach, pricing)
+- Company profile integration
+- Quality scoring (0.0-1.0 threshold)
+- Iterative refinement
+- PDF assembly
+
+### Real-time Updates
+- WebSocket channels for live notifications
+- SSE streams for progress tracking
+- Portal scan events
+- Proposal generation progress
+- Agent status updates
+
+---
 
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
@@ -38,14 +150,17 @@
 ### 📁 File Organization Rules
 
 **NEVER save to root folder. Use these directories:**
-- `/src` - Source code files
+- `/client/src` - Frontend source code
+- `/server` - Backend source code
 - `/tests` - Test files
 - `/docs` - Documentation and markdown files
 - `/config` - Configuration files
 - `/scripts` - Utility scripts
-- `/examples` - Example code
+- `/migrations` - Database migrations
 
-## Project Overview
+---
+
+## Claude-Flow SPARC Development Environment
 
 This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Completion) methodology with Claude-Flow orchestration for systematic Test-Driven Development.
 
