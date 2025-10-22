@@ -300,6 +300,8 @@ jobs:
 
       - name: Create Sentry release
         uses: getsentry/action-release@v1
+        continue-on-error: true
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: vertical-labs-o2
@@ -433,6 +435,8 @@ jobs:
 
       - name: Notify Sentry of deployment
         uses: getsentry/action-release@v1
+        continue-on-error: true
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: vertical-labs-o2
@@ -473,6 +477,8 @@ jobs:
 
       - name: Notify Sentry of deployment
         uses: getsentry/action-release@v1
+        continue-on-error: true
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: vertical-labs-o2
