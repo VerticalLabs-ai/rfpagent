@@ -1,20 +1,20 @@
-import { captureException, addBreadcrumb, withScope, startSpan } from '@sentry/node';
+import { captureException, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
-import { aiProposalService } from '../proposals/ai-proposal-service';
 import { AIService } from '../core/aiService';
+import { aiProposalService } from '../proposals/ai-proposal-service';
 import {
   complianceCheckerSpecialist,
   documentProcessorSpecialist,
   requirementsExtractorSpecialist,
 } from '../specialists/analysisSpecialists';
 // LAZY IMPORT: import { DiscoveryWorkflowProcessors } from './discoveryWorkflowProcessors';
+import { PortalMonitoringService } from '../monitoring/portal-monitoring-service';
 import { documentIntelligenceService } from '../processing/documentIntelligenceService';
 import { DocumentParsingService } from '../processing/documentParsingService';
 import { EnhancedProposalService } from '../proposals/enhancedProposalService';
 import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { mastraWorkflowEngine } from './mastraWorkflowEngine';
-import { PortalMonitoringService } from '../monitoring/portal-monitoring-service';
 // LAZY IMPORT: import { proposalGenerationOrchestrator } from '../orchestrators/proposalGenerationOrchestrator';
 import {
   complianceValidationSpecialist,
@@ -24,6 +24,17 @@ import {
 // SAFLA Self-Improving System Integration
 import type { AgentRegistry, InsertWorkItem, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
+import {
+  AdaptivePortalNavigator,
+  type NavigationAttempt,
+} from '../agents/adaptivePortalNavigator';
+import { ContinuousImprovementMonitor } from '../learning/continuousImprovementMonitor';
+import { PersistentMemoryEngine } from '../learning/persistentMemoryEngine';
+import { saflaLearningEngine } from '../learning/saflaLearningEngine';
+import { SelfImprovingLearningService } from '../learning/selfImprovingLearningService';
+import { ProposalOutcomeTracker } from '../monitoring/proposalOutcomeTracker';
+import { IntelligentDocumentProcessor } from '../processing/intelligentDocumentProcessor';
+import { ProposalQualityEvaluator } from '../proposals/proposalQualityEvaluator';
 
 // Lazy imports to break circular dependencies
 let _DiscoveryWorkflowProcessors:
@@ -50,17 +61,6 @@ async function getProposalGenerationOrchestrator() {
   }
   return _proposalGenerationOrchestrator;
 }
-import {
-  AdaptivePortalNavigator,
-  type NavigationAttempt,
-} from '../agents/adaptivePortalNavigator';
-import { ContinuousImprovementMonitor } from '../learning/continuousImprovementMonitor';
-import { IntelligentDocumentProcessor } from '../processing/intelligentDocumentProcessor';
-import { PersistentMemoryEngine } from '../learning/persistentMemoryEngine';
-import { ProposalOutcomeTracker } from '../monitoring/proposalOutcomeTracker';
-import { ProposalQualityEvaluator } from '../proposals/proposalQualityEvaluator';
-import { saflaLearningEngine } from '../learning/saflaLearningEngine';
-import { SelfImprovingLearningService } from '../learning/selfImprovingLearningService';
 
 export interface WorkflowExecutionContext {
   workflowId: string;
@@ -3389,11 +3389,12 @@ export class WorkflowCoordinator {
           ),
           generationPhases: [
             'outline-solid',
-            'content',
-            'pricing',
-            'compliance',
-            'forms',
-            'assembly',
+            'content_generation',
+            'pricing_analysis',
+            'compliance_validation',
+            'form_completion',
+            'final_assembly',
+            'quality_assurance',
           ],
           assemblyDate: new Date(),
         },

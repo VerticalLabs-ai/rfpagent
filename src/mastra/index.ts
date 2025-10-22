@@ -1,10 +1,10 @@
-import { Mastra } from '@mastra/core/mastra';
 import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
+import { Mastra } from '@mastra/core/mastra';
 
 // Agent Registry System (Phase 1)
-import { agentRegistry } from './registry/agent-registry';
 import { agentHierarchyConfig } from './config/agent-hierarchy';
 import { featureFlags, logFeatureFlags } from './config/feature-flags';
+import { agentRegistry } from './registry/agent-registry';
 
 // Orchestrator Agent
 import { primaryOrchestrator } from './agents/primary-orchestrator';
@@ -29,12 +29,12 @@ import { rfpDiscoveryAgent } from './agents/rfp-discovery-agent';
 import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
 
 // Workflows
+import { rfpMcpServer } from './mcp/server';
 import { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
 import { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 import { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
 import { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
 import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
-import { rfpMcpServer } from './mcp/server';
 
 const envLogLevel = process.env.MASTRA_LOG_LEVEL;
 const validLogLevels = new Set<string>(Object.values(LogLevel));
@@ -42,8 +42,8 @@ const resolvedLogLevel: LogLevel =
   envLogLevel && validLogLevels.has(envLogLevel)
     ? (envLogLevel as LogLevel)
     : process.env.NODE_ENV === 'production'
-    ? LogLevel.INFO
-    : LogLevel.DEBUG;
+      ? LogLevel.INFO
+      : LogLevel.DEBUG;
 
 const mastraLogger = new ConsoleLogger({
   name: 'rfp-agent-platform',
@@ -116,6 +116,25 @@ export const mastra = new Mastra({
       '@mastra/libsql',
       '@libsql/client',
       'libsql',
+
+      // MCP tools (CommonJS/ESM interop issues)
+      '@mastra/mcp',
+
+      // AI SDK (no default export, must be external)
+      '@ai-sdk/anthropic',
+      '@ai-sdk/openai',
+      'ai',
+
+      // Server imports (prevent bundling server code)
+      // Function matcher to catch all server imports
+      (id: string) => {
+        return (
+          id.includes('/server/') ||
+          id.includes('\\server\\') ||
+          id.startsWith('server/') ||
+          id.includes('../../../server')
+        );
+      },
     ],
   },
 });
@@ -160,7 +179,9 @@ if (featureFlags.useAgentRegistry) {
         registeredCount++;
 
         if (featureFlags.verboseRegistryLogging) {
-          mastraLogger.debug(`✅ Registered agent: ${agentId} (${metadata.name})`);
+          mastraLogger.debug(
+            `✅ Registered agent: ${agentId} (${metadata.name})`
+          );
         }
       } catch (error) {
         mastraLogger.error(`❌ Failed to register agent ${agentId}:`, error);
@@ -191,8 +212,12 @@ if (featureFlags.useAgentPools) {
   mastraLogger.info('🏊 Initializing Agent Pool Manager...');
 
   // Import pool manager and bindings
-  const { agentPoolManager } = await import('./coordination/agent-pool-manager');
-  const { workflowAgentBindings } = await import('./config/workflow-agent-bindings');
+  const { agentPoolManager } = await import(
+    './coordination/agent-pool-manager'
+  );
+  const { workflowAgentBindings } = await import(
+    './config/workflow-agent-bindings'
+  );
 
   // Create pools from workflow bindings
   let poolsCreated = 0;
@@ -202,8 +227,10 @@ if (featureFlags.useAgentPools) {
     for (const poolDef of binding.agentPools) {
       try {
         // Find min/max instances from requiredAgents
-        const agentConfigs = poolDef.agentIds.map((agentId) => {
-          const agentReq = binding.requiredAgents.find((a) => a.agentId === agentId);
+        const agentConfigs = poolDef.agentIds.map(agentId => {
+          const agentReq = binding.requiredAgents.find(
+            a => a.agentId === agentId
+          );
           return {
             agentId,
             minInstances: agentReq?.minInstances || 1,
@@ -212,8 +239,8 @@ if (featureFlags.useAgentPools) {
         });
 
         // Calculate pool size from agent configurations
-        const minSize = Math.max(...agentConfigs.map((c) => c.minInstances));
-        const maxSize = Math.max(...agentConfigs.map((c) => c.maxInstances));
+        const minSize = Math.max(...agentConfigs.map(c => c.minInstances));
+        const maxSize = Math.max(...agentConfigs.map(c => c.maxInstances));
 
         // Create pool with auto-scaling configuration
         agentPoolManager.createPool({
@@ -237,50 +264,56 @@ if (featureFlags.useAgentPools) {
           );
         }
       } catch (error) {
-        mastraLogger.error(`❌ Failed to create pool ${poolDef.poolName}:`, error);
+        mastraLogger.error(
+          `❌ Failed to create pool ${poolDef.poolName}:`,
+          error
+        );
       }
     }
   }
 
   const poolStats = agentPoolManager.getAllPoolStats();
-  mastraLogger.info(`✅ Agent Pools initialized: ${poolsCreated} pools created`, {
-    pools: poolStats.map((p) => ({
-      name: p.poolName,
-      size: p.totalInstances,
-      utilization: `${(p.utilization * 100).toFixed(1)}%`,
-    })),
-  });
+  mastraLogger.info(
+    `✅ Agent Pools initialized: ${poolsCreated} pools created`,
+    {
+      pools: poolStats.map(p => ({
+        name: p.poolName,
+        size: p.totalInstances,
+        utilization: `${(p.utilization * 100).toFixed(1)}%`,
+      })),
+    }
+  );
 } else {
   mastraLogger.debug('Agent Pools are disabled (USE_AGENT_POOLS=false)');
 }
 
 // Export registry and pool manager for external use
-export { agentRegistry } from './registry/agent-registry';
-export { agentPoolManager } from './coordination/agent-pool-manager';
 export { agentHierarchyConfig } from './config/agent-hierarchy';
-export { workflowAgentBindings } from './config/workflow-agent-bindings';
 export { featureFlags } from './config/feature-flags';
+export { workflowAgentBindings } from './config/workflow-agent-bindings';
+export { agentPoolManager } from './coordination/agent-pool-manager';
+export { agentRegistry } from './registry/agent-registry';
 
 // Export individual workflows for direct use
+export { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
+export { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 export { masterOrchestrationWorkflow } from './workflows/master-orchestration-workflow';
 export { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
-export { documentProcessingWorkflow } from './workflows/document-processing-workflow';
 export { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
-export { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
 
 // Export PDF utilities for external use
 export {
-  parsePDFFile,
-  parsePDFBuffer,
+  assembleProposalPDF,
   fillPDFForm,
   getPDFFormFields,
-  assembleProposalPDF,
   mergePDFs,
+  parsePDFBuffer,
+  parsePDFFile,
 } from './utils/pdf-processor';
 
 export type {
-  PDFParseResult,
-  PDFFormField,
   PDFAssemblyOptions,
+  PDFFormField,
+  PDFParseResult,
   PDFSection,
 } from './utils/pdf-processor';
