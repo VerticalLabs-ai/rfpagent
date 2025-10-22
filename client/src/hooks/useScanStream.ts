@@ -140,6 +140,37 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
             // Update state based on event type
             switch (scanEvent.type) {
+              case 'initial_state':
+                // Backend sends full scan state when SSE connection is established
+                if (scanEvent.data) {
+                  const timestamp = scanEvent.data.startedAt
+                    ? new Date(scanEvent.data.startedAt)
+                    : new Date();
+                  const isValidTimestamp = !isNaN(timestamp.getTime());
+
+                  newState.portalName =
+                    scanEvent.data.portalName || newState.portalName;
+                  newState.status = scanEvent.data.status || 'running';
+                  newState.startedAt = isValidTimestamp ? timestamp : new Date();
+
+                  if (scanEvent.data.currentStep) {
+                    const stepTimestamp = scanEvent.data.currentStep.timestamp
+                      ? new Date(scanEvent.data.currentStep.timestamp)
+                      : timestamp;
+                    newState.currentStep = {
+                      step: scanEvent.data.currentStep.step || 'initializing',
+                      progress: scanEvent.data.currentStep.progress || 0,
+                      message: scanEvent.data.currentStep.message || 'Starting...',
+                      timestamp: !isNaN(stepTimestamp.getTime()) ? stepTimestamp : new Date(),
+                    };
+                  }
+
+                  if (scanEvent.data.discoveredRFPs) {
+                    newState.rfpsDiscovered = scanEvent.data.discoveredRFPs;
+                  }
+                }
+                break;
+
               case 'scan_started':
                 newState.status = 'running';
                 newState.portalName =
@@ -148,12 +179,12 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
 
               case 'step_update':
                 // Validate scanEvent.data is an object with expected fields
+                // Note: Backend sends message at top level, not in data
                 if (
                   typeof scanEvent.data === 'object' &&
                   scanEvent.data !== null &&
                   typeof scanEvent.data.step === 'string' &&
-                  typeof scanEvent.data.progress === 'number' &&
-                  typeof scanEvent.data.message === 'string'
+                  typeof scanEvent.data.progress === 'number'
                 ) {
                   // Safe timestamp parsing
                   const timestamp = scanEvent.timestamp
@@ -164,7 +195,11 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   newState.currentStep = {
                     step: scanEvent.data.step,
                     progress: scanEvent.data.progress,
-                    message: scanEvent.data.message,
+                    // Message can be in data OR at top level (backend sends at top level)
+                    message:
+                      scanEvent.data.message ||
+                      (scanEvent as any).message ||
+                      'Processing...',
                     timestamp: isValidTimestamp ? timestamp : new Date(),
                   };
                 } else {

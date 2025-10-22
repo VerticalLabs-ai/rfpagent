@@ -5,11 +5,23 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/fly-deploy.yml'
+      - 'LICENSE'
+      - '.gitignore'
+
+# Ensure only one deployment runs at a time
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false
+
 jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    concurrency: deploy-group    # optional: ensure only one action runs at a time
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master

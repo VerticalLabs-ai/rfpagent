@@ -3,8 +3,20 @@ name: CI/CD Pipeline
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/**'
+      - 'LICENSE'
+      - '.gitignore'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
     inputs:
       deploy_environment:
@@ -14,6 +26,11 @@ on:
         options:
           - staging
           - production
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   NODE_VERSION: "22"
@@ -131,7 +148,7 @@ jobs:
         with:
           name: test-coverage
           path: coverage/
-          retention-days: 30
+          retention-days: 7
 
   # ===========================================================================
   # Job 3: E2E Tests (Playwright)
@@ -141,6 +158,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: quality
+    # Only run E2E on main/develop branches or manual trigger to save costs
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -171,8 +190,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-playwright-
+
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright deps only
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Run Playwright tests
         run: pnpm exec playwright test
@@ -188,7 +220,7 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 30
+          retention-days: 7
 
   # ===========================================================================
   # Job 4: Security Scanning
@@ -198,6 +230,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: quality
+    # Only run security scans on main branch, PRs to main, or manual trigger
+    if: github.ref == 'refs/heads/main' || github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     permissions:
       security-events: write
       contents: read
@@ -329,7 +363,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: [build, security]
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Only build Docker on main/develop branches or manual trigger
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')) || github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       packages: write
@@ -374,7 +409,8 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          # Only build for amd64 on develop, both platforms on main
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

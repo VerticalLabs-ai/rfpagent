@@ -262,7 +262,12 @@ export function ScanProgress({
                             {event.type.replace('_', ' ')}
                           </span>
                           <span className="text-gray-500">
-                            {new Date(event.timestamp).toLocaleTimeString()}
+                            {(() => {
+                              const timestamp = new Date(event.timestamp);
+                              return !isNaN(timestamp.getTime())
+                                ? timestamp.toLocaleTimeString()
+                                : 'Invalid Date';
+                            })()}
                           </span>
                         </div>
                         {event.data && (
