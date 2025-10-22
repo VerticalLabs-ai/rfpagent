@@ -102,7 +102,15 @@ export async function downloadFile(
     // Ensure directory exists
     const dir = path.dirname(filepath);
     if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch (error: any) {
+        // Log but don't throw - directory might already exist from race condition
+        if (error.code !== 'EEXIST') {
+          console.error('Failed to create directory:', dir, error.message);
+          throw error; // Re-throw if it's not EEXIST
+        }
+      }
     }
 
     // Download the file with timeout

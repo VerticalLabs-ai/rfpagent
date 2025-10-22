@@ -143,7 +143,15 @@ export class AustinFinanceDocumentScraper {
 
           // Create temporary file path
           const tempDir = '/tmp/rfp_downloads';
-          await fs.mkdir(tempDir, { recursive: true });
+          try {
+            await fs.mkdir(tempDir, { recursive: true });
+          } catch (error: any) {
+            // Directory might already exist or have permission issues
+            // /tmp should be writable, but log if there's an issue
+            if (error.code !== 'EEXIST') {
+              console.warn('Failed to create temp directory:', error.message);
+            }
+          }
           const tempFilePath = path.join(
             tempDir,
             `${rfpId}_${Date.now()}_${this.sanitizeFilename(docInfo.name)}`
