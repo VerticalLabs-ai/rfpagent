@@ -12,9 +12,9 @@
  *   npm run test-compliance
  */
 
-import { complianceIntegrationService } from '../services/core/complianceIntegrationService';
-import { storage } from '../storage';
-import { aiService } from '../services/core/aiService';
+import { aiService } from '../server/services/core/aiService';
+import { complianceIntegrationService } from '../server/services/core/complianceIntegrationService';
+import { storage } from '../server/storage';
 
 const toErrorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);

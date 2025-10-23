@@ -15,10 +15,10 @@ import 'dotenv/config';
  *   npm run batch-compliance all         # Process all unprocessed RFPs
  */
 
+import { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-import { complianceIntegrationService } from '../services/core/complianceIntegrationService';
-import { storage } from '../storage';
+import { complianceIntegrationService } from '../server/services/core/complianceIntegrationService';
+import { storage } from '../server/storage';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
