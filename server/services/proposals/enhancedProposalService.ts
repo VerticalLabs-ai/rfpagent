@@ -445,7 +445,7 @@ export class EnhancedProposalService {
           rfpId: params.rfpId,
           companyProfileId: params.companyProfileId,
           sessionId: params.sessionId,
-          generatePricing: params.generatePricing,
+          options: params.options,
         });
         scope.setLevel('error');
         captureException(error);

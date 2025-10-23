@@ -27,7 +27,7 @@ const PerformanceDashboardSchema = z.object({
   timestamp: z.string(),
   systemHealth: z.object({
     overall: z.number().min(0).max(100),
-    components: z.record(z.number().min(0).max(100)),
+    components: z.record(z.string(), z.number().min(0).max(100)),
   }),
   learningMetrics: z.object({
     totalLearningEvents: z.number(),

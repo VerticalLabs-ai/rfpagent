@@ -251,11 +251,11 @@ Focus on iByte Enterprises LLC - a woman-owned construction/technology company w
         scope.setTag('service', 'document-intelligence');
         scope.setTag('operation', 'analyze-document');
         scope.setTag('document_id', document.id);
-        scope.setTag('document_type', document.type || 'unknown');
+        scope.setTag('document_type', document.fileType || 'unknown');
         scope.setContext('document_details', {
           documentId: document.id,
           filename: document.filename,
-          fileType: document.type,
+          fileType: document.fileType,
           rfpId: document.rfpId,
         });
         scope.setLevel('error');

@@ -92,7 +92,7 @@ const taskStatusResultSchema = baseResultSchema.extend({
     .optional(),
   progress: z.number().min(0).max(100).optional(),
   assignedAgent: z.string().optional(),
-  result: z.record(z.any()).nullable().optional(),
+  result: z.record(z.string(), z.any()).nullable().optional(),
   error: z.string().optional(),
   updatedAt: z.date().optional(),
 });
@@ -122,7 +122,7 @@ const getMessagesResultSchema = baseResultSchema.extend({
       z.object({
         from: z.string().optional(),
         messageType: z.enum(['information', 'request', 'response', 'alert']),
-        content: z.record(z.any()).optional(),
+        content: z.record(z.string(), z.any()).optional(),
         timestamp: z.coerce.date().optional(),
       })
     )
@@ -194,7 +194,7 @@ const delegateToManagerSchema = z.object({
     ),
   taskDescription: z.string().describe('Detailed description of the task'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
-  inputs: z.record(z.any()).describe('Input parameters for the task'),
+  inputs: z.record(z.string(), z.any()).describe('Input parameters for the task'),
   deadline: z
     .string()
     .datetime()
@@ -351,7 +351,7 @@ const requestSpecialistSchema = z.object({
     ])
     .describe('The specialist agent to request'),
   taskType: z.string().describe('Specific task type for the specialist'),
-  inputs: z.record(z.any()).describe('Task inputs'),
+  inputs: z.record(z.string(), z.any()).describe('Task inputs'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   sessionId: z.string().optional().describe('Session ID for the workflow'),
   workflowId: z.string().optional().describe('Workflow ID'),
@@ -429,7 +429,7 @@ export const requestSpecialist = createTool({
 const sendAgentMessageSchema = z.object({
   targetAgent: z.string().describe('The agent ID to send the message to'),
   messageType: z.enum(['information', 'request', 'response', 'alert']),
-  content: z.record(z.any()).describe('Message content'),
+  content: z.record(z.string(), z.any()).describe('Message content'),
   sessionId: z.string().optional().describe('Session ID'),
   workflowId: z.string().optional().describe('Workflow ID'),
   agentId: z
@@ -559,7 +559,7 @@ const createCoordinatedWorkflowSchema = z.object({
         phaseName: z.string(),
         assignedAgent: z.string(),
         taskType: z.string(),
-        inputs: z.record(z.any()),
+        inputs: z.record(z.string(), z.any()),
         dependsOn: z.array(z.string()).optional(),
       })
     )

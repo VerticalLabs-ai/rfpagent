@@ -867,10 +867,10 @@ export async function scrapeWithAuthenticatedSession(
       ),
     };
 
-    const result = await page.extract({
+    const result = (await page.extract({
       instruction: extractionInstruction,
       schema: z.object(extractionSchema),
-    });
+    } as any)) as any;
 
     // Get current session data
     const cookies = await page.context().cookies();

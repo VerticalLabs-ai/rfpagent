@@ -143,7 +143,7 @@ export class PhiladelphiaDocumentDownloader {
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
       console.log('📊 Extracting RFP details...');
-      const extractedData = await page.extract({
+      const extractedData = (await page.extract({
         instruction: `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
         schema: z.object({
           bidNumber: z.string().optional(),
@@ -183,7 +183,7 @@ export class PhiladelphiaDocumentDownloader {
             .optional(),
           attachments: z.array(z.string()).optional(),
         }),
-      });
+      } as any)) as RFPDetails;
 
       console.log('✅ Extracted RFP details:', extractedData);
       return extractedData;

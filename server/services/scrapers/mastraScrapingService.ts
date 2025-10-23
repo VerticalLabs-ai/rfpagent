@@ -560,7 +560,7 @@ export class MastraScrapingService {
     }
   }
 
-  async scrapePortal(portal: Portal, searchFilter?: string): Promise<void> {
+  async scrapePortal(portal: Portal, searchFilter?: string, incrementalScan?: boolean): Promise<void> {
     const filterMessage = searchFilter ? ` with filter: "${searchFilter}"` : '';
     console.log(
       `Starting intelligent scrape of ${portal.name} using Mastra agents${filterMessage}`
@@ -831,8 +831,8 @@ export class MastraScrapingService {
           portalId: portal.id,
           portalName: portal.name,
           portalUrl: portal.url,
-          searchFilter: options.searchFilter,
-          incrementalScan: options.incrementalScan,
+          searchFilter: searchFilter,
+          incrementalScan: incrementalScan ?? false,
         });
         scope.setLevel('error');
         captureException(error);
@@ -3396,9 +3396,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               `🤖 Extracting opportunities using AI-powered Stagehand extraction...`
             );
 
-            const extractionResult = await page.extract({
-              instruction: `Extract all RFP opportunities, bids, and procurement opportunities from this page. 
-                           Look for opportunities in tables, cards, lists, or any other format. 
+            const extractionResult = (await page.extract({
+              instruction: `Extract all RFP opportunities, bids, and procurement opportunities from this page.
+                           Look for opportunities in tables, cards, lists, or any other format.
                            For each opportunity, extract:
                            - title: The opportunity or RFP title/name
                            - description: Brief description or summary (if available)
@@ -3407,14 +3407,14 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                            - estimatedValue: Contract value or budget (if mentioned)
                            - link: Direct link to the opportunity details
                            - category: Type of opportunity (construction, services, goods, etc.)
-                           
+
                            Ignore welcome messages, navigation menus, or non-opportunity content.
                            Only extract actual procurement opportunities or RFPs.`,
 
               schema: z.object({
                 opportunities: z.array(OpportunitySchema),
               }),
-            });
+            } as any)) as { opportunities: any[] };
 
             console.log(
               `🎯 Stagehand extraction found ${
@@ -3488,11 +3488,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               `🤖 Extracting FindRFP opportunities using AI-powered Stagehand extraction...`
             );
 
-            const extractionResult = await page.extract({
+            const extractionResult = (await page.extract({
               instruction: `Extract all RFP opportunities and procurement opportunities from this FindRFP.com page.
                            FindRFP.com is an aggregation platform that displays opportunities from multiple government sources.
                            Look for opportunities in search results, tables, listings, or any other format.
-                           
+
                            For each opportunity, extract:
                            - title: The RFP or opportunity title/name
                            - description: Brief description or summary of the opportunity
@@ -3501,7 +3501,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                            - estimatedValue: Contract value, budget, or project value (if mentioned)
                            - link: Direct link to the detailed opportunity page or application
                            - category: Type of opportunity (construction, services, goods, IT, consulting, etc.)
-                           
+
                            Focus on actual procurement opportunities and RFPs.
                            Ignore promotional content, navigation menus, ads, or non-opportunity content.
                            Extract as many opportunities as possible from this page to exceed the previous count of 6.`,
@@ -3509,7 +3509,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               schema: z.object({
                 opportunities: z.array(OpportunitySchema),
               }),
-            });
+            } as any)) as { opportunities: any[] };
 
             console.log(
               `🎯 FindRFP Stagehand extraction found ${

@@ -177,7 +177,7 @@ export const submissionLifecycleDataSchema = z
     lastErrorAt: jsonDateTimeNullish,
     retryCount: z.number().int().nonnegative().optional(),
     nextSteps: z.array(z.string()).optional(),
-    metadata: z.record(z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .passthrough();
 

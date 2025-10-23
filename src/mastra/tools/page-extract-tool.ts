@@ -18,7 +18,7 @@ export const pageExtractTool = createTool({
       ),
     schema: z
       .union([
-        z.record(z.any()), // Plain object field map
+        z.record(z.string(), z.any()), // Plain object field map
         z.instanceof(z.ZodObject), // Pre-built Zod object
       ])
       .optional()
