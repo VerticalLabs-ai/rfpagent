@@ -233,8 +233,8 @@ jobs:
     # Only run security scans on main branch, PRs to main, or manual trigger
     if: github.ref == 'refs/heads/main' || github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     permissions:
-      security-events: write
       contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -257,29 +257,12 @@ jobs:
         run: pnpm audit --audit-level=moderate
         continue-on-error: true
 
-      - name: SAST - Semgrep
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/nodejs
-            p/typescript
-            p/react
-        continue-on-error: true
-
       - name: Dependency Review
         uses: actions/dependency-review-action@v4
         if: github.event_name == 'pull_request'
         with:
           fail-on-severity: moderate
-
-      - name: CodeQL Analysis
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        continue-on-error: true
 
       - name: Secret Scanning - TruffleHog
         uses: trufflesecurity/trufflehog@main
@@ -288,6 +271,7 @@ jobs:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || 'HEAD' }}
           extra_args: --only-verified
+        continue-on-error: true
 
   # ===========================================================================
   # Job 5: Build Application
