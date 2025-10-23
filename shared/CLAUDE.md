@@ -33,6 +33,7 @@ The `schema.ts` file contains the complete database schema using Drizzle ORM. Th
 ### Core Tables
 
 #### RFPs Table
+
 **Purpose**: Stores Request for Proposal opportunities discovered from various portals
 
 ```typescript
@@ -45,8 +46,18 @@ export const rfps = pgTable('rfps', {
 
   // Status tracking
   status: text('status', {
-    enum: ['discovered', 'parsing', 'drafting', 'review', 'approved', 'submitted', 'closed']
-  }).default('discovered').notNull(),
+    enum: [
+      'discovered',
+      'parsing',
+      'drafting',
+      'review',
+      'approved',
+      'submitted',
+      'closed',
+    ],
+  })
+    .default('discovered')
+    .notNull(),
   progress: integer('progress').default(0).notNull(),
 
   // Important dates
@@ -65,25 +76,35 @@ export const rfps = pgTable('rfps', {
   complianceRequirements: jsonb('compliance_requirements'),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 **Key Fields**:
+
 - `status` - Workflow state: discovered → parsing → drafting → review → approved → submitted → closed
 - `progress` - Percentage completion (0-100)
 - `requirements` - JSONB containing extracted RFP requirements
 - `complianceRequirements` - JSONB containing compliance checklist
 
 #### Proposals Table
+
 **Purpose**: Stores AI-generated proposals linked to RFPs
 
 ```typescript
 export const proposals = pgTable('proposals', {
   id: uuid('id').primaryKey().defaultRandom(),
-  rfpId: uuid('rfp_id').references(() => rfps.id).notNull(),
-  companyProfileId: uuid('company_profile_id').references(() => companyProfiles.id),
+  rfpId: uuid('rfp_id')
+    .references(() => rfps.id)
+    .notNull(),
+  companyProfileId: uuid('company_profile_id').references(
+    () => companyProfiles.id
+  ),
 
   // Proposal content
   title: text('title').notNull(),
@@ -97,8 +118,10 @@ export const proposals = pgTable('proposals', {
 
   // Status and quality
   status: text('status', {
-    enum: ['draft', 'generating', 'review', 'approved', 'submitted']
-  }).default('draft').notNull(),
+    enum: ['draft', 'generating', 'review', 'approved', 'submitted'],
+  })
+    .default('draft')
+    .notNull(),
   qualityScore: numeric('quality_score', { precision: 3, scale: 2 }),
 
   // AI metadata
@@ -106,12 +129,17 @@ export const proposals = pgTable('proposals', {
   generationMetadata: jsonb('generation_metadata'),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 **Key Fields**:
+
 - `content` - Full generated proposal text
 - `executiveSummary`, `technicalApproach`, `pricing` - Structured JSONB sections
 - `complianceMatrix` - Requirements checklist with pass/fail status
@@ -119,6 +147,7 @@ export const proposals = pgTable('proposals', {
 - `generationMetadata` - Includes model version, tokens used, generation time
 
 #### Portals Table
+
 **Purpose**: Stores government procurement portal configurations
 
 ```typescript
@@ -130,7 +159,9 @@ export const portals = pgTable('portals', {
 
   // Authentication
   requiresAuth: boolean('requires_auth').default(false).notNull(),
-  authType: text('auth_type', { enum: ['basic', 'oauth', 'saml', 'two_factor'] }),
+  authType: text('auth_type', {
+    enum: ['basic', 'oauth', 'saml', 'two_factor'],
+  }),
   credentialsId: uuid('credentials_id'),
 
   // Scanning configuration
@@ -143,22 +174,30 @@ export const portals = pgTable('portals', {
   selectors: jsonb('selectors'), // CSS/XPath selectors for scraping
 
   // Health monitoring
-  healthStatus: text('health_status', { enum: ['healthy', 'degraded', 'down'] }).default('healthy'),
+  healthStatus: text('health_status', {
+    enum: ['healthy', 'degraded', 'down'],
+  }).default('healthy'),
   lastHealthCheckAt: timestamp('last_health_check_at', { withTimezone: true }),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 **Key Fields**:
+
 - `type` - Portal jurisdiction level (federal, state, municipal)
 - `scanSchedule` - Cron expression for automated scanning
 - `selectors` - Portal-specific CSS/XPath selectors for scraping
 - `healthStatus` - Current portal health (healthy, degraded, down)
 
 #### Agent Registry Table
+
 **Purpose**: Tracks all AI agents in the 3-tier system
 
 ```typescript
@@ -191,12 +230,14 @@ export const agentRegistry = pgTable('agent_registry', {
 ```
 
 **Key Fields**:
+
 - `tier` - Agent hierarchy level (1=Orchestrator, 2=Manager, 3=Specialist)
 - `capabilities` - Array of tasks this agent can perform
 - `status` - Current agent state (active, idle, busy, offline)
 - Performance metrics for monitoring agent effectiveness
 
 #### Work Items Table
+
 **Purpose**: Tracks delegated tasks between agents
 
 ```typescript
@@ -216,8 +257,10 @@ export const workItems = pgTable('work_items', {
 
   // Status
   status: text('status', {
-    enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled']
-  }).default('pending').notNull(),
+    enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled'],
+  })
+    .default('pending')
+    .notNull(),
   progress: integer('progress').default(0).notNull(),
 
   // Results
@@ -231,18 +274,24 @@ export const workItems = pgTable('work_items', {
   completedAt: timestamp('completed_at', { withTimezone: true }),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 **Key Fields**:
+
 - `taskType` - Type of work (e.g., 'portal_scan', 'proposal_generation')
 - `assignedAgentId` - Which agent is handling this work
 - `requestedByAgentId` - Which agent delegated this work
 - `priority` - Task priority (1-10, higher = more urgent)
 
 #### Company Profiles Table
+
 **Purpose**: Stores company information for proposal generation
 
 ```typescript
@@ -262,12 +311,17 @@ export const companyProfiles = pgTable('company_profiles', {
   pricingModels: jsonb('pricing_models'),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 #### Documents Table
+
 **Purpose**: Stores RFP attachments and generated documents
 
 ```typescript
@@ -284,21 +338,32 @@ export const documents = pgTable('documents', {
 
   // Document type
   documentType: text('document_type', {
-    enum: ['rfp_attachment', 'proposal_draft', 'proposal_final', 'supporting_doc']
+    enum: [
+      'rfp_attachment',
+      'proposal_draft',
+      'proposal_final',
+      'supporting_doc',
+    ],
   }).notNull(),
 
   // Processing status
   processingStatus: text('processing_status', {
-    enum: ['pending', 'processing', 'completed', 'failed']
-  }).default('pending').notNull(),
+    enum: ['pending', 'processing', 'completed', 'failed'],
+  })
+    .default('pending')
+    .notNull(),
 
   // Extracted data
   extractedText: text('extracted_text'),
   extractedData: jsonb('extracted_data'),
 
   // Timestamps
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
@@ -310,22 +375,22 @@ Drizzle ORM relationships are defined using `relations()`:
 export const rfpsRelations = relations(rfps, ({ one, many }) => ({
   portal: one(portals, {
     fields: [rfps.portalId],
-    references: [portals.id]
+    references: [portals.id],
   }),
   proposals: many(proposals),
-  documents: many(documents)
+  documents: many(documents),
 }));
 
 export const proposalsRelations = relations(proposals, ({ one, many }) => ({
   rfp: one(rfps, {
     fields: [proposals.rfpId],
-    references: [rfps.id]
+    references: [rfps.id],
   }),
   companyProfile: one(companyProfiles, {
     fields: [proposals.companyProfileId],
-    references: [companyProfiles.id]
+    references: [companyProfiles.id],
   }),
-  documents: many(documents)
+  documents: many(documents),
 }));
 ```
 
@@ -370,6 +435,7 @@ export const selectProposalSchema = createSelectSchema(proposals);
 ### Data Flow
 
 1. **Portal Scanning**:
+
    ```
    Portal Scanner Agent → Creates RFP record with status='discovered'
    → Updates portals.lastScanAt
@@ -377,6 +443,7 @@ export const selectProposalSchema = createSelectSchema(proposals);
    ```
 
 2. **Document Processing**:
+
    ```
    Document Processor Agent → Downloads files
    → Creates documents records with processingStatus='processing'
@@ -386,6 +453,7 @@ export const selectProposalSchema = createSelectSchema(proposals);
    ```
 
 3. **Proposal Generation**:
+
    ```
    Proposal Manager → Creates proposal record with status='generating'
    → Delegates to Content Generator (work_items)
@@ -408,6 +476,7 @@ export const selectProposalSchema = createSelectSchema(proposals);
 The schema makes extensive use of PostgreSQL's JSONB type for flexible, structured data:
 
 - **RFPs.requirements**: Array of extracted requirements with metadata
+
   ```json
   [
     {
@@ -421,6 +490,7 @@ The schema makes extensive use of PostgreSQL's JSONB type for flexible, structur
   ```
 
 - **Proposals.complianceMatrix**: Compliance checklist
+
   ```json
   {
     "req-1": {
@@ -491,8 +561,8 @@ const rfpWithProposals = await db.query.rfps.findFirst({
   with: {
     proposals: true,
     documents: true,
-    portal: true
-  }
+    portal: true,
+  },
 });
 
 // Complex query
@@ -502,7 +572,7 @@ const urgentRFPs = await db
   .where(
     and(
       eq(rfps.status, 'discovered'),
-      gte(rfps.estimatedValue, '100000'),
+      gte(rfps.estimatedValue, '100000')
       // deadline within 30 days
     )
   )
@@ -521,8 +591,8 @@ function useRFPs(filters: { status?: string }) {
     queryFn: async () => {
       const params = new URLSearchParams(filters);
       const response = await fetch(`/api/rfps?${params}`);
-      return response.json() as Promise<{ rfps: RFP[], total: number }>;
-    }
+      return response.json() as Promise<{ rfps: RFP[]; total: number }>;
+    },
   });
 }
 ```
@@ -538,21 +608,23 @@ function useRFPs(filters: { status?: string }) {
    - `jsonb` for flexible, structured data
 
 2. **Always include timestamps**:
+
    ```typescript
    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
    ```
 
 3. **Use enums for fixed value sets**:
+
    ```typescript
    status: text('status', {
-     enum: ['discovered', 'parsing', 'drafting', 'review', 'approved']
-   }).notNull()
+     enum: ['discovered', 'parsing', 'drafting', 'review', 'approved'],
+   }).notNull();
    ```
 
 4. **Define relationships explicitly**:
    ```typescript
-   portalId: uuid('portal_id').references(() => portals.id)
+   portalId: uuid('portal_id').references(() => portals.id);
    ```
 
 ### Type Safety
@@ -568,7 +640,8 @@ function createRFP(data: InsertRFP): Promise<RFP> {
 }
 
 // Avoid
-function createRFP(data: any): Promise<any> { // Don't do this
+function createRFP(data: any): Promise<any> {
+  // Don't do this
   return db.insert(rfps).values(data).returning();
 }
 ```

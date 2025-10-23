@@ -32,76 +32,119 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const portals = pgTable('portals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  name: text('name').notNull(),
-  url: text('url').notNull(),
-  type: text('type').notNull().default('general'),
-  isActive: boolean('is_active').default(true).notNull(),
-  monitoringEnabled: boolean('monitoring_enabled').default(true).notNull(),
-  loginRequired: boolean('login_required').default(false).notNull(),
-  username: text('username'),
-  password: text('password'),
-  lastScanned: timestamp('last_scanned'),
-  status: text('status').notNull().default('active'), // active, maintenance, error
-  scanFrequency: integer('scan_frequency').default(24).notNull(), // hours between scans
-  maxRfpsPerScan: integer('max_rfps_per_scan').default(50).notNull(),
-  selectors: jsonb('selectors'), // CSS selectors and scraping config
-  filters: jsonb('filters'), // business type, value filters, etc.
-  lastError: text('last_error'),
-  errorCount: integer('error_count').default(0).notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const portals = pgTable(
+  'portals',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    name: text('name').notNull(),
+    url: text('url').notNull(),
+    type: text('type').notNull().default('general'),
+    isActive: boolean('is_active').default(true).notNull(),
+    monitoringEnabled: boolean('monitoring_enabled').default(true).notNull(),
+    loginRequired: boolean('login_required').default(false).notNull(),
+    username: text('username'),
+    password: text('password'),
+    lastScanned: timestamp('last_scanned'),
+    status: text('status').notNull().default('active'), // active, maintenance, error
+    scanFrequency: integer('scan_frequency').default(24).notNull(), // hours between scans
+    maxRfpsPerScan: integer('max_rfps_per_scan').default(50).notNull(),
+    selectors: jsonb('selectors'), // CSS selectors and scraping config
+    filters: jsonb('filters'), // business type, value filters, etc.
+    lastError: text('last_error'),
+    errorCount: integer('error_count').default(0).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => ({
+    // GIN indexes for JSONB columns
+    selectorsGinIdx: index('idx_portals_selectors_gin').using(
+      'gin',
+      table.selectors
+    ),
+    filtersGinIdx: index('idx_portals_filters_gin').using('gin', table.filters),
+  })
+);
 
-export const rfps = pgTable('rfps', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  title: text('title').notNull(),
-  description: text('description'),
-  agency: text('agency').notNull(),
-  category: text('category'),
-  portalId: varchar('portal_id').references(() => portals.id),
-  sourceUrl: text('source_url').notNull(),
-  deadline: timestamp('deadline'),
-  estimatedValue: decimal('estimated_value', { precision: 12, scale: 2 }),
-  status: text('status').notNull().default('discovered'), // discovered, parsing, drafting, review, approved, submitted, closed
-  progress: integer('progress').default(0).notNull(),
-  requirements: jsonb('requirements'), // parsed requirements object
-  complianceItems: jsonb('compliance_items'), // compliance checklist
-  riskFlags: jsonb('risk_flags'), // high-risk items
-  analysis: jsonb('analysis'),
-  addedBy: text('added_by').notNull().default('automatic'), // "manual" or "automatic"
-  manuallyAddedAt: timestamp('manually_added_at'), // Only set if manually added
-  discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const rfps = pgTable(
+  'rfps',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    title: text('title').notNull(),
+    description: text('description'),
+    agency: text('agency').notNull(),
+    category: text('category'),
+    portalId: varchar('portal_id').references(() => portals.id),
+    sourceUrl: text('source_url').notNull(),
+    deadline: timestamp('deadline'),
+    estimatedValue: decimal('estimated_value', { precision: 12, scale: 2 }),
+    status: text('status').notNull().default('discovered'), // discovered, parsing, drafting, review, approved, submitted, closed
+    progress: integer('progress').default(0).notNull(),
+    requirements: jsonb('requirements'), // parsed requirements object
+    complianceItems: jsonb('compliance_items'), // compliance checklist
+    riskFlags: jsonb('risk_flags'), // high-risk items
+    analysis: jsonb('analysis'),
+    addedBy: text('added_by').notNull().default('automatic'), // "manual" or "automatic"
+    manuallyAddedAt: timestamp('manually_added_at'), // Only set if manually added
+    discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => ({
+    // GIN indexes for JSONB columns
+    requirementsGinIdx: index('idx_rfps_requirements_gin').using(
+      'gin',
+      table.requirements
+    ),
+    complianceItemsGinIdx: index('idx_rfps_compliance_items_gin').using(
+      'gin',
+      table.complianceItems
+    ),
+    riskFlagsGinIdx: index('idx_rfps_risk_flags_gin').using(
+      'gin',
+      table.riskFlags
+    ),
+  })
+);
 
-export const proposals = pgTable('proposals', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  rfpId: varchar('rfp_id')
-    .references(() => rfps.id)
-    .notNull(),
-  content: jsonb('content'), // generated proposal content
-  narratives: jsonb('narratives'), // AI-generated narratives
-  pricingTables: jsonb('pricing_tables'), // pricing breakdown
-  forms: jsonb('forms'), // filled forms
-  attachments: jsonb('attachments'), // file references
-  proposalData: jsonb('proposal_data'), // structured proposal metadata
-  estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
-  estimatedMargin: decimal('estimated_margin', { precision: 5, scale: 2 }),
-  receiptData: jsonb('receipt_data'), // submission confirmation details
-  submittedAt: timestamp('submitted_at'),
-  status: text('status').notNull().default('draft'), // draft, review, approved, submitted
-  generatedAt: timestamp('generated_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+export const proposals = pgTable(
+  'proposals',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    rfpId: varchar('rfp_id')
+      .references(() => rfps.id)
+      .notNull(),
+    content: jsonb('content'), // generated proposal content
+    narratives: jsonb('narratives'), // AI-generated narratives
+    pricingTables: jsonb('pricing_tables'), // pricing breakdown
+    forms: jsonb('forms'), // filled forms
+    attachments: jsonb('attachments'), // file references
+    proposalData: jsonb('proposal_data'), // structured proposal metadata
+    estimatedCost: decimal('estimated_cost', { precision: 12, scale: 2 }),
+    estimatedMargin: decimal('estimated_margin', { precision: 5, scale: 2 }),
+    receiptData: jsonb('receipt_data'), // submission confirmation details
+    submittedAt: timestamp('submitted_at'),
+    status: text('status').notNull().default('draft'), // draft, review, approved, submitted
+    generatedAt: timestamp('generated_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => ({
+    // GIN indexes for JSONB columns
+    proposalDataGinIdx: index('idx_proposals_proposal_data_gin').using(
+      'gin',
+      table.proposalData
+    ),
+    narrativesGinIdx: index('idx_proposals_narratives_gin').using(
+      'gin',
+      table.narratives
+    ),
+  })
+);
 
 export const documents = pgTable('documents', {
   id: varchar('id')
@@ -118,26 +161,36 @@ export const documents = pgTable('documents', {
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
 });
 
-export const submissions = pgTable('submissions', {
-  id: varchar('id')
-    .primaryKey()
-    .default(sql`gen_random_uuid()`),
-  rfpId: varchar('rfp_id')
-    .references(() => rfps.id)
-    .notNull(),
-  proposalId: varchar('proposal_id')
-    .references(() => proposals.id)
-    .notNull(),
-  portalId: varchar('portal_id')
-    .references(() => portals.id)
-    .notNull(),
-  submissionData: jsonb('submission_data'), // portal-specific submission data
-  receiptData: jsonb('receipt_data'), // submission confirmation
-  status: text('status').notNull().default('pending'), // pending, submitted, failed, confirmed
-  submittedAt: timestamp('submitted_at'),
-  confirmedAt: timestamp('confirmed_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const submissions = pgTable(
+  'submissions',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    rfpId: varchar('rfp_id')
+      .references(() => rfps.id)
+      .notNull(),
+    proposalId: varchar('proposal_id')
+      .references(() => proposals.id)
+      .notNull(),
+    portalId: varchar('portal_id')
+      .references(() => portals.id)
+      .notNull(),
+    submissionData: jsonb('submission_data'), // portal-specific submission data
+    receiptData: jsonb('receipt_data'), // submission confirmation
+    status: text('status').notNull().default('pending'), // pending, submitted, failed, confirmed
+    submittedAt: timestamp('submitted_at'),
+    confirmedAt: timestamp('confirmed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  table => ({
+    // GIN index for JSONB columns
+    submissionDataGinIdx: index('idx_submissions_submission_data_gin').using(
+      'gin',
+      table.submissionData
+    ),
+  })
+);
 
 export const submissionStatusValues = [
   'pending',
@@ -333,6 +386,11 @@ export const submissionPipelines = pgTable(
     phaseIdx: index('submission_pipelines_phase_idx').on(table.currentPhase),
     completionIdx: index('submission_pipelines_completion_idx').on(
       table.estimatedCompletion
+    ),
+    // GIN index for JSONB columns
+    metadataGinIdx: index('idx_submission_pipelines_metadata_gin').using(
+      'gin',
+      table.metadata
     ),
   })
 );
@@ -1127,6 +1185,12 @@ export const workItems = pgTable(
       table.taskType,
       table.priority,
       table.deadline
+    ),
+    // GIN indexes for JSONB columns
+    inputsGinIdx: index('idx_work_items_inputs_gin').using('gin', table.inputs),
+    metadataGinIdx: index('idx_work_items_metadata_gin').using(
+      'gin',
+      table.metadata
     ),
   })
 );

@@ -98,47 +98,56 @@ server/
 ## Technology Stack
 
 ### Core Framework
+
 - **Express 4.21+** - Web application framework
 - **TypeScript 5.9+** - Type-safe Node.js development
 - **tsx 4.20+** - TypeScript execution and hot reload
 - **Node.js 18+** - JavaScript runtime
 
 ### Database & ORM
+
 - **PostgreSQL 16+** - Primary relational database
 - **Drizzle ORM 0.44+** - Type-safe SQL query builder
 - **Drizzle Kit 0.31+** - Schema migration management
 - **pg 8.16+** - PostgreSQL client
 
 ### AI & Agent System
+
 - **Mastra.ai 0.21+** - AI agent framework and workflow engine
 - **OpenAI SDK 6.5+** - GPT-4/GPT-5 integration
 - **Anthropic AI SDK 2.0+** - Claude 4.5 integration
 - **AI SDK 5.0+** - Unified AI model interface
 
 ### Web Scraping & Browser Automation
+
 - **Stagehand 2.5+** - High-level browser automation (Browserbase)
 - **Browserbase SDK 2.6+** - Cloud browser infrastructure
 - **Cheerio 1.0** - HTML parsing and manipulation
 
 ### Document Processing
+
 - **pdf-parse 2.4+** - PDF text extraction
 - **pdf-lib 1.17+** - PDF manipulation and generation
 - **mammoth 1.11+** - Word document (.docx) conversion
 - **fast-xml-parser 5.3+** - XML parsing
 
 ### Real-time Communication
+
 - **ws 8.18+** - WebSocket server implementation
 - **Server-Sent Events (SSE)** - Unidirectional event streaming
 
 ### Logging & Monitoring
+
 - **Winston 3.18+** - Structured logging
 - **Sentry 10.20+** - Error tracking and performance monitoring
 
 ### Security & Authentication
+
 - **jsonwebtoken 9.0+** - JWT token generation and validation
 - **express-rate-limit 8.1+** - Rate limiting middleware
 
 ### Utilities
+
 - **Zod 3.25+** - Runtime type validation
 - **nanoid 5.1+** - Unique ID generation
 - **node-cron 4.2+** - Scheduled task execution
@@ -149,6 +158,7 @@ server/
 ### Tier 1: Primary Orchestrator (1 agent)
 
 **Primary Orchestrator** (`workflowCoordinator.ts`)
+
 - **Role**: Top-level orchestrator for all RFP operations
 - **Responsibilities**:
   - Delegates tasks to Tier-2 Manager agents
@@ -163,6 +173,7 @@ server/
 ### Tier 2: Manager Agents (3 agents)
 
 #### Portal Manager (`portalManager.ts`)
+
 - **Role**: Manages portal authentication and RFP discovery
 - **Coordinates**:
   - Portal Scanner specialist (Tier 3)
@@ -173,6 +184,7 @@ server/
   - RFP discovery and extraction
 
 #### Proposal Manager (`proposalManager.ts`)
+
 - **Role**: Coordinates proposal generation and compliance
 - **Coordinates**:
   - Content Generator specialist (Tier 3)
@@ -184,6 +196,7 @@ server/
   - Quality assurance
 
 #### Research Manager (`researchManager.ts`)
+
 - **Role**: Conducts market research and competitive intelligence
 - **Coordinates**:
   - Market Analyst specialist (Tier 3)
@@ -208,15 +221,18 @@ server/
 ### Agent Services
 
 #### agentRegistryService.ts
+
 **Purpose**: Central registry for all 11 AI agents
 **Location**: `server/services/agents/agentRegistryService.ts`
 **Features**:
+
 - Agent registration and discovery
 - Health monitoring and status tracking
 - Capability-based agent selection
 - Performance metrics collection
 
 **Usage**:
+
 ```typescript
 import { agentRegistryService } from './services/agents/agentRegistryService';
 
@@ -233,23 +249,28 @@ const health = await agentRegistryService.checkAgentHealth('proposal-manager');
 ### Workflow Services
 
 #### workflowCoordinator.ts
+
 **Purpose**: Tier-1 orchestrator coordinating all workflows
 **Location**: `server/services/workflows/workflowCoordinator.ts`
 **Features**:
+
 - Task delegation to manager agents
 - Workflow state management
 - Progress tracking and reporting
 - Error handling and retries
 
 **Key Workflows**:
+
 1. **RFP Discovery** - Portal scanning → RFP extraction → Document download
 2. **Proposal Generation** - Document parsing → Content generation → Compliance check
 3. **Submission Pipeline** - Preflight checks → Authentication → Upload → Confirmation
 
 #### mastraWorkflowEngine.ts
+
 **Purpose**: Mastra.ai integration for AI-powered workflows
 **Location**: `server/services/workflows/mastraWorkflowEngine.ts`
 **Features**:
+
 - Agent memory management
 - Tool integration
 - Workflow step execution
@@ -258,9 +279,11 @@ const health = await agentRegistryService.checkAgentHealth('proposal-manager');
 ### Scraping Services
 
 #### mastraScrapingService.ts
+
 **Purpose**: Mastra-integrated portal scraping with AI
 **Location**: `server/services/scrapers/mastraScrapingService.ts`
 **Features**:
+
 - Browser automation via Stagehand/Browserbase
 - AI-powered element detection
 - Portal authentication (including 2FA)
@@ -268,6 +291,7 @@ const health = await agentRegistryService.checkAgentHealth('proposal-manager');
 - Incremental scanning support
 
 **Usage**:
+
 ```typescript
 import { getMastraScrapingService } from './services/scrapers/mastraScrapingService';
 
@@ -277,11 +301,11 @@ const scrapingService = await getMastraScrapingService();
 const result = await scrapingService.scanPortal({
   portalId: 'portal-123',
   searchFilter: 'technology services',
-  incrementalScan: true
+  incrementalScan: true,
 });
 
 // Monitor scan progress (emits SSE events)
-scrapingService.on('progress', (event) => {
+scrapingService.on('progress', event => {
   console.log(`Progress: ${event.step} - ${event.progress}%`);
 });
 ```
@@ -289,15 +313,18 @@ scrapingService.on('progress', (event) => {
 ### Document Processing Services
 
 #### documentIntelligenceService.ts
+
 **Purpose**: AI-powered document analysis and requirement extraction
 **Location**: `server/services/processing/documentIntelligenceService.ts`
 **Features**:
+
 - PDF and Word document parsing
 - AI-based requirement extraction
 - Compliance checklist generation
 - Metadata extraction
 
 **Usage**:
+
 ```typescript
 import { documentIntelligenceService } from './services/processing/documentIntelligenceService';
 
@@ -306,7 +333,7 @@ const analysis = await documentIntelligenceService.processRFPDocument({
   rfpId: 'rfp-123',
   documentUrl: 'https://portal.gov/rfp.pdf',
   extractRequirements: true,
-  generateCompliance: true
+  generateCompliance: true,
 });
 
 console.log(analysis.requirements); // Extracted requirements
@@ -316,15 +343,18 @@ console.log(analysis.complianceMatrix); // Compliance checklist
 ### Proposal Services
 
 #### ai-proposal-service.ts
+
 **Purpose**: AI-powered proposal content generation
 **Location**: `server/services/proposals/ai-proposal-service.ts`
 **Features**:
+
 - GPT-4/Claude 4.5 integration
 - Context-aware content generation
 - Iterative refinement
 - Quality scoring
 
 **Usage**:
+
 ```typescript
 import { aiProposalService } from './services/proposals/ai-proposal-service';
 
@@ -333,14 +363,16 @@ const proposal = await aiProposalService.generateProposal({
   rfpId: 'rfp-123',
   companyProfileId: 'company-123',
   sections: ['executive-summary', 'technical-approach', 'pricing'],
-  qualityThreshold: 0.85
+  qualityThreshold: 0.85,
 });
 ```
 
 #### enhancedProposalService.ts
+
 **Purpose**: Enhanced proposal pipeline with compliance and pricing
 **Location**: `server/services/proposals/enhancedProposalService.ts`
 **Features**:
+
 - Multi-stage proposal generation
 - Compliance validation integration
 - Pricing table generation
@@ -350,15 +382,18 @@ const proposal = await aiProposalService.generateProposal({
 ### Portal Services
 
 #### portal-scheduler-service.ts
+
 **Purpose**: Automated portal scanning with cron scheduling
 **Location**: `server/services/portals/portal-scheduler-service.ts`
 **Features**:
+
 - Configurable scan schedules (cron expressions)
 - Priority-based execution
 - Failure recovery and retries
 - Scan history tracking
 
 **Usage**:
+
 ```typescript
 import { portalSchedulerService } from './services/portals/portal-scheduler-service';
 
@@ -367,16 +402,18 @@ await portalSchedulerService.schedulePortalScan({
   portalId: 'portal-123',
   schedule: '0 9 * * *', // Daily at 9 AM
   priority: 8,
-  searchFilter: 'technology'
+  searchFilter: 'technology',
 });
 ```
 
 ### Core Services
 
 #### aiService.ts
+
 **Purpose**: Unified AI model integration (OpenAI, Anthropic)
 **Location**: `server/services/core/aiService.ts`
 **Features**:
+
 - Model selection and routing
 - Token usage tracking
 - Circuit breaker protection
@@ -384,6 +421,7 @@ await portalSchedulerService.schedulePortalScan({
 - Structured output with Zod schemas
 
 **Usage**:
+
 ```typescript
 import { AIService } from './services/core/aiService';
 
@@ -394,14 +432,14 @@ const response = await aiService.generateText({
   model: 'gpt-4',
   prompt: 'Analyze this RFP...',
   maxTokens: 2000,
-  temperature: 0.7
+  temperature: 0.7,
 });
 
 // Generate with Claude
 const claudeResponse = await aiService.generateText({
   model: 'claude-3-5-sonnet-20241022',
   prompt: 'Write executive summary...',
-  schema: ExecutiveSummarySchema // Zod schema for structured output
+  schema: ExecutiveSummarySchema, // Zod schema for structured output
 });
 ```
 
@@ -474,6 +512,7 @@ GET    /api/health/live            # Kubernetes liveness probe
 ### Workflow Examples
 
 #### 1. Manual RFP Submission Workflow
+
 ```
 POST /api/rfps/manual
   ↓
@@ -495,6 +534,7 @@ RFP marked as "parsing complete" → User notified
 ```
 
 #### 2. Automated Portal Scanning Workflow
+
 ```
 Cron job triggers (via portal-scheduler-service)
   ↓
@@ -518,6 +558,7 @@ SSE progress updates streamed throughout
 ```
 
 #### 3. Enhanced Proposal Generation Workflow
+
 ```
 POST /api/proposals/enhanced/generate
   ↓
@@ -553,17 +594,18 @@ The server maintains persistent WebSocket connections for real-time updates:
 websocketService.broadcastToChannel('rfps', {
   type: 'rfp:discovered',
   payload: rfpData,
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 });
 
 websocketService.broadcastToChannel('agents', {
   type: 'agent:status_change',
   payload: { agentId, status: 'busy' },
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
 });
 ```
 
 **Channels**:
+
 - `rfps` - RFP discovery and updates
 - `proposals` - Proposal generation progress
 - `agents` - Agent status changes
@@ -609,8 +651,8 @@ const rfpWithProposals = await db.query.rfps.findFirst({
   with: {
     proposals: true,
     portal: true,
-    documents: true
-  }
+    documents: true,
+  },
 });
 ```
 
@@ -621,6 +663,7 @@ See [shared/CLAUDE.md](../shared/CLAUDE.md) for complete schema reference.
 The server implements multiple resilience patterns:
 
 #### Circuit Breaker Pattern
+
 ```typescript
 import { withCircuitBreaker } from './utils/circuitBreaker';
 
@@ -633,17 +676,19 @@ const result = await withCircuitBreaker(
 ```
 
 #### Retry Logic
+
 ```typescript
 import { retryHttp } from './utils/retry';
 
 // Automatic retry with exponential backoff
-const response = await retryHttp(
-  async () => await fetch(portalUrl),
-  { maxAttempts: 3, initialDelay: 1000 }
-);
+const response = await retryHttp(async () => await fetch(portalUrl), {
+  maxAttempts: 3,
+  initialDelay: 1000,
+});
 ```
 
 #### Structured Logging
+
 ```typescript
 import { logger } from './utils/logger';
 
@@ -693,6 +738,7 @@ MASTRA_API_KEY=...
 6. **Document public methods** with JSDoc comments
 
 Example:
+
 ```typescript
 import { logger } from '../utils/logger';
 import { withCircuitBreaker } from '../utils/circuitBreaker';
@@ -705,10 +751,9 @@ export class NewService {
     this.logger.info('Processing task', { taskId });
 
     try {
-      const data = await retry(
-        async () => await this.fetchData(taskId),
-        { maxAttempts: 3 }
-      );
+      const data = await retry(async () => await this.fetchData(taskId), {
+        maxAttempts: 3,
+      });
 
       const result = await withCircuitBreaker(
         'external-service',
@@ -735,6 +780,7 @@ export class NewService {
 6. Register route in `server/routes/index.ts`
 
 Example:
+
 ```typescript
 import { Router } from 'express';
 import { handleAsyncError } from './middleware/errorHandling';
@@ -746,10 +792,11 @@ const router = Router();
 
 const CreateResourceSchema = z.object({
   name: z.string().min(1),
-  type: z.enum(['typeA', 'typeB'])
+  type: z.enum(['typeA', 'typeB']),
 });
 
-router.post('/resources',
+router.post(
+  '/resources',
   rateLimiter,
   handleAsyncError(async (req, res) => {
     const validated = CreateResourceSchema.parse(req.body);
@@ -804,6 +851,7 @@ npm start
 ### Health Checks
 
 Kubernetes probes:
+
 - **Liveness**: `GET /api/health/live` - Basic server responsiveness
 - **Readiness**: `GET /api/health/ready` - Database + essential services health
 
