@@ -12,8 +12,9 @@
  * - @1password/sdk provides core_bg.wasm file needed at runtime
  */
 
-import { readFile, writeFile } from 'fs/promises';
+import { readFile, writeFile, copyFile, access } from 'fs/promises';
 import { join } from 'path';
+import { existsSync } from 'fs';
 
 const outputDir = join(process.cwd(), '.mastra', 'output');
 const packageJsonPath = join(outputDir, 'package.json');
@@ -57,11 +58,32 @@ async function fixDependencies() {
   }
 }
 
+async function copyWasmFile() {
+  try {
+    // Source: WASM file from public directory (committed to repo)
+    const publicWasm = join(process.cwd(), 'public', 'core_bg.wasm');
+    const destWasm = join(outputDir, 'core_bg.wasm');
+
+    // Check if public WASM file exists
+    if (!existsSync(publicWasm)) {
+      console.log('⚠️  Warning: public/core_bg.wasm not found - will be needed for 1Password SDK');
+      return;
+    }
+
+    // Copy WASM file to output root
+    await copyFile(publicWasm, destWasm);
+    console.log('✅ Copied core_bg.wasm to .mastra/output/');
+  } catch (error) {
+    console.error('❌ Failed to copy WASM file:', error.message);
+    throw error;
+  }
+}
+
 async function main() {
   try {
     await fixDependencies();
+    await copyWasmFile();
     console.log('\n✨ Post-build fixes completed successfully!\n');
-    console.log('📝 Note: Mastra Cloud will install @1password/sdk during deployment');
   } catch (error) {
     console.error('\n❌ Post-build fixes failed\n');
     process.exit(1);
