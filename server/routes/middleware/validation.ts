@@ -51,13 +51,13 @@ export const commonSchemas = {
       .transform(val => parseInt(val, 10))
       .pipe(z.number().min(1).max(100))
       .optional()
-      .default(50),
+      .default('50'),
     offset: z
       .string()
       .transform(val => parseInt(val, 10))
       .pipe(z.number().min(0))
       .optional()
-      .default(0),
+      .default('0'),
     page: z
       .string()
       .transform(val => parseInt(val, 10))
