@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Post-build script to fix Mastra output dependencies
+ * Post-build script to copy WASM files to Mastra output
  *
- * This script adds missing dependencies that the Mastra bundler fails to detect:
- * 1. zod 3.25.67 - Prevents npm from installing incompatible zod 3.25.76+
- * 2. @1password/sdk - Required by page-auth-tool but missing from bundle
+ * This script ensures the core_bg.wasm file required by @1password/sdk
+ * is available in the Mastra output directory.
  *
- * Context:
- * - @browserbasehq/stagehand requires zod <3.25.68
- * - @1password/sdk provides core_bg.wasm file needed at runtime
+ * The prebuild-mastra-deps.js script (runs before ANY build) ensures
+ * zod 3.25.67 and @1password/sdk are installed correctly in node_modules.
+ *
+ * This post-build script (runs after mastra build) copies the WASM file
+ * from the public/ directory to the .mastra/output/ directory.
  */
 
 import { readFile, writeFile, copyFile, access } from 'fs/promises';
@@ -19,41 +20,40 @@ import { existsSync } from 'fs';
 const outputDir = join(process.cwd(), '.mastra', 'output');
 const packageJsonPath = join(outputDir, 'package.json');
 
-async function fixDependencies() {
+async function ensureDependencies() {
   try {
-    // Read the package.json
+    // Read and update the Mastra output package.json
     const content = await readFile(packageJsonPath, 'utf-8');
     const packageJson = JSON.parse(content);
 
+    console.log('🔍 Ensuring Mastra output has required dependencies...');
+
     let updated = false;
 
-    // Add zod 3.25.67 as an explicit dependency
+    // Ensure zod 3.25.67
     if (!packageJson.dependencies.zod) {
+      console.log('📦 Adding zod@3.25.67 to bundled dependencies');
       packageJson.dependencies.zod = '3.25.67';
-      console.log('✅ Added zod@3.25.67');
       updated = true;
     } else {
-      console.log(`ℹ️  zod already exists: ${packageJson.dependencies.zod}`);
+      console.log(`✅ zod: ${packageJson.dependencies.zod}`);
     }
 
-    // Add 1Password SDK (missing from bundler analysis)
+    // Ensure @1password/sdk
     if (!packageJson.dependencies['@1password/sdk']) {
+      console.log('📦 Adding @1password/sdk@^0.3.1 to bundled dependencies');
       packageJson.dependencies['@1password/sdk'] = '^0.3.1';
-      console.log('✅ Added @1password/sdk@^0.3.1');
       updated = true;
     } else {
-      console.log(`ℹ️  @1password/sdk already exists: ${packageJson.dependencies['@1password/sdk']}`);
+      console.log(`✅ @1password/sdk: ${packageJson.dependencies['@1password/sdk']}`);
     }
 
     if (updated) {
-      // Write back
       await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
-      console.log('✅ Successfully updated .mastra/output/package.json');
-    } else {
-      console.log('ℹ️  No dependency updates needed');
+      console.log('✅ Updated .mastra/output/package.json with missing dependencies');
     }
   } catch (error) {
-    console.error('❌ Failed to fix dependencies:', error.message);
+    console.error('⚠️  Could not update dependencies:', error.message);
     throw error;
   }
 }
@@ -81,7 +81,7 @@ async function copyWasmFile() {
 
 async function main() {
   try {
-    await fixDependencies();
+    await ensureDependencies();
     await copyWasmFile();
     console.log('\n✨ Post-build fixes completed successfully!\n');
   } catch (error) {
