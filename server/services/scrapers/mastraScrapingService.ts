@@ -560,7 +560,11 @@ export class MastraScrapingService {
     }
   }
 
-  async scrapePortal(portal: Portal, searchFilter?: string, incrementalScan?: boolean): Promise<void> {
+  async scrapePortal(
+    portal: Portal,
+    searchFilter?: string,
+    incrementalScan?: boolean
+  ): Promise<void> {
     const filterMessage = searchFilter ? ` with filter: "${searchFilter}"` : '';
     console.log(
       `Starting intelligent scrape of ${portal.name} using Mastra agents${filterMessage}`

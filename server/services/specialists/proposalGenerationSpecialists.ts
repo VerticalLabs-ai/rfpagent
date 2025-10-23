@@ -171,7 +171,10 @@ export class ContentGenerationSpecialist {
         metadata: { phase: 'outline-solid', specialist: 'content-generator' },
       };
     } catch (error) {
-      console.error('❌ Content Specialist outline-solid generation failed:', error);
+      console.error(
+        '❌ Content Specialist outline-solid generation failed:',
+        error
+      );
       return {
         success: false,
         error:

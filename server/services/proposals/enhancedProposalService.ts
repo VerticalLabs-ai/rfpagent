@@ -1,4 +1,9 @@
-import { captureException, addBreadcrumb, withScope, startSpan } from '@sentry/node';
+import {
+  captureException,
+  addBreadcrumb,
+  withScope,
+  startSpan,
+} from '@sentry/node';
 import { storage } from '../../storage';
 import {
   documentIntelligenceService,

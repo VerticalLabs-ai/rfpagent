@@ -151,7 +151,9 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                   newState.portalName =
                     scanEvent.data.portalName || newState.portalName;
                   newState.status = scanEvent.data.status || 'running';
-                  newState.startedAt = isValidTimestamp ? timestamp : new Date();
+                  newState.startedAt = isValidTimestamp
+                    ? timestamp
+                    : new Date();
 
                   if (scanEvent.data.currentStep) {
                     const stepTimestamp = scanEvent.data.currentStep.timestamp
@@ -160,8 +162,11 @@ export function useScanStream(portalId?: string): UseScanStreamResult {
                     newState.currentStep = {
                       step: scanEvent.data.currentStep.step || 'initializing',
                       progress: scanEvent.data.currentStep.progress || 0,
-                      message: scanEvent.data.currentStep.message || 'Starting...',
-                      timestamp: !isNaN(stepTimestamp.getTime()) ? stepTimestamp : new Date(),
+                      message:
+                        scanEvent.data.currentStep.message || 'Starting...',
+                      timestamp: !isNaN(stepTimestamp.getTime())
+                        ? stepTimestamp
+                        : new Date(),
                     };
                   }
 
