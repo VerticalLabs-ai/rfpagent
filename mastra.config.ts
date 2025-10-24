@@ -16,4 +16,5 @@ import { mastra } from './src/mastra';
 export default config({
   name: 'rfp-agent-platform',
   mastra,
+  publicDir: 'public',
 });
