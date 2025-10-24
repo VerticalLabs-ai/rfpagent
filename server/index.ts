@@ -192,6 +192,12 @@ app.use((req, res, next) => {
   // This allows the server to respond to requests while agents initialize
   setImmediate(async () => {
     try {
+      // Initialize Mastra agent system (registry + pools) if enabled
+      const { initializeAgentSystem } = await import('../src/mastra/index');
+      await initializeAgentSystem();
+      log('✅ Mastra agent system initialized (registry + pools)');
+
+      // Bootstrap default agents (server-side registry)
       await agentRegistryService.bootstrapDefaultAgents();
       log('🤖 3-tier agentic system initialized with default agents');
     } catch (error) {

@@ -39,6 +39,11 @@ attached_assets/
 # Removed Windows wrapper files per user request
 hive-mind-prompt-*.txt
 
+.mastra/
+
+# WASM files copied by postbuild script (original is in public/)
+/core_bg.wasm
+/src/mastra/core_bg.wasm
 
 # Claude Flow generated files
 .claude/settings.local.json
@@ -48,7 +53,7 @@ claude-flow.config.json
 .hive-mind/
 .claude-flow/
 memory/
-/coordination/
+coordination/
 memory/claude-flow-data.json
 memory/sessions/*
 !memory/sessions/README.md
@@ -66,9 +71,3 @@ coordination/orchestration/*
 claude-flow
 # Removed Windows wrapper files per user request
 hive-mind-prompt-*.txt
-
-.mastra/
-
-# WASM files copied by postbuild script (original is in public/)
-/core_bg.wasm
-/src/mastra/core_bg.wasm

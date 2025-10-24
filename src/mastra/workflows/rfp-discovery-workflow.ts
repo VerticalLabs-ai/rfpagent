@@ -2,6 +2,8 @@ import { createStep, createWorkflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 import { storage } from '../../../server/storage';
 import { getPoolStatistics } from '../utils/pool-integration';
+// Static import for Mastra Cloud compatibility - no dynamic imports in workflows
+import { incrementalPortalScanService } from '../../../server/services/portals/incrementalPortalScanService';
 
 /**
  * Calculate dynamic confidence score for extracted RFP opportunity
@@ -199,11 +201,7 @@ const scrapePortalStep = createStep({
     console.log(`🔍 Incrementally scanning ${portal.name} (${portal.url})`);
 
     try {
-      // Use incremental scanning service
-      const { incrementalPortalScanService } = await import(
-        '../../../server/services/portals/incrementalPortalScanService'
-      );
-
+      // Use incremental scanning service (statically imported)
       const scanResult = await incrementalPortalScanService.scanPortal({
         portalId: portal.id,
         sessionId: `portal-${portal.id}-${Date.now()}`,

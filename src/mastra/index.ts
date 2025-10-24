@@ -1,10 +1,12 @@
 import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
 import { Mastra } from '@mastra/core/mastra';
 
-// Agent Registry System (Phase 1)
+// Agent Registry System (Phase 1) - Static imports for Mastra Cloud compatibility
 import { agentHierarchyConfig } from './config/agent-hierarchy';
 import { featureFlags, logFeatureFlags } from './config/feature-flags';
 import { agentRegistry } from './registry/agent-registry';
+import { agentPoolManager } from './coordination/agent-pool-manager';
+import { workflowAgentBindings } from './config/workflow-agent-bindings';
 
 // Orchestrator Agent
 import { primaryOrchestrator } from './agents/primary-orchestrator';
@@ -93,65 +95,36 @@ export const mastra = new Mastra({
   mcpServers: {
     rfp: rfpMcpServer,
   },
-  // Bundler Configuration - Mark runtime tools as external
-  // These are Node.js runtime dependencies that should not be bundled
-  // They have CommonJS/ESM interop issues or use Node.js built-in modules
+  // Bundler Configuration - Minimal externals for Mastra Cloud compatibility
+  // Only include runtime dependencies that MUST be external
   bundler: {
     externals: [
-      // Browser automation tools (use Node.js built-ins)
-      'playwright',
-      'playwright-core',
-      '@playwright/test',
+      // Browser automation (required at runtime, cannot be bundled)
       '@browserbasehq/stagehand',
-      'puppeteer',
-      'puppeteer-core',
 
-      // Document processing tools (CommonJS/ESM interop issues)
-      'pdf-parse',
-      'pdf-lib',
-      'mammoth',
-      'adm-zip',
-
-      // Database tools (avoid circular dependency issues in bundler)
+      // Database (LibSQL not supported in Mastra Cloud serverless environment)
       '@mastra/libsql',
       '@libsql/client',
-      'libsql',
-
-      // MCP tools (CommonJS/ESM interop issues)
-      '@mastra/mcp',
-
-      // Logging (winston uses readable-stream which has CommonJS/ESM issues)
-      'winston',
-      'winston-transport',
-
-      // Stream packages (CommonJS/ESM interop issues with inherits)
-      'readable-stream',
-      'inherits',
-      'duplexify',
-      'stream-browserify',
-      'jszip',
-
-      // AI SDK (no default export, must be external)
-      '@ai-sdk/anthropic',
-      '@ai-sdk/openai',
-      'ai',
-      '@1password/sdk',
-      '@1password/sdk-core',
     ],
-    // Note: Server imports are handled by Vite's dependency optimization
-    // Regex patterns for server imports are not supported in bundler.externals
+    // Let Mastra Cloud handle all other dependencies
   },
 });
 
 // ============================================================================
-// PHASE 1: Agent Registry Initialization
+// INITIALIZATION FUNCTIONS (Deferred for Mastra Cloud Compatibility)
 // ============================================================================
 
 /**
- * Initialize Agent Registry (if enabled via feature flag)
- * Registers all agents with their metadata for hierarchical management
+ * Initialize Agent Registry System
+ * Call this function after mastra instance is created to register agents
+ * Separated from module initialization to avoid side effects during Mastra Cloud scanning
  */
-if (featureFlags.useAgentRegistry) {
+export async function initializeAgentRegistry() {
+  if (!featureFlags.useAgentRegistry) {
+    mastraLogger.debug('Agent Registry is disabled (USE_AGENT_REGISTRY=false)');
+    return;
+  }
+
   mastraLogger.info('🔧 Initializing Agent Registry System...');
 
   // Map of agent instance names to agent instances
@@ -200,28 +173,20 @@ if (featureFlags.useAgentRegistry) {
     `✅ Agent Registry initialized: ${registeredCount} agents registered`,
     stats
   );
-} else {
-  mastraLogger.debug('Agent Registry is disabled (USE_AGENT_REGISTRY=false)');
 }
 
-// ============================================================================
-// PHASE 2: Agent Pool Initialization
-// ============================================================================
-
 /**
- * Initialize Agent Pools (if enabled via feature flag)
- * Creates agent pools for load balancing and auto-scaling
+ * Initialize Agent Pool Manager
+ * Call this function to create agent pools for load balancing
+ * Separated from module initialization to avoid side effects during Mastra Cloud scanning
  */
-if (featureFlags.useAgentPools) {
-  mastraLogger.info('🏊 Initializing Agent Pool Manager...');
+export async function initializeAgentPools() {
+  if (!featureFlags.useAgentPools) {
+    mastraLogger.debug('Agent Pools are disabled (USE_AGENT_POOLS=false)');
+    return;
+  }
 
-  // Import pool manager and bindings
-  const { agentPoolManager } = await import(
-    './coordination/agent-pool-manager'
-  );
-  const { workflowAgentBindings } = await import(
-    './config/workflow-agent-bindings'
-  );
+  mastraLogger.info('🏊 Initializing Agent Pool Manager...');
 
   // Create pools from workflow bindings
   let poolsCreated = 0;
@@ -287,8 +252,15 @@ if (featureFlags.useAgentPools) {
       })),
     }
   );
-} else {
-  mastraLogger.debug('Agent Pools are disabled (USE_AGENT_POOLS=false)');
+}
+
+/**
+ * Initialize complete agent system (registry + pools)
+ * Call this once at application startup
+ */
+export async function initializeAgentSystem() {
+  await initializeAgentRegistry();
+  await initializeAgentPools();
 }
 
 // Export registry and pool manager for external use
