@@ -126,7 +126,6 @@ export const mastra = new Mastra({
       'ai',
       '@1password/sdk',
       '@1password/sdk-core',
-      'readable-stream',
     ],
     // Note: Server imports are handled by Vite's dependency optimization
     // Regex patterns for server imports are not supported in bundler.externals
