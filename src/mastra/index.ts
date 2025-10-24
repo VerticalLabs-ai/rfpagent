@@ -124,6 +124,8 @@ export const mastra = new Mastra({
       '@ai-sdk/anthropic',
       '@ai-sdk/openai',
       'ai',
+      '@1password/sdk',
+      '@1password/sdk-core',
     ],
     // Note: Server imports are handled by Vite's dependency optimization
     // Regex patterns for server imports are not supported in bundler.externals
