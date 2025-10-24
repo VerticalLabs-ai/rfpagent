@@ -11,7 +11,6 @@
     "dev": "concurrently \"NODE_ENV=development tsx server/index.ts\" \"wait-on http://localhost:5001 && vite\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
     "dev:backend": "NODE_ENV=development tsx server/index.ts",
     "dev:frontend": "vite",
-    "prebuild": "node scripts/prebuild-mastra-deps.js",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --tree-shaking=true --minify --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
@@ -36,7 +35,7 @@
     "quality": "npm run type-check && npm run lint && npm run format:check && npm run test",
     "prepare": "husky",
     "mastra:dev": "mastra dev",
-    "mastra:build": "mastra build && node scripts/fix-mastra-zod.js",
+    "mastra:build": "mastra build",
     "mastra:deploy": "mastra deploy",
     "apply-gin-indexes": "node server/scripts/apply-gin-indexes.js"
   },
