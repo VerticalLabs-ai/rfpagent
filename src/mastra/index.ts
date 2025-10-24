@@ -120,10 +120,16 @@ export const mastra = new Mastra({
       // MCP tools (CommonJS/ESM interop issues)
       '@mastra/mcp',
 
+      // Logging (winston uses readable-stream which has CommonJS/ESM issues)
+      'winston',
+      'winston-transport',
+
       // Stream packages (CommonJS/ESM interop issues with inherits)
       'readable-stream',
       'inherits',
       'duplexify',
+      'stream-browserify',
+      'jszip',
 
       // AI SDK (no default export, must be external)
       '@ai-sdk/anthropic',
