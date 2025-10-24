@@ -68,3 +68,6 @@ claude-flow
 hive-mind-prompt-*.txt
 
 .mastra/
+
+# WASM files copied to root by postbuild script (original is in public/)
+/core_bg.wasm
