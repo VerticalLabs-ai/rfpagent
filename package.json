@@ -41,7 +41,7 @@
   },
   "dependencies": {
     "@1password/sdk": "^0.3.1",
-    "@ai-sdk/anthropic": "^2.0.35",
+    "@ai-sdk/anthropic": "^2.0.37",
     "@ai-sdk/openai": "^2.0.53",
     "@browserbasehq/sdk": "^2.6.0",
     "@browserbasehq/stagehand": "^2.5.2",
@@ -89,9 +89,9 @@
     "@uppy/core": "^5.1.1",
     "@uppy/dashboard": "^5.0.3",
     "@uppy/react": "^5.1.0",
-    "@vitejs/plugin-react": "^5.0.4",
+    "@vitejs/plugin-react": "^5.1.0",
     "adm-zip": "^0.5.16",
-    "ai": "^5.0.76",
+    "ai": "^5.0.78",
     "axios": "^1.12.2",
     "cheerio": "1.1.2",
     "class-variance-authority": "^0.7.1",
@@ -129,7 +129,7 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "vite": "^7.1.11",
+    "vite": "^7.1.12",
     "winston": "^3.18.3",
     "wouter": "^3.7.1",
     "ws": "^8.18.3",
@@ -139,7 +139,7 @@
     "@eslint/js": "^9.38.0",
     "@jest/globals": "^30.2.0",
     "@playwright/test": "^1.56.1",
-    "@tailwindcss/postcss": "^4.1.15",
+    "@tailwindcss/postcss": "^4.1.16",
     "@tailwindcss/typography": "^0.5.19",
     "@types/express": "5.0.3",
     "@types/node": "24.9.1",
@@ -162,11 +162,11 @@
     "mastra": "^0.17.3",
     "postcss": "^8.5.6",
     "prettier": "^3.6.2",
-    "tailwindcss": "4.1.15",
+    "tailwindcss": "4.1.16",
     "ts-jest": "^29.4.5",
     "tsx": "^4.20.6",
     "typescript": "5.9.3",
-    "vitest": "^4.0.1",
+    "vitest": "^4.0.3",
     "wait-on": "^9.0.1"
   },
   "optionalDependencies": {
@@ -183,7 +183,9 @@
     ],
     "overrides": {
       "google-logging-utils": "1.1.1",
-      "zod": "3.25.67"
+      "zod": "3.25.67",
+      "esbuild": ">=0.25.0",
+      "jsondiffpatch": ">=0.7.2"
     },
     "peerDependencyRules": {
       "allowedVersions": {
