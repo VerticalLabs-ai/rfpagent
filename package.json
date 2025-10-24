@@ -192,6 +192,9 @@
       "allowedVersions": {
         "zod": ">=3.25.0"
       }
+    },
+    "patchedDependencies": {
+      "readable-stream@3.6.2": "patches/readable-stream@3.6.2.patch"
     }
   },
   "lint-staged": {

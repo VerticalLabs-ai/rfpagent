@@ -1,0 +1,35 @@
+diff --git a/lib/_stream_duplex.js b/lib/_stream_duplex.js
+index 19abfa604d5ef7bf3646c1a70a848c3f0df8105a..596b4c0670b27170e1a9ced981436842c158bc5b 100644
+--- a/lib/_stream_duplex.js
++++ b/lib/_stream_duplex.js
+@@ -36,20 +36,26 @@ var objectKeys = Object.keys || function (obj) {
+ 
+ module.exports = Duplex;
+ var Readable = require('./_stream_readable');
+-var Writable = require('./_stream_writable');
++var Writable = null;
++function getWritable() {
++  if (Writable === null) {
++    Writable = require('./_stream_writable');
++  }
++  return Writable;
++}
+ require('inherits')(Duplex, Readable);
+ {
+   // Allow the keys array to be GC'ed.
+-  var keys = objectKeys(Writable.prototype);
++  var keys = objectKeys(getWritable().prototype);
+   for (var v = 0; v < keys.length; v++) {
+     var method = keys[v];
+-    if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable.prototype[method];
++    if (!Duplex.prototype[method]) Duplex.prototype[method] = getWritable().prototype[method];
+   }
+ }
+ function Duplex(options) {
+   if (!(this instanceof Duplex)) return new Duplex(options);
+   Readable.call(this, options);
+-  Writable.call(this, options);
++  getWritable().call(this, options);
+   this.allowHalfOpen = true;
+   if (options) {
+     if (options.readable === false) this.readable = false;
