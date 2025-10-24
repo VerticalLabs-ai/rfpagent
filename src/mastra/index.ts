@@ -120,6 +120,11 @@ export const mastra = new Mastra({
       // MCP tools (CommonJS/ESM interop issues)
       '@mastra/mcp',
 
+      // Stream packages (CommonJS/ESM interop issues with inherits)
+      'readable-stream',
+      'inherits',
+      'duplexify',
+
       // AI SDK (no default export, must be external)
       '@ai-sdk/anthropic',
       '@ai-sdk/openai',
