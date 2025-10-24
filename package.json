@@ -36,8 +36,9 @@
     "quality": "npm run type-check && npm run lint && npm run format:check && npm run test",
     "prepare": "husky",
     "mastra:dev": "mastra dev",
-    "mastra:build": "mastra build && node scripts/copy-wasm.js",
+    "mastra:build": "mastra build && node scripts/post-mastra-build.js",
     "mastra:deploy": "mastra deploy",
+    "mastra:postbuild": "node scripts/post-mastra-build.js",
     "apply-gin-indexes": "node server/scripts/apply-gin-indexes.js"
   },
   "dependencies": {

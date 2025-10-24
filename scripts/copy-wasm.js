@@ -16,17 +16,17 @@ const wasmSource = path.join(__dirname, '../public/core_bg.wasm');
 const wasmDest = path.join(__dirname, '../.mastra/output/core_bg.wasm');
 
 try {
-  // Check if output directory exists
-  const outputDir = path.dirname(wasmDest);
-  if (!fs.existsSync(outputDir)) {
-    console.log('⚠️  .mastra/output directory does not exist yet - skipping WASM copy');
-    process.exit(0);
-  }
-
   // Check if source file exists
   if (!fs.existsSync(wasmSource)) {
     console.error('❌ Source WASM file not found:', wasmSource);
     process.exit(1);
+  }
+
+  // Check if output directory exists, create if needed
+  const outputDir = path.dirname(wasmDest);
+  if (!fs.existsSync(outputDir)) {
+    console.log('⚠️  Creating .mastra/output directory...');
+    fs.mkdirSync(outputDir, { recursive: true });
   }
 
   // Copy the file
@@ -39,5 +39,6 @@ try {
 
 } catch (error) {
   console.error('❌ Error copying WASM file:', error.message);
-  process.exit(1);
+  // Don't exit with error if this is optional
+  console.log('⚠️  Continuing without WASM file in .mastra/output (may be copied later)');
 }

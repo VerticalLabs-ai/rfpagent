@@ -20,6 +20,7 @@ const wasmSource = path.join(__dirname, '../public/core_bg.wasm');
 const destinations = [
   path.join(__dirname, '../core_bg.wasm'),           // Project root
   path.join(__dirname, '../src/mastra/core_bg.wasm'), // Mastra source dir
+  path.join(__dirname, '../.mastra/output/core_bg.wasm'), // Mastra output (for Cloud deployment)
 ];
 
 try {
@@ -38,6 +39,13 @@ try {
   // Copy to all destinations
   destinations.forEach(dest => {
     const dir = path.dirname(dest);
+
+    // Skip .mastra/output if it doesn't exist yet (will be created by mastra build)
+    if (dest.includes('.mastra/output') && !fs.existsSync(dir)) {
+      console.log(`   ⏭️  Skipping ${dest} (directory doesn't exist yet, will be handled by mastra:build)`);
+      return;
+    }
+
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
