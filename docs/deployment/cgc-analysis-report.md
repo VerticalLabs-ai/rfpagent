@@ -333,7 +333,7 @@ The platform is ready for stable, continuous deployment without the previous con
 ## References
 
 - **Main Configuration**: [src/mastra/index.ts](../src/mastra/index.ts)
-- **Deployment Guide**: [docs/MASTRA_CLOUD_DEPLOYMENT.md](./MASTRA_CLOUD_DEPLOYMENT.md)
+- **Deployment Guide**: [docs/mastra-cloud-deployment.md](../mastra-cloud-deployment.md)
 - **CGC Analysis Date**: January 24, 2025
 - **Next Review**: After Mastra Cloud deployment verification
 

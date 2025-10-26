@@ -6,6 +6,8 @@
 
 This document explains the RFP Agent platform's configuration for Mastra Cloud deployment and how to avoid common issues like constant redeployments.
 
+**For local MCP server setup**, see [technical/mcp-server-setup.md](technical/mcp-server-setup.md).
+
 ## Fixed Issues (2025-01-24)
 
 ### 🎯 Key Changes for Deployment Stability
