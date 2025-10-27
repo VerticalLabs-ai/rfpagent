@@ -108,6 +108,19 @@ export const mastra = new Mastra({
       // Database (LibSQL not supported in Mastra Cloud serverless environment)
       '@mastra/libsql',
       '@libsql/client',
+
+      // Winston Logger (uses Node.js streams and util.inherits - breaks when bundled)
+      'winston',
+      'winston-transport',
+      'logform',
+      'readable-stream',
+      'triple-beam',
+
+      // AI SDK packages (complex ESM exports that break when bundled)
+      '@ai-sdk/openai',
+      '@ai-sdk/anthropic',
+      'ai',
+      'openai',
     ],
     // Let Mastra Cloud handle all other dependencies
   },
