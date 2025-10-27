@@ -38,6 +38,15 @@ import { masterOrchestrationWorkflow } from './workflows/master-orchestration-wo
 import { proposalPDFAssemblyWorkflow } from './workflows/proposal-pdf-assembly-workflow';
 import { rfpDiscoveryWorkflow } from './workflows/rfp-discovery-workflow';
 
+// Tools
+import {
+  pageActTool,
+  pageAuthTool,
+  pageExtractTool,
+  pageNavigateTool,
+  pageObserveTool,
+} from './tools';
+
 const envLogLevel = process.env.MASTRA_LOG_LEVEL;
 const validLogLevels = new Set<string>(Object.values(LogLevel));
 const resolvedLogLevel: LogLevel =
@@ -91,6 +100,14 @@ export const mastra = new Mastra({
     proposalPDFAssembly: proposalPDFAssemblyWorkflow,
     bonfireAuth: bonfireAuthWorkflow,
     masterOrchestration: masterOrchestrationWorkflow,
+  },
+  // Tools Configuration
+  tools: {
+    pageAct: pageActTool,
+    pageAuth: pageAuthTool,
+    pageExtract: pageExtractTool,
+    pageNavigate: pageNavigateTool,
+    pageObserve: pageObserveTool,
   },
   mcpServers: {
     rfp: rfpMcpServer,
