@@ -102,6 +102,9 @@ export const mastra = new Mastra({
       // Browser automation (required at runtime, cannot be bundled)
       '@browserbasehq/stagehand',
 
+      // 1Password SDK (contains WASM binary that cannot be bundled)
+      '@1password/sdk',
+
       // Database (LibSQL not supported in Mastra Cloud serverless environment)
       '@mastra/libsql',
       '@libsql/client',
