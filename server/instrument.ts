@@ -6,6 +6,10 @@ import {
 } from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
+// Disable Mastra telemetry warning (telemetry is deprecated)
+// We use Sentry for observability instead
+(globalThis as any).___MASTRA_TELEMETRY___ = true;
+
 init({
   dsn: process.env.SENTRY_DSN,
 

@@ -101,14 +101,7 @@ export const mastra = new Mastra({
     bonfireAuth: bonfireAuthWorkflow,
     masterOrchestration: masterOrchestrationWorkflow,
   },
-  // Tools Configuration
-  tools: {
-    pageAct: pageActTool,
-    pageAuth: pageAuthTool,
-    pageExtract: pageExtractTool,
-    pageNavigate: pageNavigateTool,
-    pageObserve: pageObserveTool,
-  },
+  // MCP Server Configuration (tools are registered in the MCP server)
   mcpServers: {
     rfp: rfpMcpServer,
   },

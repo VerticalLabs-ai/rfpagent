@@ -79,57 +79,107 @@ app.use((req, res, next) => {
     `✓ Database: ${process.env.DATABASE_URL?.split('@')[1]?.split('/')[0] || 'configured'}`
   );
 
-  // Run database migrations in production
+  // Run database migrations in production - NON-BLOCKING for Mastra Cloud
   if (process.env.NODE_ENV === 'production') {
-    try {
-      log('🔄 Running database migrations...');
-      const { execSync } = await import('child_process');
-      // Run drizzle-kit push directly with auto-confirmation via piped yes
-      const result = execSync(
-        'printf "yes\\n" | /app/node_modules/.bin/drizzle-kit push',
-        {
-          stdio: 'pipe',
-          env: process.env,
-          cwd: '/app',
-          shell: '/bin/sh',
+    // Run migrations in background to avoid blocking startup
+    (async () => {
+      try {
+        log('🔄 Running database migrations in background...');
+        const { execSync } = await import('child_process');
+        // Run drizzle-kit push directly with auto-confirmation via piped yes
+        const result = execSync(
+          'printf "yes\\n" | /app/node_modules/.bin/drizzle-kit push',
+          {
+            stdio: 'pipe',
+            env: process.env,
+            cwd: '/app',
+            shell: '/bin/sh',
+            timeout: 30000, // 30 second timeout to prevent hanging
+          }
+        );
+        const output = result.toString().trim();
+        log('✅ Database migrations completed');
+        if (output) {
+          output.split('\n').forEach(line => log(`   ${line}`));
         }
-      );
-      const output = result.toString().trim();
-      log('✅ Database migrations completed');
-      if (output) {
-        output.split('\n').forEach(line => log(`   ${line}`));
+      } catch (error) {
+        log(
+          '⚠️ Database migration error (non-fatal):',
+          error instanceof Error ? error.message : String(error)
+        );
+        if (error && typeof error === 'object') {
+          if ('stdout' in error && (error as any).stdout) {
+            const stdout = (error as any).stdout.toString().trim();
+            if (stdout)
+              stdout
+                .split('\n')
+                .forEach((line: string) => log(`   Output: ${line}`));
+          }
+          if ('stderr' in error && (error as any).stderr) {
+            const stderr = (error as any).stderr.toString().trim();
+            if (stderr)
+              stderr
+                .split('\n')
+                .forEach((line: string) => log(`   Error: ${line}`));
+          }
+        }
+        log('   Server operational - migrations may need manual intervention');
       }
-    } catch (error) {
-      log(
-        '⚠️ Database migration error:',
-        error instanceof Error ? error.message : String(error)
-      );
-      if (error && typeof error === 'object') {
-        if ('stdout' in error && (error as any).stdout) {
-          const stdout = (error as any).stdout.toString().trim();
-          if (stdout)
-            stdout
-              .split('\n')
-              .forEach((line: string) => log(`   Output: ${line}`));
-        }
-        if ('stderr' in error && (error as any).stderr) {
-          const stderr = (error as any).stderr.toString().trim();
-          if (stderr)
-            stderr
-              .split('\n')
-              .forEach((line: string) => log(`   Error: ${line}`));
-        }
-      }
-      log(
-        '   Server will continue startup - migrations may need manual intervention'
-      );
+    })();
+  }
+
+  // Initialize Mastra agent system BEFORE server starts (critical for health checks)
+  try {
+    log('🤖 Initializing Mastra agent system...');
+    const { initializeAgentSystem } = await import('../src/mastra/index');
+    await initializeAgentSystem();
+    log('✅ Mastra agent system initialized (registry + pools)');
+
+    // Bootstrap default agents (server-side registry)
+    await agentRegistryService.bootstrapDefaultAgents();
+    log('✅ 3-tier agentic system initialized with default agents');
+  } catch (error) {
+    log(
+      '⚠️ Failed to initialize agent system:',
+      error instanceof Error ? error.message : String(error)
+    );
+    log('   Server will continue but agent features may be unavailable');
+  }
+
+  // Initialize SAFLA self-improving system
+  try {
+    log('🧠 Initializing SAFLA learning system...');
+    const saflaResult = await saflaSystemIntegration.initializeSystem();
+    if (saflaResult.success) {
+      log('✅ SAFLA self-improving system initialized');
+    } else {
+      log('⚠️ SAFLA initialization completed with warnings');
     }
+  } catch (error) {
+    log(
+      '⚠️ Failed to initialize SAFLA system (non-fatal):',
+      error instanceof Error ? error.message : String(error)
+    );
   }
 
   // Configure modular routes
   log('📝 Configuring routes...');
   configureRoutes(app);
   log('✓ Routes configured');
+
+  // Add root health endpoint for Mastra Cloud readiness probes
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  app.get('/', (req, res) => {
+    res.status(200).json({
+      status: 'ok',
+      service: 'RFP Agent Platform',
+      version: process.env.npm_package_version || '1.0.0',
+      timestamp: new Date().toISOString()
+    });
+  });
 
   // Create HTTP server
   const server = createServer(app);
@@ -164,49 +214,14 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || '3000', 10);
   server.listen(port, '0.0.0.0', () => {
-    log(`serving on port ${port}`);
+    log(`✅ Server ready on port ${port}`);
+    log(`✅ Health check: http://localhost:${port}/health`);
+    log(`✅ API: http://localhost:${port}/api`);
   });
 
   // Initialize WebSocket server AFTER server is listening
   websocketService.initialize(server);
   log('🔌 WebSocket server initialized on /ws');
-
-  // Initialize SAFLA self-improving system
-  setImmediate(async () => {
-    try {
-      const saflaResult = await saflaSystemIntegration.initializeSystem();
-      if (saflaResult.success) {
-        log('🧠 SAFLA self-improving system initialized');
-      } else {
-        log('⚠️ SAFLA initialization completed with warnings');
-      }
-    } catch (error) {
-      log(
-        '⚠️ Failed to initialize SAFLA system:',
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  });
-
-  // Bootstrap 3-tier agentic system with default agents in background
-  // This allows the server to respond to requests while agents initialize
-  setImmediate(async () => {
-    try {
-      // Initialize Mastra agent system (registry + pools) if enabled
-      const { initializeAgentSystem } = await import('../src/mastra/index');
-      await initializeAgentSystem();
-      log('✅ Mastra agent system initialized (registry + pools)');
-
-      // Bootstrap default agents (server-side registry)
-      await agentRegistryService.bootstrapDefaultAgents();
-      log('🤖 3-tier agentic system initialized with default agents');
-    } catch (error) {
-      log(
-        '⚠️ Failed to bootstrap default agents:',
-        error instanceof Error ? error.message : String(error)
-      );
-    }
-  });
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
