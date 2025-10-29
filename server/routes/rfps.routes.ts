@@ -318,7 +318,8 @@ router.get('/manual/status/:rfpId', async (req, res) => {
 });
 
 /**
- * Download documents for Philadelphia RFPs
+ * Download documents for RFPs from any supported portal
+ * Supports: Philadelphia, Austin Finance, and other portals
  */
 router.post('/:id/download-documents', async (req, res) => {
   try {
@@ -331,43 +332,87 @@ router.post('/:id/download-documents', async (req, res) => {
       return res.status(404).json({ error: 'RFP not found' });
     }
 
-    // Validate it's a Philadelphia RFP
-    if (!rfp.sourceUrl || !rfp.sourceUrl.includes('phlcontracts.phila.gov')) {
+    if (!rfp.sourceUrl) {
       return res.status(400).json({
-        error: 'This endpoint only supports Philadelphia portal RFPs',
+        error: 'RFP does not have a source URL',
       });
     }
 
     console.log(`📥 Starting document download for RFP ${id}`);
-    console.log(`📄 Documents to download: ${documentNames.length}`);
+    console.log(`📄 Portal: ${rfp.sourceUrl}`);
 
-    // Use Philadelphia document downloader
-    const downloader = new PhiladelphiaDocumentDownloader();
-    const results = await downloader.downloadRFPDocuments(
-      rfp.sourceUrl,
-      id,
-      documentNames
-    );
+    // Determine portal type and use appropriate downloader
+    let results: any[] = [];
+    let savedDocuments: any[] = [];
 
-    // Save successful downloads to database
-    const savedDocuments = [];
-    for (const doc of results) {
-      if (doc.downloadStatus === 'completed' && doc.storagePath) {
-        try {
-          const savedDoc = await storage.createDocument({
-            rfpId: id,
-            filename: doc.name,
-            fileType: 'application/pdf',
-            objectPath: doc.storagePath,
-          });
-          savedDocuments.push(savedDoc);
-        } catch (error) {
-          console.error(
-            `Failed to save document ${doc.name} to database:`,
-            error
-          );
+    // Austin Finance Portal
+    if (rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+        rfp.sourceUrl.includes('austintexas.gov')) {
+      console.log('🏛️ Using Austin Finance document scraper');
+      const austinScraper = new (await import('../services/scrapers/austinFinanceDocumentScraper')).AustinFinanceDocumentScraper();
+
+      try {
+        const documents = await austinScraper.scrapeRFPDocuments(id, rfp.sourceUrl);
+        savedDocuments = documents;
+
+        // Convert to results format for consistency
+        results = documents.map(doc => ({
+          name: doc.filename,
+          downloadStatus: 'completed',
+          storagePath: doc.objectPath,
+          fileType: doc.fileType,
+        }));
+
+        console.log(`✅ Downloaded ${documents.length} documents from Austin Finance`);
+      } catch (error) {
+        console.error('Austin Finance document download failed:', error);
+        results = [{
+          name: 'Document download failed',
+          downloadStatus: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }];
+      }
+    }
+    // Philadelphia Portal
+    else if (rfp.sourceUrl.includes('phlcontracts.phila.gov')) {
+      console.log('🏛️ Using Philadelphia document downloader');
+      console.log(`📄 Documents to download: ${documentNames?.length || 0}`);
+
+      const downloader = new PhiladelphiaDocumentDownloader();
+      results = await downloader.downloadRFPDocuments(
+        rfp.sourceUrl,
+        id,
+        documentNames || []
+      );
+
+      // Save successful downloads to database (Philadelphia only - Austin saves automatically)
+      for (const doc of results) {
+        if (doc.downloadStatus === 'completed' && doc.storagePath) {
+          try {
+            const savedDoc = await storage.createDocument({
+              rfpId: id,
+              filename: doc.name,
+              fileType: 'application/pdf',
+              objectPath: doc.storagePath,
+            });
+            savedDocuments.push(savedDoc);
+          } catch (error) {
+            console.error(
+              `Failed to save document ${doc.name} to database:`,
+              error
+            );
+          }
         }
       }
+    }
+    // Unsupported portal type
+    else {
+      console.warn(`⚠️ Unsupported portal type for document download: ${rfp.sourceUrl}`);
+      return res.status(400).json({
+        error: 'Unsupported portal type',
+        message: 'Document download is currently only supported for Austin Finance and Philadelphia portals.',
+        portalUrl: rfp.sourceUrl,
+      });
     }
 
     // Update RFP status
@@ -419,16 +464,25 @@ router.post('/:id/download-documents', async (req, res) => {
       }
     }
 
+    // Determine portal type for response
+    const portalType = rfp.sourceUrl.includes('financeonline.austintexas.gov') || rfp.sourceUrl.includes('austintexas.gov')
+      ? 'Austin Finance'
+      : rfp.sourceUrl.includes('phlcontracts.phila.gov')
+      ? 'Philadelphia'
+      : 'Unknown';
+
     res.json({
       success: true,
       rfpId: id,
+      portalType,
       results: results,
       savedDocuments: savedDocuments,
       summary: {
-        total: documentNames.length,
+        total: documentNames?.length || results.length,
         successful: successCount,
-        failed: documentNames.length - successCount,
+        failed: (documentNames?.length || results.length) - successCount,
       },
+      documentsDownloaded: successCount,
       analysisWorkflowId, // Include workflow ID if analysis was triggered
     });
   } catch (error) {

@@ -131,62 +131,96 @@ export function RFPDocuments({
               <FileText className="h-4 w-4" />
               <AlertDescription>
                 No documents have been downloaded for this RFP yet.
-                {rfp.sourceUrl?.includes('phlcontracts.phila.gov')
-                  ? ' Click below to download documents from the Philadelphia portal.'
+                {rfp.sourceUrl && (rfp.sourceUrl.includes('phlcontracts.phila.gov') ||
+                                   rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+                                   rfp.sourceUrl.includes('austintexas.gov'))
+                  ? ' Click below to download documents from the portal.'
                   : ' Documents will be automatically captured during the next portal scan.'}
               </AlertDescription>
             </Alert>
 
-            {/* Philadelphia Document Download */}
-            {rfp.sourceUrl?.includes('phlcontracts.phila.gov') &&
-              Boolean(rfp.requirements) && (
-                <div className="space-y-2">
-                  {extractedDocNames.length > 0 ? (
-                    <>
-                      <p className="text-sm text-muted-foreground">
-                        {extractedDocNames.length} documents identified from the
-                        Philadelphia portal:
-                      </p>
-                      <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                        {extractedDocNames
-                          .slice(0, 5)
-                          .map((name: string, idx: number) => (
-                            <li key={idx}>• {name}</li>
-                          ))}
-                        {extractedDocNames.length > 5 && (
-                          <li>• ...and {extractedDocNames.length - 5} more</li>
-                        )}
-                      </ul>
-                      <Button
-                        onClick={onDownloadDocs}
-                        disabled={isDownloading}
-                        className="w-full"
-                        data-testid="button-download-documents"
-                      >
-                        {isDownloading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Downloading Documents...
-                          </>
-                        ) : (
-                          <>
-                            <FileDown className="w-4 h-4 mr-2" />
-                            Download All Documents
-                          </>
-                        )}
-                      </Button>
-                    </>
-                  ) : (
-                    <Alert variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertDescription>
-                        No document information found in the RFP data. Please
-                        re-scrape the RFP to identify documents.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              )}
+            {/* Document Download for Supported Portals */}
+            {rfp.sourceUrl && (
+              <>
+                {/* Philadelphia Portal */}
+                {rfp.sourceUrl.includes('phlcontracts.phila.gov') && Boolean(rfp.requirements) && (
+                  <div className="space-y-2">
+                    {extractedDocNames.length > 0 ? (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          {extractedDocNames.length} documents identified from the
+                          Philadelphia portal:
+                        </p>
+                        <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                          {extractedDocNames
+                            .slice(0, 5)
+                            .map((name: string, idx: number) => (
+                              <li key={idx}>• {name}</li>
+                            ))}
+                          {extractedDocNames.length > 5 && (
+                            <li>• ...and {extractedDocNames.length - 5} more</li>
+                          )}
+                        </ul>
+                        <Button
+                          onClick={onDownloadDocs}
+                          disabled={isDownloading}
+                          className="w-full"
+                          data-testid="button-download-documents"
+                        >
+                          {isDownloading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Downloading Documents...
+                            </>
+                          ) : (
+                            <>
+                              <FileDown className="w-4 h-4 mr-2" />
+                              Download All Documents
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>
+                          No document information found in the RFP data. Please
+                          re-scrape the RFP to identify documents.
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+
+                {/* Austin Finance Portal */}
+                {(rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+                  rfp.sourceUrl.includes('austintexas.gov')) && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Documents will be automatically discovered from the Austin Finance portal page.
+                    </p>
+                    <Button
+                      onClick={onDownloadDocs}
+                      disabled={isDownloading}
+                      className="w-full"
+                      data-testid="button-download-documents"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Downloading Documents...
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download RFP Documents
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </CardContent>
