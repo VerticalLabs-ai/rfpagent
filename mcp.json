@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "apify": {
+      "url": "https://mcp.apify.com"
+    }
+  },
+  "playwright": {
+    "command": "npx",
+    "args": ["@playwright/mcp@latest"]
+  }
+}

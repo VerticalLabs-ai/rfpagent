@@ -68,10 +68,22 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
+  // In production, the bundled server is at dist/index.js
+  // and the frontend build is at dist/public/
+  // So from dist/index.js perspective, public is a sibling directory
   const distPath = path.resolve(import.meta.dirname, 'public');
 
-  if (!fs.existsSync(distPath)) {
+  // Fallback: if public doesn't exist at dist/public, try ../dist/public
+  const fallbackPath = path.resolve(import.meta.dirname, '..', 'dist', 'public');
+
+  let publicPath = distPath;
+  if (!fs.existsSync(distPath) && fs.existsSync(fallbackPath)) {
+    publicPath = fallbackPath;
+  }
+
+  if (!fs.existsSync(publicPath)) {
     console.warn(`⚠️  Could not find the build directory: ${distPath}`);
+    console.warn(`   Also tried: ${fallbackPath}`);
     console.warn('   Frontend will not be served, but API endpoints will work');
     console.warn('   Make sure to build the client first: pnpm build');
 
@@ -86,10 +98,11 @@ export function serveStatic(app: Express) {
     return;
   }
 
-  app.use(express.static(distPath));
+  console.log(`✓ Serving static files from: ${publicPath}`);
+  app.use(express.static(publicPath));
 
   // fall through to index.html if the file doesn't exist
   app.use('*', (_req, res) => {
-    res.sendFile(path.resolve(distPath, 'index.html'));
+    res.sendFile(path.resolve(publicPath, 'index.html'));
   });
 }
