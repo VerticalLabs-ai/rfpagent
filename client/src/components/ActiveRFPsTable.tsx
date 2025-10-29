@@ -25,7 +25,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { ObjectUploader } from './ObjectUploader';
 import { RFPProcessingProgressModal } from './RFPProcessingProgress';
 import {
   getStatusBadgeVariant,
@@ -36,7 +35,6 @@ import {
 export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedRfp, setSelectedRfp] = useState<string | null>(null);
   const [manualRfpUrl, setManualRfpUrl] = useState('');
   const [manualRfpNotes, setManualRfpNotes] = useState('');
   const [manualRfpDialogOpen, setManualRfpDialogOpen] = useState(false);
@@ -651,27 +649,16 @@ export default function ActiveRFPsTable() {
                             </Button>
                           )}
 
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                data-testid={`view-details-${item.rfp.id}`}
-                              >
-                                Details
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl">
-                              <DialogHeader>
-                                <DialogTitle>{item.rfp.title}</DialogTitle>
-                              </DialogHeader>
-                              <RFPDetailsModal
-                                rfp={item.rfp}
-                                proposal={item.proposal}
-                                portal={item.portal}
-                              />
-                            </DialogContent>
-                          </Dialog>
+                          <Link href={`/rfps/${item.rfp.id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`view-details-${item.rfp.id}`}
+                            >
+                              <i className="fas fa-eye mr-1"></i>
+                              View Details
+                            </Button>
+                          </Link>
                         </div>
                       </td>
                     </tr>
@@ -762,195 +749,5 @@ export default function ActiveRFPsTable() {
         />
       )}
     </>
-  );
-}
-
-function RFPDetailsModal({ rfp, proposal, portal }: any) {
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-
-  const handleGetUploadParameters = async () => {
-    const response = await apiRequest(
-      'POST',
-      `/api/rfps/${rfp.id}/documents/upload`
-    );
-    const data = await response.json();
-    return {
-      method: 'PUT' as const,
-      url: data.uploadURL,
-    };
-  };
-
-  const handleUploadComplete = async (result: any) => {
-    if (result.successful && result.successful.length > 0) {
-      const uploadedFile = result.successful[0];
-
-      await apiRequest('POST', `/api/rfps/${rfp.id}/documents`, {
-        documentURL: uploadedFile.uploadURL,
-        filename: uploadedFile.name,
-        fileType: uploadedFile.type || 'application/octet-stream',
-      });
-
-      toast({
-        title: 'Document Uploaded',
-        description:
-          'The document has been uploaded and will be processed shortly.',
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps'] });
-      setUploadDialogOpen(false);
-    }
-  };
-
-  const { toast } = useToast();
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Agency
-            </label>
-            <p className="mt-1" data-testid="modal-rfp-agency">
-              {rfp.agency}
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Source Portal
-            </label>
-            <p className="mt-1" data-testid="modal-rfp-portal">
-              {portal?.name || 'Unknown'}
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Discovered
-            </label>
-            <p className="mt-1" data-testid="modal-rfp-discovered">
-              {new Date(rfp.discoveredAt).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Estimated Value
-            </label>
-            <p className="mt-1" data-testid="modal-rfp-value">
-              {rfp.estimatedValue
-                ? `$${parseFloat(rfp.estimatedValue).toLocaleString()}`
-                : 'Not specified'}
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Deadline
-            </label>
-            <p className="mt-1" data-testid="modal-rfp-deadline">
-              {rfp.deadline
-                ? new Date(rfp.deadline).toLocaleDateString()
-                : 'Not specified'}
-            </p>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-muted-foreground">
-              Status
-            </label>
-            <div className="mt-1">
-              <Badge
-                variant={getStatusBadgeVariant(rfp.status)}
-                className={getStatusBadgeClassName(rfp.status)}
-                data-testid="modal-rfp-status"
-              >
-                {getStatusLabel(rfp.status)}
-              </Badge>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {rfp.description && (
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">
-            Description
-          </label>
-          <p className="mt-1 text-sm" data-testid="modal-rfp-description">
-            {rfp.description}
-          </p>
-        </div>
-      )}
-
-      {rfp.riskFlags && rfp.riskFlags.length > 0 && (
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">
-            Risk Flags
-          </label>
-          <div className="mt-2 space-y-2">
-            {rfp.riskFlags.slice(0, 3).map((flag: any, index: number) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg text-sm ${
-                  flag.type === 'high'
-                    ? 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-300'
-                    : flag.type === 'medium'
-                      ? 'bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950 dark:text-orange-300'
-                      : 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-950 dark:text-green-300'
-                }`}
-                data-testid={`modal-risk-flag-${index}`}
-              >
-                <strong>{flag.category}:</strong> {flag.description}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="border-t pt-4">
-        <div className="flex items-center justify-between mb-4">
-          <label className="text-sm font-medium text-muted-foreground">
-            Documents
-          </label>
-          <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                data-testid="upload-document-button"
-              >
-                <i className="fas fa-upload mr-2"></i>
-                Upload Document
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Upload RFP Document</DialogTitle>
-              </DialogHeader>
-              <ObjectUploader
-                maxNumberOfFiles={5}
-                maxFileSize={50 * 1024 * 1024} // 50MB
-                onGetUploadParameters={handleGetUploadParameters}
-                onComplete={handleUploadComplete}
-              >
-                <div className="flex items-center gap-2">
-                  <i className="fas fa-upload"></i>
-                  <span>Select Files to Upload</span>
-                </div>
-              </ObjectUploader>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <div className="text-center py-6 text-muted-foreground">
-          <i className="fas fa-file-alt text-2xl mb-2"></i>
-          <p className="text-sm">Document list would be displayed here</p>
-        </div>
-      </div>
-    </div>
   );
 }

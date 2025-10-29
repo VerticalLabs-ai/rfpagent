@@ -595,68 +595,124 @@ export default function AgentMonitoring() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Activity className="h-5 w-5" />
-                Real-time Agent Activities
+                Recent Activity
               </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Detailed breakdown of agent actions during RFP processing
+              </p>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {safeAgentActivities.slice(0, 10).map((activity, index) => {
-                  const status = activity.status ?? 'pending';
-                  const timestamp = activity.updatedAt
-                    ? new Date(activity.updatedAt).toLocaleTimeString()
-                    : 'N/A';
-                  const statusStyles =
-                    status === 'completed'
-                      ? 'bg-green-100 text-green-600'
-                      : status === 'failed'
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-blue-100 text-blue-600';
-                  const statusIcon =
-                    status === 'completed' ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : status === 'failed' ? (
-                      <XCircle className="h-4 w-4" />
-                    ) : (
-                      <PlayCircle className="h-4 w-4" />
-                    );
+              <div className="space-y-3">
+                {safeAgentActivities.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Activity className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg font-medium mb-2">No Activity Yet</p>
+                    <p className="text-sm">
+                      Agent activities will appear here when RFPs are being
+                      processed
+                    </p>
+                  </div>
+                ) : (
+                  safeAgentActivities.slice(0, 20).map((activity, index) => {
+                    const status = activity.status ?? 'pending';
+                    const timestamp = activity.updatedAt
+                      ? new Date(activity.updatedAt).toLocaleString()
+                      : 'N/A';
+                    const statusStyles =
+                      status === 'completed'
+                        ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
+                        : status === 'failed'
+                          ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                          : status === 'in_progress'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                            : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20';
+                    const statusIcon =
+                      status === 'completed' ? (
+                        <CheckCircle className="h-4 w-4" />
+                      ) : status === 'failed' ? (
+                        <XCircle className="h-4 w-4" />
+                      ) : status === 'in_progress' ? (
+                        <RotateCcw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <PauseCircle className="h-4 w-4" />
+                      );
 
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-center justify-between p-3 border rounded-lg"
-                      data-testid={`activity-item-${index}`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className={`p-2 rounded-full ${statusStyles}`}>
+                    const agentDisplayName =
+                      activity.agentId?.replace(/-/g, ' ').replace(/_/g, ' ') ||
+                      'System';
+                    const taskDisplayName = activity.taskType
+                      .replace(/_/g, ' ')
+                      .replace(/-/g, ' ');
+
+                    return (
+                      <div
+                        key={activity.id}
+                        className={`flex items-start gap-3 p-4 rounded-lg border ${statusStyles} hover:shadow-sm transition-all`}
+                        data-testid={`activity-item-${index}`}
+                      >
+                        <div className="flex-shrink-0 mt-0.5">
                           {statusIcon}
                         </div>
-                        <div>
-                          <div
-                            className="font-medium"
-                            data-testid={`activity-content-${index}`}
-                          >
-                            {activity.agentId ?? 'Unassigned'} •{' '}
-                            {activity.taskType.replace(/_/g, ' ')}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {timestamp} • Priority {activity.priority ?? 0}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-semibold capitalize text-sm">
+                                  {taskDisplayName}
+                                </span>
+                                {activity.workflowId && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs px-1.5 py-0"
+                                  >
+                                    Workflow
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                <Bot className="h-3 w-3" />
+                                <span className="capitalize">
+                                  {agentDisplayName}
+                                </span>
+                                <span>•</span>
+                                <Clock className="h-3 w-3" />
+                                <span>{timestamp}</span>
+                                {activity.priority > 0 && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="font-medium">
+                                      P{activity.priority}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              {activity.description && (
+                                <p className="text-sm text-foreground/80 mt-1">
+                                  {activity.description}
+                                </p>
+                              )}
+                            </div>
+                            <Badge
+                              variant={
+                                status === 'failed'
+                                  ? 'destructive'
+                                  : status === 'completed'
+                                    ? 'default'
+                                    : 'secondary'
+                              }
+                              className="ml-2"
+                            >
+                              {status === 'in_progress' && (
+                                <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
+                              )}
+                              {status.replace('_', ' ')}
+                            </Badge>
                           </div>
                         </div>
                       </div>
-                      <Badge
-                        variant={
-                          status === 'failed'
-                            ? 'outline-solid'
-                            : status === 'completed'
-                              ? 'default'
-                              : 'secondary'
-                        }
-                      >
-                        {status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
