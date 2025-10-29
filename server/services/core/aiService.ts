@@ -28,7 +28,7 @@ const conversationCircuit = circuitBreakerManager.getBreaker(
 const analysisCircuit = circuitBreakerManager.getBreaker('openai-analysis', {
   failureThreshold: 5,
   timeout: 60000, // 1 min
-  requestTimeout: 30000, // 30 sec
+  requestTimeout: 90000, // 90 sec - increased for complex RFP extraction
 });
 
 const generationCircuit = circuitBreakerManager.getBreaker(

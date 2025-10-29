@@ -353,20 +353,25 @@ router.get('/:id/scans/history', async (req, res) => {
  */
 router.get('/discoveries/recent', async (req, res) => {
   try {
-    const { limit = '10', hours = '24' } = req.query;
+    const { limit = '50', hours = '24' } = req.query;
     const hoursAgo = new Date(
       Date.now() - parseInt(hours as string) * 60 * 60 * 1000
     );
 
-    // Get RFPs discovered in the last N hours
+    // Get more RFPs to ensure we have enough recent ones after filtering
+    // Use a larger limit (200) to get a good sample of recently discovered RFPs
     const { rfps } = await storage.getAllRFPs({
-      limit: parseInt(limit as string),
+      limit: 200,
       status: 'discovered',
     });
 
-    // Filter by discovery time (simplified - in production, add discoveredAfter filter to storage)
-    const recentRFPs = rfps.filter(
-      rfp => rfp.discoveredAt && new Date(rfp.discoveredAt) > hoursAgo
+    // Filter by discovery time and limit results
+    const recentRFPs = rfps
+      .filter(rfp => rfp.discoveredAt && new Date(rfp.discoveredAt) > hoursAgo)
+      .slice(0, parseInt(limit as string));
+
+    console.log(
+      `📊 Recent discoveries: Found ${recentRFPs.length} RFPs in last ${hours} hours (from ${rfps.length} total discovered RFPs)`
     );
 
     res.json(recentRFPs);
