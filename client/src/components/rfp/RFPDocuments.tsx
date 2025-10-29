@@ -133,7 +133,8 @@ export function RFPDocuments({
                 No documents have been downloaded for this RFP yet.
                 {rfp.sourceUrl && (rfp.sourceUrl.includes('phlcontracts.phila.gov') ||
                                    rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
-                                   rfp.sourceUrl.includes('austintexas.gov'))
+                                   rfp.sourceUrl.includes('austintexas.gov') ||
+                                   rfp.sourceUrl.includes('beaconbid.com'))
                   ? ' Click below to download documents from the portal.'
                   : ' Documents will be automatically captured during the next portal scan.'}
               </AlertDescription>
@@ -198,6 +199,33 @@ export function RFPDocuments({
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
                       Documents will be automatically discovered from the Austin Finance portal page.
+                    </p>
+                    <Button
+                      onClick={onDownloadDocs}
+                      disabled={isDownloading}
+                      className="w-full"
+                      data-testid="button-download-documents"
+                    >
+                      {isDownloading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Downloading Documents...
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download RFP Documents
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+
+                {/* BeaconBid Portal */}
+                {rfp.sourceUrl.includes('beaconbid.com') && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Documents will be automatically discovered from the BeaconBid solicitation page.
                     </p>
                     <Button
                       onClick={onDownloadDocs}

@@ -27,13 +27,13 @@ const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
 
 export class ManualRfpService {
   private mastraService: ReturnType<typeof getMastraScrapingService>;
-  private documentScraper: AustinFinanceDocumentScraper;
+  private austinDocumentScraper: AustinFinanceDocumentScraper;
   private documentIntelligence: DocumentIntelligenceService;
   private openai: OpenAI;
 
   constructor() {
     this.mastraService = getMastraScrapingService();
-    this.documentScraper = new AustinFinanceDocumentScraper();
+    this.austinDocumentScraper = new AustinFinanceDocumentScraper();
     this.documentIntelligence = new DocumentIntelligenceService();
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
@@ -96,6 +96,8 @@ export class ManualRfpService {
         let rfpData;
         if (portalAnalysis.isAustinFinance) {
           rfpData = await this.extractAustinFinanceRfp(input.url);
+        } else if (portalAnalysis.isBeaconBid) {
+          rfpData = await this.extractBeaconBidRfp(input.url);
         } else {
           rfpData = await this.extractGenericRfp(input.url, portalAnalysis);
         }
@@ -244,6 +246,7 @@ export class ManualRfpService {
 
   private async analyzePortalUrl(url: string): Promise<{
     isAustinFinance: boolean;
+    isBeaconBid: boolean;
     portalType: string;
     confidence: number;
     extractionStrategy: string;
@@ -255,15 +258,17 @@ URL: ${url}
 
 Please analyze:
 1. Is this an Austin Finance Online portal URL?
-2. What type of procurement portal is this?
-3. What extraction strategy would work best?
+2. Is this a BeaconBid portal URL?
+3. What type of procurement portal is this?
+4. What extraction strategy would work best?
 
 Respond with JSON only:
 {
   "isAustinFinance": boolean,
-  "portalType": "string (e.g., 'Austin Finance', 'Bonfire', 'FindRFP', 'Unknown')",
+  "isBeaconBid": boolean,
+  "portalType": "string (e.g., 'Austin Finance', 'BeaconBid', 'Bonfire', 'FindRFP', 'Unknown')",
   "confidence": number (0-100),
-  "extractionStrategy": "string (e.g., 'austin_finance_scraper', 'mastra_generic', 'document_download')"
+  "extractionStrategy": "string (e.g., 'austin_finance_scraper', 'beaconbid_scraper', 'mastra_generic', 'document_download')"
 }`;
 
       const response = await this.openai.chat.completions.create({
@@ -277,6 +282,7 @@ Respond with JSON only:
 
       return {
         isAustinFinance: analysis.isAustinFinance || false,
+        isBeaconBid: analysis.isBeaconBid || false,
         portalType: analysis.portalType || 'Unknown',
         confidence: analysis.confidence || 50,
         extractionStrategy: analysis.extractionStrategy || 'mastra_generic',
@@ -285,6 +291,7 @@ Respond with JSON only:
       console.error('[ManualRfpService] Error analyzing portal URL:', error);
       return {
         isAustinFinance: false,
+        isBeaconBid: false,
         portalType: 'Unknown',
         confidence: 0,
         extractionStrategy: 'mastra_generic',
@@ -303,7 +310,7 @@ Respond with JSON only:
       console.log(`[ManualRfpService] Extracting Austin Finance RFP: ${rfpId}`);
 
       // Use the existing document scraper to get RFP details
-      const documents = await this.documentScraper.scrapeRFPDocuments(
+      const documents = await this.austinDocumentScraper.scrapeRFPDocuments(
         rfpId,
         url
       );
@@ -340,6 +347,63 @@ Respond with JSON only:
     } catch (error) {
       console.error(
         '[ManualRfpService] Error extracting Austin Finance RFP:',
+        error
+      );
+      return null;
+    }
+  }
+
+  private async extractBeaconBidRfp(url: string) {
+    try {
+      // Extract RFP ID from BeaconBid URL (format: /solicitations/city-of-houston/[uuid]/title)
+      const urlParts = url.split('/');
+      const uuidIndex = urlParts.findIndex(part => part.length === 36 && part.includes('-'));
+      const rfpId = uuidIndex > 0 ? urlParts[uuidIndex] : `beaconbid-${Date.now()}`;
+
+      console.log(`[ManualRfpService] Extracting BeaconBid RFP: ${rfpId}`);
+
+      // Import BeaconBid document scraper dynamically
+      const { BeaconBidDocumentScraper } = await import('../scrapers/beaconBidDocumentScraper');
+      const beaconBidScraper = new BeaconBidDocumentScraper();
+
+      // Use the document scraper to get RFP details and documents
+      const documents = await beaconBidScraper.scrapeRFPDocuments(
+        rfpId,
+        url
+      );
+
+      // Extract basic details from the page
+      const rfpDetails = {
+        title: `BeaconBid RFP ${rfpId}`,
+        description: 'RFP from BeaconBid portal',
+        agency: urlParts[urlParts.indexOf('solicitations') + 1]?.replace(/-/g, ' ') || 'Unknown Agency',
+        deadline: undefined,
+        estimatedValue: undefined,
+        requirements: {},
+        complianceItems: [],
+        riskFlags: [],
+      };
+
+      return {
+        title: rfpDetails.title,
+        description: rfpDetails.description,
+        agency: rfpDetails.agency,
+        deadline: rfpDetails.deadline
+          ? new Date(rfpDetails.deadline)
+          : undefined,
+        estimatedValue: rfpDetails.estimatedValue
+          ? parseFloat(rfpDetails.estimatedValue)
+          : undefined,
+        requirements: rfpDetails.requirements || {},
+        complianceItems: rfpDetails.complianceItems || [],
+        riskFlags: rfpDetails.riskFlags || [],
+        hasDocuments: documents && documents.length > 0,
+        documents: documents || [],
+        portalName: 'BeaconBid',
+      };
+    } catch (error) {
+      console.error(
+        '[ManualRfpService] Error extracting BeaconBid RFP:',
         error
       );
       return null;

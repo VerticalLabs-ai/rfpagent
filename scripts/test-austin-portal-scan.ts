@@ -6,7 +6,7 @@
  * it captures all available RFPs.
  */
 
-import { incrementalPortalScanService } from '../server/services/incrementalPortalScanService';
+import { incrementalPortalScanService } from '../server/services/portals/incrementalPortalScanService';
 import { storage } from '../server/storage';
 
 async function testAustinPortalScan() {
