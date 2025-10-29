@@ -45,10 +45,14 @@ export function correlationIdMiddleware(
 
   (req as any).logger = requestLogger;
 
-  requestLogger.info('Incoming request', {
-    query: req.query,
-    ip: req.ip,
-  });
+  // Skip logging HEAD requests to root path (from wait-on package during dev)
+  const isHeadToRoot = req.method === 'HEAD' && req.path === '/';
+  if (!isHeadToRoot) {
+    requestLogger.info('Incoming request', {
+      query: req.query,
+      ip: req.ip,
+    });
+  }
 
   next();
 }

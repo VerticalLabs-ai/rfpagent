@@ -172,6 +172,12 @@ app.use((req, res, next) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // HEAD handler for root path - used by wait-on package during dev
+  // This prevents endless polling by returning 200 immediately
+  app.head('/', (req, res) => {
+    res.status(200).end();
+  });
+
   // API info endpoint (not root - root should serve the frontend)
   app.get('/api/info', (req, res) => {
     res.status(200).json({
