@@ -41,7 +41,8 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use('*', async (req, res, next) => {
+  // Express 5.x requires /* instead of * for catch-all routes
+  app.get('/*', async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -87,11 +88,11 @@ export function serveStatic(app: Express) {
     console.warn('   Frontend will not be served, but API endpoints will work');
     console.warn('   Make sure to build the client first: pnpm build');
 
-    // Serve a simple message for non-API routes
-    app.use('*', (_req, res) => {
+    // Serve a simple message for non-API routes (Express 5.x syntax)
+    app.get('/*', (_req, res, next) => {
       if (_req.path.startsWith('/api')) {
         // Let API routes through
-        return;
+        return next();
       }
       res.status(503).send('Frontend not available - build in progress');
     });
@@ -101,8 +102,8 @@ export function serveStatic(app: Express) {
   console.log(`✓ Serving static files from: ${publicPath}`);
   app.use(express.static(publicPath));
 
-  // fall through to index.html if the file doesn't exist
-  app.use('*', (_req, res) => {
+  // fall through to index.html if the file doesn't exist (Express 5.x syntax)
+  app.get('/*', (_req, res) => {
     res.sendFile(path.resolve(publicPath, 'index.html'));
   });
 }

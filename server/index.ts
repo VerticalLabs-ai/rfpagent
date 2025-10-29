@@ -167,12 +167,13 @@ app.use((req, res, next) => {
   configureRoutes(app);
   log('✓ Routes configured');
 
-  // Add root health endpoint for Mastra Cloud readiness probes
+  // Add health endpoint for Fly.io/Render health checks
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  app.get('/', (req, res) => {
+  // API info endpoint (not root - root should serve the frontend)
+  app.get('/api/info', (req, res) => {
     res.status(200).json({
       status: 'ok',
       service: 'RFP Agent Platform',
