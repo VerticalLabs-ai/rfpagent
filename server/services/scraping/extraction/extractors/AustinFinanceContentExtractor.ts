@@ -312,9 +312,11 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
     }
 
     return {
-      title: this.cleanText(title),
+      title: this.cleanText(title), // Project name (e.g., "1\" River Rock")
+      solicitationId: solicitationId, // RFP number (e.g., "IFB 2200 DCG1024")
       description: description ? this.cleanText(description) : '',
       deadline: this.parseDate(dueDate),
+      estimatedValue: '', // Would need to extract from budget section if available
       agency: 'City of Austin',
       url: href ? this.validateAndFixSourceUrl(href, baseUrl) : '',
       link: href ? this.validateAndFixSourceUrl(href, baseUrl) : undefined,

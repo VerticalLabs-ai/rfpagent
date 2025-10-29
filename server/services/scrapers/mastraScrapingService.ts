@@ -61,7 +61,8 @@ import {
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
-  title: z.string(),
+  title: z.string(), // Project name/description
+  solicitationId: z.string().optional(), // RFP/IFB/IFQ number
   description: z.string(),
   agency: z.string().optional(),
   deadline: z.string().optional(),
@@ -3403,20 +3404,26 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             const extractionResult = (await page.extract({
               instruction: `Extract all RFP opportunities, bids, and procurement opportunities from this page.
                            Look for opportunities in tables, cards, lists, or any other format.
-                           For each opportunity, extract:
-                           - title: The opportunity or RFP title/name
-                           - description: Brief description or summary (if available)
+
+                           IMPORTANT FIELD MAPPINGS (especially for Austin portals):
+                           - title: The PROJECT NAME or DESCRIPTION (e.g., "1\\" River Rock", "Distribution Getaway Duct Bank Bore")
+                             NOT the RFP number (IFB/IFQ/RFP codes should go in solicitationId field)
+                           - solicitationId: The RFP/bid NUMBER or ID (e.g., "IFB 2200 DCG1024", "IFQ 6100 CLMC1099")
+                           - description: Brief description or summary of the project (if available and different from title)
                            - agency: The agency or organization posting the opportunity
                            - deadline: Deadline or due date (if mentioned)
-                           - estimatedValue: Contract value or budget (if mentioned)
-                           - link: Direct link to the opportunity details
+                           - estimatedValue: Contract value or budget (if mentioned, NOT the project name)
+                           - url: The ACTUAL URL/link to opportunity details (NOT "View Details" link text)
+                           - link: Same as url, the actual href attribute
                            - category: Type of opportunity (construction, services, goods, etc.)
 
                            Ignore welcome messages, navigation menus, or non-opportunity content.
                            Only extract actual procurement opportunities or RFPs.`,
 
               schema: z.object({
-                opportunities: z.array(OpportunitySchema),
+                opportunities: z.array(OpportunitySchema.extend({
+                  solicitationId: z.string().optional(),
+                })),
               }),
             } as any)) as { opportunities: any[] };
 
