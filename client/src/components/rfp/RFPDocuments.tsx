@@ -64,28 +64,28 @@ export function RFPDocuments({
             {/* Fillable Documents */}
             {fillableDocuments.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <CheckSquare className="w-4 h-4 text-orange-500" />
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-foreground dark:text-foreground">
+                  <CheckSquare className="w-4 h-4 text-orange-500 dark:text-orange-400" />
                   Forms to Complete
                 </h4>
                 <div className="space-y-2">
                   {fillableDocuments.map(doc => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-950/20 rounded"
+                      className="flex items-center justify-between p-3 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg border border-orange-200/50 dark:border-orange-800/30 backdrop-blur-sm"
                       data-testid={`fillable-doc-${doc.id}`}
                     >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-orange-500" />
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium">{doc.filename}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.filename}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
                             {doc.fileType.toUpperCase()} •{' '}
                             {(doc.parsedData as any)?.category || 'Document'}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-orange-600">
+                      <Badge variant="outline" className="text-orange-600 dark:text-orange-300 border-orange-300 dark:border-orange-700 bg-transparent dark:bg-orange-950/30">
                         Needs Completion
                       </Badge>
                     </div>

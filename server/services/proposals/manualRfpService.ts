@@ -654,14 +654,21 @@ If any field cannot be determined, use null or empty values.`;
           autoSubmit: false, // Manual RFPs should not auto-submit
           companyProfileId: undefined, // Use default company profile
         })
-        .then(result => {
+        .then(async result => {
           console.log(
             `[ManualRfpService] Enhanced proposal generation completed for RFP: ${rfpId}`,
             result
           );
 
+          // Update RFP status to review if proposal is ready, otherwise back to drafting
+          await storage.updateRFP(rfpId, {
+            status: result.readyForSubmission ? 'review' : 'drafting',
+            progress: result.readyForSubmission ? 90 : 75,
+            updatedAt: new Date(),
+          });
+
           // Create success notification
-          storage.createNotification({
+          await storage.createNotification({
             type: 'success',
             title: 'Manual RFP Processing Complete',
             message: `RFP processing has completed. ${
@@ -672,14 +679,14 @@ If any field cannot be determined, use null or empty values.`;
             isRead: false,
           });
         })
-        .catch(error => {
+        .catch(async error => {
           console.error(
             `[ManualRfpService] Enhanced proposal generation failed for RFP: ${rfpId}`,
             error
           );
 
           // Create error notification
-          storage.createNotification({
+          await storage.createNotification({
             type: 'error',
             title: 'Manual RFP Processing Failed',
             message: `Processing failed for manually added RFP. Please review and try again.`,
@@ -688,10 +695,10 @@ If any field cannot be determined, use null or empty values.`;
             isRead: false,
           });
 
-          // Update RFP status to indicate error
-          storage.updateRFP(rfpId, {
+          // Update RFP status to indicate error - move back to discovered state
+          await storage.updateRFP(rfpId, {
             status: 'discovered',
-            progress: 10,
+            progress: 15,
             updatedAt: new Date(),
           });
         });
@@ -725,17 +732,24 @@ If any field cannot be determined, use null or empty values.`;
           autoSubmit: false, // Manual RFPs should not auto-submit
           companyProfileId: undefined, // Use default company profile
         })
-        .then(result => {
+        .then(async result => {
           console.log(
             `[ManualRfpService] Enhanced proposal generation completed for RFP: ${rfpId}`,
             result
           );
 
+          // Update RFP status to review if proposal is ready, otherwise back to drafting
+          await storage.updateRFP(rfpId, {
+            status: result.readyForSubmission ? 'review' : 'drafting',
+            progress: result.readyForSubmission ? 90 : 75,
+            updatedAt: new Date(),
+          });
+
           // Complete the progress tracking
           progressTracker.completeTracking(sessionId, rfpId);
 
           // Create success notification
-          storage.createNotification({
+          await storage.createNotification({
             type: 'success',
             title: 'Manual RFP Processing Complete',
             message: `RFP processing has completed. ${
@@ -746,7 +760,7 @@ If any field cannot be determined, use null or empty values.`;
             isRead: false,
           });
         })
-        .catch(error => {
+        .catch(async error => {
           console.error(
             `[ManualRfpService] Enhanced proposal generation failed for RFP: ${rfpId}`,
             error
@@ -759,7 +773,7 @@ If any field cannot be determined, use null or empty values.`;
           );
 
           // Create error notification
-          storage.createNotification({
+          await storage.createNotification({
             type: 'error',
             title: 'Manual RFP Processing Failed',
             message: `Processing failed for manually added RFP. Please review and try again.`,
@@ -768,10 +782,10 @@ If any field cannot be determined, use null or empty values.`;
             isRead: false,
           });
 
-          // Update RFP status to indicate error
-          storage.updateRFP(rfpId, {
+          // Update RFP status to indicate error - move back to discovered state
+          await storage.updateRFP(rfpId, {
             status: 'discovered',
-            progress: 10,
+            progress: 15,
             updatedAt: new Date(),
           });
         });

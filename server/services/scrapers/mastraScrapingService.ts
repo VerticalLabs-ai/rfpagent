@@ -58,6 +58,10 @@ import {
   handleBrowserbaseAuthentication,
   scrapeBrowserbaseContent,
 } from '../mastra/core/browserbaseOps';
+import {
+  normalizePortalType,
+  shouldUseAustinPortalExtraction,
+} from './utils/portalTypeUtils';
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -2080,6 +2084,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     };
 
     try {
+      const canonicalPortalType = normalizePortalType(portalType);
+      const useAustinPortalExtraction = shouldUseAustinPortalExtraction(
+        portalType,
+        url
+      );
+
       // Extract headings
       $('h1, h2, h3, h4').each((_, element) => {
         const text = $(element).text().trim();
@@ -2087,30 +2097,25 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       });
 
       // Portal-specific extraction patterns
-      switch (portalType.toLowerCase()) {
-        case 'bonfire':
-        case 'bonfire_hub':
-          content.opportunities = this.extractBonfireOpportunities($, url);
-          break;
-        case 'sam.gov':
-        case 'sam':
-          content.opportunities = this.extractSAMGovOpportunities($, url);
-          break;
-        case 'findrfp':
-          // FindRFP now uses enhanced Stagehand extraction in authenticated browser sessions
-          content.opportunities = [];
-          break;
-        case 'austin finance online':
-        case 'austin_finance_online':
-        case 'austin finance':
-        case 'austin_finance':
-          content.opportunities = this.extractAustinFinanceOpportunities(
-            $,
-            url
-          );
-          break;
-        default:
-          content.opportunities = this.extractGenericOpportunities($, url);
+      if (useAustinPortalExtraction) {
+        content.opportunities = this.extractAustinFinanceOpportunities($, url);
+      } else {
+        switch (canonicalPortalType) {
+          case 'bonfire':
+          case 'bonfire hub':
+            content.opportunities = this.extractBonfireOpportunities($, url);
+            break;
+          case 'sam.gov':
+          case 'sam':
+            content.opportunities = this.extractSAMGovOpportunities($, url);
+            break;
+          case 'findrfp':
+            // FindRFP now uses enhanced Stagehand extraction in authenticated browser sessions
+            content.opportunities = [];
+            break;
+          default:
+            content.opportunities = this.extractGenericOpportunities($, url);
+        }
       }
 
       // Extract all links for further analysis
