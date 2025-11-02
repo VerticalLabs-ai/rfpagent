@@ -9,6 +9,14 @@ import dotenv from 'dotenv'
 // Load environment variables
 dotenv.config()
 
+// Helper function to run with timeout
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)
+  })
+  return Promise.race([promise, timeoutPromise])
+}
+
 async function testMastraAgents() {
   console.log('🤖 Testing Mastra Agents...')
 
@@ -67,12 +75,16 @@ async function testMastraAgents() {
     for (const testAgent of testAgents) {
       try {
         console.log(`🧪 Testing ${testAgent.name}...`)
-        const result = await testAgent.agent.generateVNext([
-          {
-            role: 'user',
-            content: testAgent.prompt
-          }
-        ])
+        const result = await withTimeout(
+          testAgent.agent.generate([
+            {
+              role: 'user',
+              content: testAgent.prompt
+            }
+          ]),
+          30000, // 30 second timeout per agent
+          testAgent.name
+        )
 
         console.log(`✅ ${testAgent.name} working`)
         console.log(`📝 Sample output (first 100 chars): ${result.text?.substring(0, 100) + '...' || 'No text returned'}`)
@@ -99,16 +111,20 @@ async function testOpenAI() {
       apiKey: process.env.OPENAI_API_KEY,
     })
 
-    const response = await openai.chat.completions.create({
-      model: 'gpt-5',
-      messages: [
-        {
-          role: 'user',
-          content: 'Generate a one-sentence executive summary for a proposal to provide cloud infrastructure services.'
-        }
-      ],
-      max_completion_tokens: 50,
-    })
+    const response = await withTimeout(
+      openai.chat.completions.create({
+        model: 'gpt-5',
+        messages: [
+          {
+            role: 'user',
+            content: 'Generate a one-sentence executive summary for a proposal to provide cloud infrastructure services.'
+          }
+        ],
+        max_completion_tokens: 50,
+      }),
+      15000, // 15 second timeout
+      'OpenAI API call'
+    )
 
     const responseText = response.choices[0]?.message?.content || ''
     console.log('✅ OpenAI connection successful')
@@ -144,10 +160,11 @@ async function testProposalGenerationMethods() {
 
     // Simulate the workflow from SubmissionMaterialsService
     console.log('📋 Step 1: Generate main proposal content...')
-    const proposalTask = await proposalManager.generateVNext([
-      {
-        role: "user",
-        content: `Generate a comprehensive proposal for RFP: ${mockRFP.title}
+    const proposalTask = await withTimeout(
+      proposalManager.generate([
+        {
+          role: "user",
+          content: `Generate a comprehensive proposal for RFP: ${mockRFP.title}
 
         RFP Details:
         - Title: ${mockRFP.title}
@@ -169,17 +186,21 @@ async function testProposalGenerationMethods() {
         6. Risk Management
 
         Keep each section concise but comprehensive.`,
-      },
-    ])
+        },
+      ]),
+      45000, // 45 second timeout for main proposal
+      'Proposal Manager generation'
+    )
 
     console.log('✅ Main proposal generated')
     console.log('📏 Length:', proposalTask.text?.length || 0, 'characters')
 
     console.log('📋 Step 2: Generate detailed content...')
-    const detailedContent = await contentGenerator.generateVNext([
-      {
-        role: "user",
-        content: `Create detailed technical content sections for proposal:
+    const detailedContent = await withTimeout(
+      contentGenerator.generate([
+        {
+          role: "user",
+          content: `Create detailed technical content sections for proposal:
 
         Focus on:
         - Demonstrating deep understanding of requirements
@@ -188,8 +209,11 @@ async function testProposalGenerationMethods() {
         - Emphasizing compliance with all requirements
 
         Base content on: ${(proposalTask.text || '').substring(0, 500)}`,
-      },
-    ])
+        },
+      ]),
+      45000, // 45 second timeout for detailed content
+      'Content Generator generation'
+    )
 
     console.log('✅ Detailed content generated')
     console.log('📏 Length:', detailedContent.text?.length || 0, 'characters')
@@ -242,17 +266,21 @@ async function main() {
 
   const results: { name: string; passed: boolean }[] = []
 
-  // Test OpenAI connection
-  const openaiTest = await testOpenAI()
-  results.push({ name: 'OpenAI Connection', passed: openaiTest })
+  try {
+    // Test OpenAI connection
+    const openaiTest = await withTimeout(testOpenAI(), 20000, 'OpenAI test')
+    results.push({ name: 'OpenAI Connection', passed: openaiTest })
 
-  // Test Mastra agents
-  const agentsTest = await testMastraAgents()
-  results.push({ name: 'Mastra Agents', passed: agentsTest })
+    // Test Mastra agents
+    const agentsTest = await withTimeout(testMastraAgents(), 180000, 'Mastra agents test') // 3 minutes
+    results.push({ name: 'Mastra Agents', passed: agentsTest })
 
-  // Test proposal workflow
-  const workflowTest = await testProposalGenerationMethods()
-  results.push({ name: 'Proposal Generation Workflow', passed: workflowTest })
+    // Test proposal workflow
+    const workflowTest = await withTimeout(testProposalGenerationMethods(), 120000, 'Proposal workflow test') // 2 minutes
+    results.push({ name: 'Proposal Generation Workflow', passed: workflowTest })
+  } catch (error) {
+    console.error('❌ Test suite error:', error instanceof Error ? error.message : String(error))
+  }
 
   // Print summary
   console.log('\n📊 Test Results:')

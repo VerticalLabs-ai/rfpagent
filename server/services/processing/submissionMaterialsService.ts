@@ -392,7 +392,7 @@ export class SubmissionMaterialsService {
       let proposalTask;
       try {
         console.log('🤖 Calling proposal manager...');
-        proposalTask = await proposalManager.generateVNext([
+        proposalTask = await proposalManager.generate([
           {
             role: 'user',
             content: `Generate a comprehensive proposal for RFP: ${rfp.title}
@@ -440,7 +440,7 @@ export class SubmissionMaterialsService {
       let detailedContent;
       try {
         console.log('🤖 Calling content generator...');
-        detailedContent = await contentGenerator.generateVNext([
+        detailedContent = await contentGenerator.generate([
           {
             role: 'user',
             content: `Create detailed technical content sections for proposal:
@@ -615,7 +615,7 @@ export class SubmissionMaterialsService {
     try {
       console.log('🤖 Starting compliance check with Mastra agent');
       // Use compliance checker agent
-      await complianceChecker.generateVNext([
+      await complianceChecker.generate([
         {
           role: 'user',
           content: `Perform comprehensive compliance analysis for:

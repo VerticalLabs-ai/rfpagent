@@ -103,9 +103,9 @@ export const reasoningModel = gpt5Thinking;
 
 /**
  * Lightweight guardrail model used for moderation, PII detection, and prompt injection checks.
- * Uses OpenAI's GPT-4.1 Nano to keep latency and cost low while preserving accuracy.
+ * Uses OpenAI's GPT-5 Mini to keep latency and cost low while preserving accuracy.
  */
-export const guardrailModel = openai('gpt-4.1-nano');
+export const guardrailModel = openai('gpt-5-mini');
 
 /**
  * Get optimal model for specific agent type

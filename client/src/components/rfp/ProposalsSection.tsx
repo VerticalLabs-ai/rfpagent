@@ -15,6 +15,7 @@ import {
   Wand2,
   Save,
   X,
+  Loader2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,6 +57,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   );
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -127,6 +129,61 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     );
     if (confirmed) {
       deleteProposalMutation.mutate(proposalId);
+    }
+  };
+
+  const handleRegenerateProposal = async () => {
+    setIsRegenerating(true);
+    try {
+      // Get the first available company profile
+      const profilesResponse = await fetch('/api/company/profiles');
+      const profiles = await profilesResponse.json();
+
+      if (!profiles || profiles.length === 0) {
+        throw new Error(
+          'No company profiles found. Please create a company profile first.'
+        );
+      }
+
+      const companyProfileId = profiles[0].id;
+
+      const response = await fetch(`/api/proposals/enhanced/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rfpId,
+          companyProfileId,
+          options: {},
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to regenerate proposal');
+      }
+
+      const data = await response.json();
+
+      toast({
+        title: 'Proposal Regeneration Started',
+        description: `AI agents are regenerating your proposal. Session ID: ${data.sessionId || 'pending'}`,
+      });
+
+      // Refresh the page to show the progress tracker
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      toast({
+        title: 'Regeneration Failed',
+        description:
+          error?.message ||
+          'Failed to start proposal regeneration. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -872,23 +929,48 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
   // Remove error state since we handle errors gracefully by returning empty arrays
 
+  // Don't render the section at all if there are no proposals
+  // This avoids showing an empty state when no generation has been attempted
+  // The "Generate Proposal" button in the sidebar is the primary entry point
   if (proposals.length === 0) {
-    // Don't render the section at all if there are no proposals
-    // This avoids showing an empty state when no generation has been attempted
     return null;
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="w-5 h-5" />
-          Generated Proposals
-          <Badge variant="secondary" className="ml-auto">
-            {proposals.length}{' '}
-            {proposals.length === 1 ? 'Proposal' : 'Proposals'}
-          </Badge>
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            Generated Proposals
+            <Badge variant="secondary" className="ml-2">
+              {proposals.length}{' '}
+              {proposals.length === 1 ? 'Proposal' : 'Proposals'}
+            </Badge>
+          </CardTitle>
+          <Button
+            onClick={handleRegenerateProposal}
+            disabled={isRegenerating}
+            variant="outline"
+            size="sm"
+            className="gap-2"
+          >
+            {isRegenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Regenerating...
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4" />
+                Regenerate Proposal
+              </>
+            )}
+          </Button>
+        </div>
+        <p className="text-sm text-muted-foreground mt-2">
+          View and manage AI-generated proposals for this RFP. Use "Regenerate Proposal" to create a new version with the latest AI enhancements.
+        </p>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -914,6 +996,11 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                       {proposal.status.charAt(0).toUpperCase() +
                         proposal.status.slice(1)}
                     </Badge>
+                    {index === 0 && proposals.length > 1 && (
+                      <Badge variant="outline" className="ml-2">
+                        Latest
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="w-3 h-3" />
@@ -958,16 +1045,27 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                     </DialogTrigger>
                     <DialogContent className="max-w-6xl max-h-[90vh]">
                       <DialogHeader className="pb-4 border-b">
-                        <DialogTitle className="text-2xl font-bold flex items-center gap-3">
-                          <FileText className="w-6 h-6 text-blue-600" />
-                          Proposal #{index + 1}
-                          <Badge
-                            className={`${getStatusColor(proposal.status)} text-sm`}
-                          >
-                            {proposal.status.charAt(0).toUpperCase() +
-                              proposal.status.slice(1)}
-                          </Badge>
-                        </DialogTitle>
+                        <div className="flex items-center justify-between">
+                          <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                            <FileText className="w-6 h-6 text-blue-600" />
+                            Proposal #{index + 1}
+                            <Badge
+                              className={`${getStatusColor(proposal.status)} text-sm`}
+                            >
+                              {proposal.status.charAt(0).toUpperCase() +
+                                proposal.status.slice(1)}
+                            </Badge>
+                            {index === 0 && proposals.length > 1 && (
+                              <Badge variant="outline">Latest Version</Badge>
+                            )}
+                          </DialogTitle>
+                          <div className="text-sm text-muted-foreground">
+                            Generated: {formatDate(proposal)}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          This is a generated proposal. Use the "Regenerate Proposal" button in the header to create a new version with enhanced AI processing.
+                        </p>
                       </DialogHeader>
                       <ScrollArea className="max-h-[75vh] pr-4">
                         <div className="space-y-8 py-4">

@@ -1,5 +1,10 @@
 import { Agent } from '@mastra/core/agent';
-import { PromptInjectionDetector, PIIDetector, ModerationProcessor, TokenLimiterProcessor } from '@mastra/core/processors';
+import {
+  PromptInjectionDetector,
+  PIIDetector,
+  ModerationProcessor,
+  TokenLimiterProcessor,
+} from '@mastra/core/processors';
 import { creativeModel, guardrailModel } from '../models';
 import {
   sendAgentMessage,
@@ -10,23 +15,18 @@ import { sharedMemory } from '../tools/shared-memory-provider';
 const contentPromptGuard = new PromptInjectionDetector({
   model: guardrailModel,
   strategy: 'rewrite',
-  detectionTypes: ['injection', 'system-override', 'role-manipulation'],
-  threshold: 0.6,
 });
 
 const contentPiiGuard = new PIIDetector({
   model: guardrailModel,
   strategy: 'redact',
-  detectionTypes: ['email', 'phone', 'address', 'api-key'],
   includeDetections: true,
-  threshold: 0.55,
 });
 
 const contentModeration = new ModerationProcessor({
   model: guardrailModel,
-  threshold: 0.55,
   strategy: 'warn',
-  categories: ['hate', 'harassment', 'violence', 'sexual/minors'],
+  threshold: 0.55,
 });
 
 const contentTokenLimiter = new TokenLimiterProcessor({

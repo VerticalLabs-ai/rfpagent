@@ -115,7 +115,7 @@ export class AgentOrchestrator {
       console.log(`🚀 Executing agent: ${agent.name}`);
 
       // Generate response using the agent
-      const response = await agent.generateVNext(context.prompt, {
+      const response = await agent.generate(context.prompt, {
         context: context.toolContext,
       });
 

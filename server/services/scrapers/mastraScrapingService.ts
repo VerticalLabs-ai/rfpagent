@@ -650,7 +650,7 @@ export class MastraScrapingService {
             context,
             searchFilter
           );
-          const response = await agent.generateVNext(scrapingPrompt, {
+          const response = await agent.generate(scrapingPrompt, {
             resourceId: portal.id,
             threadId: `portal-${portal.id}-${Date.now()}`,
           });

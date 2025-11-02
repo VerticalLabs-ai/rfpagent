@@ -9,8 +9,12 @@ import {
   type ResearchFinding,
 } from '@shared/schema';
 import { storage } from '../storage';
-import { AIService } from '../services/core/aiService';
 import { aiProposalService } from '../services/proposals/ai-proposal-service';
+import { aiAgentOrchestrator } from '../services/orchestrators/aiAgentOrchestrator';
+import {
+  mastraWorkflowEngine,
+  type ActionSuggestion,
+} from '../services/workflows/mastraWorkflowEngine';
 
 const router = Router();
 
@@ -126,15 +130,22 @@ const ProcessQueryRequestSchema = z.object({
     .optional(),
 });
 
+const ActionSuggestionSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  action: z.enum(['workflow', 'agent', 'tool', 'navigation']),
+  priority: z.enum(['high', 'medium', 'low']),
+  estimatedTime: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  payload: z.record(z.string(), z.any()).optional(),
+  parameters: z.record(z.string(), z.any()).optional(),
+});
+
 const ExecuteActionRequestSchema = z.object({
   suggestionId: z.string().min(1),
   conversationId: z.string().uuid(),
-  suggestion: z.object({
-    id: z.string(),
-    label: z.string(),
-    action: z.string(),
-    parameters: z.record(z.string(), z.any()).optional(),
-  }),
+  suggestion: ActionSuggestionSchema,
 });
 
 /**
@@ -360,18 +371,20 @@ router.post('/chat', async (req, res) => {
     const { query, conversationId, userId, conversationType } =
       validationResult.data;
 
-    const aiService = new AIService();
     const normalizedType = (conversationType ?? 'general') as
       | 'general'
       | 'rfp_search'
       | 'bid_crafting'
       | 'research';
 
-    const response = await aiService.processQuery(
+    const response = await aiAgentOrchestrator.processUserQuery(
       query,
       conversationId,
-      userId,
-      normalizedType
+      {
+        userId: userId ?? undefined,
+        currentQuery: query,
+        conversationType: normalizedType,
+      }
     );
 
     res.json(response);
@@ -399,14 +412,43 @@ router.post('/execute-action', async (req, res) => {
 
     const { suggestionId, conversationId, suggestion } = validationResult.data;
 
-    const aiService = new AIService();
-    const result = await aiService.executeSuggestion(
-      suggestionId,
-      conversationId,
-      suggestion
+    const normalizedSuggestion: ActionSuggestion = {
+      id: suggestion.id,
+      label: suggestion.label,
+      action: suggestion.action,
+      priority: suggestion.priority,
+      estimatedTime: suggestion.estimatedTime,
+      description: suggestion.description,
+      icon: suggestion.icon,
+      payload:
+        suggestion.payload ??
+        (suggestion.parameters as Record<string, any> | undefined),
+    };
+
+    const executionResult = await mastraWorkflowEngine.executeActionSuggestion(
+      normalizedSuggestion,
+      conversationId
     );
 
-    res.json(result);
+    await storage.createConversationMessage({
+      conversationId,
+      role: 'assistant',
+      content: `Executed suggestion "${suggestion.label}" (${suggestion.action}).`,
+      messageType: 'follow_up',
+      metadata: {
+        suggestion: normalizedSuggestion,
+        suggestionId,
+        executionResult,
+      },
+      relatedEntityId: null,
+      relatedEntityType: null,
+    });
+
+    res.json({
+      success: true,
+      message: `Executed suggestion "${suggestion.label}"`,
+      result: executionResult,
+    });
   } catch (error) {
     console.error('Error executing AI action:', error);
     res.status(500).json({
@@ -433,9 +475,22 @@ router.get('/conversations/:conversationId', async (req, res) => {
 
     if (includeMessages === 'true') {
       const messages = await storage.getConversationMessages(conversationId);
+      const enhancedMessages = messages.map(message => {
+        const metadata = (message.metadata ?? {}) as Record<string, any>;
+
+        return {
+          ...message,
+          data: metadata?.data,
+          followUpQuestions: metadata?.followUpQuestions,
+          actionSuggestions: metadata?.actionSuggestions,
+          relatedRfps: metadata?.relatedRfps,
+          researchFindings: metadata?.researchFindings,
+        };
+      });
+
       result = {
         ...conversation,
-        messages,
+        messages: enhancedMessages,
       };
     }
 

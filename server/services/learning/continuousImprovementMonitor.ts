@@ -986,7 +986,7 @@ export class ContinuousImprovementMonitor {
         memoryType: 'semantic',
         contextKey: 'dashboard_snapshot',
         title: 'Performance Dashboard Snapshot',
-        content: JSON.stringify(dashboard),
+        content: dashboard,
         metadata: {
           type: 'dashboard_snapshot',
           timestamp: dashboard.timestamp,
@@ -1010,7 +1010,7 @@ export class ContinuousImprovementMonitor {
         memoryType: 'procedural',
         contextKey: 'improvement_plan',
         title: 'Improvement Plan',
-        content: JSON.stringify(plan),
+        content: plan,
         metadata: {
           type: 'improvement_plan',
           planId: plan.planId,
@@ -1036,12 +1036,18 @@ export class ContinuousImprovementMonitor {
 
       if (result.length === 0) return null;
 
-      return JSON.parse(result[0].content as string);
+      const rawContent = result[0].content;
+      if (typeof rawContent === 'string') {
+        return JSON.parse(rawContent) as ImprovementPlan;
+      }
+      return rawContent as ImprovementPlan;
     } catch (error) {
       console.error('Error retrieving improvement plan:', error);
       return null;
     }
   }
 }
+
+export const continuousImprovementMonitor = new ContinuousImprovementMonitor();
 
 export type { ImprovementPlan, MetricTrend, PerformanceDashboard };

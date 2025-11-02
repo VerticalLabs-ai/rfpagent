@@ -354,7 +354,7 @@ This review analyzes the Mastra integration across the RFP Agent application, id
      name: 'RFP Analyzer',
      model: openai('gpt-5')
    });
-   const response = await analysisAgent.generateVNext([...]);
+   const response = await analysisAgent.generate([...]);
    ```
 
    **Service Version:**
@@ -447,8 +447,8 @@ This review analyzes the Mastra integration across the RFP Agent application, id
    Multiple AI agent calls with no rate limiting:
    ```typescript
    // proposal-generation-workflow.ts
-   const response = await analysisAgent.generateVNext([...]);
-   const proposalResponse = await proposalAgent.generateVNext([...]);
+   const response = await analysisAgent.generate([...]);
+   const proposalResponse = await proposalAgent.generate([...]);
    // If OpenAI is down, both fail with no fallback
    ```
 
@@ -669,7 +669,7 @@ describe('Mastra Integration E2E', () => {
 
   it('should recover from workflow failures', async () => {
     // 1. Simulate AI failure
-    mockAgent.generateVNext.mockRejectedValueOnce(new Error('Timeout'));
+    mockAgent.generate.mockRejectedValueOnce(new Error('Timeout'));
 
     // 2. Should retry
     await expect(generateProposal(rfpId)).not.toReject();

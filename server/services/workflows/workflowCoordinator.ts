@@ -25,16 +25,20 @@ import {
 import type { AgentRegistry, InsertWorkItem, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
 import {
-  AdaptivePortalNavigator,
+  adaptivePortalNavigator,
   type NavigationAttempt,
 } from '../agents/adaptivePortalNavigator';
-import { ContinuousImprovementMonitor } from '../learning/continuousImprovementMonitor';
-import { PersistentMemoryEngine } from '../learning/persistentMemoryEngine';
-import { saflaLearningEngine } from '../learning/saflaLearningEngine';
-import { SelfImprovingLearningService } from '../learning/selfImprovingLearningService';
-import { ProposalOutcomeTracker } from '../monitoring/proposalOutcomeTracker';
-import { IntelligentDocumentProcessor } from '../processing/intelligentDocumentProcessor';
-import { ProposalQualityEvaluator } from '../proposals/proposalQualityEvaluator';
+import { continuousImprovementMonitor } from '../learning/continuousImprovementMonitor';
+import { persistentMemoryEngine } from '../learning/persistentMemoryEngine';
+import {
+  saflaLearningEngine,
+  type LearnedStrategy,
+} from '../learning/saflaLearningEngine';
+import { selfImprovingLearningService } from '../learning/selfImprovingLearningService';
+import { proposalOutcomeTracker } from '../monitoring/proposalOutcomeTracker';
+import { intelligentDocumentProcessor } from '../processing/intelligentDocumentProcessor';
+import { proposalQualityEvaluator } from '../proposals/proposalQualityEvaluator';
+import { extractSaflaStrategyDetails } from './saflaStrategyUtils';
 
 // Lazy imports to break circular dependencies
 let _DiscoveryWorkflowProcessors:
@@ -134,13 +138,13 @@ export class WorkflowCoordinator {
   private workItemProcessingInterval: NodeJS.Timeout | null = null;
 
   // SAFLA Self-Improving System Services
-  private learningService = new SelfImprovingLearningService();
-  private outcomeTracker = new ProposalOutcomeTracker();
-  private adaptiveNavigator = new AdaptivePortalNavigator();
-  private intelligentProcessor = new IntelligentDocumentProcessor();
-  private memoryEngine = new PersistentMemoryEngine();
-  private qualityEvaluator = new ProposalQualityEvaluator();
-  private improvementMonitor = new ContinuousImprovementMonitor();
+  private learningService = selfImprovingLearningService;
+  private outcomeTracker = proposalOutcomeTracker;
+  private adaptiveNavigator = adaptivePortalNavigator;
+  private intelligentProcessor = intelligentDocumentProcessor;
+  private memoryEngine = persistentMemoryEngine;
+  private qualityEvaluator = proposalQualityEvaluator;
+  private improvementMonitor = continuousImprovementMonitor;
 
   // Import the actual SAFLA learning engine
   private saflaEngine = saflaLearningEngine;
@@ -308,6 +312,9 @@ export class WorkflowCoordinator {
    */
   async executeWorkItem(workItemId: string): Promise<WorkItemAssignmentResult> {
     const startTime = Date.now();
+    let workItemForExecution: WorkItem | null = null;
+    let appliedStrategy: LearnedStrategy | null = null;
+
     try {
       const workItem = await storage.getWorkItem(workItemId);
       if (!workItem) {
@@ -321,6 +328,8 @@ export class WorkflowCoordinator {
         };
       }
 
+      workItemForExecution = workItem;
+
       // Update status to in_progress
       await storage.updateWorkItem(workItem.id, {
         status: 'in_progress',
@@ -331,8 +340,41 @@ export class WorkflowCoordinator {
         `🚀 Executing work item ${workItem.id} of type: ${workItem.taskType}`
       );
 
+      if (this.enableLearning) {
+        try {
+          appliedStrategy = await this.saflaEngine.applyLearning(
+            workItem.assignedAgentId || 'unknown',
+            workItem.taskType,
+            (workItem.inputs as Record<string, any>) || {}
+          );
+
+          if (appliedStrategy) {
+            workItemForExecution = {
+              ...workItem,
+              inputs: {
+                ...(workItem.inputs as Record<string, any>),
+                saflaStrategy: appliedStrategy.strategy,
+                saflaStrategyMetadata: {
+                  confidence: appliedStrategy.confidenceScore,
+                  domain: appliedStrategy.domain,
+                  lastApplied: new Date().toISOString(),
+                },
+              },
+            };
+            console.log(
+              `🎯 Applied SAFLA strategy to ${workItem.taskType} (confidence ${appliedStrategy.confidenceScore})`
+            );
+          }
+        } catch (strategyError) {
+          console.error(
+            '❌ Failed to apply SAFLA strategy:',
+            strategyError
+          );
+        }
+      }
+
       // Simulate work execution based on task type
-      const result = await this.processWorkItemByType(workItem);
+      const result = await this.processWorkItemByType(workItemForExecution);
 
       // Mark as completed
       const completedWorkItem = await storage.updateWorkItem(workItem.id, {
@@ -351,7 +393,7 @@ export class WorkflowCoordinator {
       // SAFLA Learning Integration: Record execution outcome for learning
       if (this.enableLearning) {
         await this.recordWorkItemLearning(
-          workItem,
+          workItemForExecution || workItem,
           result,
           Date.now() - startTime
         );
@@ -374,15 +416,19 @@ export class WorkflowCoordinator {
       });
 
       // SAFLA Learning Integration: Learn from failures
-      if (this.enableLearning && existingWorkItem) {
-        await this.recordWorkItemLearning(
-          existingWorkItem,
-          {
-            success: false,
-            error: error instanceof Error ? error.message : 'Execution failed',
-          },
-          Date.now() - startTime
-        );
+      if (this.enableLearning) {
+        const learningSource = workItemForExecution || existingWorkItem;
+        if (learningSource) {
+          await this.recordWorkItemLearning(
+            learningSource,
+            {
+              success: false,
+              error:
+                error instanceof Error ? error.message : 'Execution failed',
+            },
+            Date.now() - startTime
+          );
+        }
       }
 
       return {
@@ -815,6 +861,27 @@ export class WorkflowCoordinator {
           actualScanId
         );
 
+      if (this.enableLearning) {
+        await this.recordPortalLearning(
+          portalId,
+          {
+            strategy: scanResult.strategy || 'browserbase_mastra',
+            selectors: scanResult.selectors || {},
+            timing: {
+              duration: scanResult.scanDuration,
+            },
+            duration: scanResult.scanDuration,
+            result: {
+              rfpsFound: scanResult.discoveredRFPs.length,
+              errors: scanResult.errors,
+            },
+            timestamp: scanResult.startedAt,
+            steps: scanResult.steps || [],
+          },
+          scanResult.success
+        );
+      }
+
       return {
         success: scanResult.success,
         data: {
@@ -847,6 +914,7 @@ export class WorkflowCoordinator {
       proposalType?: string;
     };
     const { rfpId, requirements, companyProfileId, proposalType } = inputs;
+    const outlineProvided = Boolean((inputs as Record<string, any>)?.outline);
 
     try {
       if (!rfpId) {
@@ -872,6 +940,62 @@ export class WorkflowCoordinator {
       const aiAnalysis = await aiProposalService.analyzeRFPDocument(
         rfp.description || ''
       );
+
+      const humanActionItems = proposalResult.humanActionItems || [];
+      const improvementAreas = humanActionItems.map(
+        item =>
+          item.description ||
+          item.id ||
+          'Follow-up action required'
+      );
+
+      if (this.enableLearning) {
+        try {
+          await this.learningService.recordLearningOutcome({
+            type: 'proposal_success',
+            agentId: workItem.assignedAgentId || 'proposal_generator',
+            rfpId,
+            context: {
+              action: 'proposal_generation',
+              strategy: {
+                documentAnalysis: proposalResult.documentAnalysis,
+                pricing: proposalResult.competitiveBidSummary,
+              },
+              conditions: {
+                proposalId: proposalResult.proposalId,
+                proposalType: proposalType || 'standard',
+              },
+              inputs: {
+                companyProfileId,
+                outlineProvided,
+              },
+            },
+            outcome: {
+              success: proposalResult.readyForSubmission,
+              metrics: {
+                readyForSubmission: proposalResult.readyForSubmission ? 1 : 0,
+                humanActionItems: humanActionItems.length,
+                confidence:
+                  proposalResult.competitiveBidSummary?.confidenceLevel || 0,
+                data: {
+                  quality: aiAnalysis,
+                },
+              },
+              improvementAreas,
+            },
+            confidenceScore:
+              proposalResult.competitiveBidSummary?.confidenceLevel || 0.7,
+            domain: 'proposal_generation',
+            category: proposalType || 'general',
+            timestamp: new Date(),
+          });
+        } catch (learningError) {
+          console.error(
+            '❌ Failed to record proposal generation learning:',
+            learningError
+          );
+        }
+      }
 
       return {
         success: true,
@@ -990,9 +1114,48 @@ export class WorkflowCoordinator {
   private async processDocumentValidationTask(
     workItem: WorkItem
   ): Promise<WorkflowResult> {
+    const inputs = (workItem.inputs || {}) as {
+      documentId?: string;
+      documentType?: string;
+    };
+    const documentId =
+      typeof inputs.documentId === 'string' ? inputs.documentId : undefined;
+
     try {
       const result =
         await documentProcessorSpecialist.processDocumentValidation(workItem);
+
+      if (this.enableLearning && documentId) {
+        const validationDetails =
+          (result.metadata && (result.metadata.validation as any)) ||
+          result.result ||
+          {};
+        const processingPayload = {
+          documentType:
+            validationDetails.fileType || inputs.documentType || 'unknown',
+          method: 'document_validation',
+          extractedFields: [],
+          processingTime: validationDetails.metadata?.processingTime || 0,
+          errors: validationDetails.issues || (result.error ? [result.error] : []),
+          suggestions: result.nextActions || [],
+          quality: validationDetails.readableContent ? 'high' : 'unknown',
+        };
+
+        const accuracy = result.success ? 1 : 0;
+
+        try {
+          await this.recordDocumentLearning(
+            documentId,
+            processingPayload,
+            accuracy
+          );
+        } catch (learningError) {
+          console.error(
+            '❌ Failed to record document validation learning:',
+            learningError
+          );
+        }
+      }
 
       return {
         success: result.success,
@@ -1014,9 +1177,54 @@ export class WorkflowCoordinator {
   private async processTextExtractionTask(
     workItem: WorkItem
   ): Promise<WorkflowResult> {
+    const inputs = (workItem.inputs || {}) as {
+      documentId?: string;
+      documentType?: string;
+    };
+    const documentId =
+      typeof inputs.documentId === 'string' ? inputs.documentId : undefined;
+
     try {
       const result =
         await documentProcessorSpecialist.processTextExtraction(workItem);
+
+      if (this.enableLearning && documentId) {
+        const extractionDetails = result.result || {};
+        const processingPayload = {
+          documentType:
+            inputs.documentType ||
+            extractionDetails.metadata?.documentType ||
+            'unknown',
+          method: extractionDetails.method || 'text_extraction',
+          extractedFields: extractionDetails.extractedText
+            ? ['extracted_text']
+            : [],
+          processingTime: extractionDetails.metadata?.processingTime || 0,
+          errors: result.success ? [] : result.error ? [result.error] : [],
+          suggestions: extractionDetails.metadata?.suggestions || [],
+          quality: extractionDetails.quality,
+        };
+
+        const accuracy =
+          typeof extractionDetails.confidence === 'number'
+            ? extractionDetails.confidence
+            : result.success
+              ? 0.9
+              : 0.1;
+
+        try {
+          await this.recordDocumentLearning(
+            documentId,
+            processingPayload,
+            Math.max(0, Math.min(1, accuracy))
+          );
+        } catch (learningError) {
+          console.error(
+            '❌ Failed to record text extraction learning:',
+            learningError
+          );
+        }
+      }
 
       return {
         success: result.success,
@@ -1103,6 +1311,33 @@ export class WorkflowCoordinator {
       }
       const result =
         await documentIntelligenceService.analyzeRFPDocuments(documentId);
+
+      if (this.enableLearning) {
+        const processingPayload = {
+          documentType: analysisType || 'document_analysis',
+          method: 'document_intelligence',
+          extractedFields: Array.isArray(result.formFields)
+            ? result.formFields
+            : [],
+          processingTime: 0,
+          errors: [],
+          suggestions: result.processingInstructions || [],
+          quality: 'analysis',
+        };
+
+        try {
+          await this.recordDocumentLearning(
+            documentId,
+            processingPayload,
+            0.95
+          );
+        } catch (learningError) {
+          console.error(
+            '❌ Failed to record document analysis learning:',
+            learningError
+          );
+        }
+      }
 
       return {
         success: true,
@@ -1339,7 +1574,7 @@ export class WorkflowCoordinator {
           
           Find and evaluate opportunities, assess their fit, and prioritize them based on strategic value.`;
 
-        await discoveryAgent.generateVNext(discoveryPrompt);
+        await discoveryAgent.generate(discoveryPrompt);
       }
 
       // Perform actual portal scraping
@@ -1364,7 +1599,7 @@ export class WorkflowCoordinator {
           Provide compliance assessment, identify requirements, and highlight any risk factors.`;
 
         const analysisResult =
-          await complianceAgent.generateVNext(analysisPrompt);
+          await complianceAgent.generate(analysisPrompt);
         context.data.complianceAnalysis = analysisResult.text;
       }
 
@@ -1383,7 +1618,7 @@ export class WorkflowCoordinator {
           Provide strategic recommendations for bidding approach.`;
 
         const researchResult =
-          await researchAgent.generateVNext(researchPrompt);
+          await researchAgent.generate(researchPrompt);
         context.data.marketResearch = researchResult.text;
       }
 
@@ -1485,7 +1720,7 @@ export class WorkflowCoordinator {
           - Human oversight needs
           - Processing recommendations`;
 
-        await documentAgent.generateVNext(analysisPrompt);
+        await documentAgent.generate(analysisPrompt);
       }
 
       // Perform actual document analysis
@@ -1507,7 +1742,7 @@ export class WorkflowCoordinator {
           - Pricing strategy`;
 
         const proposalResult =
-          await proposalAgent.generateVNext(generationPrompt);
+          await proposalAgent.generate(generationPrompt);
         context.data.proposalContent = proposalResult.text;
       }
 
@@ -1618,7 +1853,7 @@ export class WorkflowCoordinator {
           5. Identify any potential showstoppers or high-risk areas`;
 
         const complianceResult =
-          await complianceAgent.generateVNext(compliancePrompt);
+          await complianceAgent.generate(compliancePrompt);
         context.data.complianceReport = complianceResult.text;
       }
 
@@ -2249,6 +2484,10 @@ export class WorkflowCoordinator {
     executionTime: number
   ): Promise<void> {
     try {
+      const inputs = (workItem.inputs as Record<string, any>) || {};
+      const { strategy: saflaStrategy, metadata: saflaStrategyMetadata } =
+        extractSaflaStrategyDetails(inputs);
+
       const learningOutcome = {
         id: `learning_${workItem.id}_${Date.now()}`,
         type: this.mapTaskTypeToLearningType(workItem.taskType),
@@ -2260,8 +2499,8 @@ export class WorkflowCoordinator {
           executionTime,
           retryAttempt: workItem.retries,
           action: workItem.taskType,
-          strategy: {},
-          conditions: {},
+          strategy: saflaStrategy || {},
+          conditions: saflaStrategyMetadata || {},
         },
         outcome: {
           success: result.success,
@@ -2273,10 +2512,24 @@ export class WorkflowCoordinator {
               result.success
             ),
             data: result.data,
+            strategyApplied: saflaStrategy ? 1 : 0,
+            strategyConfidence:
+              (saflaStrategyMetadata &&
+                saflaStrategyMetadata.confidence) ||
+              (saflaStrategyMetadata &&
+                saflaStrategyMetadata.confidenceScore) ||
+              (typeof saflaStrategyMetadata?.confidence === 'number'
+                ? saflaStrategyMetadata.confidence
+                : undefined),
           },
           errorDetails: result.error,
         },
-        confidenceScore: result.success ? 0.8 : 0.4,
+        confidenceScore:
+          typeof saflaStrategyMetadata?.confidence === 'number'
+            ? saflaStrategyMetadata.confidence
+            : result.success
+              ? 0.8
+              : 0.4,
         domain: 'work_item_processing',
         category: workItem.taskType,
         timestamp: new Date(),

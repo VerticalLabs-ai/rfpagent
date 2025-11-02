@@ -40,19 +40,24 @@ export function RFPSidebar({
           <CardTitle>Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Button
-            onClick={onGenerateProposal}
-            className="w-full bg-blue-600 hover:bg-blue-700"
-            disabled={isGeneratingProposal}
-            data-testid="button-generate-proposal"
-          >
-            {isGeneratingProposal ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <FileText className="w-4 h-4 mr-2" />
-            )}
-            Generate Proposal
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={onGenerateProposal}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+              disabled={isGeneratingProposal}
+              data-testid="button-generate-proposal"
+            >
+              {isGeneratingProposal ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="w-4 h-4 mr-2" />
+              )}
+              Generate Proposal
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              AI agents will process this RFP and create a complete proposal with real-time progress tracking
+            </p>
+          </div>
 
           <Button
             onClick={onGenerateMaterials}

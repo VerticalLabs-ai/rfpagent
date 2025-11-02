@@ -99,7 +99,7 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
       strategy: 'demand', // Scale based on proposal workload
     },
     metadata: {
-      model: 'gpt-4-turbo',
+      model: 'gpt-5',
       description:
         'Orchestrates proposal generation, compliance, and submissions',
     },
@@ -213,7 +213,7 @@ export const agentHierarchyConfig: Record<string, AgentMetadata> = {
       strategy: 'demand', // High parallelization for proposal sections
     },
     metadata: {
-      model: 'gpt-4-turbo',
+      model: 'gpt-5',
       description:
         'Creates high-quality proposal narratives, technical content, and summaries',
     },

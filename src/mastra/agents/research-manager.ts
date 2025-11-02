@@ -1,5 +1,10 @@
 import { Agent } from "@mastra/core/agent"
-import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
+import {
+  PromptInjectionDetector,
+  PIIDetector,
+  ModerationProcessor,
+  TokenLimiterProcessor,
+} from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
 import { analyticalModel, guardrailModel } from "../models"
 import {
@@ -12,23 +17,24 @@ import {
 const researchPromptGuard = new PromptInjectionDetector({
   model: guardrailModel,
   strategy: "rewrite",
-  detectionTypes: ["injection", "data-exfiltration", "system-override"],
-  threshold: 0.6,
 });
 
 const researchPiiGuard = new PIIDetector({
   model: guardrailModel,
   strategy: "redact",
-  detectionTypes: ["email", "phone", "address", "api-key", "uuid"],
   includeDetections: true,
-  threshold: 0.55,
 });
 
 const researchModeration = new ModerationProcessor({
   model: guardrailModel,
-  threshold: 0.55,
   strategy: "warn",
-  categories: ["hate", "harassment", "violence", "self-harm"],
+  threshold: 0.55,
+});
+
+const researchTokenLimiter = new TokenLimiterProcessor({
+  limit: 2000,
+  strategy: "truncate",
+  countMode: "cumulative",
 });
 
 /**
@@ -195,7 +201,7 @@ Remember: Your research drives strategic decision-making. Provide rigorous analy
 `,
   model: analyticalModel, // Claude Sonnet 4.5 - optimal for analytical research
   inputProcessors: [researchPromptGuard, researchPiiGuard, researchModeration],
-  outputProcessors: [researchModeration],
+  outputProcessors: [researchTokenLimiter, researchModeration],
   tools: {
     // Coordination tools
     requestSpecialist,

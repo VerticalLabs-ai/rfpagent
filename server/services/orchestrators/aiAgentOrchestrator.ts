@@ -187,6 +187,8 @@ export class AIAgentOrchestrator {
           data: response.data,
           followUpQuestions: response.followUpQuestions,
           actionSuggestions: response.actionSuggestions,
+          relatedRfps: response.relatedRfps,
+          researchFindings: response.researchFindings,
         },
       });
 

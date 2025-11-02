@@ -143,7 +143,7 @@ export class MigrationAdapter {
       return {
         name: `Agent for ${portal.name || 'unknown portal'}`,
         type: 'specialized',
-        generateVNext: async (prompt: string, options?: any) => {
+        generate: async (prompt: string, options?: any) => {
           console.log(
             `🤖 Mock agent execution for prompt: ${prompt.substring(0, 100)}...`
           );
@@ -158,7 +158,7 @@ export class MigrationAdapter {
       return {
         name: 'Generic RFP Agent',
         type: 'generic',
-        generateVNext: async (prompt: string, options?: any) => {
+        generate: async (prompt: string, options?: any) => {
           return {
             text: JSON.stringify({ opportunities: [], status: 'fallback' }),
             usage: { tokens: 0 },

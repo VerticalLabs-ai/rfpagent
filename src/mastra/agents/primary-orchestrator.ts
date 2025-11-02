@@ -1,37 +1,42 @@
-import { Agent } from "@mastra/core/agent"
-import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
-import { sharedMemory } from "../tools/shared-memory-provider"
-import { agentCoordinationTools } from "../tools/agent-coordination-tools"
-import { coordinationModel, guardrailModel } from "../models"
-import { loadExternalMcpTools } from "../mcp/clients"
+import { Agent } from '@mastra/core/agent';
+import {
+  ModerationProcessor,
+  PIIDetector,
+  PromptInjectionDetector,
+  TokenLimiterProcessor,
+} from '@mastra/core/processors';
+import { loadExternalMcpTools } from '../mcp/clients';
+import { coordinationModel, guardrailModel } from '../models';
+import { agentCoordinationTools } from '../tools/agent-coordination-tools';
+import { sharedMemory } from '../tools/shared-memory-provider';
 
 const orchestratorPromptGuard = new PromptInjectionDetector({
   model: guardrailModel,
-  strategy: "rewrite",
-  threshold: 0.65,
-  detectionTypes: ["injection", "system-override", "jailbreak"],
+  strategy: 'rewrite',
 });
 
 const orchestratorPiiGuard = new PIIDetector({
   model: guardrailModel,
-  strategy: "redact",
-  detectionTypes: ["email", "phone", "credit-card", "api-key", "ssn"],
-  threshold: 0.6,
+  strategy: 'redact',
   includeDetections: true,
 });
 
 const orchestratorInboundModeration = new ModerationProcessor({
   model: guardrailModel,
+  strategy: 'warn',
   threshold: 0.6,
-  strategy: "warn",
-  categories: ["hate", "harassment", "violence", "sexual/minors", "self-harm"],
 });
 
 const orchestratorOutboundModeration = new ModerationProcessor({
   model: guardrailModel,
+  strategy: 'warn',
   threshold: 0.6,
-  strategy: "warn",
-  categories: ["hate", "harassment", "violence", "sexual/minors", "self-harm"],
+});
+
+const orchestratorTokenLimiter = new TokenLimiterProcessor({
+  limit: 3000,
+  strategy: 'truncate',
+  countMode: 'cumulative',
 });
 
 /**
@@ -45,8 +50,9 @@ const orchestratorOutboundModeration = new ModerationProcessor({
  * - Aggregating results and communicating with users
  */
 export const primaryOrchestrator = new Agent({
-  name: "Primary Orchestrator",
-  description: "Top-level orchestrator coordinating all RFP operations by delegating to manager agents and monitoring system-wide progress",
+  name: 'Primary Orchestrator',
+  description:
+    'Top-level orchestrator coordinating all RFP operations by delegating to manager agents and monitoring system-wide progress',
   instructions: `
 You are the Primary Orchestrator for the RFP Agent system, the central coordinator of a sophisticated multi-agent hierarchy.
 
@@ -144,6 +150,6 @@ Remember: You don't execute tasks yourself - you coordinate agents who do the wo
     orchestratorPiiGuard,
     orchestratorInboundModeration,
   ],
-  outputProcessors: [orchestratorOutboundModeration],
+  outputProcessors: [orchestratorTokenLimiter, orchestratorOutboundModeration],
   memory: sharedMemory,
-})
+});

@@ -337,7 +337,7 @@ const processDocumentsStep = createStep({
           extractedText = `Document type not supported for text extraction: ${doc.fileName}`;
         }
 
-        const analysis = await documentProcessor.generateVNext([
+        const analysis = await documentProcessor.generate([
           {
             role: 'user',
             content: `Analyze this RFP document and extract key information:\n\n${extractedText}`,

@@ -242,7 +242,7 @@ async function testMastraAgentConnectivity() {
     // Test a simple call to proposal manager
     try {
       console.log("🤖 Testing proposal manager...")
-      const testResult = await proposalManager.generateVNext([
+      const testResult = await proposalManager.generate([
         {
           role: "user",
           content:

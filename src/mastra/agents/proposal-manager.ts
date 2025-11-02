@@ -1,5 +1,12 @@
 import { Agent } from "@mastra/core/agent"
-import { PromptInjectionDetector, PIIDetector, ModerationProcessor } from "@mastra/core/processors"
+import {
+  PromptInjectionDetector,
+  PIIDetector,
+  ModerationProcessor,
+  TokenLimiterProcessor,
+  type InputProcessor,
+  type OutputProcessor,
+} from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
 import { creativeModel, guardrailModel } from "../models"
 import {
@@ -9,27 +16,152 @@ import {
   updateWorkflowProgress
 } from "../tools/agent-coordination-tools"
 
-const proposalPromptGuard = new PromptInjectionDetector({
-  model: guardrailModel,
-  strategy: "rewrite",
-  detectionTypes: ["injection", "system-override", "role-manipulation"],
-  threshold: 0.6,
-});
+const FALLBACK_LOG_PREFIX = "[Proposal Manager]";
 
-const proposalPiiGuard = new PIIDetector({
-  model: guardrailModel,
-  strategy: "redact",
-  detectionTypes: ["email", "phone", "credit-card", "api-key", "address"],
-  includeDetections: true,
-  threshold: 0.55,
-});
+function createNoopInputProcessor(name: string): InputProcessor {
+  return {
+    name,
+    async processInput({ messages }) {
+      return messages;
+    },
+  };
+}
 
-const proposalModeration = new ModerationProcessor({
-  model: guardrailModel,
-  threshold: 0.55,
-  strategy: "warn",
-  categories: ["hate", "harassment", "violence", "sexual/minors"],
-});
+function createNoopOutputProcessor(name: string): OutputProcessor {
+  return {
+    name,
+    async processOutputStream({ part }) {
+      return part;
+    },
+    async processOutputResult({ messages }) {
+      return messages;
+    },
+  };
+}
+
+function createNoopDualProcessor(name: string): InputProcessor & OutputProcessor {
+  return {
+    name,
+    async processInput({ messages }) {
+      return messages;
+    },
+    async processOutputStream({ part }) {
+      return part;
+    },
+    async processOutputResult({ messages }) {
+      return messages;
+    },
+  };
+}
+
+function createSafeInputProcessor(
+  name: string,
+  factory: () => unknown,
+  fallback: () => InputProcessor
+): InputProcessor {
+  try {
+    const processor = factory() as InputProcessor | undefined;
+    if (!processor || typeof processor.processInput !== "function") {
+      throw new Error("Invalid input processor instance");
+    }
+    return processor;
+  } catch (error) {
+    console.warn(`${FALLBACK_LOG_PREFIX} Failed to initialize ${name}:`, error);
+    return fallback();
+  }
+}
+
+function createSafeOutputProcessor(
+  name: string,
+  factory: () => unknown,
+  fallback: () => OutputProcessor
+): OutputProcessor {
+  try {
+    const processor = factory() as OutputProcessor | undefined;
+    if (
+      !processor ||
+      (typeof processor.processOutputStream !== "function" &&
+        typeof processor.processOutputResult !== "function")
+    ) {
+      throw new Error("Invalid output processor instance");
+    }
+    return processor;
+  } catch (error) {
+    console.warn(`${FALLBACK_LOG_PREFIX} Failed to initialize ${name}:`, error);
+    return fallback();
+  }
+}
+
+function createSafeDualProcessor(
+  name: string,
+  factory: () => unknown,
+  fallback: () => InputProcessor & OutputProcessor
+): InputProcessor & OutputProcessor {
+  try {
+    const processor = factory() as (InputProcessor & OutputProcessor) | undefined;
+    if (
+      !processor ||
+      typeof processor.processInput !== "function" ||
+      (typeof processor.processOutputStream !== "function" &&
+        typeof processor.processOutputResult !== "function")
+    ) {
+      throw new Error("Invalid dual processor instance");
+    }
+    return processor;
+  } catch (error) {
+    console.warn(`${FALLBACK_LOG_PREFIX} Failed to initialize ${name}:`, error);
+    return fallback();
+  }
+}
+
+const proposalPromptGuard = createSafeInputProcessor(
+  "proposalPromptGuard",
+  () =>
+    new PromptInjectionDetector({
+      model: guardrailModel,
+      strategy: "rewrite",
+      threshold: 0.65,
+      includeScores: true,
+    }),
+  () => createNoopInputProcessor("proposalPromptGuard:fallback")
+);
+
+const proposalPiiGuard = createSafeInputProcessor(
+  "proposalPiiGuard",
+  () =>
+    new PIIDetector({
+      model: guardrailModel,
+      strategy: "redact",
+      includeDetections: true,
+      threshold: 0.6,
+      preserveFormat: true,
+    }),
+  () => createNoopInputProcessor("proposalPiiGuard:fallback")
+);
+
+const proposalModeration = createSafeDualProcessor(
+  "proposalModeration",
+  () =>
+    new ModerationProcessor({
+      model: guardrailModel,
+      strategy: "warn",
+      threshold: 0.55,
+      includeScores: true,
+      chunkWindow: 1,
+    }),
+  () => createNoopDualProcessor("proposalModeration:fallback")
+);
+
+const proposalTokenLimiter = createSafeOutputProcessor(
+  "proposalTokenLimiter",
+  () =>
+    new TokenLimiterProcessor({
+      limit: 2000,
+      strategy: "truncate",
+      countMode: "cumulative",
+    }),
+  () => createNoopOutputProcessor("proposalTokenLimiter:fallback")
+);
 
 /**
  * Proposal Manager - Tier 2 Manager Agent
@@ -172,7 +304,7 @@ Remember: You orchestrate the entire proposal process but delegate execution to 
 `,
   model: creativeModel, // GPT-5 - optimal for creative proposal generation
   inputProcessors: [proposalPromptGuard, proposalPiiGuard, proposalModeration],
-  outputProcessors: [proposalModeration],
+  outputProcessors: [proposalTokenLimiter, proposalModeration],
   tools: {
     // Coordination tools
     requestSpecialist,

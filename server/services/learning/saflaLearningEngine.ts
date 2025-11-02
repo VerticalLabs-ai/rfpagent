@@ -12,11 +12,17 @@ import { agentMemoryService } from '../agents/agentMemoryService';
  * 5. Tracks improvement metrics over time
  */
 
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY environment variable is required');
-}
+const openAIApiKey = process.env.OPENAI_API_KEY;
+const openai =
+  openAIApiKey && openAIApiKey.trim().length > 0
+    ? new OpenAI({ apiKey: openAIApiKey })
+    : null;
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+if (!openai) {
+  console.warn(
+    '⚠️ SAFLA learning engine: OPENAI_API_KEY not detected. Pattern analysis will be skipped until a key is configured.'
+  );
+}
 
 export interface LearningEvent {
   agentId: string;
@@ -144,6 +150,10 @@ export class SAFLALearningEngine {
   private async analyzePatterns(
     event: LearningEvent
   ): Promise<LearningInsight[]> {
+    if (!openai) {
+      return [];
+    }
+
     try {
       // Get similar recent events (same task type, last 50 events)
       const memories = await agentMemoryService.getAgentMemories(

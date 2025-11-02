@@ -19,6 +19,15 @@ export interface PortalScanResult {
   discoveredRFPs: DiscoveredRFP[];
   errors: string[];
   scanDuration: number;
+  startedAt: Date;
+  strategy?: string;
+  selectors?: Record<string, any> | null;
+  steps?: Array<{
+    label: string;
+    duration: number;
+    success: boolean;
+    errorDetails?: string;
+  }>;
 }
 
 export interface PortalSelectors {
@@ -55,6 +64,8 @@ export class PortalMonitoringService {
     scanId: string
   ): Promise<PortalScanResult> {
     const startTime = Date.now();
+    const startedAt = new Date(startTime);
+    let portalSelectors: Record<string, any> | null = null;
 
     try {
       scanManager.log(scanId, 'info', `Starting scan for portal: ${portalId}`);
@@ -73,6 +84,8 @@ export class PortalMonitoringService {
         scanManager.completeScan(scanId, false);
         throw new Error(error);
       }
+      portalSelectors =
+        (portal.selectors as Record<string, any> | null | undefined) ?? null;
 
       scanManager.updateStep(
         scanId,
@@ -335,6 +348,10 @@ export class PortalMonitoringService {
         discoveredRFPs: discoveredRFPs,
         errors,
         scanDuration,
+        startedAt,
+        strategy: 'browserbase_mastra',
+        selectors: portalSelectors ?? undefined,
+        steps: [],
       };
     } catch (error) {
       const errorMsg =
@@ -366,6 +383,10 @@ export class PortalMonitoringService {
         discoveredRFPs: [],
         errors: [errorMsg],
         scanDuration,
+        startedAt,
+        strategy: 'browserbase_mastra',
+        selectors: portalSelectors ?? undefined,
+        steps: [],
       };
     }
   }
@@ -375,6 +396,8 @@ export class PortalMonitoringService {
    */
   async scanPortal(portalId: string): Promise<PortalScanResult> {
     const startTime = Date.now();
+    const startedAt = new Date(startTime);
+    let portalSelectors: Record<string, any> | null = null;
 
     try {
       console.log(`Starting scan for portal: ${portalId}`);
@@ -384,6 +407,8 @@ export class PortalMonitoringService {
       if (!portal) {
         throw new Error(`Portal not found: ${portalId}`);
       }
+      portalSelectors =
+        (portal.selectors as Record<string, any> | null | undefined) ?? null;
 
       // Update scan timestamp
       await this.storage.updatePortal(portalId, {
@@ -469,6 +494,10 @@ export class PortalMonitoringService {
         discoveredRFPs: discoveredRFPs,
         errors,
         scanDuration,
+        startedAt,
+        strategy: 'browserbase_mastra',
+        selectors: portalSelectors ?? undefined,
+        steps: [],
       };
     } catch (error) {
       const errorMsg =
@@ -497,6 +526,10 @@ export class PortalMonitoringService {
         discoveredRFPs: [],
         errors: [errorMsg],
         scanDuration,
+        startedAt,
+        strategy: 'browserbase_mastra',
+        selectors: portalSelectors ?? undefined,
+        steps: [],
       };
     }
   }
@@ -874,6 +907,10 @@ export class PortalMonitoringService {
           discoveredRFPs: [],
           errors: [error instanceof Error ? error.message : 'Unknown error'],
           scanDuration: 0,
+          startedAt: new Date(),
+          strategy: 'browserbase_mastra',
+          selectors: null,
+          steps: [],
         });
       }
     }

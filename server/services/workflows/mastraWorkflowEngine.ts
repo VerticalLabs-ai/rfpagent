@@ -1896,8 +1896,8 @@ export class MastraWorkflowEngine {
         'Use your memories and knowledge to provide the most accurate and helpful response',
     };
 
-    // Use the agent to process the enhanced context with generateVNext for GPT-5 models
-    const response = await agent.generateVNext(JSON.stringify(promptContext));
+    // Use the agent to process the enhanced context with generate for GPT-5 models
+    const response = await agent.generate(JSON.stringify(promptContext));
 
     return {
       agentId: agent.name,
