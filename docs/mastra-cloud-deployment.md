@@ -1,6 +1,6 @@
 # Mastra Cloud Deployment Guide
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -8,29 +8,36 @@ This document explains the RFP Agent platform's configuration for Mastra Cloud d
 
 **For local MCP server setup**, see [technical/mcp-server-setup.md](technical/mcp-server-setup.md).
 
-## Fixed Issues (2025-01-24)
+## Fixed Issues (2025-10-04)
 
 ### 🎯 Key Changes for Deployment Stability
 
 We've made critical changes to ensure stable Mastra Cloud deployments:
 
 #### 1. ✅ Removed Dynamic Imports
+
 **Before:**
+
 ```typescript
 if (featureFlags.useAgentPools) {
-  const { agentPoolManager } = await import('./coordination/agent-pool-manager');
+  const { agentPoolManager } = await import(
+    './coordination/agent-pool-manager'
+  );
   // ... initialization during module load
 }
 ```
 
 **After:**
+
 ```typescript
 // Static imports at top of file
 import { agentPoolManager } from './coordination/agent-pool-manager';
 import { workflowAgentBindings } from './config/workflow-agent-bindings';
 
 // Pure module export (no side effects)
-export const mastra = new Mastra({ /* ... */ });
+export const mastra = new Mastra({
+  /* ... */
+});
 
 // Deferred initialization function
 export async function initializeAgentSystem() {
@@ -41,7 +48,9 @@ export async function initializeAgentSystem() {
 ```
 
 #### 2. ✅ Separated Side Effects from Module Initialization
+
 **Before:**
+
 ```typescript
 // Side effects during import (causes scanning issues)
 if (featureFlags.useAgentRegistry) {
@@ -52,9 +61,12 @@ if (featureFlags.useAgentRegistry) {
 ```
 
 **After:**
+
 ```typescript
 // Pure export
-export const mastra = new Mastra({ /* static config only */ });
+export const mastra = new Mastra({
+  /* static config only */
+});
 
 // Explicit initialization function (called at runtime)
 export async function initializeAgentRegistry() {
@@ -65,7 +77,9 @@ export async function initializeAgentRegistry() {
 ```
 
 #### 3. ✅ Static Service Dependencies in Workflows
+
 **Before:**
+
 ```typescript
 const scrapePortalStep = createStep({
   execute: async ({ inputData }) => {
@@ -74,11 +88,12 @@ const scrapePortalStep = createStep({
       '../../../server/services/portals/incrementalPortalScanService'
     );
     const result = await incrementalPortalScanService.scanPortal(/*...*/);
-  }
+  },
 });
 ```
 
 **After:**
+
 ```typescript
 // Static import at top of file
 import { incrementalPortalScanService } from '../../../server/services/portals/incrementalPortalScanService';
@@ -87,12 +102,14 @@ const scrapePortalStep = createStep({
   execute: async ({ inputData }) => {
     // Use statically imported service
     const result = await incrementalPortalScanService.scanPortal(/*...*/);
-  }
+  },
 });
 ```
 
 #### 4. ✅ Minimal Bundler Externals
+
 **Before:**
+
 ```typescript
 bundler: {
   externals: [
@@ -108,6 +125,7 @@ bundler: {
 ```
 
 **After:**
+
 ```typescript
 bundler: {
   externals: [
@@ -135,14 +153,16 @@ When you deploy to Mastra Cloud, the platform scans your repository for:
 
 ### Critical Rules for Stable Deployments
 
-#### ✅ DO:
+#### ✅ DO
+
 - Use **static imports** for all agents, tools, workflows, and dependencies
 - Keep module exports **pure** (no side effects during import)
 - Define all entities **statically resolvable** at build time
 - Use explicit `init()` functions for runtime initialization
 - Minimize bundler externals to only required runtime dependencies
 
-#### ❌ DON'T:
+#### ❌ DON'T
+
 - Use **dynamic imports** (`await import()`) in top-level configuration
 - Perform **side effects** during module initialization
 - Import external services **inside workflow step execution**
@@ -169,6 +189,7 @@ rfpagent/
 ### Key Configuration Files
 
 #### `mastra.config.ts` (Root Level)
+
 ```typescript
 import { config } from '@mastra/core/config';
 import { mastra } from './src/mastra';
@@ -181,6 +202,7 @@ export default config({
 ```
 
 #### `src/mastra/index.ts` (Pure Export)
+
 ```typescript
 import { Mastra } from '@mastra/core/mastra';
 // ALL imports must be static
@@ -200,11 +222,7 @@ export const mastra = new Mastra({
     // ... all workflows
   },
   bundler: {
-    externals: [
-      '@browserbasehq/stagehand',
-      '@mastra/libsql',
-      '@libsql/client',
-    ],
+    externals: ['@browserbasehq/stagehand', '@mastra/libsql', '@libsql/client'],
   },
 });
 
@@ -215,6 +233,7 @@ export async function initializeAgentSystem() {
 ```
 
 #### Server Initialization (`server/index.ts`)
+
 ```typescript
 setImmediate(async () => {
   try {
@@ -254,11 +273,13 @@ Before deploying to Mastra Cloud:
 ### Issue: Constant Redeployments
 
 **Symptoms:**
+
 - Mastra Cloud shows "Deploying..." constantly
 - Builds trigger on every scan
 - Configuration seems to change between deployments
 
 **Solution:**
+
 - Check for dynamic imports in `src/mastra/index.ts`
 - Ensure no side effects during module initialization
 - Verify all workflow steps use static service imports
@@ -267,10 +288,12 @@ Before deploying to Mastra Cloud:
 ### Issue: Agents Not Detected
 
 **Symptoms:**
+
 - Agents don't appear in Mastra Cloud dashboard
 - 404 errors when calling agent endpoints
 
 **Solution:**
+
 - Ensure agents use `new Agent({...})` syntax
 - Check that agents are exported in `mastra` config
 - Verify no conditional exports based on feature flags
@@ -279,11 +302,13 @@ Before deploying to Mastra Cloud:
 ### Issue: Build Failures
 
 **Symptoms:**
+
 - "Cannot resolve module" errors
 - "Circular dependency" warnings
 - Build completes but app doesn't start
 
 **Solution:**
+
 - Review bundler externals - remove unnecessary items
 - Check for circular imports in workflow definitions
 - Verify all external services are properly imported
@@ -342,6 +367,7 @@ grep -r "await import" src/mastra/
 Mastra Cloud automatically deploys when you push to your configured branch (typically `main`).
 
 **Deployment Trigger:**
+
 ```bash
 git add .
 git commit -m "fix: stable mastra cloud configuration"
@@ -349,6 +375,7 @@ git push origin main
 ```
 
 Mastra Cloud will:
+
 1. Clone your repository
 2. Scan for agents, tools, workflows, steps
 3. Build the application
@@ -359,9 +386,9 @@ Mastra Cloud will:
 
 ## Support
 
-- **Mastra Docs**: https://docs.mastra.ai
-- **Mastra Cloud**: https://cloud.mastra.ai
-- **GitHub Issues**: https://github.com/mastra-ai/mastra/issues
+- **Mastra Docs**: <https://docs.mastra.ai>
+- **Mastra Cloud**: <https://cloud.mastra.ai>
+- **GitHub Issues**: <https://github.com/mastra-ai/mastra/issues>
 
 ---
 

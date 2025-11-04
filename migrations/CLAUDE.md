@@ -1,6 +1,6 @@
 # Migrations Directory - Database Schema Evolution
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -64,7 +64,7 @@ export const rfps = pgTable('rfps', {
   id: uuid('id').primaryKey().defaultRandom(),
   title: text('title').notNull(),
   status: text('status', {
-    enum: ['discovered', 'parsing', 'drafting', 'review', 'approved']
+    enum: ['discovered', 'parsing', 'drafting', 'review', 'approved'],
   }).notNull(),
   // ...
 });
@@ -131,6 +131,7 @@ This tracks which migrations have been applied to the database.
 ### Adding a Column
 
 **Schema change** (shared/schema.ts):
+
 ```typescript
 export const rfps = pgTable('rfps', {
   // ... existing columns ...
@@ -139,6 +140,7 @@ export const rfps = pgTable('rfps', {
 ```
 
 **Generated migration**:
+
 ```sql
 -- migrations/0007_add_estimated_value.sql
 ALTER TABLE "rfps" ADD COLUMN "estimated_value" numeric(15, 2);
@@ -147,13 +149,22 @@ ALTER TABLE "rfps" ADD COLUMN "estimated_value" numeric(15, 2);
 ### Modifying an Enum
 
 **Schema change**:
+
 ```typescript
 status: text('status', {
-  enum: ['discovered', 'parsing', 'drafting', 'review', 'approved', 'submitted'] // Added 'submitted'
-}).notNull()
+  enum: [
+    'discovered',
+    'parsing',
+    'drafting',
+    'review',
+    'approved',
+    'submitted',
+  ], // Added 'submitted'
+}).notNull();
 ```
 
 **Generated migration**:
+
 ```sql
 -- migrations/0008_add_submitted_status.sql
 -- Note: Postgres doesn't support ALTER TYPE ... ADD VALUE in a transaction
@@ -164,16 +175,22 @@ ALTER TYPE "rfp_status" ADD VALUE 'submitted';
 ### Adding an Index
 
 **Schema change**:
+
 ```typescript
-export const rfps = pgTable('rfps', {
-  // ... columns ...
-}, (table) => ({
-  titleIdx: index('rfp_title_idx').on(table.title),
-  statusIdx: index('rfp_status_idx').on(table.status)
-}));
+export const rfps = pgTable(
+  'rfps',
+  {
+    // ... columns ...
+  },
+  table => ({
+    titleIdx: index('rfp_title_idx').on(table.title),
+    statusIdx: index('rfp_status_idx').on(table.status),
+  })
+);
 ```
 
 **Generated migration**:
+
 ```sql
 -- migrations/0009_add_rfp_indexes.sql
 CREATE INDEX "rfp_title_idx" ON "rfps" ("title");
@@ -185,6 +202,7 @@ CREATE INDEX "rfp_status_idx" ON "rfps" ("status");
 For JSONB columns, GIN indexes enable fast queries:
 
 **Manual migration** (not auto-generated):
+
 ```sql
 -- migrations/0010_add_gin_indexes.sql
 CREATE INDEX IF NOT EXISTS "rfp_requirements_gin_idx"
@@ -195,6 +213,7 @@ CREATE INDEX IF NOT EXISTS "proposal_compliance_gin_idx"
 ```
 
 Apply with script:
+
 ```bash
 npm run apply-gin-indexes
 ```
@@ -202,18 +221,26 @@ npm run apply-gin-indexes
 ### Creating a New Table
 
 **Schema change**:
+
 ```typescript
 export const scanHistory = pgTable('scan_history', {
   id: uuid('id').primaryKey().defaultRandom(),
-  portalId: uuid('portal_id').references(() => portals.id).notNull(),
+  portalId: uuid('portal_id')
+    .references(() => portals.id)
+    .notNull(),
   scanId: text('scan_id').notNull(),
-  status: text('status', { enum: ['running', 'completed', 'failed'] }).notNull(),
+  status: text('status', {
+    enum: ['running', 'completed', 'failed'],
+  }).notNull(),
   rfpsDiscovered: integer('rfps_discovered').default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .defaultNow()
+    .notNull(),
 });
 ```
 
 **Generated migration**:
+
 ```sql
 -- migrations/0011_create_scan_history.sql
 CREATE TABLE "scan_history" (
@@ -232,6 +259,7 @@ ALTER TABLE "scan_history" ADD CONSTRAINT "scan_history_portal_id_portals_id_fk"
 ### Dropping a Column
 
 **Schema change** (remove from schema.ts):
+
 ```typescript
 export const rfps = pgTable('rfps', {
   // Remove: oldField: text('old_field')
@@ -239,6 +267,7 @@ export const rfps = pgTable('rfps', {
 ```
 
 **Generated migration**:
+
 ```sql
 -- migrations/0012_drop_old_field.sql
 ALTER TABLE "rfps" DROP COLUMN "old_field";
@@ -292,34 +321,44 @@ npm start
 ## Migration Commands
 
 ### Generate Migration
+
 ```bash
 npx drizzle-kit generate
 ```
+
 Creates a new migration file from schema changes.
 
 ### Push Schema (Development Only)
+
 ```bash
 npm run db:push
 ```
+
 Directly applies schema to database **without creating migration files**.
 ⚠️ **Never use in production** - use migrations instead.
 
 ### Run Migrations (Production)
+
 ```bash
 npm run db:migrate
 ```
+
 Runs all pending migrations from `migrations/` directory.
 
 ### View Migration Status
+
 ```bash
 npx drizzle-kit check
 ```
+
 Shows which migrations have been applied and which are pending.
 
 ### Drop Database (Development Only)
+
 ```bash
 npx drizzle-kit drop
 ```
+
 ⚠️ **Dangerous**: Drops all tables. Development only.
 
 ## Custom Migrations
@@ -370,23 +409,27 @@ npm run db:migrate
 ### DO
 
 ✅ **Always generate migrations from schema changes**
+
 ```bash
 # Good
 npx drizzle-kit generate
 ```
 
 ✅ **Use `db:migrate` in production**
+
 ```bash
 # Good - production
 npm run db:migrate
 ```
 
 ✅ **Review generated SQL before applying**
+
 - Check the migration file in `migrations/`
 - Verify it matches your intentions
 - Look for potential data loss
 
 ✅ **Test migrations locally first**
+
 ```bash
 # Test on local database
 npm run db:push
@@ -394,12 +437,14 @@ npm run test
 ```
 
 ✅ **Commit migrations with code changes**
+
 ```bash
 git add shared/schema.ts migrations/
 git commit -m "feat: add rfp deadline tracking"
 ```
 
 ✅ **Backup before production migrations**
+
 ```bash
 pg_dump -h localhost -U user -d rfpagent > backup_$(date +%Y%m%d).sql
 npm run db:migrate
@@ -408,30 +453,35 @@ npm run db:migrate
 ### DON'T
 
 ❌ **Don't use `db:push` in production**
+
 ```bash
 # Bad - production
 npm run db:push  # This skips migration files!
 ```
 
 ❌ **Don't edit migration files after applying**
+
 ```bash
 # Once applied to any environment, migrations are immutable
 # Create a new migration instead
 ```
 
 ❌ **Don't delete migration files**
+
 ```bash
 # Don't delete migrations/0005_*.sql
 # This breaks migration history
 ```
 
 ❌ **Don't modify the migration journal manually**
+
 ```bash
 # Don't edit migrations/meta/_journal.json
 # Let Drizzle Kit manage this
 ```
 
 ❌ **Don't skip migration numbering**
+
 ```bash
 # Bad
 migrations/0001_*.sql

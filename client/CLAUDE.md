@@ -1,6 +1,6 @@
 # Client Directory - RFP Agent Frontend
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -58,27 +58,32 @@ client/
 ## Technology Stack
 
 ### Core Framework
+
 - **React 18.3+** - UI framework with hooks and concurrent features
 - **TypeScript 5.9+** - Type-safe JavaScript development
 - **Vite 7.1+** - Fast build tool and dev server
 - **Wouter 3.7+** - Lightweight client-side routing
 
 ### UI Components
+
 - **Radix UI** - Accessible, unstyled component primitives
 - **shadcn/ui** - Re-usable component library built on Radix UI
 - **TailwindCSS 3.4+** - Utility-first CSS framework
 - **Lucide React** - Icon library
 
 ### State Management
+
 - **TanStack Query 5.90+** - Server state management and caching
 - **React Hook Form 7.65+** - Form state and validation
 - **Zod 3.25+** - Schema validation
 
 ### Real-time Communication
+
 - **WebSocket (ws 8.18+)** - Bidirectional real-time updates
 - **Server-Sent Events (SSE)** - Unidirectional event streaming for progress updates
 
 ### Data Visualization
+
 - **Recharts 3.3+** - Chart and data visualization library
 - **React Markdown 10.1+** - Markdown rendering for proposals
 
@@ -87,9 +92,11 @@ client/
 ### Pages
 
 #### Dashboard.tsx
+
 **Purpose**: Main application dashboard with overview metrics and recent activity
 **Location**: `client/src/pages/Dashboard.tsx`
 **Features**:
+
 - System health indicators
 - Active RFP count and status
 - Recent proposals
@@ -97,9 +104,11 @@ client/
 - Real-time agent activity
 
 #### RFPList.tsx
+
 **Purpose**: Comprehensive RFP listing with filtering and search
 **Location**: `client/src/pages/RFPList.tsx`
 **Features**:
+
 - Filterable table of all RFPs
 - Status-based filtering (discovered, parsing, drafting, etc.)
 - Search by title, agency, category
@@ -107,9 +116,11 @@ client/
 - Quick actions (generate proposal, view details)
 
 #### ProposalGenerator.tsx
+
 **Purpose**: AI-powered proposal generation interface
 **Location**: `client/src/pages/ProposalGenerator.tsx`
 **Features**:
+
 - RFP selection
 - Company profile selection
 - Generation options configuration
@@ -117,9 +128,11 @@ client/
 - Preview and download generated proposals
 
 #### PortalScanner.tsx
+
 **Purpose**: Portal scanning configuration and monitoring
 **Location**: `client/src/pages/PortalScanner.tsx`
 **Features**:
+
 - Portal configuration
 - Scan initiation
 - Real-time scan progress (SSE)
@@ -129,28 +142,36 @@ client/
 ### Components
 
 #### `/components/ui/`
+
 **shadcn/ui base components** - Accessible, styled primitives:
+
 - `Button`, `Input`, `Select`, `Dialog`
 - `Card`, `Table`, `Tabs`, `Accordion`
 - `Toast`, `Alert`, `Progress`
 - See [shadcn/ui documentation](https://ui.shadcn.com)
 
 #### `/components/rfps/`
+
 **RFP-specific components**:
+
 - `RFPCard` - Display RFP summary
 - `RFPDetails` - Full RFP information modal
 - `RFPStatusBadge` - Visual status indicator
 - `RFPTimeline` - Processing timeline visualization
 
 #### `/components/proposals/`
+
 **Proposal-specific components**:
+
 - `ProposalCard` - Proposal summary card
 - `ProposalPreview` - Markdown preview of generated content
 - `ComplianceMatrix` - Compliance requirement checklist
 - `PricingTable` - Interactive pricing table
 
 #### `/components/chat/`
+
 **AI chat interface**:
+
 - `ChatWindow` - Main chat container
 - `MessageBubble` - Individual message component
 - `ChatInput` - Message composition interface
@@ -159,14 +180,16 @@ client/
 ### Hooks
 
 #### useWebSocket.ts
+
 **Purpose**: WebSocket connection management
 **Location**: `client/src/hooks/useWebSocket.ts`
 **Usage**:
+
 ```typescript
 const { connected, subscribe, unsubscribe } = useWebSocket();
 
 // Subscribe to RFP updates
-subscribe('rfps', (message) => {
+subscribe('rfps', message => {
   if (message.type === 'rfp:discovered') {
     console.log('New RFP:', message.payload);
   }
@@ -174,11 +197,15 @@ subscribe('rfps', (message) => {
 ```
 
 #### useSSE.ts
+
 **Purpose**: Server-Sent Events for progress tracking
 **Location**: `client/src/hooks/useSSE.ts`
 **Usage**:
+
 ```typescript
-const { events, error, close } = useSSE(`/api/portals/${portalId}/scan/stream?scanId=${scanId}`);
+const { events, error, close } = useSSE(
+  `/api/portals/${portalId}/scan/stream?scanId=${scanId}`
+);
 
 events.forEach(event => {
   if (event.type === 'scan_progress') {
@@ -188,21 +215,29 @@ events.forEach(event => {
 ```
 
 #### useRFPs.ts
+
 **Purpose**: RFP data fetching and management
 **Location**: `client/src/hooks/useRFPs.ts`
 **Usage**:
+
 ```typescript
-const { data: rfps, isLoading, refetch } = useRFPs({
+const {
+  data: rfps,
+  isLoading,
+  refetch,
+} = useRFPs({
   status: 'discovered',
   page: 1,
-  limit: 20
+  limit: 20,
 });
 ```
 
 #### useAgents.ts
+
 **Purpose**: Monitor AI agent status and activity
 **Location**: `client/src/hooks/useAgents.ts`
 **Usage**:
+
 ```typescript
 const { agents, activeCount } = useAgents();
 // Returns list of active agents with their current tasks
@@ -213,6 +248,7 @@ const { agents, activeCount } = useAgents();
 ### User Workflows
 
 #### 1. Manual RFP Submission
+
 ```
 User selects "Submit RFP" → Enters RFP URL → System processes →
 Real-time updates via SSE → Displays extracted information →
@@ -222,6 +258,7 @@ User confirms → RFP added to system
 **Components Used**: `RFPManualSubmission`, SSE progress display
 
 #### 2. Automated Portal Scanning
+
 ```
 User configures portal scan → Initiates scan →
 Real-time progress via SSE → Displays discovered RFPs →
@@ -231,6 +268,7 @@ User reviews and selects RFPs for proposals
 **Components Used**: `PortalScanner`, `RFPCard`, SSE event handler
 
 #### 3. Proposal Generation
+
 ```
 User selects RFP → Chooses company profile →
 Configures generation options → Monitors progress (SSE) →
@@ -240,6 +278,7 @@ Reviews generated proposal → Edits if needed → Approves for submission
 **Components Used**: `ProposalGenerator`, `ProposalPreview`, `ComplianceMatrix`
 
 #### 4. AI Chat Interaction
+
 ```
 User types question → AI processes using RAG and agent system →
 Displays response with relevant RFPs/proposals →
@@ -291,6 +330,7 @@ When creating new components:
 5. **Add accessibility** - Use ARIA labels and semantic HTML
 
 Example:
+
 ```tsx
 interface RFPCardProps {
   rfp: RFP;
@@ -349,14 +389,14 @@ import { toast } from '@/components/ui/use-toast';
 try {
   await generateProposal(rfpId);
   toast({
-    title: "Success",
-    description: "Proposal generation started",
+    title: 'Success',
+    description: 'Proposal generation started',
   });
 } catch (error) {
   toast({
-    title: "Error",
+    title: 'Error',
     description: error.message,
-    variant: "destructive",
+    variant: 'destructive',
   });
 }
 ```
@@ -388,12 +428,14 @@ npm run test:e2e:ui
 ## Build and Deployment
 
 ### Development
+
 ```bash
 npm run dev:frontend
 # Runs Vite dev server on http://localhost:5173
 ```
 
 ### Production Build
+
 ```bash
 npm run build
 # Builds to /dist directory
@@ -404,6 +446,7 @@ npm run build
 ### Environment Variables
 
 Frontend environment variables (`.env`):
+
 ```bash
 VITE_API_URL=http://localhost:3000  # Backend API URL
 VITE_WS_URL=ws://localhost:3000     # WebSocket URL

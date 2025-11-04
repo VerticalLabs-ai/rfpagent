@@ -1,6 +1,6 @@
 # Code Graph Context (CGC) Analysis Report
 
-**Generated**: January 24, 2025
+**Generated**: October 24, 2025
 **Project**: RFP Agent Platform
 **Analysis Tool**: CGC MCP Server
 
@@ -31,6 +31,7 @@ The CGC analysis detected **50 potentially unused functions**, but all are locat
 **Location**: `/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent/.mastra/.build/entry-0.mjs`
 
 **Categories**:
+
 - Database storage methods (DatabaseStorage class): 40 functions
   - User management: `getUser`, `getUserByUsername`, `createUser`
   - Portal management: `getAllPortals`, `getPortalsWithRFPCounts`, `getActivePortals`
@@ -46,6 +47,7 @@ The CGC analysis detected **50 potentially unused functions**, but all are locat
   - `toSubmissionPipeline`, `toProposal`
 
 **Assessment**: ✅ **NOT A CONCERN**
+
 - These are **build artifacts** (bundled/compiled code)
 - Functions may be called dynamically or as API endpoints
 - Database methods are likely used via REST API routes
@@ -61,14 +63,15 @@ The CGC analysis detected **50 potentially unused functions**, but all are locat
 
 The top 15 most complex functions identified:
 
-| Function | Complexity | Location | Assessment |
-|----------|-----------|----------|------------|
-| `u4e` | 5393 | playground/assets/*.js | Bundled/minified (React) |
-| `hdt` | 422 | playground/assets/*.js | Bundled/minified |
-| `GH` | 248 | playground/assets/*.js | Bundled/minified |
-| `matchKnownFields` | 152 | .mastra/output/index.mjs | Acceptable for field matching |
+| Function           | Complexity | Location                 | Assessment                    |
+| ------------------ | ---------- | ------------------------ | ----------------------------- |
+| `u4e`              | 5393       | playground/assets/\*.js  | Bundled/minified (React)      |
+| `hdt`              | 422        | playground/assets/\*.js  | Bundled/minified              |
+| `GH`               | 248        | playground/assets/\*.js  | Bundled/minified              |
+| `matchKnownFields` | 152        | .mastra/output/index.mjs | Acceptable for field matching |
 
 **Key Observations**:
+
 1. **Top complexity functions** (5393, 422, 248) are all in **minified bundle files** (`.mastra/output/playground/assets/`)
    - These are React components compiled by Vite
    - High complexity is expected in bundled/minified code
@@ -92,6 +95,7 @@ The top 15 most complex functions identified:
 **Target**: `src/mastra/index.ts` (Main Mastra configuration)
 
 **Findings**:
+
 - **Imported by**: 0 files (direct imports)
 - **Frequently used with**: No co-dependencies detected
 - **Module dependencies**: Clean structure
@@ -99,12 +103,14 @@ The top 15 most complex functions identified:
 **Assessment**: ✅ **EXCELLENT**
 
 This is actually **ideal** for Mastra Cloud deployment:
+
 - The main config file is **not imported directly** by other modules
 - It's exported via `mastra.config.ts` (root level) for Mastra Cloud
 - No circular dependencies detected
 - Clean separation of concerns
 
 **Implications for Deployment**:
+
 - ✅ Mastra Cloud can scan and detect entities cleanly
 - ✅ No risk of circular dependency issues during build
 - ✅ Pure module structure (as per our recent fixes)
@@ -118,6 +124,7 @@ This is actually **ideal** for Mastra Cloud deployment:
 **Agent Count**: **14 agents** properly exported
 
 **Breakdown**:
+
 - **Tier 1 (Orchestrator)**: 1 agent
   - Primary Orchestrator
 
@@ -141,6 +148,7 @@ This is actually **ideal** for Mastra Cloud deployment:
   - RFP Submission Agent
 
 **Verification**:
+
 ```bash
 # All agents use proper syntax
 grep -r "export.*Agent" src/mastra/agents/*.ts | wc -l
@@ -158,6 +166,7 @@ grep -r "export.*Agent" src/mastra/agents/*.ts | wc -l
 **Workflow Count**: **5 workflows** properly exported
 
 **Workflows**:
+
 1. `documentProcessing` - Document extraction and processing
 2. `rfpDiscovery` - Portal scanning and opportunity discovery
 3. `proposalPDFAssembly` - PDF generation for proposals
@@ -165,6 +174,7 @@ grep -r "export.*Agent" src/mastra/agents/*.ts | wc -l
 5. `masterOrchestration` - End-to-end RFP workflow coordination
 
 **Verification**:
+
 ```bash
 # All workflows properly defined
 grep -r "export.*Workflow" src/mastra/workflows/*.ts | wc -l
@@ -172,6 +182,7 @@ grep -r "export.*Workflow" src/mastra/workflows/*.ts | wc -l
 ```
 
 **Changes Applied**:
+
 - ✅ Dynamic imports removed (rfp-discovery-workflow.ts)
 - ✅ Static service imports added
 - ✅ All workflows use `createWorkflow()` syntax
@@ -187,6 +198,7 @@ grep -r "export.*Workflow" src/mastra/workflows/*.ts | wc -l
 **Tool Count**: **18 tools** defined using `createTool()`
 
 **Tool Categories**:
+
 - **Browser Automation**: 5 tools
   - `page-navigate-tool`
   - `page-extract-tool`
@@ -201,6 +213,7 @@ grep -r "export.*Workflow" src/mastra/workflows/*.ts | wc -l
   - Message passing
 
 **Verification**:
+
 ```bash
 grep -r "createTool" src/mastra/tools/*.ts | wc -l
 # Output: 18 ✅
@@ -217,11 +230,13 @@ grep -r "createTool" src/mastra/tools/*.ts | wc -l
 **Method**: Attempted to search for "circular dependency" patterns
 
 **Result**: Query returned too much data (>220k tokens), indicating:
+
 - No obvious circular dependency patterns in source code
 - If circular dependencies existed, they would be few and easily searchable
 - Large result set suggests the term appears only in comments/documentation
 
 **Additional Verification**:
+
 - Module dependency analysis shows clean structure
 - `src/mastra/index.ts` has no circular imports
 - All agents/workflows import cleanly
@@ -235,11 +250,13 @@ grep -r "createTool" src/mastra/tools/*.ts | wc -l
 **Status**: ✅ Fixed
 
 **Previous State**:
+
 - 40+ bundler externals
 - Included unnecessary dependencies
 - Caused build inconsistencies
 
 **Current State**:
+
 ```typescript
 bundler: {
   externals: [
@@ -302,11 +319,13 @@ bundler: {
 ## Additional CGC Insights
 
 ### File Count Analysis
+
 - **Total Mastra source files**: 48 TypeScript files
 - **Average**: ~3 files per major component
 - **Structure**: Well-organized with clear separation
 
 ### Codebase Health Metrics
+
 - **Module coupling**: Low (excellent for maintainability)
 - **Dependency graph**: Acyclic (no circular references)
 - **Build artifacts**: Clean (expected dead code in bundles)
@@ -334,7 +353,7 @@ The platform is ready for stable, continuous deployment without the previous con
 
 - **Main Configuration**: [src/mastra/index.ts](../src/mastra/index.ts)
 - **Deployment Guide**: [docs/mastra-cloud-deployment.md](../mastra-cloud-deployment.md)
-- **CGC Analysis Date**: January 24, 2025
+- **CGC Analysis Date**: October 24, 2025
 - **Next Review**: After Mastra Cloud deployment verification
 
 ---

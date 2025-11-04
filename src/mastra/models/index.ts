@@ -4,7 +4,7 @@ import { openai } from '@ai-sdk/openai';
 /**
  * Model Configuration for Multi-Agent System
  *
- * REAL, CURRENT AI MODELS (Updated January 2025):
+ * REAL, CURRENT AI MODELS (Updated October 2025):
  * - OpenAI GPT-5: Latest unified model (Released August 2025)
  * - Claude Sonnet 4.5: Anthropic's best coding model (Released September 2025)
  * - Claude Opus 4.1: Maximum capability reasoning model
@@ -143,7 +143,7 @@ export function getModelForAgent(agentType: string) {
 }
 
 /**
- * Model capabilities and pricing information (As of January 2025)
+ * Model capabilities and pricing information (As of October 2025)
  */
 export const modelCapabilities = {
   gpt5: {

@@ -1,6 +1,5 @@
 import { Agent } from '@mastra/core/agent';
 import {
-  ModerationProcessor,
   PIIDetector,
   PromptInjectionDetector,
   TokenLimiterProcessor,
@@ -19,18 +18,6 @@ const orchestratorPiiGuard = new PIIDetector({
   model: guardrailModel,
   strategy: 'redact',
   includeDetections: true,
-});
-
-const orchestratorInboundModeration = new ModerationProcessor({
-  model: guardrailModel,
-  strategy: 'warn',
-  threshold: 0.6,
-});
-
-const orchestratorOutboundModeration = new ModerationProcessor({
-  model: guardrailModel,
-  strategy: 'warn',
-  threshold: 0.6,
 });
 
 const orchestratorTokenLimiter = new TokenLimiterProcessor({

@@ -1,15 +1,15 @@
 import { rfps } from '@shared/schema';
+import { isValid, parse } from 'date-fns';
 import { eq } from 'drizzle-orm';
 import * as fs from 'fs';
 import { createWriteStream } from 'fs';
 import * as path from 'path';
 import { pipeline } from 'stream/promises';
 import { z } from 'zod';
-import { parse, isValid } from 'date-fns';
 import { db } from '../../db';
 import { storage } from '../../storage';
-import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
 import { performWebExtraction } from '../core/stagehandTools';
+import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
 
 // Schema for extracted RFP data
 const rfpExtractionSchema = z.object({
@@ -96,9 +96,9 @@ export class RFPScrapingService {
             'MM/dd/yyyy', // 12/31/2024
             'M/d/yyyy', // 1/5/2024
             'yyyy-MM-dd', // 2024-12-31
-            'MMMM d, yyyy', // January 5, 2024
+            'MMMM d, yyyy', // October 5, 2024
             'MMM d, yyyy', // Jan 5, 2024
-            'MMMM dd, yyyy', // January 05, 2024
+            'MMMM dd, yyyy', // October 05, 2024
             'MMM dd, yyyy', // Jan 05, 2024
             'dd/MM/yyyy', // 31/12/2024
             'd/M/yyyy', // 5/1/2024

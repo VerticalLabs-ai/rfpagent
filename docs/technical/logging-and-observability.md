@@ -1,6 +1,6 @@
 # Logging and Observability
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 This document describes the structured logging infrastructure and observability features for the RFP Agent platform.
 
@@ -246,7 +246,6 @@ router.post('/api/portals/:id/scan', async (req, res) => {
     });
 
     res.json({ success: true, results });
-
   } catch (error) {
     logger.error('Portal scan failed', error, {
       portalId: id,
@@ -331,7 +330,6 @@ class PortalScannerAgent {
       });
 
       return results;
-
     } catch (error) {
       this.logger.agent(this.agentId, 'failed', {
         error: error.message,
@@ -353,10 +351,12 @@ Controls minimum log level to output.
 **Options**: `debug` | `info` | `warn` | `error` | `fatal`
 
 **Default**:
+
 - `debug` in development (`NODE_ENV=development`)
 - `info` in production (`NODE_ENV=production`)
 
 **Example**:
+
 ```bash
 # Show only warnings and errors
 LOG_LEVEL=warn pnpm dev
@@ -372,11 +372,13 @@ Controls log output format and file logging.
 **Options**: `development` | `production` | `test`
 
 **Behavior**:
+
 - **development**: Colorized console output, human-readable format
 - **production**: JSON format, file logging enabled (`logs/` directory)
 - **test**: Minimal output, no file logging
 
 **Production Log Files**:
+
 - `logs/combined.log` - All logs (max 10MB, 5 files)
 - `logs/error.log` - Error and fatal logs only (max 10MB, 5 files)
 
@@ -387,17 +389,20 @@ Controls log output format and file logging.
 ### ✅ DO
 
 1. **Use request-scoped loggers in routes**:
+
    ```typescript
    const logger = getRequestLogger(req);
    logger.info('Processing request');
    ```
 
 2. **Create child loggers for different contexts**:
+
    ```typescript
    const agentLogger = logger.child({ agentId, workflowId });
    ```
 
 3. **Include correlation IDs in error responses**:
+
    ```typescript
    res.status(500).json({
      error: 'Internal server error',
@@ -406,6 +411,7 @@ Controls log output format and file logging.
    ```
 
 4. **Log errors with full context**:
+
    ```typescript
    logger.error('Database query failed', error, {
      query: sql,
@@ -415,6 +421,7 @@ Controls log output format and file logging.
    ```
 
 5. **Use specialized logging methods**:
+
    ```typescript
    logger.performance('api-call', duration, { endpoint });
    logger.http(req.method, req.path, res.statusCode, duration);
@@ -430,6 +437,7 @@ Controls log output format and file logging.
 ### ❌ DON'T
 
 1. **Don't use console.log/console.error**:
+
    ```typescript
    // ❌ Bad
    console.log('User logged in:', userId);
@@ -439,6 +447,7 @@ Controls log output format and file logging.
    ```
 
 2. **Don't log sensitive data**:
+
    ```typescript
    // ❌ Bad
    logger.info('User login', { password: req.body.password });
@@ -451,6 +460,7 @@ Controls log output format and file logging.
    ```
 
 3. **Don't create loggers in tight loops**:
+
    ```typescript
    // ❌ Bad
    for (const item of items) {
@@ -466,6 +476,7 @@ Controls log output format and file logging.
    ```
 
 4. **Don't ignore correlation IDs in async operations**:
+
    ```typescript
    // ❌ Bad
    setTimeout(() => {
@@ -496,6 +507,7 @@ Controls log output format and file logging.
 The logging improvements work in conjunction with **GIN indexes** for better JSONB query performance. See migration: `migrations/add_gin_indexes.sql`
 
 GIN indexes optimize queries on:
+
 - `rfps.requirements`
 - `rfps.compliance_items`
 - `proposals.proposal_data`

@@ -1,6 +1,7 @@
 # WASM File Fix for Mastra Cloud Deployment
 
 **Issue**: Mastra Cloud build fails with:
+
 ```
 Error: ENOENT: no such file or directory, open '/data/project/.mastra/output/core_bg.wasm'
 ```
@@ -68,6 +69,7 @@ Runs after `mastra build` to ensure WASM is in output:
 ## Verification
 
 ### Local Build Test:
+
 ```bash
 # Clean build
 rm -rf .mastra dist
@@ -87,7 +89,9 @@ node .mastra/output/index.mjs
 ```
 
 ### Mastra Cloud Test:
+
 After pushing these changes, Mastra Cloud should:
+
 1. Run `pnpm run build` → triggers `postbuild` script
 2. Run Mastra bundler → creates `.mastra/output/`
 3. Copy `public/` → `.mastra/output/`
@@ -103,9 +107,11 @@ After pushing these changes, Mastra Cloud should:
 ## What Changed
 
 ### New Files:
+
 - `scripts/post-mastra-build.js` - Post-build WASM copy hook
 
 ### Modified Files:
+
 - `scripts/copy-wasm-to-root.js` - Now copies to 3 locations including `.mastra/output/`
 - `scripts/copy-wasm.js` - More robust error handling
 - `package.json` - Added `mastra:postbuild` script
@@ -175,6 +181,7 @@ git push origin main
 ## Expected Result
 
 Mastra Cloud build should complete successfully with:
+
 - ✅ Build completes
 - ✅ Readiness probe succeeds
 - ✅ Application starts
@@ -183,4 +190,4 @@ Mastra Cloud build should complete successfully with:
 ---
 
 **Status**: Ready for deployment
-**Last Updated**: January 24, 2025
+**Last Updated**: October 24, 2025

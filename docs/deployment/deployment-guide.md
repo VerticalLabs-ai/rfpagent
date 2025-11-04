@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 Complete guide for deploying the RFP Agent platform to production.
 
@@ -27,8 +27,8 @@ flyctl logs
 
 ### Prerequisites
 
-1. **Fly.io Account**: Sign up at https://fly.io
-2. **Flyctl CLI**: Install via `brew install flyctl` (macOS) or https://fly.io/docs/hands-on/install-flyctl/
+1. **Fly.io Account**: Sign up at <https://fly.io>
+2. **Flyctl CLI**: Install via `brew install flyctl` (macOS) or <https://fly.io/docs/hands-on/install-flyctl/>
 3. **Docker**: Required for building images
 
 ### Initial Setup

@@ -1,8 +1,8 @@
 # Sentry Quick Start Guide
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
-## ✅ Setup Complete!
+## ✅ Setup Complete
 
 Sentry error tracking is now configured for your application. Here's how to use it:
 
@@ -21,7 +21,7 @@ Sentry error tracking is now configured for your application. Here's how to use 
    ```
 
 3. **Check Sentry Dashboard:**
-   - Go to: https://sentry.io/organizations/ibyte/projects/
+   - Go to: <https://sentry.io/organizations/ibyte/projects/>
    - Look for any test errors in the **Issues** tab
 
 ## 📦 Deploy to Production
@@ -141,7 +141,7 @@ init({
 
 - **Complete Setup Guide**: [SENTRY_SETUP.md](./SENTRY_SETUP.md)
 - **Deployment Guide**: [deployment-guide.md](./deployment-guide.md)
-- **Sentry Docs**: https://docs.sentry.io/platforms/node/
+- **Sentry Docs**: <https://docs.sentry.io/platforms/node/>
 
 ## 🆘 Troubleshooting
 
@@ -162,6 +162,6 @@ fly logs | grep -i sentry
 
 ### Need Help?
 
-- Sentry Support: https://sentry.io/support/
+- Sentry Support: <https://sentry.io/support/>
 - Check logs: `fly logs`
 - Review setup: [SENTRY_SETUP.md](./SENTRY_SETUP.md)

@@ -1,6 +1,6 @@
-# AI Models Reference - Current Models (January 2025)
+# AI Models Reference - Current Models (October 2025)
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 **Official Sources**:
 
 - OpenAI GPT-5: <https://openai.com/index/introducing-gpt-5/>
@@ -180,4 +180,4 @@ If you see references to older models:
 - ❌ Claude 3.5 Sonnet → ✅ Claude Sonnet 4.5 (Claude 3.5 is older)
 - ❌ Claude 3 Opus → ✅ Claude Opus 4.1 (Claude 3 is older)
 
-**Last Migration**: January 2025 - All models updated to GPT-5 and Claude 4.x series.
+**Last Migration**: October 2025 - All models updated to GPT-5 and Claude 4.x series.

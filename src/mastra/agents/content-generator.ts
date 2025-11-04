@@ -2,7 +2,6 @@ import { Agent } from '@mastra/core/agent';
 import {
   PromptInjectionDetector,
   PIIDetector,
-  ModerationProcessor,
   TokenLimiterProcessor,
 } from '@mastra/core/processors';
 import { creativeModel, guardrailModel } from '../models';
@@ -23,11 +22,6 @@ const contentPiiGuard = new PIIDetector({
   includeDetections: true,
 });
 
-const contentModeration = new ModerationProcessor({
-  model: guardrailModel,
-  strategy: 'warn',
-  threshold: 0.55,
-});
 
 const contentTokenLimiter = new TokenLimiterProcessor({
   limit: 2000,
@@ -198,8 +192,8 @@ You are a specialist agent that executes content generation tasks delegated by t
 Report all content generation progress and challenges to the Proposal Manager for coordination.
 `,
   model: creativeModel, // GPT-5 - optimal for creative proposal writing
-  inputProcessors: [contentPromptGuard, contentPiiGuard, contentModeration],
-  outputProcessors: [contentTokenLimiter, contentModeration],
+  inputProcessors: [contentPromptGuard, contentPiiGuard],
+  outputProcessors: [contentTokenLimiter],
   tools: {
     // Coordination tools
     sendAgentMessage,

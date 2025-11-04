@@ -1,6 +1,6 @@
 # Scripts Directory - Utility and Automation Scripts
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -37,9 +37,11 @@ server/scripts/  # Additional server-specific scripts
 ### Database Scripts
 
 #### run-migrations.ts
+
 **Purpose**: Runs Drizzle ORM migrations against the database
 **Location**: `scripts/run-migrations.ts`
 **Usage**:
+
 ```bash
 npm run db:migrate
 # or directly:
@@ -47,6 +49,7 @@ tsx scripts/run-migrations.ts
 ```
 
 **What it does**:
+
 1. Connects to PostgreSQL database via `DATABASE_URL`
 2. Reads migration files from `migrations/` directory
 3. Applies pending migrations in order
@@ -54,9 +57,11 @@ tsx scripts/run-migrations.ts
 5. Reports success or failure
 
 **Environment Variables**:
+
 - `DATABASE_URL` - PostgreSQL connection string (required)
 
 **Example output**:
+
 ```
 ✓ Connected to database
 ✓ Found 3 pending migrations
@@ -67,9 +72,11 @@ tsx scripts/run-migrations.ts
 ```
 
 #### apply-gin-indexes.js
+
 **Purpose**: Creates PostgreSQL GIN indexes for JSONB columns
 **Location**: `server/scripts/apply-gin-indexes.js`
 **Usage**:
+
 ```bash
 npm run apply-gin-indexes
 # or directly:
@@ -78,6 +85,7 @@ node server/scripts/apply-gin-indexes.js
 
 **What it does**:
 Creates GIN (Generalized Inverted Index) indexes on JSONB columns for fast queries:
+
 ```sql
 CREATE INDEX IF NOT EXISTS "rfp_requirements_gin_idx"
   ON "rfps" USING GIN ("requirements");
@@ -90,6 +98,7 @@ CREATE INDEX IF NOT EXISTS "portal_selectors_gin_idx"
 ```
 
 **Why GIN indexes?**
+
 - Enable fast containment queries (`@>`, `<@`)
 - Speed up JSONB key existence checks (`?`)
 - Essential for querying nested JSONB data
@@ -98,9 +107,11 @@ CREATE INDEX IF NOT EXISTS "portal_selectors_gin_idx"
 ### Testing Scripts
 
 #### test-agents-simple.ts
+
 **Purpose**: Tests the 3-tier AI agent system
 **Location**: `scripts/test-agents-simple.ts`
 **Usage**:
+
 ```bash
 npm run test-agents
 # or directly:
@@ -108,6 +119,7 @@ tsx scripts/test-agents-simple.ts
 ```
 
 **What it does**:
+
 1. Loads agent registry from database
 2. Tests each agent's:
    - Registration and discovery
@@ -120,6 +132,7 @@ tsx scripts/test-agents-simple.ts
    - Result aggregation
 
 **Example output**:
+
 ```
 Testing Agent System
 ====================
@@ -143,9 +156,11 @@ All agent tests passed!
 ```
 
 #### test-proposal-generation.ts
+
 **Purpose**: End-to-end test of proposal generation pipeline
 **Location**: `scripts/test-proposal-generation.ts`
 **Usage**:
+
 ```bash
 # Test with mock data
 npm run test-proposal
@@ -158,6 +173,7 @@ npm run test-proposal-fallback
 ```
 
 **What it does**:
+
 1. Creates or selects a test RFP
 2. Triggers enhanced proposal generation
 3. Monitors progress via SSE events
@@ -170,6 +186,7 @@ npm run test-proposal-fallback
 5. Reports results and metrics
 
 **Example output**:
+
 ```
 Testing Proposal Generation
 ============================
@@ -197,9 +214,11 @@ Results:
 ```
 
 #### test-proposals-api.ts
+
 **Purpose**: Tests proposal API endpoints
 **Location**: `scripts/test-proposals-api.ts`
 **Usage**:
+
 ```bash
 npm run test-proposals-api
 # or directly:
@@ -208,6 +227,7 @@ tsx scripts/test-proposals-api.ts
 
 **What it does**:
 Tests all proposal-related API endpoints:
+
 - `GET /api/proposals` - List proposals
 - `GET /api/proposals/:id` - Get proposal details
 - `POST /api/proposals/enhanced/generate` - Generate proposal
@@ -215,6 +235,7 @@ Tests all proposal-related API endpoints:
 - `GET /api/proposals/rfp/:rfpId` - Get proposals for RFP
 
 **Example output**:
+
 ```
 Testing Proposals API
 =====================
@@ -238,9 +259,11 @@ All API tests passed!
 ### Compliance Scripts
 
 #### batchProcessCompliance.ts
+
 **Purpose**: Bulk process compliance checking for multiple proposals
 **Location**: `server/scripts/batchProcessCompliance.ts`
 **Usage**:
+
 ```bash
 npm run batch-compliance
 # or directly:
@@ -248,6 +271,7 @@ tsx server/scripts/batchProcessCompliance.ts
 ```
 
 **What it does**:
+
 1. Queries database for proposals needing compliance check
 2. Processes in batches (configurable concurrency)
 3. For each proposal:
@@ -259,14 +283,17 @@ tsx server/scripts/batchProcessCompliance.ts
 5. Reports summary statistics
 
 **Use cases**:
+
 - Reprocess compliance after requirement updates
 - Validate compliance across all proposals
 - Generate compliance reports
 
 #### testComplianceIntegration.ts
+
 **Purpose**: Tests compliance checking integration
 **Location**: `server/scripts/testComplianceIntegration.ts`
 **Usage**:
+
 ```bash
 npm run test-compliance
 # or directly:
@@ -275,6 +302,7 @@ tsx server/scripts/testComplianceIntegration.ts
 
 **What it does**:
 Tests the compliance checking specialist agent:
+
 - Requirement extraction accuracy
 - Compliance matrix generation
 - Pass/fail determination
@@ -332,12 +360,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 ### Best Practices
 
 1. **Use structured logging**:
+
    ```typescript
    import { logger } from '../server/utils/logger';
    const log = logger.child({ script: 'script-name' });
    ```
 
 2. **Handle errors gracefully**:
+
    ```typescript
    try {
      await task();
@@ -349,12 +379,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
    ```
 
 3. **Load environment variables**:
+
    ```typescript
    import dotenv from 'dotenv';
    dotenv.config();
    ```
 
 4. **Use database connection from server**:
+
    ```typescript
    import { db } from '../server/db';
    ```
@@ -365,6 +397,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
    - Use transactions for atomicity
 
 6. **Add progress reporting**:
+
    ```typescript
    console.log(`Processing 1/100...`);
    console.log(`Processing 2/100...`);
@@ -456,12 +489,15 @@ import { rfps, portals } from '@shared/schema';
 
 async function seedTestData() {
   // Create test portal
-  const [portal] = await db.insert(portals).values({
-    name: 'Test Portal',
-    url: 'https://test.portal.gov',
-    type: 'federal',
-    scanEnabled: false // Don't actually scan
-  }).returning();
+  const [portal] = await db
+    .insert(portals)
+    .values({
+      name: 'Test Portal',
+      url: 'https://test.portal.gov',
+      type: 'federal',
+      scanEnabled: false, // Don't actually scan
+    })
+    .returning();
 
   // Create test RFPs
   const testRFPs = Array.from({ length: 10 }, (_, i) => ({
@@ -469,7 +505,7 @@ async function seedTestData() {
     agency: 'Test Agency',
     sourceUrl: `https://test.portal.gov/rfp/${i + 1}`,
     portalId: portal.id,
-    status: 'discovered' as const
+    status: 'discovered' as const,
   }));
 
   await db.insert(rfps).values(testRFPs);
@@ -562,8 +598,8 @@ nohup tsx scripts/your-script.ts > output.log 2>&1 &
 
 ```typescript
 // Use correct import paths
-import { db } from '../server/db';  // Relative to scripts/
-import { rfps } from '@shared/schema';  // Path alias
+import { db } from '../server/db'; // Relative to scripts/
+import { rfps } from '@shared/schema'; // Path alias
 ```
 
 ## Related Documentation

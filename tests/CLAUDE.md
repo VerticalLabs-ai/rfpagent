@@ -1,6 +1,6 @@
 # Tests Directory - Test Suite and Quality Assurance
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -43,14 +43,17 @@ tests/
 ## Testing Stack
 
 ### Unit & Integration Tests
+
 - **Jest 30.2+** - Testing framework
 - **ts-jest 29.4+** - TypeScript support for Jest
 - **@jest/globals** - Modern Jest imports
 
 ### End-to-End Tests
+
 - **Playwright 1.56+** - Browser automation and E2E testing
 
 ### Testing Utilities
+
 - **Vitest 3.2+** - Fast unit test runner (alternative to Jest)
 - **@testing-library/react** - React component testing (if used)
 
@@ -75,6 +78,7 @@ tests/unit/
 ```
 
 **Example Unit Test**:
+
 ```typescript
 // tests/unit/utils/retry.test.ts
 import { describe, it, expect } from '@jest/globals';
@@ -100,7 +104,9 @@ describe('retry utility', () => {
   it('should throw after max attempts', async () => {
     await expect(
       retry(
-        async () => { throw new Error('Always fails'); },
+        async () => {
+          throw new Error('Always fails');
+        },
         { maxAttempts: 2, initialDelay: 10 }
       )
     ).rejects.toThrow('Always fails');
@@ -127,6 +133,7 @@ tests/integration/
 ```
 
 **Example Integration Test**:
+
 ```typescript
 // tests/integration/api/rfps.test.ts
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
@@ -146,9 +153,7 @@ describe('RFP API', () => {
   });
 
   it('GET /api/rfps should return list of RFPs', async () => {
-    const response = await request(app)
-      .get('/api/rfps')
-      .expect(200);
+    const response = await request(app).get('/api/rfps').expect(200);
 
     expect(response.body).toHaveProperty('rfps');
     expect(response.body).toHaveProperty('total');
@@ -160,7 +165,7 @@ describe('RFP API', () => {
       title: 'Test RFP',
       agency: 'Test Agency',
       sourceUrl: 'https://test.gov/rfp/123',
-      portalId: testPortalId
+      portalId: testPortalId,
     };
 
     const response = await request(app)
@@ -187,6 +192,7 @@ tests/e2e/
 ```
 
 **Example E2E Test**:
+
 ```typescript
 // tests/e2e/portal-scanning.spec.ts
 import { test, expect } from '@playwright/test';
@@ -206,11 +212,14 @@ test.describe('Portal Scanning', () => {
     await page.click('[data-testid="start-scan-button"]');
 
     // Wait for scan to start
-    await expect(page.locator('[data-testid="scan-status"]'))
-      .toHaveText('Scanning...');
+    await expect(page.locator('[data-testid="scan-status"]')).toHaveText(
+      'Scanning...'
+    );
 
     // Wait for RFPs to appear
-    await page.waitForSelector('[data-testid="discovered-rfp"]', { timeout: 30000 });
+    await page.waitForSelector('[data-testid="discovered-rfp"]', {
+      timeout: 30000,
+    });
 
     // Verify RFPs discovered
     const rfpCards = page.locator('[data-testid="discovered-rfp"]');
@@ -239,9 +248,9 @@ export const sampleRFP = {
       id: 'req-1',
       section: 'Technical Requirements',
       text: 'Must support OAuth 2.0 authentication',
-      mandatory: true
-    }
-  ]
+      mandatory: true,
+    },
+  ],
 };
 
 // tests/fixtures/portals/test-portal.ts
@@ -254,29 +263,33 @@ export const testPortal = {
   scanEnabled: false, // Don't actually scan in tests
   selectors: {
     rfpListContainer: '.opportunity-list',
-    rfpTitle: '.opportunity-title'
-  }
+    rfpTitle: '.opportunity-title',
+  },
 };
 ```
 
 ## Running Tests
 
 ### All Tests
+
 ```bash
 npm test
 ```
 
 ### Unit Tests Only
+
 ```bash
 npm test tests/unit
 ```
 
 ### Integration Tests
+
 ```bash
 npm test tests/integration
 ```
 
 ### End-to-End Tests
+
 ```bash
 # Run all E2E tests
 npm run test:e2e
@@ -289,11 +302,13 @@ npx playwright test tests/e2e/portal-scanning.spec.ts
 ```
 
 ### Watch Mode
+
 ```bash
 npm run test:watch
 ```
 
 ### Coverage Report
+
 ```bash
 npm run test:coverage
 ```
@@ -312,17 +327,17 @@ module.exports = {
   collectCoverageFrom: [
     'server/**/*.ts',
     '!server/**/*.d.ts',
-    '!server/index.ts'
+    '!server/index.ts',
   ],
   coverageThreshold: {
     global: {
       branches: 70,
       functions: 70,
       lines: 70,
-      statements: 70
-    }
+      statements: 70,
+    },
   },
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts']
+  setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
 };
 ```
 
@@ -339,13 +354,13 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:3000',
     screenshot: 'only-on-failure',
-    trace: 'on-first-retry'
+    trace: 'on-first-retry',
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'firefox', use: { browserName: 'firefox' } },
-    { name: 'webkit', use: { browserName: 'webkit' } }
-  ]
+    { name: 'webkit', use: { browserName: 'webkit' } },
+  ],
 });
 ```
 
@@ -380,6 +395,7 @@ afterAll(async () => {
 ### DO
 
 ✅ **Write descriptive test names**
+
 ```typescript
 // Good
 it('should return 404 when RFP not found', async () => {});
@@ -389,10 +405,15 @@ it('test rfp', async () => {});
 ```
 
 ✅ **Use AAA pattern (Arrange, Act, Assert)**
+
 ```typescript
 it('should calculate proposal quality score', () => {
   // Arrange
-  const proposal = { sections: [/* ... */] };
+  const proposal = {
+    sections: [
+      /* ... */
+    ],
+  };
 
   // Act
   const score = calculateQualityScore(proposal);
@@ -403,6 +424,7 @@ it('should calculate proposal quality score', () => {
 ```
 
 ✅ **Test edge cases**
+
 ```typescript
 it('should handle empty RFP list', async () => {
   const { rfps } = await getRFPs({ status: 'nonexistent' });
@@ -411,6 +433,7 @@ it('should handle empty RFP list', async () => {
 ```
 
 ✅ **Use fixtures for complex test data**
+
 ```typescript
 import { sampleRFP } from '../fixtures/rfps/sample-rfp';
 
@@ -421,6 +444,7 @@ it('should process RFP', async () => {
 ```
 
 ✅ **Clean up after tests**
+
 ```typescript
 afterEach(async () => {
   await cleanupTestData();
@@ -430,6 +454,7 @@ afterEach(async () => {
 ### DON'T
 
 ❌ **Don't test implementation details**
+
 ```typescript
 // Bad - testing private method
 it('should call _internalHelper', () => {
@@ -444,6 +469,7 @@ it('should process data correctly', () => {
 ```
 
 ❌ **Don't have tests depend on each other**
+
 ```typescript
 // Bad - tests share state
 let userId;
@@ -464,9 +490,10 @@ it('should get user', () => {
 ```
 
 ❌ **Don't use setTimeout for async tests**
+
 ```typescript
 // Bad
-it('should complete async operation', (done) => {
+it('should complete async operation', done => {
   asyncOperation();
   setTimeout(() => {
     expect(result).toBeDefined();
@@ -492,9 +519,9 @@ jest.mock('../../../server/services/core/aiService', () => ({
   AIService: jest.fn().mockImplementation(() => ({
     generateText: jest.fn().mockResolvedValue({
       text: 'Generated content',
-      tokensUsed: 100
-    })
-  }))
+      tokensUsed: 100,
+    }),
+  })),
 }));
 ```
 
@@ -509,7 +536,7 @@ describe('Agent Registry', () => {
       name: 'test-agent',
       tier: 3,
       type: 'specialist',
-      capabilities: ['test-capability']
+      capabilities: ['test-capability'],
     });
 
     expect(agent.id).toBeDefined();
@@ -527,7 +554,7 @@ describe('RFP Discovery Workflow', () => {
   it('should complete RFP discovery workflow', async () => {
     const result = await workflowCoordinator.executeWorkflow('rfp-discovery', {
       portalId: 'test-portal',
-      searchFilter: 'technology'
+      searchFilter: 'technology',
     });
 
     expect(result.status).toBe('completed');
@@ -619,6 +646,7 @@ open coverage/index.html
 ### Test Data Management
 
 Tests use a combination of:
+
 - **Fixtures** - Static test data in `tests/fixtures/`
 - **Factories** - Dynamic test data generation
 - **Mocks** - External service responses

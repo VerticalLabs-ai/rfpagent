@@ -2,7 +2,6 @@ import { Agent } from "@mastra/core/agent"
 import {
   PromptInjectionDetector,
   PIIDetector,
-  ModerationProcessor,
   TokenLimiterProcessor,
   type InputProcessor,
   type OutputProcessor,
@@ -139,18 +138,6 @@ const proposalPiiGuard = createSafeInputProcessor(
   () => createNoopInputProcessor("proposalPiiGuard:fallback")
 );
 
-const proposalModeration = createSafeDualProcessor(
-  "proposalModeration",
-  () =>
-    new ModerationProcessor({
-      model: guardrailModel,
-      strategy: "warn",
-      threshold: 0.55,
-      includeScores: true,
-      chunkWindow: 1,
-    }),
-  () => createNoopDualProcessor("proposalModeration:fallback")
-);
 
 const proposalTokenLimiter = createSafeOutputProcessor(
   "proposalTokenLimiter",
@@ -303,8 +290,8 @@ Learn from outcomes:
 Remember: You orchestrate the entire proposal process but delegate execution to specialists. Your role is coordination, quality control, and strategic decision-making.
 `,
   model: creativeModel, // GPT-5 - optimal for creative proposal generation
-  inputProcessors: [proposalPromptGuard, proposalPiiGuard, proposalModeration],
-  outputProcessors: [proposalTokenLimiter, proposalModeration],
+  inputProcessors: [proposalPromptGuard, proposalPiiGuard],
+  outputProcessors: [proposalTokenLimiter],
   tools: {
     // Coordination tools
     requestSpecialist,

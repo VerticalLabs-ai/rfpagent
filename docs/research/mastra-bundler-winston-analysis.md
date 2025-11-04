@@ -1,6 +1,6 @@
 # Mastra Bundler Configuration Research: Winston and Native Modules
 
-**Research Date**: January 27, 2025
+**Research Date**: October 27, 2025
 **Problem**: Mastra Cloud bundler creating bundles that fail at runtime with `ERR_INVALID_ARG_TYPE` - "The 'superCtor' argument must be of type function. Received undefined" at `node:util:368:11` (inherits function)
 
 ---
@@ -49,7 +49,7 @@ this.winstonLogger = winston.createLogger({
   level: this.minLevel,
   format: winston.format.combine(
     winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
+    winston.format.errors({ stack: true })
     // ...
   ),
   transports: [
@@ -60,6 +60,7 @@ this.winstonLogger = winston.createLogger({
 ```
 
 **Key Observations**:
+
 1. Winston is imported as ESM (`import winston from 'winston'`)
 2. Uses winston's Console transport (depends on Node.js streams)
 3. File transport commented out (good for serverless)
@@ -91,10 +92,13 @@ inherits(Transport, Writable); // <-- THIS LINE FAILS when bundled
    - Loses the prototype chain for `Writable`
 
 2. **The inherits() function expects**:
+
    ```javascript
    function inherits(ctor, superCtor) {
      if (superCtor === undefined || superCtor === null) {
-       throw new TypeError('The "superCtor" argument must be of type function. Received undefined');
+       throw new TypeError(
+         'The "superCtor" argument must be of type function. Received undefined'
+       );
      }
      // ...
    }
@@ -122,6 +126,7 @@ winston@3.18.3
 ```
 
 **Critical Dependencies**:
+
 - `readable-stream` - Provides stream API polyfills
 - `inherits` - Utility for prototypal inheritance
 - `winston-transport` - Base class for all transports
@@ -135,6 +140,7 @@ winston@3.18.3
 **Key Finding**: Mastra's bundler uses Rollup with tree-shaking, which can break packages that rely on Node.js built-in modules.
 
 **From `deployment/monorepo.mdx`**:
+
 > Use `externals` to exclude dependencies resolved at runtime
 
 **Best Practice**: Packages that interact with Node.js built-in APIs should be external.
@@ -144,6 +150,7 @@ winston@3.18.3
 **From `/docs/mastra-cloud-deployment.md` (lines 110-121)**:
 
 Previous problematic configuration:
+
 ```typescript
 bundler: {
   externals: [
@@ -155,6 +162,7 @@ bundler: {
 ```
 
 Current minimal configuration:
+
 ```typescript
 bundler: {
   externals: [
@@ -197,6 +205,7 @@ bundler: {
 **From esbuild/webpack documentation patterns**:
 
 Logging libraries like winston, pino, and bunyan:
+
 - Use Node.js's `stream` module extensively
 - Rely on prototypal inheritance (`util.inherits`)
 - Often have complex transport systems
@@ -204,17 +213,22 @@ Logging libraries like winston, pino, and bunyan:
 - Have dependencies on native Node.js APIs
 
 **Common external patterns for Node.js servers**:
+
 ```typescript
 bundler: {
   externals: [
     // Logging (winston, pino, bunyan all have similar issues)
-    'winston', 'winston-transport', 'winston-daily-rotate-file',
-    'pino', 'pino-pretty',
+    'winston',
+    'winston-transport',
+    'winston-daily-rotate-file',
+    'pino',
+    'pino-pretty',
     'bunyan',
 
     // Their stream dependencies
-    'readable-stream', 'stream',
-  ]
+    'readable-stream',
+    'stream',
+  ];
 }
 ```
 
@@ -225,6 +239,7 @@ bundler: {
 ### Option 1: Add Winston to Externals (Recommended)
 
 **Rationale**:
+
 - Fixes the immediate runtime error
 - Winston is only used server-side (not client-side)
 - Mastra Cloud can handle winston as an external dependency
@@ -254,12 +269,14 @@ bundler: {
 ```
 
 **Pros**:
+
 - ✅ Fixes the inherits error
 - ✅ Minimal change (only 2 additions)
 - ✅ Follows Mastra Cloud best practices
 - ✅ Winston is production-tested as external
 
 **Cons**:
+
 - ⚠️ Slightly larger deployment package (winston + deps stay in node_modules)
 - ⚠️ Diverges from "let Mastra handle everything" philosophy
 
@@ -285,17 +302,20 @@ bundler: {
 ```
 
 **Pros**:
+
 - ✅ Fixes the error
 - ✅ Handles edge cases with other stream-dependent packages
 - ✅ More defensive approach
 
 **Cons**:
+
 - ⚠️ More externals = potentially larger bundle
 - ⚠️ May not be necessary if winston alone fixes it
 
 ### Option 3: Replace Winston with Mastra's Logger (Alternative Approach)
 
 **Rationale**:
+
 - Mastra provides `@mastra/core/logger` (ConsoleLogger)
 - Already being used in `src/mastra/index.ts`
 - Designed to work with Mastra Cloud bundling
@@ -308,16 +328,18 @@ import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
 
 export const logger = new ConsoleLogger({
   name: 'rfp-agent',
-  level: process.env.LOG_LEVEL as LogLevel || LogLevel.INFO,
+  level: (process.env.LOG_LEVEL as LogLevel) || LogLevel.INFO,
 });
 ```
 
 **Pros**:
+
 - ✅ No bundler externals needed
 - ✅ Native Mastra integration
 - ✅ Guaranteed to work with Mastra Cloud
 
 **Cons**:
+
 - ⚠️ Significant code refactor required
 - ⚠️ May lose winston-specific features
 - ⚠️ Need to update all logging calls throughout codebase
@@ -362,6 +384,7 @@ node .mastra/output/index.mjs
 ### Phase 1: Immediate Fix (Option 1)
 
 1. **Add winston to externals** (5 minutes)
+
    ```typescript
    externals: [
      '@browserbasehq/stagehand',
@@ -370,10 +393,11 @@ node .mastra/output/index.mjs
      '@libsql/client',
      'winston',
      'winston-transport',
-   ]
+   ];
    ```
 
 2. **Test locally** (5 minutes)
+
    ```bash
    npm run mastra:build
    node .mastra/output/index.mjs
@@ -396,11 +420,13 @@ node .mastra/output/index.mjs
 ### Phase 3: Optimize (Future)
 
 **If winston external works**:
+
 - Document the pattern for future reference
 - Update CLAUDE.md with bundler best practices
 - Create checklist for adding new dependencies
 
 **If issues persist**:
+
 - Escalate to Option 2 (add full stream stack)
 - Consider Option 3 (migrate to Mastra logger) for long-term solution
 
@@ -438,6 +464,7 @@ node .mastra/output/index.mjs
 ### Mastra-Specific Context
 
 **From project history (git logs)**:
+
 - `7bd6cfc` - "refactor: update WASM handling in build process"
 - `a06546c` - "fix: add winston and related stream packages to bundler externals"
 - `d8633a8` - "fix: add stream packages to bundler externals to fix inherits error"
@@ -451,6 +478,7 @@ node .mastra/output/index.mjs
 **Recommendation**: **Implement Option 1** (add winston + winston-transport to externals)
 
 **Justification**:
+
 1. Minimal, surgical fix
 2. Proven pattern from previous project history
 3. Aligns with Node.js bundling best practices
@@ -458,6 +486,7 @@ node .mastra/output/index.mjs
 5. Can be deployed and tested within 30 minutes
 
 **Next Steps**:
+
 1. Update `src/mastra/index.ts` bundler config
 2. Test locally with `npm run mastra:build`
 3. Deploy to Mastra Cloud

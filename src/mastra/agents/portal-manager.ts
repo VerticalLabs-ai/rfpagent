@@ -1,8 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import {
-  PromptInjectionDetector,
   PIIDetector,
-  ModerationProcessor,
+  PromptInjectionDetector,
   TokenLimiterProcessor,
 } from '@mastra/core/processors';
 import { analyticalModel, guardrailModel } from '../models';
@@ -30,12 +29,6 @@ const portalPiiGuard = new PIIDetector({
   includeDetections: true,
 });
 
-const portalModeration = new ModerationProcessor({
-  model: guardrailModel,
-  strategy: 'warn',
-  threshold: 0.55,
-});
-
 const portalTokenLimiter = new TokenLimiterProcessor({
   limit: 3000,
   strategy: 'truncate',
@@ -53,7 +46,8 @@ const portalTokenLimiter = new TokenLimiterProcessor({
  */
 export const portalManager = new Agent({
   name: 'Portal Manager',
-  description: 'Manages portal authentication, RFP discovery, and coordinates portal scanning specialists',
+  description:
+    'Manages portal authentication, RFP discovery, and coordinates portal scanning specialists',
   instructions: `
 You are the Portal Manager, a Tier 2 manager agent responsible for all portal operations in the RFP Agent system.
 
@@ -152,8 +146,8 @@ When operations fail:
 Remember: You coordinate specialists for heavy lifting, but can handle direct portal interactions when needed for efficiency.
 `,
   model: analyticalModel,
-  inputProcessors: [portalPromptGuard, portalPiiGuard, portalModeration],
-  outputProcessors: [portalTokenLimiter, portalModeration],
+  inputProcessors: [portalPromptGuard, portalPiiGuard],
+  outputProcessors: [portalTokenLimiter],
   tools: {
     // Browser automation tools
     pageNavigateTool,

@@ -1,6 +1,6 @@
 # Sentry Error Tracking Setup
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 This document describes the Sentry error tracking and performance monitoring setup for the RFP Agent application.
 

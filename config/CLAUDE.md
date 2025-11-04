@@ -1,6 +1,6 @@
 # Config Directory - Application Configuration
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -51,7 +51,7 @@ export const mastra = new Mastra({
       description: 'Top-level orchestrator coordinating all RFP operations',
       model: 'gpt-4',
       tools: ['delegate-task', 'monitor-progress'],
-      systemPrompt: `You are the primary orchestrator...`
+      systemPrompt: `You are the primary orchestrator...`,
     },
 
     // Tier 2: Managers
@@ -60,7 +60,7 @@ export const mastra = new Mastra({
       description: 'Manages portal authentication and RFP discovery',
       model: 'gpt-4',
       tools: ['scan-portal', 'authenticate-portal'],
-      systemPrompt: `You manage portal operations...`
+      systemPrompt: `You manage portal operations...`,
     },
 
     'proposal-manager': {
@@ -68,7 +68,7 @@ export const mastra = new Mastra({
       description: 'Coordinates proposal generation and compliance',
       model: 'gpt-4',
       tools: ['generate-content', 'validate-compliance'],
-      systemPrompt: `You coordinate proposal creation...`
+      systemPrompt: `You coordinate proposal creation...`,
     },
 
     // Tier 3: Specialists
@@ -77,11 +77,11 @@ export const mastra = new Mastra({
       description: 'Automated browser-based portal scanning',
       model: 'gpt-3.5-turbo',
       tools: ['browser-automation', 'extract-rfp'],
-      systemPrompt: `You scan government portals...`
+      systemPrompt: `You scan government portals...`,
     },
 
     // ... other specialists
-  }
+  },
 });
 ```
 
@@ -98,12 +98,12 @@ export const tools = {
     description: 'Scans a government portal for new RFPs',
     parameters: z.object({
       portalId: z.string(),
-      searchFilter: z.string().optional()
+      searchFilter: z.string().optional(),
     }),
     execute: async ({ portalId, searchFilter }) => {
       const scrapingService = await getMastraScrapingService();
       return await scrapingService.scanPortal({ portalId, searchFilter });
-    }
+    },
   }),
 
   'generate-content': createTool({
@@ -112,12 +112,12 @@ export const tools = {
     parameters: z.object({
       rfpId: z.string(),
       section: z.enum(['executive-summary', 'technical-approach', 'pricing']),
-      context: z.object({}).passthrough()
+      context: z.object({}).passthrough(),
     }),
     execute: async ({ rfpId, section, context }) => {
       const aiService = new AIService();
       return await aiService.generateProposalSection(rfpId, section, context);
-    }
+    },
   }),
 
   // ... other tools
@@ -136,21 +136,21 @@ export const workflows = {
       {
         name: 'authenticate',
         agent: 'portal-manager',
-        tool: 'authenticate-portal'
+        tool: 'authenticate-portal',
       },
       {
         name: 'scan',
         agent: 'portal-scanner',
         tool: 'scan-portal',
-        dependsOn: ['authenticate']
+        dependsOn: ['authenticate'],
       },
       {
         name: 'extract',
         agent: 'document-processor',
         tool: 'process-document',
-        dependsOn: ['scan']
-      }
-    ]
+        dependsOn: ['scan'],
+      },
+    ],
   },
 
   'proposal-generation': {
@@ -159,28 +159,31 @@ export const workflows = {
       {
         name: 'extract-requirements',
         agent: 'document-processor',
-        tool: 'extract-requirements'
+        tool: 'extract-requirements',
       },
       {
         name: 'generate-executive-summary',
         agent: 'content-generator',
         tool: 'generate-content',
-        dependsOn: ['extract-requirements']
+        dependsOn: ['extract-requirements'],
       },
       {
         name: 'generate-technical-approach',
         agent: 'content-generator',
         tool: 'generate-content',
-        dependsOn: ['extract-requirements']
+        dependsOn: ['extract-requirements'],
       },
       {
         name: 'validate-compliance',
         agent: 'compliance-checker',
         tool: 'validate-compliance',
-        dependsOn: ['generate-executive-summary', 'generate-technical-approach']
-      }
-    ]
-  }
+        dependsOn: [
+          'generate-executive-summary',
+          'generate-technical-approach',
+        ],
+      },
+    ],
+  },
 };
 ```
 
@@ -195,7 +198,7 @@ export const memoryConfig = {
   tables: {
     messages: 'mastra_messages',
     sessions: 'mastra_sessions',
-    memory: 'mastra_memory'
+    memory: 'mastra_memory',
   },
   ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
@@ -297,12 +300,12 @@ const config = {
   database: process.env.DATABASE_URL,
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
-    model: process.env.OPENAI_MODEL || 'gpt-4'
+    model: process.env.OPENAI_MODEL || 'gpt-4',
   },
   features: {
     automatedScanning: process.env.ENABLE_AUTOMATED_SCANNING === 'true',
-    aiProposalGeneration: process.env.ENABLE_AI_PROPOSAL_GENERATION === 'true'
-  }
+    aiProposalGeneration: process.env.ENABLE_AI_PROPOSAL_GENERATION === 'true',
+  },
 };
 
 export default config;
@@ -317,7 +320,7 @@ Client-side config is handled through Vite environment variables (prefixed with 
 export const config = {
   apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   wsUrl: import.meta.env.VITE_WS_URL || 'ws://localhost:3000',
-  environment: import.meta.env.MODE
+  environment: import.meta.env.MODE,
 };
 ```
 
@@ -368,21 +371,24 @@ GCS_CREDENTIALS_PATH=...
 ### DO
 
 ✅ **Use environment variables for secrets**
+
 ```typescript
 // Good
 const apiKey = process.env.OPENAI_API_KEY;
 
 // Bad
-const apiKey = 'sk-hardcoded-key';  // Never do this!
+const apiKey = 'sk-hardcoded-key'; // Never do this!
 ```
 
 ✅ **Provide sensible defaults**
+
 ```typescript
 const port = parseInt(process.env.PORT || '3000');
 const logLevel = process.env.LOG_LEVEL || 'info';
 ```
 
 ✅ **Validate required configuration**
+
 ```typescript
 if (!process.env.DATABASE_URL) {
   throw new Error('DATABASE_URL is required');
@@ -390,6 +396,7 @@ if (!process.env.DATABASE_URL) {
 ```
 
 ✅ **Use type-safe configuration objects**
+
 ```typescript
 interface Config {
   port: number;
@@ -405,14 +412,15 @@ const config: Config = {
   database: process.env.DATABASE_URL!,
   openai: {
     apiKey: process.env.OPENAI_API_KEY!,
-    model: process.env.OPENAI_MODEL || 'gpt-4'
-  }
+    model: process.env.OPENAI_MODEL || 'gpt-4',
+  },
 };
 ```
 
 ### DON'T
 
 ❌ **Don't commit `.env` files**
+
 ```bash
 # .gitignore
 .env
@@ -420,12 +428,14 @@ const config: Config = {
 ```
 
 ❌ **Don't use hardcoded values**
+
 ```typescript
 // Bad
 const apiKey = 'sk-1234567890';
 ```
 
 ❌ **Don't expose secrets in client code**
+
 ```typescript
 // Bad - API keys should never be in client code
 export const openaiKey = 'sk-...';
@@ -458,12 +468,12 @@ const scanPortalTool = createTool({
   parameters: z.object({
     portalId: z.string().uuid(),
     searchFilter: z.string().optional(),
-    incrementalScan: z.boolean().default(false)
+    incrementalScan: z.boolean().default(false),
   }),
-  execute: async (params) => {
+  execute: async params => {
     // Implementation
     return { rfpsFound: 10, status: 'success' };
-  }
+  },
 });
 
 // Configure Mastra
@@ -483,15 +493,15 @@ export const mastra = new Mastra({
         4. Report progress and results
       `,
       temperature: 0.7,
-      maxTokens: 2000
-    }
+      maxTokens: 2000,
+    },
   },
 
   memory: {
     provider: 'postgresql',
     connectionString: process.env.DATABASE_URL,
-    ttl: 7 * 24 * 60 * 60 * 1000  // 7 days
-  }
+    ttl: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
 });
 ```
 
@@ -506,6 +516,7 @@ The Mastra configuration defines all 11 agents:
 **Tier 3**: Portal Scanner, Portal Monitor, Content Generator, Compliance Checker, Document Processor, Market Analyst, Historical Analyzer
 
 Each agent has:
+
 - Specific tools they can use
 - System prompts defining their role
 - Model selection (GPT-4 for managers, GPT-3.5 for specialists)

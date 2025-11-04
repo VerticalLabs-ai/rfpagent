@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 This directory contains all project documentation organized by category.
 
@@ -56,6 +56,7 @@ docs/
 ## 🚀 Quick Links
 
 ### For Developers
+
 - [Testing Guide](testing/testing-guide.md) - How to test your changes
 - [Logging & Observability](technical/logging-and-observability.md) - Structured logging and tracing
 - [Models Reference](technical/models-reference.md) - AI model configuration
@@ -63,12 +64,14 @@ docs/
 - [API Documentation](api/README.md) - REST API reference
 
 ### For DevOps
+
 - [Deployment Guide](deployment/deployment-guide.md) - Fly.io deployment
 - [Mastra Cloud Deployment](mastra-cloud-deployment.md) - Mastra Cloud deployment
 - [Security Documentation](technical/security.md) - Security best practices
 - Database: See CLAUDE.md in project root
 
 ### For Product/Business
+
 - Architecture Overview: See CLAUDE.md in project root
 - AI Capabilities: [Models Reference](technical/models-reference.md)
 - Integration: [Integration Guide](guides/integration-guide.md)
@@ -110,6 +113,7 @@ docs/
 ### ✅ Before Creating New Documentation
 
 **MANDATORY CHECKLIST:**
+
 - [ ] Is this a feature/architecture/process? (If no → don't document)
 - [ ] Did I search `/docs` for existing docs on this topic?
 - [ ] Can I update an existing doc instead? (If yes → update, don't create)
@@ -121,6 +125,7 @@ docs/
 ### 📋 When to Document
 
 **✅ DO document:**
+
 - New features (user-facing or developer-facing)
 - Architecture decisions
 - API changes
@@ -129,6 +134,7 @@ docs/
 - Security considerations
 
 **❌ DON'T document:**
+
 - Bug fixes
 - Typo corrections
 - Dependency updates
@@ -141,21 +147,27 @@ docs/
 ## 📂 Directory Purposes
 
 ### `/technical`
+
 Technical implementation details, architecture decisions, system design, security documentation, and migration guides.
 
 ### `/testing`
+
 Testing strategies, test execution guides, test documentation, and quality assurance procedures.
 
 ### `/deployment`
+
 Deployment procedures, infrastructure setup, production operations, and DevOps guides.
 
 ### `/api`
+
 API documentation, OpenAPI specifications, endpoint references, and integration examples.
 
 ### `/guides`
+
 User-facing guides, tutorials, integration instructions, and how-to documentation.
 
 ### `/archive`
+
 Historical documents, dated reports, completed analyses, and deprecated documentation.
 
 ---
@@ -163,13 +175,14 @@ Historical documents, dated reports, completed analyses, and deprecated document
 ## 🔄 Maintenance
 
 Documentation should be updated:
+
 - When features are added/removed
 - When deployment process changes
 - When dependencies are updated
 - When API changes occur
 - At least quarterly for general review
 
-**Last full audit**: January 2025
+**Last full audit**: October 2025
 
 ---
 

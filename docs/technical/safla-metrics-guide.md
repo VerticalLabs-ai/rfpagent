@@ -1,6 +1,6 @@
 # SAFLA Metrics Guide
 
-**Last Updated**: January 2025
+**Last Updated**: October 2025
 
 ## Overview
 
@@ -25,6 +25,7 @@ GROUP BY agentId
 ```
 
 **Formula**:
+
 ```
 Component Health = (successScore * 40) + (efficiencyScore * 40) + reliabilityScore
   where:
@@ -36,12 +37,14 @@ Overall Health = AVG(all component healths) OR 50 (if no data)
 ```
 
 **What It Means**:
+
 - **90-100%**: Excellent - All agents performing optimally
 - **70-89%**: Good - Minor issues, system functioning well
 - **50-69%**: Fair - Noticeable issues, investigation needed
 - **Below 50%**: Poor - System degraded, immediate attention required
 
 **Why It Shows 50%**:
+
 - Default value when `agent_performance_metrics` table is empty
 - NOT a hardcoded placeholder - it's the mathematical fallback
 - Will increase as agents complete tasks and record metrics
@@ -60,17 +63,20 @@ WHERE memoryType = 'episodic'
 ```
 
 **Formula**:
+
 ```
 Learning Rate = totalLearningEvents / daysDiff
 ```
 
 **What It Means**:
+
 - **10+**: Very active learning - system adapting rapidly
 - **5-10**: Moderate learning - healthy improvement rate
 - **1-5**: Low learning - limited adaptation occurring
 - **0**: No learning events - system not yet active
 
 **Why It Shows 0**:
+
 - System just initialized with no learning events yet
 - Increases as agents:
   - Complete portal scans
@@ -91,11 +97,13 @@ WHERE createdAt BETWEEN startDate AND endDate
 ```
 
 **Formula**:
+
 ```
 Knowledge Growth = knowledgeEntries / daysDiff
 ```
 
 **What It Means**:
+
 - **15+**: Rapid knowledge expansion
 - **10-15**: Healthy knowledge building
 - **5-10**: Moderate knowledge acquisition
@@ -103,6 +111,7 @@ Knowledge Growth = knowledgeEntries / daysDiff
 - **0**: No knowledge entries yet
 
 **Why It Shows 0**:
+
 - `agent_knowledge_base` table is empty (new system)
 - Populated when agents learn from:
   - Successful strategies
@@ -124,17 +133,20 @@ WHERE metricType = 'task_completion'
 ```
 
 **Formula**:
+
 ```
 Adaptation Success = avgImprovement * 100
 ```
 
 **What It Means**:
+
 - **80-100%**: Excellent adaptation - changes working well
 - **60-80%**: Good adaptation - most changes effective
 - **40-60%**: Moderate - mixed results from adaptations
 - **Below 40%**: Poor - adaptations not effective
 
 **Why It Shows 0%**:
+
 - No performance metrics recorded yet
 - Will increase as system adapts strategies based on outcomes
 
@@ -175,6 +187,7 @@ Adaptation Success = avgImprovement * 100
 Improvement opportunities are identified by comparing current performance against target thresholds:
 
 **Targets** (from [continuousImprovementMonitor.ts:123-130](../../server/services/continuousImprovementMonitor.ts#L123-L130)):
+
 ```typescript
 {
   proposalWinRate: 0.25 (25%),
@@ -199,6 +212,7 @@ Improvement opportunities are identified by comparing current performance agains
 **How to Execute Improvements** (Manual):
 
 1. **Portal Navigation Enhancement**
+
    ```bash
    curl -X POST http://localhost:3000/api/safla/record-learning \
      -H "Content-Type: application/json" \
@@ -211,6 +225,7 @@ Improvement opportunities are identified by comparing current performance agains
    ```
 
 2. **Document Processing Improvement**
+
    ```bash
    curl -X POST http://localhost:3000/api/safla/record-learning \
      -H "Content-Type: application/json" \
@@ -257,6 +272,7 @@ These will create sample learning events and populate metrics.
 ### Option 3: Seed Database (Recommended for Testing)
 
 Create a seed script that populates:
+
 - `agent_performance_metrics` - Task completion data
 - `agent_memory` - Learning events
 - `agent_knowledge_base` - Knowledge entries
@@ -278,6 +294,7 @@ Create a seed script that populates:
 ### Sample Data Requirements
 
 For meaningful metrics, you need:
+
 - **Minimum**: 10 learning events, 5 completed tasks
 - **Recommended**: 50+ events, 20+ tasks
 - **Production**: Continuous data from actual workflows
@@ -287,18 +304,22 @@ For meaningful metrics, you need:
 ## Troubleshooting
 
 ### "All metrics show 0"
+
 - **Cause**: Database tables are empty
 - **Fix**: Run demo workflows or seed database
 
 ### "50% system health never changes"
+
 - **Cause**: No `agent_performance_metrics` records
 - **Fix**: Agents need to complete tasks and record metrics
 
 ### "Improvement opportunities list but can't execute"
+
 - **Cause**: Missing UI action buttons
 - **Fix**: Use API endpoints directly or wait for UI implementation
 
 ### "Knowledge growth stays at 0"
+
 - **Cause**: No entries in `agent_knowledge_base`
 - **Fix**: Record learning outcomes after task completion
 
@@ -315,27 +336,32 @@ For meaningful metrics, you need:
 ## API Endpoints
 
 ### Get Dashboard
+
 ```
 GET /api/safla/dashboard?timeframe=24h
 ```
 
 ### Get System Report
+
 ```
 GET /api/safla/report
 ```
 
 ### Record Learning Event
+
 ```
 POST /api/safla/record-learning
 Body: { portalId, learningType, data, success }
 ```
 
 ### Trigger Memory Consolidation
+
 ```
 POST /api/safla/consolidate-memory
 ```
 
 ### Run Demo Workflow
+
 ```
 POST /api/safla/demonstrate/:scenario
 Scenarios: portal_discovery, document_processing, proposal_generation

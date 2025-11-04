@@ -2,7 +2,6 @@ import { Agent } from "@mastra/core/agent"
 import {
   PromptInjectionDetector,
   PIIDetector,
-  ModerationProcessor,
   TokenLimiterProcessor,
 } from "@mastra/core/processors"
 import { sharedMemory } from "../tools/shared-memory-provider"
@@ -23,12 +22,6 @@ const researchPiiGuard = new PIIDetector({
   model: guardrailModel,
   strategy: "redact",
   includeDetections: true,
-});
-
-const researchModeration = new ModerationProcessor({
-  model: guardrailModel,
-  strategy: "warn",
-  threshold: 0.55,
 });
 
 const researchTokenLimiter = new TokenLimiterProcessor({
