@@ -25,11 +25,6 @@ import { marketAnalyst } from './agents/market-analyst';
 import { portalMonitor } from './agents/portal-monitor';
 import { portalScanner } from './agents/portal-scanner';
 
-// Legacy mappings for backward compatibility
-import { rfpAnalysisAgent } from './agents/rfp-analysis-agent';
-import { rfpDiscoveryAgent } from './agents/rfp-discovery-agent';
-import { rfpSubmissionAgent } from './agents/rfp-submission-agent';
-
 // Workflows
 import { rfpMcpServer } from './mcp/server';
 import { bonfireAuthWorkflow } from './workflows/bonfire-auth-workflow';
@@ -87,11 +82,6 @@ export const mastra = new Mastra({
     documentProcessor,
     marketAnalyst,
     historicalAnalyzer,
-
-    // Legacy agents for backward compatibility
-    rfpDiscoveryAgent,
-    rfpAnalysisAgent,
-    rfpSubmissionAgent,
   },
   // Workflow Configuration
   workflows: {
@@ -166,9 +156,6 @@ export async function initializeAgentRegistry() {
     'document-processor': documentProcessor,
     'market-analyst': marketAnalyst,
     'historical-analyzer': historicalAnalyzer,
-    'rfp-discovery-agent': rfpDiscoveryAgent,
-    'rfp-analysis-agent': rfpAnalysisAgent,
-    'rfp-submission-agent': rfpSubmissionAgent,
   };
 
   // Register all agents with their metadata
