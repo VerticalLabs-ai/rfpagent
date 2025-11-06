@@ -289,7 +289,7 @@ export default function AIChat() {
       case 'low':
         return 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
       default:
-        return 'border-gray-200 bg-gray-50 hover:bg-gray-100';
+        return 'border-border bg-muted hover:bg-muted/80';
     }
   };
 

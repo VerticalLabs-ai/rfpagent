@@ -32,6 +32,7 @@ export class CircuitBreaker {
   private lastSuccessTime?: number;
   private nextAttempt?: number;
   private resetTimer?: NodeJS.Timeout;
+  public lastExecutionTime?: number; // Track last execution for cleanup
 
   constructor(
     private name: string,
@@ -45,6 +46,7 @@ export class CircuitBreaker {
    */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     this.totalCalls++;
+    this.lastExecutionTime = Date.now(); // Track execution time for cleanup
 
     // Check if circuit is open
     if (this.state === 'open') {
@@ -220,6 +222,60 @@ export class CircuitBreaker {
  */
 export class CircuitBreakerManager {
   private breakers = new Map<string, CircuitBreaker>();
+
+  // Memory leak protection
+  private readonly MAX_BREAKERS = 1000;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    // Start periodic cleanup of unused breakers
+    this.startCleanup();
+  }
+
+  /**
+   * Start automatic cleanup of unused circuit breakers
+   */
+  private startCleanup(): void {
+    this.cleanupInterval = setInterval(() => {
+      this.pruneUnusedBreakers();
+    }, 30 * 60 * 1000); // Every 30 minutes
+  }
+
+  /**
+   * Remove circuit breakers that haven't been used recently
+   */
+  private pruneUnusedBreakers(): void {
+    const cutoffTime = Date.now() - 60 * 60 * 1000; // 1 hour ago
+    let pruned = 0;
+
+    for (const [name, breaker] of this.breakers.entries()) {
+      // Remove if breaker is closed and hasn't been used in the last hour
+      if (
+        breaker.getState() === 'closed' &&
+        breaker.lastExecutionTime &&
+        breaker.lastExecutionTime < cutoffTime
+      ) {
+        this.breakers.delete(name);
+        pruned++;
+      }
+    }
+
+    if (pruned > 0) {
+      console.log(`🧹 CircuitBreaker: Pruned ${pruned} unused breakers`);
+    }
+  }
+
+  /**
+   * Shutdown and cleanup
+   */
+  shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+    this.breakers.clear();
+    console.log('✅ CircuitBreakerManager shutdown complete');
+  }
 
   /**
    * Get or create circuit breaker for a service

@@ -415,7 +415,7 @@ export default function WorkflowManagement() {
                     className={`cursor-pointer transition-colors ${
                       selectedWorkflow?.id === workflow.id
                         ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                        : 'hover:bg-accent'
                     }`}
                     onClick={() => setSelectedWorkflow(workflow)}
                     data-testid={`card-workflow-${workflow.workflowId}`}

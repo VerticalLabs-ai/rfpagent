@@ -37,6 +37,10 @@ export class AnalysisProgressTracker {
   private progressMap: Map<string, AnalysisProgress> = new Map();
   private stepHistory: Map<string, AnalysisStepResult[]> = new Map();
 
+  // Memory leak protection - limit map sizes
+  private readonly MAX_PROGRESS_ENTRIES = 1000;
+  private readonly MAX_HISTORY_ENTRIES = 1000;
+
   /**
    * Initialize progress tracking for an analysis workflow
    */
@@ -45,6 +49,15 @@ export class AnalysisProgressTracker {
     workflowId: string;
     totalSteps?: number;
   }): Promise<AnalysisProgress> {
+    // Memory leak protection - enforce size limits
+    if (this.progressMap.size >= this.MAX_PROGRESS_ENTRIES) {
+      const oldestKey = this.progressMap.keys().next().value;
+      if (oldestKey) {
+        this.progressMap.delete(oldestKey);
+        this.stepHistory.delete(oldestKey);
+      }
+    }
+
     const progress: AnalysisProgress = {
       rfpId: params.rfpId,
       workflowId: params.workflowId,

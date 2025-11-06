@@ -69,10 +69,27 @@ export class ScanManager {
   private readonly MAX_HISTORY_PER_PORTAL = 20;
   private readonly MAX_EVENTS_PER_SCAN = 1000;
 
+  // Memory leak protection - limit active scans
+  private readonly MAX_ACTIVE_SCANS = 100;
+
+  // Track cleanup timeout handles
+  private cleanupTimeouts = new Map<string, NodeJS.Timeout>();
+
   /**
    * Start a new scan and return the scanId
    */
   startScan(portalId: string, portalName: string): string {
+    // Memory leak protection - clean up oldest scan if at limit
+    if (this.activeScans.size >= this.MAX_ACTIVE_SCANS) {
+      const oldestScanId = this.activeScans.keys().next().value;
+      if (oldestScanId) {
+        console.warn(
+          `ScanManager: Max active scans (${this.MAX_ACTIVE_SCANS}) reached, force-cleaning oldest scan ${oldestScanId}`
+        );
+        this.forceCleanupScan(oldestScanId);
+      }
+    }
+
     const scanId = randomUUID();
     const startedAt = new Date();
 
@@ -96,8 +113,17 @@ export class ScanManager {
 
     // Create EventEmitter for this scan
     const emitter = new EventEmitter();
+    // Set max listeners to prevent warnings
+    emitter.setMaxListeners(20);
     this.scanEmitters.set(scanId, emitter);
     this.activeScans.set(scanId, scanState);
+
+    // Safety timeout - force cleanup after 30 minutes if scan doesn't complete
+    const timeout = setTimeout(() => {
+      console.warn(`ScanManager: Scan ${scanId} timeout - force completing`);
+      this.completeScan(scanId, false);
+    }, 30 * 60 * 1000); // 30 minutes
+    this.cleanupTimeouts.set(scanId, timeout);
 
     // Emit initial event
     this.emitEvent(scanId, {
@@ -251,9 +277,69 @@ export class ScanManager {
     this.addToHistory(scan);
 
     // Clean up active scan immediately after event emission
+    this.cleanupScan(scanId);
+  }
+
+  /**
+   * Clean up a scan's resources
+   */
+  private cleanupScan(scanId: string): void {
+    // Clear timeout if exists
+    const timeout = this.cleanupTimeouts.get(scanId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.cleanupTimeouts.delete(scanId);
+    }
+
+    // Remove emitter listeners
+    const emitter = this.scanEmitters.get(scanId);
+    if (emitter) {
+      emitter.removeAllListeners();
+      this.scanEmitters.delete(scanId);
+    }
+
+    // Remove active scan
     this.activeScans.delete(scanId);
-    this.scanEmitters.delete(scanId);
+
     console.log(`ScanManager: Cleaned up scan ${scanId}`);
+  }
+
+  /**
+   * Force cleanup a scan without proper completion
+   */
+  private forceCleanupScan(scanId: string): void {
+    const scan = this.activeScans.get(scanId);
+    if (scan && scan.status === 'running') {
+      scan.status = 'failed';
+      scan.errors.push('Scan forcefully terminated due to system limits');
+    }
+    this.cleanupScan(scanId);
+  }
+
+  /**
+   * Shutdown and cleanup all resources
+   * Should be called on application shutdown to prevent memory leaks
+   */
+  shutdown(): void {
+    console.log('🛑 ScanManager shutdown initiated...');
+
+    // Clear all timeouts
+    for (const timeout of this.cleanupTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.cleanupTimeouts.clear();
+
+    // Remove all emitter listeners
+    for (const emitter of this.scanEmitters.values()) {
+      emitter.removeAllListeners();
+    }
+
+    // Clear all data structures
+    this.activeScans.clear();
+    this.scanEmitters.clear();
+    this.scanHistory.clear();
+
+    console.log('✅ ScanManager shutdown complete');
   }
 
   /**

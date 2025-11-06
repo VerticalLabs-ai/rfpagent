@@ -529,6 +529,22 @@ export class WorkflowCoordinator {
   }
 
   /**
+   * Shutdown and cleanup all resources
+   * Should be called on application shutdown to prevent memory leaks
+   */
+  shutdown(): void {
+    console.log('🛑 WorkflowCoordinator shutdown initiated...');
+
+    // Stop the work item processing loop
+    this.stopWorkItemProcessing();
+
+    // Clear active workflows
+    this.activeWorkflows.clear();
+
+    console.log('✅ WorkflowCoordinator shutdown complete');
+  }
+
+  /**
    * Retry failed work items that haven't exceeded max retries
    */
   private async retryFailedWorkItems(): Promise<void> {

@@ -130,8 +130,7 @@ app.use((req, res, next) => {
 
   // Defer heavy initialization on memory-constrained environments
   // This allows the server to start and respond to health checks first
-  const deferHeavyInit =
-    process.env.DEFER_AGENT_INIT === 'true' || process.env.RENDER === 'true';
+  const deferHeavyInit = process.env.DEFER_AGENT_INIT === 'true';
 
   if (deferHeavyInit) {
     log('⏳ Deferring agent initialization (memory-constrained mode)');
@@ -267,12 +266,84 @@ app.use((req, res, next) => {
   log('🔌 WebSocket server initialized on /ws');
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    log('SIGTERM received, shutting down gracefully');
-    websocketService.shutdown();
-    server.close(() => {
-      log('Server closed');
-      process.exit(0);
-    });
+  process.on('SIGTERM', async () => {
+    log('🛑 SIGTERM received, shutting down gracefully...');
+
+    try {
+      // Shutdown WebSocket service
+      websocketService.shutdown();
+
+      // Shutdown progress trackers
+      const { progressTracker } = await import(
+        './services/monitoring/progressTracker'
+      );
+      progressTracker.shutdown();
+
+      const { shutdownAnalysisProgressTracker } = await import(
+        './services/monitoring/analysisProgressTracker'
+      );
+      shutdownAnalysisProgressTracker();
+
+      // Shutdown workflow coordinator
+      const { workflowCoordinator } = await import(
+        './services/workflows/workflowCoordinator'
+      );
+      workflowCoordinator.shutdown();
+
+      // Shutdown pipeline orchestration service (if imported)
+      try {
+        const { pipelineOrchestrationService } = await import(
+          './services/orchestrators/pipelineOrchestrationService'
+        );
+        pipelineOrchestrationService.shutdown();
+      } catch {
+        // Service may not be initialized
+      }
+
+      // Shutdown scan manager (if imported)
+      try {
+        const { scanManager } = await import('./services/portals/scan-manager');
+        scanManager.shutdown();
+      } catch {
+        // Service may not be initialized
+      }
+
+      // Shutdown SAFLA learning engine
+      try {
+        const { saflaLearningEngine } = await import(
+          './services/learning/saflaLearningEngine'
+        );
+        saflaLearningEngine.shutdown();
+      } catch {
+        // Service may not be initialized
+      }
+
+      // Shutdown circuit breaker manager
+      try {
+        const { circuitBreakerManager } = await import('./utils/circuitBreaker');
+        circuitBreakerManager.shutdown();
+      } catch {
+        // Service may not be initialized
+      }
+
+      // Shutdown database connection pool
+      const { shutdownDb } = await import('./db');
+      await shutdownDb();
+
+      // Close HTTP server
+      server.close(() => {
+        log('✅ Server closed successfully');
+        process.exit(0);
+      });
+
+      // Force exit after 10 seconds if graceful shutdown hangs
+      setTimeout(() => {
+        log('⚠️ Forcing shutdown after timeout');
+        process.exit(1);
+      }, 10000);
+    } catch (error) {
+      log('❌ Error during shutdown:', error);
+      process.exit(1);
+    }
   });
 })();

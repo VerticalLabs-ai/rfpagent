@@ -34,17 +34,17 @@ export function ErrorFallback({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
-          <AlertTriangle className="w-6 h-6 text-red-600" />
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="max-w-md w-full bg-card rounded-lg shadow-lg p-6 border border-border">
+        <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-500/10 rounded-full mb-4">
+          <AlertTriangle className="w-6 h-6 text-red-500" />
         </div>
 
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">
+          <h1 className="text-xl font-semibold text-foreground mb-2">
             Something went wrong
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             We&apos;re sorry, but something unexpected happened. Please try
             refreshing the page or go back to the home page.
           </p>
@@ -53,7 +53,7 @@ export function ErrorFallback({
         <div className="space-y-3">
           <button
             onClick={onReset}
-            className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
@@ -61,7 +61,7 @@ export function ErrorFallback({
 
           <button
             onClick={handleGoHome}
-            className="w-full flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center justify-center px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 transition-colors"
           >
             <Home className="w-4 h-4 mr-2" />
             Go Home
@@ -69,21 +69,21 @@ export function ErrorFallback({
         </div>
 
         {isDevelopment && (
-          <div className="mt-6 p-4 bg-red-50 rounded-md">
+          <div className="mt-6 p-4 bg-destructive/10 rounded-md border border-destructive/20">
             <div className="flex items-center mb-2">
-              <Bug className="w-4 h-4 text-red-600 mr-2" />
-              <h3 className="text-sm font-medium text-red-800">
+              <Bug className="w-4 h-4 text-destructive mr-2" />
+              <h3 className="text-sm font-medium text-destructive">
                 Development Error Details
               </h3>
             </div>
-            <div className="text-xs text-red-700 space-y-2">
+            <div className="text-xs text-destructive/90 space-y-2">
               <div>
                 <strong>Error:</strong> {error.message}
               </div>
               {error.stack && (
                 <div>
                   <strong>Stack:</strong>
-                  <pre className="mt-1 whitespace-pre-wrap text-xs bg-red-100 p-2 rounded overflow-x-auto">
+                  <pre className="mt-1 whitespace-pre-wrap text-xs bg-destructive/5 p-2 rounded overflow-x-auto border border-destructive/10">
                     {error.stack}
                   </pre>
                 </div>
@@ -91,7 +91,7 @@ export function ErrorFallback({
               {errorInfo?.componentStack && (
                 <div>
                   <strong>Component Stack:</strong>
-                  <pre className="mt-1 whitespace-pre-wrap text-xs bg-red-100 p-2 rounded overflow-x-auto">
+                  <pre className="mt-1 whitespace-pre-wrap text-xs bg-destructive/5 p-2 rounded overflow-x-auto border border-destructive/10">
                     {errorInfo.componentStack}
                   </pre>
                 </div>
@@ -99,7 +99,7 @@ export function ErrorFallback({
             </div>
             <button
               onClick={handleReportError}
-              className="mt-3 text-xs text-red-600 hover:text-red-800 underline"
+              className="mt-3 text-xs text-destructive hover:text-destructive/80 underline"
             >
               Copy error details to console
             </button>

@@ -625,7 +625,7 @@ export default function AgentMonitoring() {
                           ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
                           : status === 'in_progress'
                             ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-                            : 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20';
+                            : 'bg-muted/50 text-muted-foreground border-border';
                     const statusIcon =
                       status === 'completed' ? (
                         <CheckCircle className="h-4 w-4" />

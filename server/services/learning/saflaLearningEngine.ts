@@ -63,11 +63,132 @@ export class SAFLALearningEngine {
   private minSampleSize: number = 10; // Minimum samples before applying learning
   private confidenceThreshold: number = 0.7; // Minimum confidence to apply strategy
 
+  // Memory leak protection
+  private readonly MAX_LEARNING_EVENTS_PER_AGENT = 500; // Limit stored events per agent
+  private pruningInterval: NodeJS.Timeout | null = null;
+
   public static getInstance(): SAFLALearningEngine {
     if (!SAFLALearningEngine.instance) {
       SAFLALearningEngine.instance = new SAFLALearningEngine();
+      // Start automatic pruning
+      SAFLALearningEngine.instance.startAutomaticPruning();
     }
     return SAFLALearningEngine.instance;
+  }
+
+  /**
+   * Start automatic memory pruning (runs every 6 hours)
+   */
+  private startAutomaticPruning(): void {
+    this.pruningInterval = setInterval(async () => {
+      try {
+        console.log('🧹 SAFLA: Starting automatic memory pruning...');
+        await this.pruneOldLearningEvents();
+        await this.pruneLowConfidenceStrategies();
+        console.log('✅ SAFLA: Memory pruning complete');
+      } catch (error) {
+        console.error('❌ SAFLA: Memory pruning error:', error);
+      }
+    }, 6 * 60 * 60 * 1000); // Every 6 hours
+  }
+
+  /**
+   * Prune old learning events to prevent unbounded growth
+   */
+  private async pruneOldLearningEvents(): Promise<void> {
+    try {
+      // Get all agents that have learning events
+      const allAgents = new Set<string>();
+      const memories = await agentMemoryService.getAgentMemories(
+        'system',
+        'episodic',
+        10000
+      );
+
+      for (const memory of memories) {
+        if (memory.tags?.includes('learning_event')) {
+          allAgents.add(memory.agentId);
+        }
+      }
+
+      // For each agent, keep only most recent events
+      for (const agentId of allAgents) {
+        const agentEvents = await agentMemoryService.getAgentMemories(
+          agentId,
+          'episodic',
+          10000
+        );
+
+        const learningEvents = agentEvents
+          .filter(m => m.tags?.includes('learning_event'))
+          .sort((a, b) => {
+            const timeA = new Date(a.createdAt || 0).getTime();
+            const timeB = new Date(b.createdAt || 0).getTime();
+            return timeB - timeA; // Most recent first
+          });
+
+        // Delete events beyond the limit
+        if (learningEvents.length > this.MAX_LEARNING_EVENTS_PER_AGENT) {
+          const toDelete = learningEvents.slice(
+            this.MAX_LEARNING_EVENTS_PER_AGENT
+          );
+          for (const event of toDelete) {
+            await agentMemoryService.deleteMemory(event.id);
+          }
+          console.log(
+            `🧹 Pruned ${toDelete.length} old learning events for agent ${agentId}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error pruning learning events:', error);
+    }
+  }
+
+  /**
+   * Prune low-confidence strategies that aren't being used
+   */
+  private async pruneLowConfidenceStrategies(): Promise<void> {
+    try {
+      const strategies = await agentMemoryService.getRelevantKnowledge(
+        'system',
+        { knowledgeType: 'strategy' },
+        1000
+      );
+
+      const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
+
+      for (const strategy of strategies) {
+        const confidence = strategy.metadata?.confidenceScore || 0;
+        const lastApplied = strategy.metadata?.lastApplied
+          ? new Date(strategy.metadata.lastApplied)
+          : null;
+        const timesApplied = strategy.metadata?.timesApplied || 0;
+
+        // Delete if: low confidence AND (never applied OR not applied in 30 days)
+        if (
+          confidence < 0.5 &&
+          timesApplied === 0 &&
+          (!lastApplied || lastApplied < cutoffDate)
+        ) {
+          await agentMemoryService.deleteMemory(strategy.id);
+          console.log(`🗑️ Pruned unused low-confidence strategy: ${strategy.title}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error pruning strategies:', error);
+    }
+  }
+
+  /**
+   * Shutdown and cleanup
+   */
+  shutdown(): void {
+    if (this.pruningInterval) {
+      clearInterval(this.pruningInterval);
+      this.pruningInterval = null;
+    }
+    console.log('✅ SAFLA Learning Engine shutdown complete');
   }
 
   /**
@@ -92,9 +213,8 @@ export class SAFLALearningEngine {
         await this.updateStrategy(pattern);
       }
 
-      // 4. Trigger strategy consolidation periodically
-      if (Math.random() < 0.1) {
-        // 10% chance
+      // 4. Trigger strategy consolidation less frequently (5% chance instead of 10%)
+      if (Math.random() < 0.05) {
         await this.consolidateStrategies(event.taskType);
       }
 

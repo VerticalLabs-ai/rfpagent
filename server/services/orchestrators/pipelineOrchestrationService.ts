@@ -75,6 +75,11 @@ export class PipelineOrchestrationService {
   private priorityQueue: Map<number, string[]> = new Map(); // priority level -> workflow IDs
   private globalResourceConstraints!: ResourceConstraints;
 
+  // Interval trackers for cleanup
+  private resourceMonitoringInterval: NodeJS.Timeout | null = null;
+  private priorityRebalancingInterval: NodeJS.Timeout | null = null;
+  private loadBalancingInterval: NodeJS.Timeout | null = null;
+
   constructor() {
     this.initializeGlobalResourceConstraints();
     this.initializeWorkloadBalancer();
@@ -629,7 +634,7 @@ export class PipelineOrchestrationService {
   private startResourceMonitoring(): void {
     console.log('📊 Starting resource monitoring...');
 
-    setInterval(async () => {
+    this.resourceMonitoringInterval = setInterval(async () => {
       await this.updateResourceUtilization();
       await this.detectResourceContentions();
       await this.optimizeResourceDistribution();
@@ -878,7 +883,7 @@ export class PipelineOrchestrationService {
   private startPriorityRebalancing(): void {
     console.log('🎯 Starting priority rebalancing...');
 
-    setInterval(async () => {
+    this.priorityRebalancingInterval = setInterval(async () => {
       await this.rebalancePriorities();
       await this.processHighPriorityQueue();
     }, 15000); // Every 15 seconds
@@ -995,10 +1000,40 @@ export class PipelineOrchestrationService {
   private startLoadBalancingOptimization(): void {
     console.log('⚖️ Starting load balancing optimization...');
 
-    setInterval(async () => {
+    this.loadBalancingInterval = setInterval(async () => {
       await this.optimizeLoadBalancing();
       await this.updateAgentPerformanceMetrics();
     }, 45000); // Every 45 seconds
+  }
+
+  /**
+   * Shutdown and cleanup all resources
+   * Should be called on application shutdown to prevent memory leaks
+   */
+  shutdown(): void {
+    console.log('🛑 PipelineOrchestrationService shutdown initiated...');
+
+    // Stop all monitoring intervals
+    if (this.resourceMonitoringInterval) {
+      clearInterval(this.resourceMonitoringInterval);
+      this.resourceMonitoringInterval = null;
+    }
+    if (this.priorityRebalancingInterval) {
+      clearInterval(this.priorityRebalancingInterval);
+      this.priorityRebalancingInterval = null;
+    }
+    if (this.loadBalancingInterval) {
+      clearInterval(this.loadBalancingInterval);
+      this.loadBalancingInterval = null;
+    }
+
+    // Clear all data structures
+    this.activeOrchestrations.clear();
+    this.resourceAllocations.clear();
+    this.workloadBalancer.clear();
+    this.priorityQueue.clear();
+
+    console.log('✅ PipelineOrchestrationService shutdown complete');
   }
 
   /**

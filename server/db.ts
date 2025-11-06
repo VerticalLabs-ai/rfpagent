@@ -21,10 +21,12 @@ if (!process.env.DATABASE_URL) {
 // Neon serverless driver has been deprecated in favor of standard pg driver
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  // Connection pool configuration for better performance
-  max: 20, // Maximum pool size
-  idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-  connectionTimeoutMillis: 5000, // Return an error after 5 seconds if connection could not be established
+  // Optimized connection pool configuration for Fly.io
+  max: 10, // Reduced from 20 to save memory (10 * ~10MB = ~100MB baseline)
+  min: 2, // Maintain minimum connections for quick response
+  idleTimeoutMillis: 60000, // Close idle clients after 60 seconds (increased from 30s for stability)
+  connectionTimeoutMillis: 10000, // Increased timeout for Fly.io network latency
+  allowExitOnIdle: true, // Allow pool to shut down when all connections are idle
 });
 
 // Initialize Drizzle ORM with the connection pool

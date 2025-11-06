@@ -28,6 +28,10 @@ class ProgressTracker extends EventEmitter {
     'rfp_processing' | 'submission_materials'
   > = new Map();
 
+  // Memory leak protection - limit map sizes
+  private readonly MAX_PROGRESS_ENTRIES = 1000;
+  private readonly MAX_WORKFLOW_TYPES = 1000;
+
   // Processing steps definitions for different workflows
   private readonly WORKFLOW_STEPS = {
     rfp_processing: [
@@ -63,6 +67,21 @@ class ProgressTracker extends EventEmitter {
     url: string,
     workflowType: 'rfp_processing' | 'submission_materials' = 'rfp_processing'
   ): void {
+    // Memory leak protection - enforce size limits
+    if (this.progressMap.size >= this.MAX_PROGRESS_ENTRIES) {
+      const oldestKey = this.progressMap.keys().next().value;
+      if (oldestKey) {
+        this.progressMap.delete(oldestKey);
+        this.sseClients.delete(oldestKey);
+      }
+    }
+    if (this.workflowTypes.size >= this.MAX_WORKFLOW_TYPES) {
+      const oldestKey = this.workflowTypes.keys().next().value;
+      if (oldestKey) {
+        this.workflowTypes.delete(oldestKey);
+      }
+    }
+
     const steps = this.WORKFLOW_STEPS[workflowType] || this.PROCESSING_STEPS;
 
     const progress: RFPProcessingProgress = {
@@ -324,6 +343,35 @@ class ProgressTracker extends EventEmitter {
         }
       }, 5000);
     }
+  }
+
+  /**
+   * Shutdown and cleanup all resources
+   * Should be called on application shutdown to prevent memory leaks
+   */
+  shutdown(): void {
+    console.log('🛑 ProgressTracker shutdown initiated...');
+
+    // Close all SSE clients
+    for (const [sessionId, clients] of this.sseClients) {
+      clients.forEach(client => {
+        try {
+          client.write(
+            `data: ${JSON.stringify({ type: 'shutdown', message: 'Server shutting down' })}\n\n`
+          );
+          client.end();
+        } catch (error) {
+          // Client may already be disconnected
+        }
+      });
+    }
+
+    // Clear all data structures
+    this.progressMap.clear();
+    this.sseClients.clear();
+    this.workflowTypes.clear();
+
+    console.log('✅ ProgressTracker shutdown complete');
   }
 }
 
