@@ -18,12 +18,6 @@ Welcome to the RFP Agent API documentation. This comprehensive guide will help y
 
 ## Quick Start
 
-### Prerequisites
-
-- Node.js 18+ or Python 3.9+
-- API access credentials (contact support@rfpagent.com)
-- Basic understanding of REST APIs and Server-Sent Events (SSE)
-
 ### Installation
 
 ```bash
@@ -31,14 +25,14 @@ Welcome to the RFP Agent API documentation. This comprehensive guide will help y
 npm install @rfpagent/sdk
 
 # Or use the REST API directly
-curl -X GET https://api.rfpagent.com/api/system/health
+curl -X GET https://bidhive.fly.dev/api/system/health
 ```
 
 ### Your First Request
 
 ```javascript
 // JavaScript/TypeScript Example
-const response = await fetch('http://localhost:3000/api/rfps', {
+const response = await fetch('https://bidhive.fly.dev/api/rfps', {
   method: 'GET',
   headers: {
     'Content-Type': 'application/json',
@@ -55,13 +49,18 @@ console.log(`Found ${total} RFPs`);
 import requests
 
 response = requests.get(
-    'http://localhost:3000/api/rfps',
+    'https://bidhive.fly.dev/api/rfps',
     headers={'Content-Type': 'application/json'}
 )
 
 data = response.json()
 print(f"Found {data['total']} RFPs")
 ```
+
+**Base URLs:**
+
+- Production: `https://bidhive.fly.dev`
+- Local Development: `http://localhost:5001` (default dev server)
 
 ## Authentication
 
@@ -71,7 +70,7 @@ Currently, the RFP Agent API uses session-based authentication via cookies.
 
 ```javascript
 // Login to create session
-const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
+const loginResponse = await fetch('https://bidhive.fly.dev/api/auth/login', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
@@ -82,7 +81,7 @@ const loginResponse = await fetch('http://localhost:3000/api/auth/login', {
 });
 
 // Future requests will include session cookie automatically
-const rfpsResponse = await fetch('http://localhost:3000/api/rfps', {
+const rfpsResponse = await fetch('https://bidhive.fly.dev/api/rfps', {
   credentials: 'include',
 });
 ```
@@ -92,7 +91,7 @@ const rfpsResponse = await fetch('http://localhost:3000/api/rfps', {
 ```bash
 # Future: Bearer token authentication
 curl -H "Authorization: Bearer YOUR_API_TOKEN" \
-     https://api.rfpagent.com/api/rfps
+     https://bidhive.fly.dev/api/rfps
 ```
 
 ## Core Concepts
@@ -700,7 +699,7 @@ await fetch('/api/proposals/pipeline/generate', {
  * Complete RFP-to-Submission Workflow
  */
 class RFPAgent {
-  constructor(baseURL = 'http://localhost:3000/api') {
+  constructor(baseURL = 'https://bidhive.fly.dev/api') {
     this.baseURL = baseURL;
   }
 
@@ -892,7 +891,7 @@ from typing import Dict, Optional
 from sseclient import SSEClient  # pip install sseclient-py
 
 class RFPAgentClient:
-    def __init__(self, base_url: str = "http://localhost:3000/api"):
+    def __init__(self, base_url: str = "https://bidhive.fly.dev/api"):
         self.base_url = base_url
         self.session = requests.Session()
 
@@ -987,25 +986,38 @@ if __name__ == '__main__':
 
 ## Support
 
-- **Documentation**: https://docs.rfpagent.com
-- **API Status**: https://status.rfpagent.com
-- **Support Email**: support@rfpagent.com
-- **GitHub Issues**: https://github.com/VerticalLabs-ai/rfpagent/issues
+- **Live Application**: <https://bidhive.fly.dev>
+- **API Base URL**: <https://bidhive.fly.dev/api>
+- **Health Check**: <https://bidhive.fly.dev/health>
+- **GitHub Repository**: <https://github.com/VerticalLabs-ai/rfpagent>
+- **Issues & Support**: <https://github.com/VerticalLabs-ai/rfpagent/issues>
 
 ## Changelog
 
-### Version 1.0.0 (Current)
+### Version 1.0.1 (Current - January 2025)
+
+- **Production Deployment**: Live at <https://bidhive.fly.dev>
+- **API Route Fix**: Resolved catch-all routing issue for API endpoints
+- **Documentation Update**: All examples now use production URLs
+- Rate limiting: 100 req/15min (standard), 20 req/min (AI), 5 req/min (heavy)
+- Request correlation tracking enabled
+- WebSocket real-time updates operational
+
+### Version 1.0.0 (October 2025)
 
 - Initial API release
 - Session-based authentication
 - Core RFP, Proposal, and Portal endpoints
 - Real-time SSE updates
-- 3-tier agent system
+- 3-tier agent system (1 orchestrator, 3 managers, 7 specialists)
+- Database: PostgreSQL with Drizzle ORM
+- AI Integration: OpenAI GPT-4/5, Anthropic Claude 4.5
 
 ### Upcoming Features
 
-- JWT authentication
+- JWT authentication and API keys
 - Webhooks for async notifications
-- GraphQL API
-- Advanced analytics endpoints
-- Bulk import/export
+- GraphQL API endpoint
+- Advanced analytics and reporting
+- Bulk import/export operations
+- Enhanced search and filtering

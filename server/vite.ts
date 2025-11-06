@@ -104,7 +104,12 @@ export function serveStatic(app: Express) {
   app.use(express.static(publicPath));
 
   // fall through to index.html if the file doesn't exist (Express 5.x named wildcard)
-  app.get('/*splat', (_req, res) => {
+  // IMPORTANT: Only serve index.html for non-API routes
+  app.get('/*splat', (_req, res, next) => {
+    // Skip catch-all for API routes - let them 404 properly
+    if (_req.path.startsWith('/api')) {
+      return next();
+    }
     res.sendFile(path.resolve(publicPath, 'index.html'));
   });
 }
