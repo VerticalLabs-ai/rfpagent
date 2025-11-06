@@ -4,7 +4,7 @@ services:
     env: node
     region: oregon
     plan: starter # Upgrade to 'standard' (2GB RAM) or 'pro' (4GB RAM) if still experiencing OOM
-    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    buildCommand: pnpm install && pnpm run build
     startCommand: pnpm start
     envVars:
       - key: NODE_ENV
