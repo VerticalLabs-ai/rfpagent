@@ -130,8 +130,8 @@ app.use((req, res, next) => {
 
   // Defer heavy initialization on memory-constrained environments
   // This allows the server to start and respond to health checks first
-  const deferHeavyInit = process.env.DEFER_AGENT_INIT === 'true' ||
-                         process.env.RENDER === 'true';
+  const deferHeavyInit =
+    process.env.DEFER_AGENT_INIT === 'true' || process.env.RENDER === 'true';
 
   if (deferHeavyInit) {
     log('⏳ Deferring agent initialization (memory-constrained mode)');
@@ -219,7 +219,7 @@ app.use((req, res, next) => {
       status: 'ok',
       service: 'RFP Agent Platform',
       version: process.env.npm_package_version || '1.0.0',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   });
 

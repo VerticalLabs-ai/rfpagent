@@ -43,31 +43,36 @@ export function ProposalDetail({
         return {
           icon: CheckCircle2,
           label: 'Submitted',
-          className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+          className:
+            'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
         };
       case 'review':
         return {
           icon: Clock,
           label: 'In Review',
-          className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+          className:
+            'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
         };
       case 'won':
         return {
           icon: Trophy,
           label: 'Won',
-          className: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+          className:
+            'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
         };
       case 'lost':
         return {
           icon: XCircle,
           label: 'Lost',
-          className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+          className:
+            'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
         };
       default:
         return {
           icon: FileText,
           label: 'Draft',
-          className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+          className:
+            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
         };
     }
   };
@@ -81,11 +86,23 @@ export function ProposalDetail({
       : (proposal.content as ProposalContent);
 
   const sections = [
-    { key: 'executiveSummary', label: 'Executive Summary', content: content.executiveSummary },
-    { key: 'technicalApproach', label: 'Technical Approach', content: content.technicalApproach },
+    {
+      key: 'executiveSummary',
+      label: 'Executive Summary',
+      content: content.executiveSummary,
+    },
+    {
+      key: 'technicalApproach',
+      label: 'Technical Approach',
+      content: content.technicalApproach,
+    },
     { key: 'pricing', label: 'Pricing', content: content.pricing },
     { key: 'timeline', label: 'Timeline', content: content.timeline },
-    { key: 'qualifications', label: 'Qualifications', content: content.qualifications },
+    {
+      key: 'qualifications',
+      label: 'Qualifications',
+      content: content.qualifications,
+    },
   ];
 
   const handleEdit = (sectionKey: string, currentContent: string) => {
@@ -146,18 +163,24 @@ export function ProposalDetail({
         <CardContent>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="font-medium text-muted-foreground">Created:</span>
+              <span className="font-medium text-muted-foreground">
+                Created:
+              </span>
               <div>{format(new Date(proposal.createdAt), 'PPpp')}</div>
             </div>
             {proposal.updatedAt && (
               <div>
-                <span className="font-medium text-muted-foreground">Updated:</span>
+                <span className="font-medium text-muted-foreground">
+                  Updated:
+                </span>
                 <div>{format(new Date(proposal.updatedAt), 'PPpp')}</div>
               </div>
             )}
             {proposal.qualityScore !== undefined && (
               <div>
-                <span className="font-medium text-muted-foreground">Quality Score:</span>
+                <span className="font-medium text-muted-foreground">
+                  Quality Score:
+                </span>
                 <div className="font-mono text-lg">
                   {(proposal.qualityScore * 100).toFixed(1)}%
                 </div>
@@ -165,7 +188,9 @@ export function ProposalDetail({
             )}
             {proposal.submissionDate && (
               <div>
-                <span className="font-medium text-muted-foreground">Submitted:</span>
+                <span className="font-medium text-muted-foreground">
+                  Submitted:
+                </span>
                 <div>{format(new Date(proposal.submissionDate), 'PPpp')}</div>
               </div>
             )}
@@ -175,22 +200,25 @@ export function ProposalDetail({
 
       {/* Sections */}
       <div className="space-y-4">
-        {sections.map((section) => (
+        {sections.map(section => (
           <Card key={section.key}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{section.label}</CardTitle>
-                {proposal.status === 'draft' && editingSection !== section.key && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleEdit(section.key, section.content || '')}
-                    className="gap-2"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit
-                  </Button>
-                )}
+                {proposal.status === 'draft' &&
+                  editingSection !== section.key && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleEdit(section.key, section.content || '')
+                      }
+                      className="gap-2"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit
+                    </Button>
+                  )}
               </div>
             </CardHeader>
             <CardContent>
@@ -198,7 +226,7 @@ export function ProposalDetail({
                 <div className="space-y-3">
                   <Textarea
                     value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
+                    onChange={e => setEditContent(e.target.value)}
                     rows={12}
                     className="font-mono text-sm"
                     disabled={isUpdating}
@@ -225,7 +253,9 @@ export function ProposalDetail({
                 </div>
               ) : (
                 <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <p className="whitespace-pre-wrap">{section.content || 'No content yet.'}</p>
+                  <p className="whitespace-pre-wrap">
+                    {section.content || 'No content yet.'}
+                  </p>
                 </div>
               )}
             </CardContent>

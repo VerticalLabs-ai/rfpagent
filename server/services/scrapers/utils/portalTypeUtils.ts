@@ -10,7 +10,10 @@ const AUSTIN_PORTAL_ALIASES = new Set([
 export function normalizePortalType(
   portalType: string | null | undefined
 ): string {
-  return (portalType || '').toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+  return (portalType || '')
+    .toLowerCase()
+    .replace(/[\s_-]+/g, ' ')
+    .trim();
 }
 
 export function shouldUseAustinPortalExtraction(

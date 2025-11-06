@@ -10,10 +10,7 @@ import path from 'path';
 import fs from 'fs/promises';
 
 // Domain allowlist for security
-const ALLOWED_DOMAINS = [
-  'beaconbid.com',
-  'www.beaconbid.com',
-];
+const ALLOWED_DOMAINS = ['beaconbid.com', 'www.beaconbid.com'];
 
 // Schema for document extraction
 const documentExtractionSchema = z.object({
@@ -33,10 +30,7 @@ const documentExtractionSchema = z.object({
           .string()
           .optional()
           .describe('File type (pdf, doc, xls, dwg, etc.)'),
-        size: z
-          .string()
-          .optional()
-          .describe('File size if available'),
+        size: z.string().optional().describe('File size if available'),
       })
     )
     .describe('Array of available documents for download'),
@@ -177,7 +171,10 @@ export class BeaconBidDocumentScraper {
 
           // Determine document properties
           const fileType = this.determineFileType(docInfo.name, resolvedUrl);
-          const category = this.categorizeDocument(docInfo.name, docInfo.category);
+          const category = this.categorizeDocument(
+            docInfo.name,
+            docInfo.category
+          );
           const needsFillOut = this.determineIfNeedsFillOut(
             docInfo.name,
             category
@@ -413,7 +410,14 @@ export class BeaconBidDocumentScraper {
     if (['bid_form', 'price_form', 'submittal'].includes(category)) {
       return true;
     }
-    if (['solicitation_document', 'specifications', 'plans_drawings', 'addendum'].includes(category)) {
+    if (
+      [
+        'solicitation_document',
+        'specifications',
+        'plans_drawings',
+        'addendum',
+      ].includes(category)
+    ) {
       return false;
     }
 

@@ -76,7 +76,12 @@ export function serveStatic(app: Express) {
   const distPath = path.resolve(import.meta.dirname, 'public');
 
   // Fallback: if public doesn't exist at dist/public, try ../dist/public
-  const fallbackPath = path.resolve(import.meta.dirname, '..', 'dist', 'public');
+  const fallbackPath = path.resolve(
+    import.meta.dirname,
+    '..',
+    'dist',
+    'public'
+  );
 
   let publicPath = distPath;
   if (!fs.existsSync(distPath) && fs.existsSync(fallbackPath)) {

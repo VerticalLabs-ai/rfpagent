@@ -366,10 +366,7 @@ export class WorkflowCoordinator {
             );
           }
         } catch (strategyError) {
-          console.error(
-            '❌ Failed to apply SAFLA strategy:',
-            strategyError
-          );
+          console.error('❌ Failed to apply SAFLA strategy:', strategyError);
         }
       }
 
@@ -943,10 +940,7 @@ export class WorkflowCoordinator {
 
       const humanActionItems = proposalResult.humanActionItems || [];
       const improvementAreas = humanActionItems.map(
-        item =>
-          item.description ||
-          item.id ||
-          'Follow-up action required'
+        item => item.description || item.id || 'Follow-up action required'
       );
 
       if (this.enableLearning) {
@@ -1136,7 +1130,8 @@ export class WorkflowCoordinator {
           method: 'document_validation',
           extractedFields: [],
           processingTime: validationDetails.metadata?.processingTime || 0,
-          errors: validationDetails.issues || (result.error ? [result.error] : []),
+          errors:
+            validationDetails.issues || (result.error ? [result.error] : []),
           suggestions: result.nextActions || [],
           quality: validationDetails.readableContent ? 'high' : 'unknown',
         };
@@ -1598,8 +1593,7 @@ export class WorkflowCoordinator {
           
           Provide compliance assessment, identify requirements, and highlight any risk factors.`;
 
-        const analysisResult =
-          await complianceAgent.generate(analysisPrompt);
+        const analysisResult = await complianceAgent.generate(analysisPrompt);
         context.data.complianceAnalysis = analysisResult.text;
       }
 
@@ -1617,8 +1611,7 @@ export class WorkflowCoordinator {
           Focus on: historical bidding patterns, competitor landscape, market conditions, and pricing strategies.
           Provide strategic recommendations for bidding approach.`;
 
-        const researchResult =
-          await researchAgent.generate(researchPrompt);
+        const researchResult = await researchAgent.generate(researchPrompt);
         context.data.marketResearch = researchResult.text;
       }
 
@@ -1741,8 +1734,7 @@ export class WorkflowCoordinator {
           - Team qualifications
           - Pricing strategy`;
 
-        const proposalResult =
-          await proposalAgent.generate(generationPrompt);
+        const proposalResult = await proposalAgent.generate(generationPrompt);
         context.data.proposalContent = proposalResult.text;
       }
 
@@ -2514,8 +2506,7 @@ export class WorkflowCoordinator {
             data: result.data,
             strategyApplied: saflaStrategy ? 1 : 0,
             strategyConfidence:
-              (saflaStrategyMetadata &&
-                saflaStrategyMetadata.confidence) ||
+              (saflaStrategyMetadata && saflaStrategyMetadata.confidence) ||
               (saflaStrategyMetadata &&
                 saflaStrategyMetadata.confidenceScore) ||
               (typeof saflaStrategyMetadata?.confidence === 'number'

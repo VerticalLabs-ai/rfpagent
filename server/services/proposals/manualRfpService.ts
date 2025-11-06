@@ -357,26 +357,30 @@ Respond with JSON only:
     try {
       // Extract RFP ID from BeaconBid URL (format: /solicitations/city-of-houston/[uuid]/title)
       const urlParts = url.split('/');
-      const uuidIndex = urlParts.findIndex(part => part.length === 36 && part.includes('-'));
-      const rfpId = uuidIndex > 0 ? urlParts[uuidIndex] : `beaconbid-${Date.now()}`;
+      const uuidIndex = urlParts.findIndex(
+        part => part.length === 36 && part.includes('-')
+      );
+      const rfpId =
+        uuidIndex > 0 ? urlParts[uuidIndex] : `beaconbid-${Date.now()}`;
 
       console.log(`[ManualRfpService] Extracting BeaconBid RFP: ${rfpId}`);
 
       // Import BeaconBid document scraper dynamically
-      const { BeaconBidDocumentScraper } = await import('../scrapers/beaconBidDocumentScraper');
+      const { BeaconBidDocumentScraper } = await import(
+        '../scrapers/beaconBidDocumentScraper'
+      );
       const beaconBidScraper = new BeaconBidDocumentScraper();
 
       // Use the document scraper to get RFP details and documents
-      const documents = await beaconBidScraper.scrapeRFPDocuments(
-        rfpId,
-        url
-      );
+      const documents = await beaconBidScraper.scrapeRFPDocuments(rfpId, url);
 
       // Extract basic details from the page
       const rfpDetails = {
         title: `BeaconBid RFP ${rfpId}`,
         description: 'RFP from BeaconBid portal',
-        agency: urlParts[urlParts.indexOf('solicitations') + 1]?.replace(/-/g, ' ') || 'Unknown Agency',
+        agency:
+          urlParts[urlParts.indexOf('solicitations') + 1]?.replace(/-/g, ' ') ||
+          'Unknown Agency',
         deadline: undefined,
         estimatedValue: undefined,
         requirements: {},

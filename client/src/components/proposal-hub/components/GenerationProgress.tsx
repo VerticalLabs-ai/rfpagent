@@ -3,7 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Clock, Loader2, AlertCircle, Pause, Play, X } from 'lucide-react';
+import {
+  CheckCircle,
+  Clock,
+  Loader2,
+  AlertCircle,
+  Pause,
+  Play,
+  X,
+} from 'lucide-react';
 import { GenerationProgress as GenerationProgressType } from '../types';
 
 interface GenerationProgressProps {
@@ -100,7 +108,7 @@ export function GenerationProgress({
 
         {/* Steps */}
         <div className="space-y-3">
-          {progress.steps.map((step) => (
+          {progress.steps.map(step => (
             <div
               key={step.id}
               className={`flex items-start gap-3 p-3 rounded-lg transition-colors ${
@@ -130,8 +138,8 @@ export function GenerationProgress({
         {/* Helpful tip */}
         <div className="bg-muted/50 rounded-lg p-4 border border-border">
           <p className="text-sm text-muted-foreground">
-            💡 <span className="font-medium">Tip:</span> You can scroll down to view
-            past proposals while generation continues.
+            💡 <span className="font-medium">Tip:</span> You can scroll down to
+            view past proposals while generation continues.
           </p>
         </div>
       </CardContent>

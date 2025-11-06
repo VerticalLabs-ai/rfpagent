@@ -55,7 +55,8 @@ export function RFPSidebar({
               Generate Proposal
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              AI agents will process this RFP and create a complete proposal with real-time progress tracking
+              AI agents will process this RFP and create a complete proposal
+              with real-time progress tracking
             </p>
           </div>
 

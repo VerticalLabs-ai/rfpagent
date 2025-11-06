@@ -36,31 +36,36 @@ export function ProposalCard({
         return {
           icon: CheckCircle2,
           label: 'Submitted',
-          className: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
+          className:
+            'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
         };
       case 'review':
         return {
           icon: Clock,
           label: 'In Review',
-          className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+          className:
+            'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
         };
       case 'won':
         return {
           icon: Trophy,
           label: 'Won',
-          className: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
+          className:
+            'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300',
         };
       case 'lost':
         return {
           icon: XCircle,
           label: 'Lost',
-          className: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+          className:
+            'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
         };
       default:
         return {
           icon: FileText,
           label: 'Draft',
-          className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+          className:
+            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
         };
     }
   };

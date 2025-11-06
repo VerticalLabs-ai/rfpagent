@@ -346,13 +346,20 @@ router.post('/:id/download-documents', async (req, res) => {
     let savedDocuments: any[] = [];
 
     // Austin Finance Portal
-    if (rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
-        rfp.sourceUrl.includes('austintexas.gov')) {
+    if (
+      rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+      rfp.sourceUrl.includes('austintexas.gov')
+    ) {
       console.log('🏛️ Using Austin Finance document scraper');
-      const austinScraper = new (await import('../services/scrapers/austinFinanceDocumentScraper')).AustinFinanceDocumentScraper();
+      const austinScraper = new (
+        await import('../services/scrapers/austinFinanceDocumentScraper')
+      ).AustinFinanceDocumentScraper();
 
       try {
-        const documents = await austinScraper.scrapeRFPDocuments(id, rfp.sourceUrl);
+        const documents = await austinScraper.scrapeRFPDocuments(
+          id,
+          rfp.sourceUrl
+        );
         savedDocuments = documents;
 
         // Convert to results format for consistency
@@ -363,23 +370,32 @@ router.post('/:id/download-documents', async (req, res) => {
           fileType: doc.fileType,
         }));
 
-        console.log(`✅ Downloaded ${documents.length} documents from Austin Finance`);
+        console.log(
+          `✅ Downloaded ${documents.length} documents from Austin Finance`
+        );
       } catch (error) {
         console.error('Austin Finance document download failed:', error);
-        results = [{
-          name: 'Document download failed',
-          downloadStatus: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        }];
+        results = [
+          {
+            name: 'Document download failed',
+            downloadStatus: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ];
       }
     }
     // BeaconBid Portal
     else if (rfp.sourceUrl.includes('beaconbid.com')) {
       console.log('🏛️ Using BeaconBid document scraper');
-      const beaconBidScraper = new (await import('../services/scrapers/beaconBidDocumentScraper')).BeaconBidDocumentScraper();
+      const beaconBidScraper = new (
+        await import('../services/scrapers/beaconBidDocumentScraper')
+      ).BeaconBidDocumentScraper();
 
       try {
-        const documents = await beaconBidScraper.scrapeRFPDocuments(id, rfp.sourceUrl);
+        const documents = await beaconBidScraper.scrapeRFPDocuments(
+          id,
+          rfp.sourceUrl
+        );
         savedDocuments = documents;
 
         // Convert to results format for consistency
@@ -390,14 +406,18 @@ router.post('/:id/download-documents', async (req, res) => {
           fileType: doc.fileType,
         }));
 
-        console.log(`✅ Downloaded ${documents.length} documents from BeaconBid`);
+        console.log(
+          `✅ Downloaded ${documents.length} documents from BeaconBid`
+        );
       } catch (error) {
         console.error('BeaconBid document download failed:', error);
-        results = [{
-          name: 'Document download failed',
-          downloadStatus: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        }];
+        results = [
+          {
+            name: 'Document download failed',
+            downloadStatus: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          },
+        ];
       }
     }
     // Philadelphia Portal
@@ -434,10 +454,13 @@ router.post('/:id/download-documents', async (req, res) => {
     }
     // Unsupported portal type
     else {
-      console.warn(`⚠️ Unsupported portal type for document download: ${rfp.sourceUrl}`);
+      console.warn(
+        `⚠️ Unsupported portal type for document download: ${rfp.sourceUrl}`
+      );
       return res.status(400).json({
         error: 'Unsupported portal type',
-        message: 'Document download is currently only supported for Austin Finance, BeaconBid, and Philadelphia portals.',
+        message:
+          'Document download is currently only supported for Austin Finance, BeaconBid, and Philadelphia portals.',
         portalUrl: rfp.sourceUrl,
       });
     }
@@ -492,13 +515,15 @@ router.post('/:id/download-documents', async (req, res) => {
     }
 
     // Determine portal type for response
-    const portalType = rfp.sourceUrl.includes('financeonline.austintexas.gov') || rfp.sourceUrl.includes('austintexas.gov')
-      ? 'Austin Finance'
-      : rfp.sourceUrl.includes('beaconbid.com')
-      ? 'BeaconBid'
-      : rfp.sourceUrl.includes('phlcontracts.phila.gov')
-      ? 'Philadelphia'
-      : 'Unknown';
+    const portalType =
+      rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+      rfp.sourceUrl.includes('austintexas.gov')
+        ? 'Austin Finance'
+        : rfp.sourceUrl.includes('beaconbid.com')
+          ? 'BeaconBid'
+          : rfp.sourceUrl.includes('phlcontracts.phila.gov')
+            ? 'Philadelphia'
+            : 'Unknown';
 
     res.json({
       success: true,

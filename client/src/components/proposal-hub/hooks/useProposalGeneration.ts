@@ -14,7 +14,11 @@ export function useProposalGeneration() {
   const { toast } = useToast();
 
   const generateMutation = useMutation({
-    mutationFn: async ({ rfpId, companyProfileId, options }: GenerateProposalOptions) => {
+    mutationFn: async ({
+      rfpId,
+      companyProfileId,
+      options,
+    }: GenerateProposalOptions) => {
       // Get company profile if not provided
       let profileId = companyProfileId;
       if (!profileId) {
@@ -22,7 +26,9 @@ export function useProposalGeneration() {
         const profiles = await profilesResponse.json();
 
         if (!profiles || profiles.length === 0) {
-          throw new Error('No company profiles found. Please create a company profile first.');
+          throw new Error(
+            'No company profiles found. Please create a company profile first.'
+          );
         }
         profileId = profiles[0].id;
       }
@@ -53,7 +59,9 @@ export function useProposalGeneration() {
       setSessionId(null);
       toast({
         title: 'Generation Failed',
-        description: error?.message || 'Failed to start proposal generation. Please try again.',
+        description:
+          error?.message ||
+          'Failed to start proposal generation. Please try again.',
         variant: 'destructive',
       });
     },

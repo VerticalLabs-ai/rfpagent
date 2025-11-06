@@ -969,7 +969,9 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           </Button>
         </div>
         <p className="text-sm text-muted-foreground mt-2">
-          View and manage AI-generated proposals for this RFP. Use "Regenerate Proposal" to create a new version with the latest AI enhancements.
+          View and manage AI-generated proposals for this RFP. Use
+          &ldquo;Regenerate Proposal&rdquo; to create a new version with the
+          latest AI enhancements.
         </p>
       </CardHeader>
       <CardContent>
@@ -1064,7 +1066,9 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground mt-2">
-                          This is a generated proposal. Use the "Regenerate Proposal" button in the header to create a new version with enhanced AI processing.
+                          This is a generated proposal. Use the
+                          &ldquo;Regenerate Proposal&rdquo; button in the header
+                          to create a new version with enhanced AI processing.
                         </p>
                       </DialogHeader>
                       <ScrollArea className="max-h-[75vh] pr-4">

@@ -18,7 +18,9 @@ export function EmptyState({ onGenerate, isGenerating }: EmptyStateProps) {
         <h3 className="text-2xl font-bold mb-2">No Proposals Yet</h3>
 
         <p className="text-muted-foreground text-center mb-6 max-w-md">
-          Generate your first AI-powered proposal for this RFP. Our intelligent agents will analyze requirements and create a comprehensive, compliant response.
+          Generate your first AI-powered proposal for this RFP. Our intelligent
+          agents will analyze requirements and create a comprehensive, compliant
+          response.
         </p>
 
         <Button
@@ -34,7 +36,9 @@ export function EmptyState({ onGenerate, isGenerating }: EmptyStateProps) {
         <div className="mt-8 grid grid-cols-3 gap-6 text-center text-sm text-muted-foreground max-w-2xl">
           <div>
             <div className="font-semibold text-foreground mb-1">AI-Powered</div>
-            <div>Uses GPT-5 and Claude 4.5 for intelligent content generation</div>
+            <div>
+              Uses GPT-5 and Claude 4.5 for intelligent content generation
+            </div>
           </div>
           <div>
             <div className="font-semibold text-foreground mb-1">Compliant</div>

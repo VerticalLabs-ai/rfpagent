@@ -48,7 +48,9 @@ export function useProposals(rfpId: string) {
         title: 'Proposal Deleted',
         description: 'The proposal has been deleted successfully.',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', rfpId],
+      });
     },
     onError: (error: any) => {
       toast({
@@ -61,7 +63,11 @@ export function useProposals(rfpId: string) {
 
   // Update proposal section
   const updateProposalMutation = useMutation({
-    mutationFn: async ({ proposalId, section, content }: {
+    mutationFn: async ({
+      proposalId,
+      section,
+      content,
+    }: {
       proposalId: string;
       section: string;
       content: string;
@@ -81,7 +87,9 @@ export function useProposals(rfpId: string) {
         title: 'Section Updated',
         description: 'Proposal section updated successfully.',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', rfpId],
+      });
     },
     onError: (error: any) => {
       toast({

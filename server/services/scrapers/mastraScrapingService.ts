@@ -3426,9 +3426,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                            Only extract actual procurement opportunities or RFPs.`,
 
               schema: z.object({
-                opportunities: z.array(OpportunitySchema.extend({
-                  solicitationId: z.string().optional(),
-                })),
+                opportunities: z.array(
+                  OpportunitySchema.extend({
+                    solicitationId: z.string().optional(),
+                  })
+                ),
               }),
             } as any)) as { opportunities: any[] };
 

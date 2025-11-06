@@ -6,7 +6,7 @@ export function extractSaflaStrategyDetails(
 } {
   if (!inputs || typeof inputs !== 'object') {
     return { strategy: null, metadata: null };
-}
+  }
 
   const { saflaStrategy, saflaStrategyMetadata } = inputs as {
     saflaStrategy?: Record<string, any>;
@@ -15,13 +15,10 @@ export function extractSaflaStrategyDetails(
 
   return {
     strategy:
-      saflaStrategy && typeof saflaStrategy === 'object'
-        ? saflaStrategy
-        : null,
+      saflaStrategy && typeof saflaStrategy === 'object' ? saflaStrategy : null,
     metadata:
       saflaStrategyMetadata && typeof saflaStrategyMetadata === 'object'
         ? saflaStrategyMetadata
         : null,
   };
 }
-

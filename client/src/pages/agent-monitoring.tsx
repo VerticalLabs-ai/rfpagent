@@ -650,9 +650,7 @@ export default function AgentMonitoring() {
                         className={`flex items-start gap-3 p-4 rounded-lg border ${statusStyles} hover:shadow-sm transition-all`}
                         data-testid={`activity-item-${index}`}
                       >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {statusIcon}
-                        </div>
+                        <div className="flex-shrink-0 mt-0.5">{statusIcon}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">

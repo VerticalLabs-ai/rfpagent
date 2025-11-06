@@ -7,7 +7,10 @@ export function useProposalProgress(sessionId: string | null) {
 
   // Initialize progress when session starts
   useEffect(() => {
-    if (sessionId && !progress) {
+    if (!sessionId || progress) return;
+
+    // Defer setState to avoid cascading renders
+    setTimeout(() => {
       setProgress({
         sessionId,
         currentStep: 'init',
@@ -15,13 +18,14 @@ export function useProposalProgress(sessionId: string | null) {
         steps: [...GENERATION_STEPS],
         elapsedTime: 0,
       });
-    }
+    }, 0);
   }, [sessionId, progress]);
 
   // Track elapsed time
   useEffect(() => {
     if (!sessionId) {
-      setElapsedTime(0);
+      // Defer setState to avoid cascading renders
+      setTimeout(() => setElapsedTime(0), 0);
       return;
     }
 
@@ -36,7 +40,8 @@ export function useProposalProgress(sessionId: string | null) {
   // SSE connection for real-time progress
   useEffect(() => {
     if (!sessionId) {
-      setProgress(null);
+      // Defer setState to avoid cascading renders
+      setTimeout(() => setProgress(null), 0);
       return;
     }
 
@@ -45,16 +50,16 @@ export function useProposalProgress(sessionId: string | null) {
       `/api/proposals/submission-materials/progress/${sessionId}`
     );
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       try {
         const data = JSON.parse(event.data);
         console.log('📊 Progress update:', data);
 
-        setProgress((prev) => {
+        setProgress(prev => {
           if (!prev) return null;
 
           const updatedSteps = [...prev.steps];
-          const stepIndex = updatedSteps.findIndex((s) => s.id === data.step);
+          const stepIndex = updatedSteps.findIndex(s => s.id === data.step);
 
           if (stepIndex !== -1) {
             updatedSteps[stepIndex] = {
@@ -65,9 +70,13 @@ export function useProposalProgress(sessionId: string | null) {
           }
 
           // Calculate overall progress
-          const completedSteps = updatedSteps.filter((s) => s.status === 'completed').length;
+          const completedSteps = updatedSteps.filter(
+            s => s.status === 'completed'
+          ).length;
           const totalSteps = updatedSteps.length;
-          const overallProgress = Math.round((completedSteps / totalSteps) * 100);
+          const overallProgress = Math.round(
+            (completedSteps / totalSteps) * 100
+          );
 
           return {
             ...prev,
@@ -82,7 +91,7 @@ export function useProposalProgress(sessionId: string | null) {
       }
     };
 
-    eventSource.onerror = (error) => {
+    eventSource.onerror = error => {
       console.error('SSE connection error:', error);
       eventSource.close();
     };

@@ -78,14 +78,19 @@ export function RFPDocuments({
                       <div className="flex items-center gap-3">
                         <FileText className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{doc.filename}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {doc.filename}
+                          </p>
                           <p className="text-xs text-gray-600 dark:text-gray-400">
                             {doc.fileType.toUpperCase()} •{' '}
                             {(doc.parsedData as any)?.category || 'Document'}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="text-orange-600 dark:text-orange-300 border-orange-300 dark:border-orange-700 bg-transparent dark:bg-orange-950/30">
+                      <Badge
+                        variant="outline"
+                        className="text-orange-600 dark:text-orange-300 border-orange-300 dark:border-orange-700 bg-transparent dark:bg-orange-950/30"
+                      >
                         Needs Completion
                       </Badge>
                     </div>
@@ -131,10 +136,11 @@ export function RFPDocuments({
               <FileText className="h-4 w-4" />
               <AlertDescription>
                 No documents have been downloaded for this RFP yet.
-                {rfp.sourceUrl && (rfp.sourceUrl.includes('phlcontracts.phila.gov') ||
-                                   rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
-                                   rfp.sourceUrl.includes('austintexas.gov') ||
-                                   rfp.sourceUrl.includes('beaconbid.com'))
+                {rfp.sourceUrl &&
+                (rfp.sourceUrl.includes('phlcontracts.phila.gov') ||
+                  rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
+                  rfp.sourceUrl.includes('austintexas.gov') ||
+                  rfp.sourceUrl.includes('beaconbid.com'))
                   ? ' Click below to download documents from the portal.'
                   : ' Documents will be automatically captured during the next portal scan.'}
               </AlertDescription>
@@ -144,61 +150,65 @@ export function RFPDocuments({
             {rfp.sourceUrl && (
               <>
                 {/* Philadelphia Portal */}
-                {rfp.sourceUrl.includes('phlcontracts.phila.gov') && Boolean(rfp.requirements) && (
-                  <div className="space-y-2">
-                    {extractedDocNames.length > 0 ? (
-                      <>
-                        <p className="text-sm text-muted-foreground">
-                          {extractedDocNames.length} documents identified from the
-                          Philadelphia portal:
-                        </p>
-                        <ul className="text-xs text-muted-foreground space-y-1 ml-4">
-                          {extractedDocNames
-                            .slice(0, 5)
-                            .map((name: string, idx: number) => (
-                              <li key={idx}>• {name}</li>
-                            ))}
-                          {extractedDocNames.length > 5 && (
-                            <li>• ...and {extractedDocNames.length - 5} more</li>
-                          )}
-                        </ul>
-                        <Button
-                          onClick={onDownloadDocs}
-                          disabled={isDownloading}
-                          className="w-full"
-                          data-testid="button-download-documents"
-                        >
-                          {isDownloading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Downloading Documents...
-                            </>
-                          ) : (
-                            <>
-                              <FileDown className="w-4 h-4 mr-2" />
-                              Download All Documents
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    ) : (
-                      <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>
-                          No document information found in the RFP data. Please
-                          re-scrape the RFP to identify documents.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </div>
-                )}
+                {rfp.sourceUrl.includes('phlcontracts.phila.gov') &&
+                  Boolean(rfp.requirements) && (
+                    <div className="space-y-2">
+                      {extractedDocNames.length > 0 ? (
+                        <>
+                          <p className="text-sm text-muted-foreground">
+                            {extractedDocNames.length} documents identified from
+                            the Philadelphia portal:
+                          </p>
+                          <ul className="text-xs text-muted-foreground space-y-1 ml-4">
+                            {extractedDocNames
+                              .slice(0, 5)
+                              .map((name: string, idx: number) => (
+                                <li key={idx}>• {name}</li>
+                              ))}
+                            {extractedDocNames.length > 5 && (
+                              <li>
+                                • ...and {extractedDocNames.length - 5} more
+                              </li>
+                            )}
+                          </ul>
+                          <Button
+                            onClick={onDownloadDocs}
+                            disabled={isDownloading}
+                            className="w-full"
+                            data-testid="button-download-documents"
+                          >
+                            {isDownloading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Downloading Documents...
+                              </>
+                            ) : (
+                              <>
+                                <FileDown className="w-4 h-4 mr-2" />
+                                Download All Documents
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      ) : (
+                        <Alert variant="destructive">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>
+                            No document information found in the RFP data.
+                            Please re-scrape the RFP to identify documents.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+                  )}
 
                 {/* Austin Finance Portal */}
                 {(rfp.sourceUrl.includes('financeonline.austintexas.gov') ||
                   rfp.sourceUrl.includes('austintexas.gov')) && (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      Documents will be automatically discovered from the Austin Finance portal page.
+                      Documents will be automatically discovered from the Austin
+                      Finance portal page.
                     </p>
                     <Button
                       onClick={onDownloadDocs}
@@ -225,7 +235,8 @@ export function RFPDocuments({
                 {rfp.sourceUrl.includes('beaconbid.com') && (
                   <div className="space-y-2">
                     <p className="text-sm text-muted-foreground">
-                      Documents will be automatically discovered from the BeaconBid solicitation page.
+                      Documents will be automatically discovered from the
+                      BeaconBid solicitation page.
                     </p>
                     <Button
                       onClick={onDownloadDocs}
