@@ -135,8 +135,7 @@ Remember: You don't execute tasks yourself - you coordinate agents who do the wo
   inputProcessors: [
     orchestratorPromptGuard,
     orchestratorPiiGuard,
-    orchestratorInboundModeration,
   ],
-  outputProcessors: [orchestratorTokenLimiter, orchestratorOutboundModeration],
+  outputProcessors: [orchestratorTokenLimiter],
   memory: sharedMemory,
 });

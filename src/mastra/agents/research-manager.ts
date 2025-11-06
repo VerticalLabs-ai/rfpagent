@@ -193,8 +193,8 @@ Build and maintain research knowledge:
 Remember: Your research drives strategic decision-making. Provide rigorous analysis, data-driven insights, and clear recommendations that maximize win probability.
 `,
   model: analyticalModel, // Claude Sonnet 4.5 - optimal for analytical research
-  inputProcessors: [researchPromptGuard, researchPiiGuard, researchModeration],
-  outputProcessors: [researchTokenLimiter, researchModeration],
+  inputProcessors: [researchPromptGuard, researchPiiGuard],
+  outputProcessors: [researchTokenLimiter],
   tools: {
     // Coordination tools
     requestSpecialist,
