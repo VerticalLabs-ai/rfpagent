@@ -4,8 +4,8 @@ services:
     env: node
     region: oregon
     plan: starter # Upgrade to 'standard' (2GB RAM) or 'pro' (4GB RAM) if still experiencing OOM
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    buildCommand: pnpm install --frozen-lockfile && pnpm run build
+    startCommand: pnpm start
     envVars:
       - key: NODE_ENV
         value: production
