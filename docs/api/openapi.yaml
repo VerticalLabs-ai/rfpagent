@@ -23,16 +23,16 @@ info:
     Currently, the API uses session-based authentication. API key support is planned for future releases.
 
   contact:
-    name: RFP Agent Support
-    email: support@rfpagent.com
+    name: BidHive Support
+    url: https://github.com/VerticalLabs-ai/rfpagent/issues
   license:
     name: Proprietary
 
 servers:
-  - url: http://localhost:3000/api
-    description: Local development server
-  - url: https://api.rfpagent.com/api
+  - url: https://bidhive.fly.dev/api
     description: Production server
+  - url: http://localhost:5001/api
+    description: Local development server
 
 tags:
   - name: RFPs

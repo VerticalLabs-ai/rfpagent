@@ -128,38 +128,73 @@ app.use((req, res, next) => {
     })();
   }
 
-  // Initialize Mastra agent system BEFORE server starts (critical for health checks)
-  try {
-    log('🤖 Initializing Mastra agent system...');
-    const { initializeAgentSystem } = await import('../src/mastra/index');
-    await initializeAgentSystem();
-    log('✅ Mastra agent system initialized (registry + pools)');
+  // Defer heavy initialization on memory-constrained environments
+  // This allows the server to start and respond to health checks first
+  const deferHeavyInit = process.env.DEFER_AGENT_INIT === 'true' ||
+                         process.env.RENDER === 'true';
 
-    // Bootstrap default agents (server-side registry)
-    await agentRegistryService.bootstrapDefaultAgents();
-    log('✅ 3-tier agentic system initialized with default agents');
-  } catch (error) {
-    log(
-      '⚠️ Failed to initialize agent system:',
-      error instanceof Error ? error.message : String(error)
-    );
-    log('   Server will continue but agent features may be unavailable');
-  }
+  if (deferHeavyInit) {
+    log('⏳ Deferring agent initialization (memory-constrained mode)');
+    log('   Agents will initialize after server starts');
 
-  // Initialize SAFLA self-improving system
-  try {
-    log('🧠 Initializing SAFLA learning system...');
-    const saflaResult = await saflaSystemIntegration.initializeSystem();
-    if (saflaResult.success) {
-      log('✅ SAFLA self-improving system initialized');
-    } else {
-      log('⚠️ SAFLA initialization completed with warnings');
+    // Initialize agents after server is ready (non-blocking)
+    setTimeout(async () => {
+      try {
+        log('🤖 Initializing Mastra agent system (deferred)...');
+        const { initializeAgentSystem } = await import('../src/mastra/index');
+        await initializeAgentSystem();
+        log('✅ Mastra agent system initialized');
+
+        await agentRegistryService.bootstrapDefaultAgents();
+        log('✅ 3-tier agentic system initialized');
+
+        // Initialize SAFLA after agents
+        log('🧠 Initializing SAFLA learning system...');
+        const saflaResult = await saflaSystemIntegration.initializeSystem();
+        if (saflaResult.success) {
+          log('✅ SAFLA self-improving system initialized');
+        }
+      } catch (error) {
+        log(
+          '⚠️ Deferred initialization failed:',
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }, 5000); // 5 second delay
+  } else {
+    // Standard initialization for environments with sufficient memory
+    try {
+      log('🤖 Initializing Mastra agent system...');
+      const { initializeAgentSystem } = await import('../src/mastra/index');
+      await initializeAgentSystem();
+      log('✅ Mastra agent system initialized (registry + pools)');
+
+      // Bootstrap default agents (server-side registry)
+      await agentRegistryService.bootstrapDefaultAgents();
+      log('✅ 3-tier agentic system initialized with default agents');
+    } catch (error) {
+      log(
+        '⚠️ Failed to initialize agent system:',
+        error instanceof Error ? error.message : String(error)
+      );
+      log('   Server will continue but agent features may be unavailable');
     }
-  } catch (error) {
-    log(
-      '⚠️ Failed to initialize SAFLA system (non-fatal):',
-      error instanceof Error ? error.message : String(error)
-    );
+
+    // Initialize SAFLA self-improving system
+    try {
+      log('🧠 Initializing SAFLA learning system...');
+      const saflaResult = await saflaSystemIntegration.initializeSystem();
+      if (saflaResult.success) {
+        log('✅ SAFLA self-improving system initialized');
+      } else {
+        log('⚠️ SAFLA initialization completed with warnings');
+      }
+    } catch (error) {
+      log(
+        '⚠️ Failed to initialize SAFLA system (non-fatal):',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   }
 
   // Configure modular routes

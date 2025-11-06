@@ -994,7 +994,7 @@ if __name__ == '__main__':
 
 ## Changelog
 
-### Version 1.0.1 (Current - January 2025)
+### Version 1.0.1 (Current - November 2025)
 
 - **Production Deployment**: Live at <https://bidhive.fly.dev>
 - **API Route Fix**: Resolved catch-all routing issue for API endpoints

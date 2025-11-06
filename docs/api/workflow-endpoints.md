@@ -1,7 +1,8 @@
 # Workflow API Endpoints
-**Version**: 1.1.0
-**Date**: October 16, 2025
-**Base URL**: `http://localhost:5001/api/workflows`
+**Version**: 1.1.1
+**Date**: November 2025
+**Production URL**: `https://bidhive.fly.dev/api/workflows`
+**Development URL**: `http://localhost:5001/api/workflows`
 
 ---
 
@@ -49,7 +50,7 @@
 
 **Discovery Mode**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/master-orchestration/execute \
   -H "Content-Type: application/json" \
   -d '{
     "mode": "discovery",
@@ -63,7 +64,7 @@ curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
 
 **Proposal Mode**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/master-orchestration/execute \
   -H "Content-Type: application/json" \
   -d '{
     "mode": "proposal",
@@ -74,7 +75,7 @@ curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
 
 **Full Pipeline Mode**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/master-orchestration/execute \
   -H "Content-Type: application/json" \
   -d '{
     "mode": "full_pipeline",
@@ -135,7 +136,7 @@ curl -X POST http://localhost:5001/api/workflows/master-orchestration/execute \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/proposal-pdf-assembly/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/proposal-pdf-assembly/execute \
   -H "Content-Type: application/json" \
   -d '{
     "proposalId": "prop_abc123",
@@ -186,7 +187,7 @@ curl -X POST http://localhost:5001/api/workflows/proposal-pdf-assembly/execute \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/document-processing/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/document-processing/execute \
   -H "Content-Type: application/json" \
   -d '{
     "rfpId": "rfp_abc123",
@@ -242,7 +243,7 @@ curl -X POST http://localhost:5001/api/workflows/document-processing/execute \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/rfp-discovery/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/rfp-discovery/execute \
   -H "Content-Type: application/json" \
   -d '{
     "portalIds": ["bonfire-123", "sam-gov-456"],
@@ -285,7 +286,7 @@ curl -X POST http://localhost:5001/api/workflows/rfp-discovery/execute \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/proposal-generation/execute \
+curl -X POST https://bidhive.fly.dev/api/workflows/proposal-generation/execute \
   -H "Content-Type: application/json" \
   -d '{
     "rfpId": "rfp_abc123",
@@ -313,7 +314,7 @@ curl -X POST http://localhost:5001/api/workflows/proposal-generation/execute \
 
 **Example**:
 ```bash
-curl http://localhost:5001/api/workflows/wf_12345/status
+curl https://bidhive.fly.dev/api/workflows/wf_12345/status
 ```
 
 **Response**:
@@ -336,7 +337,7 @@ curl http://localhost:5001/api/workflows/wf_12345/status
 
 **Example**:
 ```bash
-curl http://localhost:5001/api/workflows/suspended
+curl https://bidhive.fly.dev/api/workflows/suspended
 ```
 
 **Response**:
@@ -359,7 +360,7 @@ curl http://localhost:5001/api/workflows/suspended
 
 **Example**:
 ```bash
-curl http://localhost:5001/api/workflows/state
+curl https://bidhive.fly.dev/api/workflows/state
 ```
 
 **Response**:
@@ -386,7 +387,7 @@ curl http://localhost:5001/api/workflows/state
 
 **Example**:
 ```bash
-curl http://localhost:5001/api/workflows/phase-stats
+curl https://bidhive.fly.dev/api/workflows/phase-stats
 ```
 
 **Response**:
@@ -422,7 +423,7 @@ curl http://localhost:5001/api/workflows/phase-stats
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/wf_12345/suspend \
+curl -X POST https://bidhive.fly.dev/api/workflows/wf_12345/suspend \
   -H "Content-Type: application/json" \
   -d '{"reason": "Awaiting stakeholder approval"}'
 ```
@@ -444,7 +445,7 @@ curl -X POST http://localhost:5001/api/workflows/wf_12345/suspend \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/wf_12345/resume \
+curl -X POST https://bidhive.fly.dev/api/workflows/wf_12345/resume \
   -H "Content-Type: application/json" \
   -d '{"resumeData": {"reason": "Approval granted"}}'
 ```
@@ -464,7 +465,7 @@ curl -X POST http://localhost:5001/api/workflows/wf_12345/resume \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/wf_12345/cancel \
+curl -X POST https://bidhive.fly.dev/api/workflows/wf_12345/cancel \
   -H "Content-Type: application/json" \
   -d '{"reason": "RFP deadline passed"}'
 ```
@@ -487,7 +488,7 @@ curl -X POST http://localhost:5001/api/workflows/wf_12345/cancel \
 
 **Example**:
 ```bash
-curl -X POST http://localhost:5001/api/workflows/wf_12345/transition \
+curl -X POST https://bidhive.fly.dev/api/workflows/wf_12345/transition \
   -H "Content-Type: application/json" \
   -d '{
     "targetPhase": "proposal_generation",
@@ -587,6 +588,11 @@ Currently, workflows API does not require authentication. **Production deploymen
 
 ## 📝 Changelog
 
+### Version 1.1.1 (November 2025)
+- 🔄 **UPDATED**: Production deployment at `https://bidhive.fly.dev`
+- 📝 **UPDATED**: All example URLs to use production server
+- 📝 **UPDATED**: Base URL documentation for clarity
+
 ### Version 1.1.0 (October 16, 2025)
 - ✨ **NEW**: Master Orchestration Workflow endpoint
   - 3 execution modes: discovery, proposal, full_pipeline
@@ -608,6 +614,8 @@ Currently, workflows API does not require authentication. **Production deploymen
 
 ## 📚 Related Documentation
 
+- **Main API Documentation**: `/docs/api/README.md`
+- **OpenAPI Specification**: `/docs/api/openapi.yaml`
 - **Integration Complete**: `/docs/INTEGRATION_COMPLETE.md`
 - **Test Suite**: `/docs/testing/workflow-api-tests.md`
 - **Error Handling**: `/docs/architecture/error-handling-review.md`
@@ -615,5 +623,6 @@ Currently, workflows API does not require authentication. **Production deploymen
 
 ---
 
-**Last Updated**: October 16, 2025
-**Maintained By**: RFP Automation Team
+**Last Updated**: November 2025
+**Production URL**: https://bidhive.fly.dev
+**Maintained By**: BidHive Development Team
