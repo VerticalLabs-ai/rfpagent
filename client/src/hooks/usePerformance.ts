@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
 import {
-  trackWebVitals,
+  calculatePerformanceScore,
   getMemoryUsage,
   trackResourceTiming,
-  calculatePerformanceScore,
+  trackWebVitals,
   type PerformanceMetric,
   type VitalsMetrics,
 } from '@/lib/performance';
+import { useEffect, useState } from 'react';
 
 export function usePerformanceMonitoring() {
   const [metrics, setMetrics] = useState<VitalsMetrics>({});

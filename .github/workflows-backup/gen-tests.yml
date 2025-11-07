@@ -1,85 +1,84 @@
 name: Auto-Generate Tests
 
 on:
-    push:
-        paths:
-            - "src/**/*.js"
-            - "src/**/*.ts"
-        branches:
-            - "feature/*"
+  push:
+    paths:
+      - 'src/**/*.js'
+      - 'src/**/*.ts'
+    branches:
+      - 'feature/*'
 
 jobs:
-    generate-tests:
-        runs-on: ubuntu-latest
+  generate-tests:
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v4
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Setup
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "22"
+      - name: Setup
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-            - name: Identify New Code
-              id: new-code
-              uses: tj-actions/changed-files@v46
-              with:
-                  files: |
-                      src/**/*.js
-                      src/**/*.ts
-                  files_ignore: |
-                      **/*.test.js
-                      **/*.test.ts
-                      **/*.spec.js
-                      **/*.spec.ts
+      - name: Identify New Code
+        id: new-code
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            src/**/*.js
+            src/**/*.ts
+            !src/**/*.test.js
+            !src/**/*.test.ts
+            !src/**/*.spec.js
+            !src/**/*.spec.ts
 
-            - name: Generate Test Placeholder
-              if: steps.new-code.outputs.any_changed == 'true'
-              run: |
-                  mkdir -p tests/todo
+      - name: Generate Test Placeholder
+        if: steps.new-code.outputs.any_changed == 'true'
+        run: |
+          mkdir -p tests/todo
 
-                  # Create placeholder for tests that need to be written
-                  for file in ${{ steps.new-code.outputs.all_changed_files }}; do
-                    echo "File needs tests: $file"
-                    testfile="tests/todo/$(basename ${file%.ts}.test.ts)"
+          # Create placeholder for tests that need to be written
+          for file in ${{ steps.new-code.outputs.all_changed_files }}; do
+            echo "File needs tests: $file"
+            testfile="tests/todo/$(basename ${file%.ts}.test.ts)"
 
-                    cat > "$testfile" << 'EOF'
-                  // TODO: Add tests for $file
-                  //
-                  // This file was modified but tests have not been created yet.
-                  // Please add comprehensive unit tests covering:
-                  // - Happy path scenarios
-                  // - Edge cases
-                  // - Error handling
-                  // - Integration with other components
+            cat > "$testfile" << 'EOF'
+          // TODO: Add tests for $file
+          //
+          // This file was modified but tests have not been created yet.
+          // Please add comprehensive unit tests covering:
+          // - Happy path scenarios
+          // - Edge cases
+          // - Error handling
+          // - Integration with other components
 
-                  describe.skip('$(basename $file)', () => {
-                    it('should have tests', () => {
-                      // Add tests here
-                    });
-                  });
-                  EOF
-                  done
+          describe.skip('$(basename $file)', () => {
+            it('should have tests', () => {
+              // Add tests here
+            });
+          });
+          EOF
+          done
 
-                  echo "Created test placeholders in tests/todo/"
+          echo "Created test placeholders in tests/todo/"
 
-            - name: Create PR with Tests
-              uses: peter-evans/create-pull-request@v5
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  commit-message: "test: add AI-generated tests"
-                  title: "🧪 Add tests for new features"
-                  body: |
-                      ## AI-Generated Tests
+      - name: Create PR with Tests
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'test: add AI-generated tests'
+          title: '🧪 Add tests for new features'
+          body: |
+            ## AI-Generated Tests
 
-                      This PR adds comprehensive test coverage for recent changes.
+            This PR adds comprehensive test coverage for recent changes.
 
-                      ### Files tested:
-                      ${{ steps.new-code.outputs.all_changed_files }}
+            ### Files tested:
+            ${{ steps.new-code.outputs.all_changed_files }}
 
-                      Please review the generated tests before merging.
-                  branch: auto-tests/${{ github.ref_name }}
-                  base: ${{ github.ref_name }}
+            Please review the generated tests before merging.
+          branch: auto-tests/${{ github.ref_name }}
+          base: ${{ github.ref_name }}

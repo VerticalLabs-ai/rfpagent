@@ -4,46 +4,52 @@ import { openai } from '@ai-sdk/openai';
 /**
  * Model Configuration for Multi-Agent System
  *
- * REAL, CURRENT AI MODELS (Updated October 2025):
- * - OpenAI GPT-5: Latest unified model (Released August 2025)
- * - Claude Sonnet 4.5: Anthropic's best coding model (Released September 2025)
- * - Claude Opus 4.1: Maximum capability reasoning model
+ * CURRENT AI MODELS (Updated November 2025):
  *
- * Different agents can use different models based on their requirements:
- * - GPT-5: Unified model with reasoning + fast responses, multimodal
- * - Claude Sonnet 4.5: Best for coding, complex agents, long tasks (30+ hours focus)
- * - Claude Opus 4.1: Maximum capability for critical reasoning
+ * Anthropic Models:
+ * - Claude Sonnet 4.5: Best coding model, general use (Released September 2025)
+ * - Claude Haiku 4.5: Fast/quick tasks
+ * - Claude Opus 4.1: Backup specialized reasoning tasks (Released August 2025)
+ *
+ * OpenAI Models:
+ * - GPT-5: General use, unified model (Released August 2025)
+ * - GPT-5 Pro: Hardest tasks, deep reasoning
+ * - GPT-5 Mini: Smaller tasks
+ * - GPT-5 Nano: Fastest/smallest model
  */
 
-// OpenAI GPT-5 (Latest unified model - Released August 7, 2025)
+// ============================================================================
+// ANTHROPIC MODELS
+// ============================================================================
+
+// Claude Sonnet 4.5 (Best coding model, general use)
+export const claudeSonnet45 = anthropic('claude-sonnet-4-5');
+
+// Claude Haiku 4.5 (Fast/quick tasks)
+export const claudeHaiku45 = anthropic('claude-haiku-4-5');
+
+// Claude Opus 4.1 (Backup specialized reasoning)
+export const claudeOpus41 = anthropic('claude-opus-4-1');
+
+// ============================================================================
+// OPENAI MODELS
+// ============================================================================
+
+// GPT-5 (General use)
 export const gpt5 = openai('gpt-5');
-export const gpt5Thinking = openai('gpt-5-pro'); // Deep reasoning variant
 
-// Claude Sonnet 4.5 (Best coding model - Released September 29, 2025)
-export const claudeSonnet45 = anthropic('claude-sonnet-4-5-20250929');
-export const claudeSonnet45Thinking = anthropic(
-  'claude-sonnet-4-5-20250929-thinking'
-); // Extended reasoning
+// GPT-5 Pro (Hardest tasks, deep reasoning)
+export const gpt5Pro = openai('gpt-5-pro');
 
-// Claude Opus 4.1 (Maximum capability - Released August 2025)
-export const claudeOpus41 = anthropic('claude-opus-4-1-20250805');
+// GPT-5 Mini (Smaller tasks)
+export const gpt5Mini = openai('gpt-5-mini');
 
-// Claude Sonnet 4 (Previous generation - Released May 2025)
-export const claudeSonnet4 = anthropic('claude-sonnet-4-20250514');
+// GPT-5 Nano (Fastest/smallest)
+export const gpt5Nano = openai('gpt-5-nano');
 
-// Claude Opus 4 (Previous generation - Released May 2025)
-export const claudeOpus4 = anthropic('claude-opus-4-20250514');
-
-// Legacy Claude 3.x models (for compatibility)
-export const claudeSonnet37 = anthropic('claude-3-7-sonnet-20250219');
-export const claudeHaiku35 = anthropic('claude-3-5-haiku-20241022');
-export const claudeHaiku3 = anthropic('claude-3-haiku-20240307');
-
-/**
- * Model Selection Strategy
- *
- * Choose models based on task requirements:
- */
+// ============================================================================
+// PURPOSE-BASED MODEL SELECTION
+// ============================================================================
 
 /**
  * For Creative Content Generation:
@@ -87,9 +93,18 @@ export const codeModel = claudeSonnet45;
  * - Complex reasoning
  * - Multi-step problem solving
  * - Critical decisions
- * Recommended: Claude Opus 4.1
+ * Recommended: GPT-5 Pro or Claude Opus 4.1
  */
-export const maximumCapabilityModel = claudeOpus41;
+export const maximumCapabilityModel = gpt5Pro;
+
+/**
+ * For Fast/Quick Tasks:
+ * - Simple operations
+ * - Quick responses
+ * - Lightweight processing
+ * Recommended: Claude Haiku 4.5 or GPT-5 Nano
+ */
+export const fastModel = claudeHaiku45;
 
 /**
  * Default model for general purposes
@@ -97,15 +112,15 @@ export const maximumCapabilityModel = claudeOpus41;
 export const defaultModel = gpt5;
 
 /**
- * Deep reasoning model for complex problems
+ * Deep reasoning model for hardest problems
  */
-export const reasoningModel = gpt5Thinking;
+export const reasoningModel = gpt5Pro;
 
 /**
  * Lightweight guardrail model used for moderation, PII detection, and prompt injection checks.
- * Uses OpenAI's GPT-5 Mini to keep latency and cost low while preserving accuracy.
+ * Uses GPT-5 Nano to keep latency and cost extremely low while preserving accuracy.
  */
-export const guardrailModel = openai('gpt-5-mini');
+export const guardrailModel = gpt5Nano;
 
 /**
  * Get optimal model for specific agent type
@@ -143,7 +158,7 @@ export function getModelForAgent(agentType: string) {
 }
 
 /**
- * Model capabilities and pricing information (As of October 2025)
+ * Model capabilities and pricing information (As of November 2025)
  */
 export const modelCapabilities = {
   gpt5: {
@@ -164,19 +179,52 @@ export const modelCapabilities = {
       output: '$10.00/1M tokens',
     },
   },
-  gpt5Thinking: {
-    name: 'GPT-5 Thinking',
+  gpt5Pro: {
+    name: 'GPT-5 Pro',
     provider: 'OpenAI',
     released: 'August 7, 2025',
     contextWindow: 128000,
     strengths: [
-      'Deep reasoning for hard problems',
+      'Deep reasoning for hardest problems',
       'Extended thinking time',
       'Complex multi-step reasoning',
+      'Maximum capability',
     ],
     pricing: {
       input: '$5.00/1M tokens',
       output: '$20.00/1M tokens',
+    },
+  },
+  gpt5Mini: {
+    name: 'GPT-5 Mini',
+    provider: 'OpenAI',
+    released: 'August 7, 2025',
+    contextWindow: 128000,
+    strengths: [
+      'Fast responses',
+      'Cost-effective',
+      'Good for smaller tasks',
+      'Low latency',
+    ],
+    pricing: {
+      input: '$0.50/1M tokens',
+      output: '$2.00/1M tokens',
+    },
+  },
+  gpt5Nano: {
+    name: 'GPT-5 Nano',
+    provider: 'OpenAI',
+    released: 'August 7, 2025',
+    contextWindow: 128000,
+    strengths: [
+      'Fastest model',
+      'Extremely low cost',
+      'Ideal for guardrails',
+      'Minimal latency',
+    ],
+    pricing: {
+      input: '$0.10/1M tokens',
+      output: '$0.50/1M tokens',
     },
   },
   claudeSonnet45: {
@@ -197,19 +245,20 @@ export const modelCapabilities = {
       output: '$15.00/1M tokens',
     },
   },
-  claudeSonnet45Thinking: {
-    name: 'Claude Sonnet 4.5 Thinking',
+  claudeHaiku45: {
+    name: 'Claude Haiku 4.5',
     provider: 'Anthropic',
-    released: 'September 29, 2025',
+    released: 'November 2025',
     contextWindow: 200000,
     strengths: [
-      'Extended reasoning capabilities',
-      'Complex problem solving',
-      'Long-context reasoning',
+      'Extremely fast responses',
+      'Cost-effective for quick tasks',
+      'High accuracy despite speed',
+      'Perfect for simple operations',
     ],
     pricing: {
-      input: '$6.00/1M tokens',
-      output: '$30.00/1M tokens',
+      input: '$0.80/1M tokens',
+      output: '$4.00/1M tokens',
     },
   },
   claudeOpus41: {
@@ -228,44 +277,28 @@ export const modelCapabilities = {
       output: '$75.00/1M tokens',
     },
   },
-  claudeOpus4: {
-    name: 'Claude Opus 4',
-    provider: 'Anthropic',
-    released: 'May 14, 2025',
-    contextWindow: 200000,
-    strengths: [
-      'High capability reasoning',
-      'Complex analysis',
-      'Long context',
-    ],
-    pricing: {
-      input: '$15.00/1M tokens',
-      output: '$75.00/1M tokens',
-    },
-  },
 };
 
 export default {
-  // Current models
-  gpt5,
-  gpt5Thinking,
+  // Anthropic models
   claudeSonnet45,
-  claudeSonnet45Thinking,
+  claudeHaiku45,
   claudeOpus41,
-  claudeSonnet4,
-  claudeOpus4,
-  // Legacy Claude 3.x
-  claudeSonnet37,
-  claudeHaiku35,
-  claudeHaiku3,
+  // OpenAI models
+  gpt5,
+  gpt5Pro,
+  gpt5Mini,
+  gpt5Nano,
   // Purpose-based exports
   creativeModel,
   analyticalModel,
   coordinationModel,
   codeModel,
   maximumCapabilityModel,
+  fastModel,
   defaultModel,
   reasoningModel,
+  guardrailModel,
   // Utilities
   getModelForAgent,
   modelCapabilities,

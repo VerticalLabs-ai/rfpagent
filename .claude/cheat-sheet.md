@@ -51,7 +51,7 @@ Customize Claude Code behavior through `.claude/settings.json` in your project r
 
 ```json
 {
-  "model": "claude-sonnet-4-5-20250929",
+  "model": "claude-sonnet-4-5",
   "autoApprovalSettings": {
     "enabled": true,
     "patterns": [

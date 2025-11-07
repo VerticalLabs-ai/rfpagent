@@ -38,7 +38,7 @@
 
 #### Claude Sonnet 4.5 (Latest - Released September 29, 2025)
 
-- **Model ID**: `claude-sonnet-4-5-20250929`
+- **Model ID**: `claude-sonnet-4-5`
 - **Released**: September 29, 2025
 - **Context Window**: 200,000 tokens
 - **Key Features**:
@@ -52,13 +52,13 @@
 
 #### Claude Sonnet 4.5 Thinking (Extended Reasoning)
 
-- **Model ID**: `claude-sonnet-4-5-20250929-thinking`
+- **Model ID**: `claude-sonnet-4-5-thinking`
 - **Best For**: Extended reasoning, complex problem solving
 - **Pricing**: $6.00/1M input | $30.00/1M output
 
 #### Claude Opus 4.1 (Maximum Capability)
 
-- **Model ID**: `claude-opus-4-1-20250805`
+- **Model ID**: `claude-opus-4-1`
 - **Released**: August 5, 2025
 - **Context Window**: 200,000 tokens
 - **Best For**: Maximum capability reasoning, critical decisions
@@ -66,7 +66,7 @@
 
 #### Claude Sonnet 4 (Previous Generation)
 
-- **Model ID**: `claude-sonnet-4-20250514`
+- **Model ID**: `claude-sonnet-4`
 - **Released**: May 14, 2025
 - **Context Window**: 200,000 tokens
 - **Pricing**: $3.00/1M input | $15.00/1M output
@@ -153,7 +153,7 @@ All agents updated to use correct models:
 ## ⚠️ Important Notes
 
 1. **Model IDs Must Be Exact**:
-   - Use `claude-sonnet-4-5-20250929` NOT `claude-sonnet-4-5`
+   - Use `claude-sonnet-4-5` NOT `claude-sonnet-4-5`
    - Use `gpt-5` for the base model
    - Always verify model IDs in official documentation
 
@@ -163,7 +163,7 @@ All agents updated to use correct models:
 
 3. **When to Use Reasoning Variants**:
    - `gpt-5-thinking`: Complex problems that benefit from extended thinking
-   - `claude-sonnet-4-5-20250929-thinking`: Long-context reasoning tasks
+   - `claude-sonnet-4-5-thinking`: Long-context reasoning tasks
 
 4. **Cost Considerations**:
    - GPT-5: $2.50-$10.00 per 1M tokens (most cost-effective)
