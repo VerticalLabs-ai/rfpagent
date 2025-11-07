@@ -123,12 +123,54 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     },
   });
 
+  const recordOutcomeMutation = useMutation({
+    mutationFn: async ({ proposalId, status, details }: { proposalId: string; status: string; details?: any }) => {
+      const response = await fetch(`/api/proposals/${proposalId}/outcome`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, details }),
+      });
+      if (!response.ok) {
+        throw new Error('Failed to record outcome');
+      }
+      return response.json();
+    },
+    onSuccess: (_, { status }) => {
+      toast({
+        title: 'Outcome Recorded',
+        description: `Proposal marked as ${status}. SAFLA learning system will analyze this outcome.`,
+        variant: status === 'awarded' ? 'default' : 'default',
+      });
+      // Invalidate and refetch proposals
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', rfpId],
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Failed to Record Outcome',
+        description:
+          error?.message || 'Failed to record proposal outcome. Please try again.',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleDeleteProposal = (proposalId: string, proposalIndex: number) => {
     const confirmed = window.confirm(
       `Are you sure you want to delete Proposal #${proposalIndex + 1}?\n\nThis action cannot be undone and will permanently remove:\n• All proposal content and narratives\n• Pricing tables and analysis\n• Compliance documentation\n• All related data`
     );
     if (confirmed) {
       deleteProposalMutation.mutate(proposalId);
+    }
+  };
+
+  const handleRecordOutcome = (proposalId: string, status: 'awarded' | 'lost' | 'rejected') => {
+    const confirmed = window.confirm(
+      `Record this proposal as ${status.toUpperCase()}?\n\nThis will:\n• Update the proposal status\n• Feed data to the SAFLA learning system\n• Help improve future proposal strategies`
+    );
+    if (confirmed) {
+      recordOutcomeMutation.mutate({ proposalId, status });
     }
   };
 
@@ -1672,7 +1714,33 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                     </DialogContent>
                   </Dialog>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {/* Outcome tracking buttons - only show if not already marked */}
+                    {proposal.status !== 'won' && proposal.status !== 'lost' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-green-500 text-green-600 hover:bg-green-50"
+                          onClick={() => handleRecordOutcome(proposal.id, 'awarded')}
+                          disabled={recordOutcomeMutation.isPending}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Won
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-500 text-red-600 hover:bg-red-50"
+                          onClick={() => handleRecordOutcome(proposal.id, 'lost')}
+                          disabled={recordOutcomeMutation.isPending}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Lost
+                        </Button>
+                      </>
+                    )}
+
                     <Button variant="outline" size="sm">
                       <Download className="w-4 h-4 mr-2" />
                       Download PDF

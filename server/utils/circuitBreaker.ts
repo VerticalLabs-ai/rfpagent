@@ -236,9 +236,12 @@ export class CircuitBreakerManager {
    * Start automatic cleanup of unused circuit breakers
    */
   private startCleanup(): void {
-    this.cleanupInterval = setInterval(() => {
-      this.pruneUnusedBreakers();
-    }, 30 * 60 * 1000); // Every 30 minutes
+    this.cleanupInterval = setInterval(
+      () => {
+        this.pruneUnusedBreakers();
+      },
+      30 * 60 * 1000
+    ); // Every 30 minutes
   }
 
   /**
@@ -251,7 +254,7 @@ export class CircuitBreakerManager {
     for (const [name, breaker] of this.breakers.entries()) {
       // Remove if breaker is closed and hasn't been used in the last hour
       if (
-        breaker.getState() === 'closed' &&
+        breaker.getStats().state === 'closed' &&
         breaker.lastExecutionTime &&
         breaker.lastExecutionTime < cutoffTime
       ) {

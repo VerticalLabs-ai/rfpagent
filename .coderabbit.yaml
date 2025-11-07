@@ -1,0 +1,862 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit Configuration - RFP Agent Platform
+# Last Updated: 2025-11-06
+# Docs: https://docs.coderabbit.ai/
+#
+# Platform: AI-powered RFP opportunity discovery and proposal generation
+# Tech Stack: React 18, TypeScript, Express, PostgreSQL, Mastra.ai, Drizzle ORM
+# Agent System: 3-tier hierarchical architecture (1 orchestrator, 3 managers, 7 specialists)
+
+# ==============================================================================
+# REVIEW SETTINGS
+# ==============================================================================
+reviews:
+  # Review profile - balanced feedback approach
+  profile: assertive
+
+  # Automated review settings
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: true
+    ignore_title_keywords:
+      - 'wip'
+      - 'draft'
+      - 'do not review'
+
+  # Review presentation
+  high_level_summary: true
+  collapse_walkthrough: false
+
+  # Suggested labels and reviewers
+  suggested_labels: true
+  auto_apply_labels: false
+  suggested_reviewers: true
+  auto_assign_reviewers: false
+
+  # ==============================================================================
+  # PATH FILTERS - Exclude files from review
+  # ==============================================================================
+  path_filters:
+    # Documentation (reviewed separately)
+    - '!**/*.md'
+    - '!**/CLAUDE*.md'
+    - '!**/docs/**/*.md'
+
+    # Binary and data files
+    - '!**/*.bin'
+    - '!**/*.csv'
+    - '!**/*.png'
+    - '!**/*.jpg'
+    - '!**/*.jpeg'
+    - '!**/*.gif'
+    - '!**/*.svg'
+    - '!**/*.ico'
+    - '!**/*.pdf'
+    - '!**/*.wasm'
+
+    # Build artifacts and dependencies
+    - '!**/node_modules/**'
+    - '!**/dist/**'
+    - '!**/build/**'
+    - '!**/.next/**'
+    - '!**/coverage/**'
+    - '!**/.mastra/**'
+
+    # Lock files (managed by package managers)
+    - '!**/package-lock.json'
+    - '!**/yarn.lock'
+    - '!**/pnpm-lock.yaml'
+
+    # Generated files and migrations
+    - '!**/migrations/**/*.sql'
+    - '!**/*.generated.*'
+    - '!**/drizzle/**'
+
+    # Config files that shouldn't be reviewed
+    - '!**/.env*'
+    - '!**/mcp.json'
+
+  # ==============================================================================
+  # PATH-SPECIFIC REVIEW INSTRUCTIONS
+  # ==============================================================================
+  path_instructions:
+    # --------------------------------------------------------------------------
+    # AI AGENT SYSTEM - CRITICAL
+    # --------------------------------------------------------------------------
+    - path: 'src/mastra/agents/**/*.ts'
+      instructions: |
+        **CRITICAL - AI Agent Implementation:**
+
+        1. **Agent Architecture Compliance:**
+           - Tier 1 (Orchestrator): 1 agent only - coordinates all workflows
+           - Tier 2 (Managers): 3 agents - Portal, Proposal, Research managers
+           - Tier 3 (Specialists): 7 agents - specific task execution
+           - Agents MUST only delegate to appropriate tier levels
+
+        2. **Mastra.ai Framework Standards:**
+           - All agents MUST extend Mastra Agent class
+           - Use proper tool registration and error handling
+           - Implement structured output schemas with Zod
+           - Follow async/await patterns consistently
+
+        3. **Coordination & Communication:**
+           - Use shared memory provider for inter-agent communication
+           - Implement proper task delegation patterns
+           - Store intermediate results in memory with TTL
+           - Handle agent failures gracefully with fallbacks
+
+        4. **LLM Integration:**
+           - Use GPT-4 for complex reasoning (orchestrator, managers)
+           - Use Claude 4.5 for technical content generation
+           - Implement prompt templates with clear instructions
+           - Handle rate limits and timeouts appropriately
+
+        5. **Error Handling:**
+           - Validate all inputs with Zod schemas
+           - Log errors with context (agent ID, task ID, timestamp)
+           - Implement retry logic for transient failures
+           - Graceful degradation when agents fail
+
+        6. **Performance:**
+           - Optimize prompt tokens (use concise instructions)
+           - Cache frequently used LLM responses
+           - Implement parallel task execution where possible
+           - Monitor agent response times
+
+        Reference: docs/technical/agents-architecture.md
+
+    - path: 'src/mastra/workflows/**/*.ts'
+      instructions: |
+        **Workflow Implementation Standards:**
+
+        1. **Mastra Workflow Patterns:**
+           - Define clear workflow steps with dependencies
+           - Use proper step input/output typing
+           - Implement error boundaries for each step
+           - Support workflow suspension and resumption
+
+        2. **Multi-Agent Coordination:**
+           - Orchestrate agent tasks in logical sequence
+           - Handle parallel agent execution where appropriate
+           - Aggregate results from multiple agents
+           - Implement timeout handling for long-running workflows
+
+        3. **State Management:**
+           - Persist workflow state to database
+           - Track progress with status updates
+           - Enable workflow restart from checkpoints
+           - Store artifacts (documents, proposals) properly
+
+        4. **Real-time Updates:**
+           - Emit SSE events for progress tracking
+           - Update WebSocket channels for live notifications
+           - Provide meaningful status messages to UI
+           - Track completion percentages accurately
+
+        5. **Testing:**
+           - Unit test individual workflow steps
+           - Integration test complete workflow execution
+           - Mock external dependencies (LLMs, browser automation)
+           - Test error scenarios and recovery
+
+        Reference: docs/api/workflow-endpoints.md
+
+    # --------------------------------------------------------------------------
+    # BROWSER AUTOMATION & PORTAL SCANNING
+    # --------------------------------------------------------------------------
+    - path: 'src/mastra/tools/**/*-tool.ts'
+      instructions: |
+        **Browser Automation Tool Standards:**
+
+        1. **Stagehand Integration:**
+           - Use Browserbase SDK for headless browser instances
+           - Implement proper page initialization and cleanup
+           - Handle browser context lifecycle correctly
+           - Set appropriate timeouts for page loads
+
+        2. **Portal Authentication:**
+           - Support multiple auth methods (username/password, SSO, 2FA)
+           - Securely retrieve credentials from environment/secrets
+           - Implement session persistence and reuse
+           - Handle auth failures with retry logic
+
+        3. **Element Interaction:**
+           - Use robust selectors (data-testid preferred)
+           - Implement wait strategies for dynamic content
+           - Handle CAPTCHA detection gracefully
+           - Verify action success before proceeding
+
+        4. **Data Extraction:**
+           - Parse HTML with Cheerio for structured data
+           - Validate extracted data against schemas
+           - Handle pagination and infinite scroll
+           - Store extracted data in consistent format
+
+        5. **Error Handling:**
+           - Detect and handle network errors
+           - Implement circuit breaker for failing portals
+           - Log detailed error context for debugging
+           - Fallback to manual intervention when needed
+
+        6. **Performance:**
+           - Reuse browser contexts where possible
+           - Implement request throttling
+           - Cache frequently accessed pages
+           - Monitor memory usage
+
+        Reference: server/services/browserAutomation.ts
+
+    - path: 'server/services/**/*.ts'
+      instructions: |
+        **Backend Service Standards:**
+
+        1. **Service Architecture:**
+           - Single responsibility per service
+           - Clear separation of concerns
+           - Dependency injection where appropriate
+           - Proper error propagation to controllers
+
+        2. **Database Operations:**
+           - Use Drizzle ORM for all queries
+           - Implement proper transaction handling
+           - Use prepared statements (SQL injection prevention)
+           - Index frequently queried columns
+           - Optimize N+1 query problems
+
+        3. **External API Integration:**
+           - Implement timeout handling
+           - Use retry logic with exponential backoff
+           - Cache responses when appropriate
+           - Rate limit API calls
+           - Log all external requests
+
+        4. **Async Patterns:**
+           - Proper async/await usage
+           - Handle Promise rejections
+           - Use Promise.all for parallel operations
+           - Implement queue systems for heavy tasks
+
+        5. **Security:**
+           - Validate all inputs
+           - Sanitize user data before DB storage
+           - Use parameterized queries
+           - Implement proper RBAC checks
+           - NO sensitive data in logs
+
+        6. **Monitoring & Logging:**
+           - Use Winston for structured logging
+           - Log at appropriate levels (debug, info, warn, error)
+           - Include correlation IDs for tracing
+           - Monitor service health metrics
+
+        Reference: server/CLAUDE.md
+
+    # --------------------------------------------------------------------------
+    # DATABASE & ORM
+    # --------------------------------------------------------------------------
+    - path: 'shared/db/schema.ts'
+      instructions: |
+        **Database Schema Standards:**
+
+        1. **Drizzle ORM Conventions:**
+           - Use proper table definitions with pgTable
+           - Define all columns with explicit types
+           - Add NOT NULL constraints where appropriate
+           - Use JSONB for flexible data structures
+           - Implement proper foreign key relationships
+
+        2. **Indexing Strategy:**
+           - Add indexes for all foreign keys
+           - Index frequently queried columns
+           - Use GIN indexes for JSONB columns
+           - Use composite indexes for multi-column queries
+           - Document index rationale in comments
+
+        3. **Data Integrity:**
+           - Use CHECK constraints for business rules
+           - Implement cascading deletes appropriately
+           - Use UNIQUE constraints where needed
+           - Add default values for columns
+           - Use enums for fixed value sets
+
+        4. **Schema Evolution:**
+           - Create migrations for all schema changes
+           - Never modify existing migrations
+           - Test migrations on copy of production data
+           - Document breaking changes
+           - Support backward compatibility where possible
+
+        5. **Performance:**
+           - Normalize data appropriately (3NF)
+           - Use JSONB for semi-structured data
+           - Partition large tables if needed
+           - Monitor query performance
+           - Optimize slow queries
+
+        Reference: shared/CLAUDE.md
+
+    - path: 'server/routes/**/*.ts'
+      instructions: |
+        **API Route Standards:**
+
+        1. **REST Conventions:**
+           - Use proper HTTP methods (GET, POST, PUT, DELETE, PATCH)
+           - Follow RESTful URL patterns (/resources/:id)
+           - Return appropriate status codes (200, 201, 400, 404, 500)
+           - Use plural nouns for resource names
+           - Implement proper CORS handling
+
+        2. **Request Validation:**
+           - Validate all inputs with Zod schemas
+           - Sanitize user inputs
+           - Check authentication/authorization
+           - Validate content-type headers
+           - Enforce rate limits
+
+        3. **Response Format:**
+           - Return consistent JSON structure
+           - Include metadata (timestamp, requestId)
+           - Implement pagination for list endpoints
+           - Use proper error response format
+           - Support filtering and sorting
+
+        4. **Error Handling:**
+           - Catch and handle all errors
+           - Return user-friendly error messages
+           - Log errors with context
+           - Don't expose internal errors to clients
+           - Use appropriate HTTP status codes
+
+        5. **Documentation:**
+           - Document all endpoints in OpenAPI format
+           - Include request/response examples
+           - Document authentication requirements
+           - Note rate limits and constraints
+           - Keep API docs up to date
+
+        6. **Real-time Features:**
+           - Use SSE for progress tracking
+           - Implement WebSocket for live updates
+           - Handle connection lifecycle properly
+           - Implement heartbeat/keepalive
+           - Support reconnection logic
+
+        Reference: docs/api/README.md
+
+    # --------------------------------------------------------------------------
+    # REACT FRONTEND
+    # --------------------------------------------------------------------------
+    - path: 'client/src/components/**/*.tsx'
+      instructions: |
+        **React Component Standards:**
+
+        1. **Component Architecture:**
+           - Functional components with hooks
+           - Use TypeScript for all props and state
+           - Keep components under 250 lines
+           - Extract complex logic to custom hooks
+           - Use composition over inheritance
+
+        2. **State Management:**
+           - Use React Query for server state
+           - Local state for UI-only concerns
+           - Avoid prop drilling (use context when needed)
+           - Implement optimistic updates for mutations
+           - Cache API responses appropriately
+
+        3. **Styling:**
+           - Use Tailwind CSS for styling
+           - Follow shadcn/ui component patterns
+           - Use cn() utility for conditional classes
+           - Maintain consistent spacing (4, 8, 16, 24px)
+           - Support dark mode where applicable
+
+        4. **Real-time Updates:**
+           - Use SSE for progress tracking
+           - Implement WebSocket reconnection logic
+           - Display loading states during updates
+           - Show user feedback for all actions
+           - Handle connection errors gracefully
+
+        5. **Performance:**
+           - Use React.memo for expensive components
+           - Implement code splitting with lazy()
+           - Optimize re-renders with useMemo/useCallback
+           - Debounce user inputs where appropriate
+           - Lazy load images and heavy assets
+
+        6. **Accessibility:**
+           - Use semantic HTML elements
+           - Include ARIA labels where needed
+           - Ensure keyboard navigation works
+           - Maintain proper focus management
+           - Test with screen readers
+
+        7. **Error Handling:**
+           - Show user-friendly error messages
+           - Implement error boundaries
+           - Log errors to monitoring service
+           - Provide retry mechanisms
+           - Handle edge cases gracefully
+
+        Reference: client/CLAUDE.md
+
+    - path: 'client/src/pages/**/*.tsx'
+      instructions: |
+        **Page Component Standards:**
+
+        1. **Data Fetching:**
+           - Use React Query for all API calls
+           - Implement proper loading states
+           - Handle errors with fallback UI
+           - Cache data appropriately
+           - Implement pagination for lists
+
+        2. **Layout:**
+           - Use consistent page structure
+           - Implement responsive design
+           - Follow mobile-first approach
+           - Use proper heading hierarchy (h1-h6)
+           - Maintain consistent spacing
+
+        3. **Navigation:**
+           - Use Wouter for routing
+           - Implement breadcrumbs where helpful
+           - Add loading indicators for transitions
+           - Support back button functionality
+           - Handle 404 and error pages
+
+        4. **Performance:**
+           - Lazy load page components
+           - Prefetch critical data
+           - Optimize bundle size
+           - Implement skeleton loading
+           - Monitor page load metrics
+
+    # --------------------------------------------------------------------------
+    # DOCUMENT PROCESSING (AI-POWERED)
+    # --------------------------------------------------------------------------
+    - path: 'src/mastra/utils/pdf-processor.ts'
+      instructions: |
+        **Document Processing Standards:**
+
+        1. **PDF Parsing:**
+           - Use pdf-parse for text extraction
+           - Handle multi-page documents correctly
+           - Preserve document structure and formatting
+           - Extract tables and lists accurately
+           - Handle scanned documents (OCR if needed)
+
+        2. **AI-Powered Extraction:**
+           - Use GPT-4 for requirement extraction
+           - Implement structured output with Zod schemas
+           - Extract key information: deadlines, budget, requirements
+           - Categorize requirements by section
+           - Validate extracted data
+
+        3. **Error Handling:**
+           - Handle corrupted PDFs gracefully
+           - Log parsing errors with context
+           - Implement fallback extraction methods
+           - Validate extracted data completeness
+           - Report low-confidence extractions
+
+        4. **Performance:**
+           - Cache parsed documents
+           - Process large documents in chunks
+           - Optimize token usage for AI calls
+           - Monitor processing time
+           - Implement timeout handling
+
+        Reference: server/services/documentProcessing.ts
+
+    - path: 'src/mastra/utils/pool-*.ts'
+      instructions: |
+        **Resource Pool Management:**
+
+        1. **Connection Pooling:**
+           - Implement proper pool initialization
+           - Set appropriate max connections
+           - Handle connection timeouts
+           - Implement connection health checks
+           - Clean up idle connections
+
+        2. **Resource Lifecycle:**
+           - Acquire resources before use
+           - Release resources after use
+           - Handle resource exhaustion gracefully
+           - Implement retry logic for acquisition
+           - Monitor pool metrics
+
+        3. **Error Handling:**
+           - Handle pool exhaustion errors
+           - Implement circuit breaker pattern
+           - Log resource usage statistics
+           - Alert on pool capacity issues
+           - Graceful degradation
+
+        Reference: server/utils/circuitBreaker.ts
+
+    # --------------------------------------------------------------------------
+    # TYPESCRIPT & UTILITIES
+    # --------------------------------------------------------------------------
+    - path: 'client/src/lib/**/*.{ts,tsx}'
+      instructions: |
+        **Client Utility Standards:**
+
+        1. **Type Safety:**
+           - NO implicit 'any' types
+           - Use proper generic constraints
+           - Export all public types
+           - Use Zod for runtime validation
+
+        2. **API Client:**
+           - Centralize all API calls
+           - Use React Query for data fetching
+           - Implement proper error handling
+           - Type all API responses
+           - Support request cancellation
+
+        3. **Form Utilities:**
+           - Use react-hook-form for forms
+           - Implement Zod schema validation
+           - Provide clear error messages
+           - Support field-level validation
+           - Handle submission errors
+
+        4. **Documentation:**
+           - Comprehensive JSDoc comments
+           - Include usage examples
+           - Document edge cases
+
+    - path: 'client/src/hooks/**/*.ts'
+      instructions: |
+        **Custom Hook Standards:**
+
+        1. **Hook Design:**
+           - Follow React hooks rules
+           - Use descriptive names (useXxx)
+           - Keep hooks focused and single-purpose
+           - Return consistent structure
+           - Support cleanup in useEffect
+
+        2. **Type Safety:**
+           - Type all parameters and returns
+           - Use generics where appropriate
+           - Avoid type assertions
+           - Export hook types
+
+        3. **Performance:**
+           - Memoize return values where needed
+           - Optimize dependencies arrays
+           - Avoid unnecessary re-renders
+           - Use useCallback for functions
+
+        4. **Testing:**
+           - Unit test all custom hooks
+           - Test edge cases and errors
+           - Use @testing-library/react-hooks
+           - Mock dependencies appropriately
+
+    # --------------------------------------------------------------------------
+    # TESTING
+    # --------------------------------------------------------------------------
+    - path: 'tests/**/*.test.ts'
+      instructions: |
+        **Test Quality Standards:**
+
+        1. **Coverage:**
+           - Aim for 80%+ code coverage
+           - Test happy paths and edge cases
+           - Include error condition testing
+           - Test async operations thoroughly
+
+        2. **Test Structure:**
+           - Use descriptive test names
+           - Follow Arrange-Act-Assert pattern
+           - Keep tests focused and isolated
+           - Group related tests in describe blocks
+
+        3. **Agent Testing:**
+           - Mock LLM responses consistently
+           - Test agent delegation patterns
+           - Verify tool invocation
+           - Test error handling and fallbacks
+           - Validate output schemas
+
+        4. **API Testing:**
+           - Test all HTTP methods
+           - Verify response status codes
+           - Validate response schemas
+           - Test authentication/authorization
+           - Test rate limiting
+
+        5. **Database Testing:**
+           - Use test database or transactions
+           - Clean up test data after tests
+           - Test migrations up and down
+           - Verify constraints and indexes
+           - Test concurrent operations
+
+        6. **Mocking:**
+           - Mock external services (Browserbase, OpenAI)
+           - Use consistent mock data
+           - Verify mock interactions
+           - Keep mocks simple and maintainable
+
+        Reference: tests/CLAUDE.md
+
+    - path: 'scripts/**/*.ts'
+      instructions: |
+        **Script Standards:**
+
+        1. **Error Handling:**
+           - Catch and handle all errors
+           - Provide clear error messages
+           - Exit with appropriate codes
+           - Log execution progress
+
+        2. **Configuration:**
+           - Load from environment variables
+           - Validate required configuration
+           - Provide defaults where sensible
+           - Document configuration options
+
+        3. **Safety:**
+           - Confirm destructive operations
+           - Support dry-run mode
+           - Create backups before modifications
+           - Validate inputs before execution
+
+        4. **Documentation:**
+           - Clear script purpose at top
+           - Document required permissions
+           - Include usage examples
+           - Note prerequisites
+
+        Reference: scripts/CLAUDE.md
+
+    # --------------------------------------------------------------------------
+    # CONFIGURATION FILES
+    # --------------------------------------------------------------------------
+    - path: 'config/**/*.ts'
+      instructions: |
+        **Configuration Standards:**
+
+        1. **Mastra Configuration:**
+           - Define all agents in mastra.config.ts
+           - Register tools and workflows properly
+           - Configure LLM providers correctly
+           - Set appropriate timeouts and retries
+           - Document configuration options
+
+        2. **Environment Variables:**
+           - Define all required env vars
+           - Provide sensible defaults
+           - Validate on application startup
+           - Document in .env.example
+           - NEVER commit secrets
+
+        3. **Database Configuration:**
+           - Configure connection pooling
+           - Set appropriate timeouts
+           - Enable SSL for production
+           - Configure migrations path
+           - Document schema location
+
+        4. **Security:**
+           - NO hardcoded API keys or secrets
+           - Use secure credential storage (1Password)
+           - Implement rate limiting configuration
+           - Configure CORS appropriately
+           - Enable security headers
+
+        Reference: config/CLAUDE.md
+
+    - path: 'mastra.config.ts'
+      instructions: |
+        **Mastra Configuration Standards:**
+
+        1. **Agent Registration:**
+           - Register all 11 agents correctly
+           - Configure agent model preferences
+           - Set agent-specific tools
+           - Define agent instructions clearly
+           - Configure memory providers
+
+        2. **Workflow Registration:**
+           - Register all 5 workflows
+           - Define workflow dependencies
+           - Configure workflow timeouts
+           - Set retry policies
+           - Enable progress tracking
+
+        3. **Tool Registration:**
+           - Register browser automation tools
+           - Configure portal scanning tools
+           - Set tool timeouts appropriately
+           - Document tool parameters
+           - Implement tool error handling
+
+        4. **LLM Configuration:**
+           - Configure OpenAI (GPT-4/GPT-5)
+           - Configure Anthropic (Claude 4.5)
+           - Set model-specific parameters
+           - Configure fallback models
+           - Monitor token usage
+
+        Reference: docs/technical/agents-architecture.md
+
+    - path: 'drizzle.config.ts'
+      instructions: |
+        **Drizzle Configuration:**
+
+        1. **Database Connection:**
+           - Use connection string from env
+           - Configure SSL for production
+           - Set connection timeout
+           - Enable query logging in development
+
+        2. **Migrations:**
+           - Set migrations directory
+           - Configure migration table name
+           - Enable verbose output
+           - Document migration strategy
+
+        3. **Schema:**
+           - Set schema location
+           - Enable type generation
+           - Configure schema output
+           - Document schema changes
+
+        Reference: shared/db/schema.ts
+
+  # ==============================================================================
+  # TOOLS CONFIGURATION
+  # ==============================================================================
+  tools:
+    # Code Quality - TypeScript/Node.js
+    eslint:
+      enabled: true
+
+    biome:
+      enabled: true
+
+    # Security - CRITICAL for RFP platform
+    gitleaks:
+      enabled: true
+
+    semgrep:
+      enabled: true
+
+    # Standards & Validation
+    markdownlint:
+      enabled: true
+
+    yamllint:
+      enabled: true
+
+    actionlint:
+      enabled: true
+
+    # Documentation Quality
+    languagetool:
+      enabled: true
+      level: default
+
+    # SQL/Database
+    sqlfluff:
+      enabled: true
+
+# ==============================================================================
+# CODE GENERATION SETTINGS
+# ==============================================================================
+code_generation:
+  docstrings:
+    language: en-US
+    path_instructions:
+      - path: 'components/**/*.tsx'
+        instructions: |
+          Generate comprehensive JSDoc comments including:
+          - Component description and purpose
+          - @param for all props with types and descriptions
+          - @returns for component return
+          - @example with usage code
+          - Accessibility considerations
+
+      - path: 'lib/**/*.ts'
+        instructions: |
+          Generate detailed JSDoc comments including:
+          - Function purpose and behavior
+          - @param for all parameters with types
+          - @returns with return type and description
+          - @throws for potential errors
+          - @example with usage code
+
+      - path: 'utils/**/*.ts'
+        instructions: |
+          Generate concise JSDoc comments including:
+          - Brief function description
+          - @param for parameters
+          - @returns with return value
+          - @example for complex utilities
+
+  unit_tests:
+    path_instructions:
+      - path: 'components/**/*.tsx'
+        instructions: |
+          Generate React component tests using Testing Library:
+          - Test rendering with different props
+          - Test user interactions (clicks, inputs)
+          - Test accessibility (ARIA labels, keyboard navigation)
+          - Achieve 80%+ coverage
+          - Follow React Testing Library best practices
+
+      - path: 'lib/**/*.ts'
+        instructions: |
+          Generate comprehensive unit tests:
+          - Test happy path scenarios
+          - Test edge cases and error conditions
+          - Test input validation
+          - Mock external dependencies
+          - Aim for 90%+ coverage
+
+      - path: 'utils/**/*.ts'
+        instructions: |
+          Generate focused utility tests:
+          - Test all function variations
+          - Test null/undefined handling
+          - Test type safety
+          - Keep tests simple and fast
+
+# ==============================================================================
+# CHAT SETTINGS - Quality Gates & Validation
+# ==============================================================================
+chat:
+  auto_reply: true
+
+# ==============================================================================
+# KNOWLEDGE BASE
+# ==============================================================================
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - '**/CLAUDE.md'
+      - '**/docs/DESIGN_SYSTEM.md'
+      - '**/docs/MIGRATION_GUIDE.md'
+      - '**/docs/architecture/CSS_ARCHITECTURE.md'
+      - '**/docs/README.md'
+
+  learnings:
+    scope: auto
+
+# ==============================================================================
+# GLOBAL SETTINGS
+# ==============================================================================
+language: en-US
+tone_instructions: 'Focus on design system compliance, accessibility, security, performance, and maintainability. Prioritize critical issues over minor style preferences.'
+early_access: false
+enable_free_tier: true

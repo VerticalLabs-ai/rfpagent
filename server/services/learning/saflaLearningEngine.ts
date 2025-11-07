@@ -94,52 +94,108 @@ export class SAFLALearningEngine {
 
   /**
    * Prune old learning events to prevent unbounded growth
+   * Optimized to minimize memory usage during pruning
    */
   private async pruneOldLearningEvents(): Promise<void> {
     try {
-      // Get all agents that have learning events
+      const startMemory = process.memoryUsage().heapUsed / 1024 / 1024;
+      console.log(`🧹 SAFLA: Starting pruning (heap: ${startMemory.toFixed(1)}MB)`);
+
+      // Phase 1: Discover agent IDs with learning events
+      // Reduced limit from 10,000 to 2,000 to minimize initial memory load
       const allAgents = new Set<string>();
-      const memories = await agentMemoryService.getAgentMemories(
-        'system',
-        'episodic',
-        10000
-      );
+      let offset = 0;
+      const batchSize = 2000;
+      let hasMore = true;
 
-      for (const memory of memories) {
-        if (memory.tags?.includes('learning_event')) {
-          allAgents.add(memory.agentId);
-        }
-      }
-
-      // For each agent, keep only most recent events
-      for (const agentId of allAgents) {
-        const agentEvents = await agentMemoryService.getAgentMemories(
-          agentId,
+      while (hasMore) {
+        const memories = await agentMemoryService.getAgentMemories(
+          'system',
           'episodic',
-          10000
+          batchSize
         );
 
-        const learningEvents = agentEvents
-          .filter(m => m.tags?.includes('learning_event'))
-          .sort((a, b) => {
-            const timeA = new Date(a.createdAt || 0).getTime();
-            const timeB = new Date(b.createdAt || 0).getTime();
-            return timeB - timeA; // Most recent first
-          });
+        if (memories.length === 0) {
+          hasMore = false;
+          break;
+        }
 
-        // Delete events beyond the limit
-        if (learningEvents.length > this.MAX_LEARNING_EVENTS_PER_AGENT) {
-          const toDelete = learningEvents.slice(
-            this.MAX_LEARNING_EVENTS_PER_AGENT
-          );
-          for (const event of toDelete) {
-            await agentMemoryService.deleteMemory(event.id);
+        // Extract agent IDs from this batch
+        for (const memory of memories) {
+          if (memory.tags?.includes('learning_event')) {
+            allAgents.add(memory.agentId);
           }
-          console.log(
-            `🧹 Pruned ${toDelete.length} old learning events for agent ${agentId}`
-          );
+        }
+
+        // Stop if we got fewer results than batch size (last page)
+        if (memories.length < batchSize) {
+          hasMore = false;
+        }
+
+        offset += batchSize;
+
+        // Safety limit: stop after 5 batches (10,000 total)
+        if (offset >= 10000) {
+          hasMore = false;
         }
       }
+
+      console.log(`🔍 Found ${allAgents.size} agents with learning events`);
+
+      // Phase 2: Process agents in batches to avoid memory accumulation
+      const agentArray = Array.from(allAgents);
+      const agentBatchSize = 10; // Process 10 agents at a time
+      let totalPruned = 0;
+
+      for (let i = 0; i < agentArray.length; i += agentBatchSize) {
+        const agentBatch = agentArray.slice(i, i + agentBatchSize);
+
+        for (const agentId of agentBatch) {
+          // Fetch only what we need: MAX + small buffer (600 instead of 10,000)
+          // This is a 94% reduction in per-agent memory load
+          const agentEvents = await agentMemoryService.getAgentMemories(
+            agentId,
+            'episodic',
+            this.MAX_LEARNING_EVENTS_PER_AGENT + 100
+          );
+
+          const learningEvents = agentEvents
+            .filter(m => m.tags?.includes('learning_event'))
+            .sort((a, b) => {
+              const timeA = new Date(a.createdAt || 0).getTime();
+              const timeB = new Date(b.createdAt || 0).getTime();
+              return timeB - timeA; // Most recent first
+            });
+
+          // Delete events beyond the limit
+          if (learningEvents.length > this.MAX_LEARNING_EVENTS_PER_AGENT) {
+            const toDelete = learningEvents.slice(
+              this.MAX_LEARNING_EVENTS_PER_AGENT
+            );
+            for (const event of toDelete) {
+              await agentMemoryService.deleteMemory(event.id);
+            }
+            totalPruned += toDelete.length;
+            console.log(
+              `🧹 Pruned ${toDelete.length} old learning events for agent ${agentId}`
+            );
+          }
+        }
+
+        // Explicit memory release after each batch
+        if (global.gc) {
+          global.gc();
+        }
+      }
+
+      const endMemory = process.memoryUsage().heapUsed / 1024 / 1024;
+      const memoryDelta = endMemory - startMemory;
+      console.log(
+        `✅ SAFLA: Pruning complete - ${totalPruned} events pruned, ${agentArray.length} agents processed`
+      );
+      console.log(
+        `📊 Memory: ${startMemory.toFixed(1)}MB → ${endMemory.toFixed(1)}MB (${memoryDelta > 0 ? '+' : ''}${memoryDelta.toFixed(1)}MB)`
+      );
     } catch (error) {
       console.error('Error pruning learning events:', error);
     }

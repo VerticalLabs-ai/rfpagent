@@ -342,7 +342,7 @@ app.use((req, res, next) => {
         process.exit(1);
       }, 10000);
     } catch (error) {
-      log('❌ Error during shutdown:', error);
+      log('❌ Error during shutdown:', error instanceof Error ? error.message : String(error));
       process.exit(1);
     }
   });

@@ -19,7 +19,7 @@ const rfpExtractionSchema = z.object({
     .string()
     .optional()
     .describe('RFP description or scope of work'),
-  deadline: z.string().optional().describe('Submission deadline date and time'),
+  deadline: z.string().optional().describe('Submission deadline date and time (Due Date)'),
   estimatedValue: z
     .string()
     .optional()
@@ -31,10 +31,18 @@ const rfpExtractionSchema = z.object({
     .string()
     .optional()
     .describe('RFP/Solicitation number or ID'),
+  questions_due_date: z
+    .string()
+    .optional()
+    .describe('Date by which questions must be submitted (Questions Due)'),
+  conference_date: z
+    .string()
+    .optional()
+    .describe('Pre-bid conference or meeting date (Conference Date)'),
   pre_bid_meeting: z
     .string()
     .optional()
-    .describe('Pre-bid meeting date/time if applicable'),
+    .describe('Pre-bid meeting date/time if applicable (legacy field)'),
   documents: z
     .array(
       z.object({
@@ -87,9 +95,10 @@ export class RFPScrapingService {
 
       const extractedData = extractionResult.data as RFPExtractionData;
 
-      // Parse deadline if present using date-fns
-      let deadlineDate = null;
-      if (extractedData.deadline) {
+      // Helper function to parse dates
+      const parseDate = (dateString: string | undefined): Date | null => {
+        if (!dateString) return null;
+
         try {
           // Try various date formats using date-fns parse
           const dateFormats = [
@@ -107,34 +116,33 @@ export class RFPScrapingService {
           ];
 
           // First try native Date parsing
-          const nativeDate = new Date(extractedData.deadline);
+          const nativeDate = new Date(dateString);
           if (!isNaN(nativeDate.getTime())) {
-            deadlineDate = nativeDate;
-          } else {
-            // Try each format with date-fns
-            for (const format of dateFormats) {
-              const parsedDate = parse(
-                extractedData.deadline,
-                format,
-                new Date()
-              );
-              if (isValid(parsedDate)) {
-                deadlineDate = parsedDate;
-                break;
-              }
-            }
+            return nativeDate;
+          }
 
-            if (!deadlineDate) {
-              errors.push(
-                `Could not parse deadline date: ${extractedData.deadline}`
-              );
+          // Try each format with date-fns
+          for (const format of dateFormats) {
+            const parsedDate = parse(dateString, format, new Date());
+            if (isValid(parsedDate)) {
+              return parsedDate;
             }
           }
+
+          errors.push(`Could not parse date: ${dateString}`);
+          return null;
         } catch (e) {
-          console.error('Error parsing deadline:', e);
-          errors.push(`Error parsing deadline: ${extractedData.deadline}`);
+          console.error('Error parsing date:', e);
+          errors.push(`Error parsing date: ${dateString}`);
+          return null;
         }
-      }
+      };
+
+      // Parse all date fields
+      const deadlineDate = parseDate(extractedData.deadline);
+      const questionsDueDate = parseDate(extractedData.questions_due_date);
+      const conferenceDate = parseDate(extractedData.conference_date);
+      const preBidMeetingDate = parseDate(extractedData.pre_bid_meeting);
 
       // Parse estimated value if present
       let estimatedValueNum = null;
@@ -175,7 +183,9 @@ export class RFPScrapingService {
             updatedAt: new Date(),
             requirements: {
               solicitation_number: extractedData.solicitation_number,
-              pre_bid_meeting: extractedData.pre_bid_meeting,
+              questions_due_date: questionsDueDate?.toISOString() || extractedData.questions_due_date,
+              conference_date: conferenceDate?.toISOString() || extractedData.conference_date,
+              pre_bid_meeting: preBidMeetingDate?.toISOString() || extractedData.pre_bid_meeting,
               contact: {
                 name: extractedData.contactName,
                 email: extractedData.contactEmail,
@@ -204,7 +214,9 @@ export class RFPScrapingService {
             manuallyAddedAt: userId === 'manual' ? new Date() : null,
             requirements: {
               solicitation_number: extractedData.solicitation_number,
-              pre_bid_meeting: extractedData.pre_bid_meeting,
+              questions_due_date: questionsDueDate?.toISOString() || extractedData.questions_due_date,
+              conference_date: conferenceDate?.toISOString() || extractedData.conference_date,
+              pre_bid_meeting: preBidMeetingDate?.toISOString() || extractedData.pre_bid_meeting,
               contact: {
                 name: extractedData.contactName,
                 email: extractedData.contactEmail,
@@ -405,7 +417,7 @@ export class RFPScrapingService {
     // Generic extraction for other portals
     return performWebExtraction(
       url,
-      'Extract all RFP details including: title, agency, description, deadline, estimated value, contact information, solicitation number, pre-bid meeting date, and all downloadable document links with their names',
+      'Extract all RFP details including: title, agency, description, deadline (Due Date), questions due date (Questions Due), conference date (Conference Date or Pre-Bid Meeting), estimated value, contact information, solicitation number, and all downloadable document links with their names. Pay special attention to dates - look for "Due Date", "Questions Due", and "Conference Date" labels.',
       rfpExtractionSchema,
       this.sessionId
     );
@@ -490,14 +502,20 @@ export class RFPScrapingService {
       url,
       `Extract RFP details from this Austin Texas solicitation page. Look for:
       - Solicitation title (usually at the top of the page)
-      - Solicitation number
+      - Solicitation number (Reference No.)
       - Department/Agency name
       - Description or scope of work
-      - Due date/deadline (look for "Due Date" or "Closing Date")
+      - Due Date (labeled as "Due Date" - this is the submission deadline)
+      - Questions Due date (labeled as "Questions Due" - when questions must be submitted by)
+      - Conference Date (labeled as "Conference Date" - pre-bid meeting date)
       - Estimated value or budget (may be in description or separate field)
       - Contact person details (name, email, phone)
-      - Pre-bid meeting information if available
-      - All downloadable documents (look for PDF links, attachments section, or document table)`,
+      - All downloadable documents (look for PDF links, attachments section, or document table)
+
+      IMPORTANT: These are three separate date fields:
+      1. deadline = Due Date (submission deadline)
+      2. questions_due_date = Questions Due
+      3. conference_date = Conference Date (pre-bid meeting)`,
       rfpExtractionSchema,
       this.sessionId
     );

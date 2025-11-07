@@ -718,8 +718,9 @@ export class ProposalQualityEvaluator {
     let model = this.evaluationModels.get(modelKey);
 
     if (!model) {
-      // Memory leak protection - enforce size limit before adding new model
-      if (this.evaluationModels.size >= this.MAX_EVALUATION_MODELS) {
+      // Memory leak protection - enforce size limit before adding new model (max 100)
+      const MAX_EVALUATION_MODELS = 100;
+      if (this.evaluationModels.size >= MAX_EVALUATION_MODELS) {
         const oldestKey = this.evaluationModels.keys().next().value;
         if (oldestKey) {
           this.evaluationModels.delete(oldestKey);

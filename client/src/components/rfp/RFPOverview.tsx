@@ -177,6 +177,30 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
                 </div>
               )}
 
+              {(rfp.requirements as any).questions_due_date && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Questions Due</p>
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid="text-questions-due"
+                  >
+                    {formatDate((rfp.requirements as any).questions_due_date)}
+                  </p>
+                </div>
+              )}
+
+              {(rfp.requirements as any).conference_date && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Conference Date</p>
+                  <p
+                    className="text-sm text-muted-foreground"
+                    data-testid="text-conference-date"
+                  >
+                    {formatDate((rfp.requirements as any).conference_date)}
+                  </p>
+                </div>
+              )}
+
               {(rfp.requirements as any).pre_bid_meeting && (
                 <div>
                   <p className="text-sm font-medium mb-1">Pre-bid Meeting</p>
@@ -184,7 +208,7 @@ export function RFPOverview({ rfp }: RFPOverviewProps) {
                     className="text-sm text-muted-foreground"
                     data-testid="text-pre-bid-meeting"
                   >
-                    {(rfp.requirements as any).pre_bid_meeting}
+                    {formatDate((rfp.requirements as any).pre_bid_meeting)}
                   </p>
                 </div>
               )}

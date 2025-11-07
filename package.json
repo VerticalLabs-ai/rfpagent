@@ -34,6 +34,7 @@
     "format:check": "prettier --check server/ shared/ client/src/",
     "type-check": "tsc --noEmit -p tsconfig.typecheck.json",
     "quality": "npm run type-check && npm run lint && npm run format:check && npm run test",
+    "validate:coderabbit": "node scripts/validate-coderabbit-config.js",
     "prepare": "husky",
     "mastra:dev": "mastra dev",
     "mastra:build": "mastra build && node scripts/post-mastra-build.js",

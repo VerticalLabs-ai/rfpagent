@@ -424,4 +424,75 @@ router.get('/submission-materials/stream/:sessionId', async (req, res) => {
   }
 });
 
+/**
+ * Record proposal outcome (win/loss/rejected)
+ * POST /api/proposals/:id/outcome
+ *
+ * This enables SAFLA learning system to track win rates and improve strategies
+ */
+router.post(
+  '/:id/outcome',
+  handleAsyncError(async (req, res) => {
+    const proposalId = req.params.id;
+    const { status, details } = req.body;
+
+    // Validate status
+    const validStatuses = ['awarded', 'lost', 'rejected', 'withdrawn'];
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+      });
+    }
+
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    // Import outcome tracker dynamically
+    const { ProposalOutcomeTracker } = await import(
+      '../services/monitoring/proposalOutcomeTracker'
+    );
+    const tracker = ProposalOutcomeTracker.getInstance();
+
+    // Record outcome for SAFLA learning
+    await tracker.recordProposalOutcome({
+      proposalId,
+      rfpId: proposal.rfpId,
+      status,
+      outcomeDetails: details || {},
+      learningData: {
+        strategiesUsed: (proposal as any).strategies || {},
+        marketConditions: {},
+        competitiveFactors: details?.competitorInfo || {},
+        internalFactors: {}
+      },
+      timestamp: new Date()
+    });
+
+    // Update proposal status in database
+    await storage.updateProposal(proposalId, {
+      status: status === 'awarded' ? 'awarded' : 'rejected',
+      updatedAt: new Date()
+    });
+
+    // Create notification
+    await storage.createNotification({
+      type: status === 'awarded' ? 'success' : 'info',
+      title: `Proposal ${status === 'awarded' ? 'Won' : 'Outcome Recorded'}`,
+      message: `Outcome recorded for proposal. Status: ${status}`,
+      relatedEntityType: 'proposal',
+      relatedEntityId: proposalId,
+      isRead: false
+    });
+
+    res.json({
+      success: true,
+      message: `Proposal outcome recorded: ${status}`,
+      proposalId,
+      status
+    });
+  })
+);
+
 export default router;
