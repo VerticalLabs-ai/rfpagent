@@ -70,6 +70,188 @@ const SubmissionRetryRequestSchema = z.object({
   metadata: z.record(z.string(), z.any()).optional(),
 });
 
+// Schema for direct submission creation (matches test expectations)
+const CreateSubmissionSchema = z.object({
+  rfpId: z.string().uuid('RFP ID must be a valid UUID').optional(),
+  proposalData: z.record(z.string(), z.any()).optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  author: z.string().optional(),
+  details: z.record(z.string(), z.any()).optional(),
+  url: z.string().url('Invalid URL').optional(),
+  userNotes: z.string().optional(),
+  agency: z.string().optional(),
+  category: z.string().optional(),
+  sourceUrl: z.string().url('Invalid source URL').optional(),
+  deadline: z
+    .string()
+    .refine(
+      str => {
+        const date = new Date(str);
+        return !isNaN(date.getTime());
+      },
+      {
+        message: 'Invalid deadline date format',
+      }
+    )
+    .optional(),
+  estimatedValue: z.string().optional(),
+  amount: z.number().optional(),
+  duration: z.string().optional(),
+  budget: z.union([z.number(), z.string()]).optional(),
+  team: z.array(z.record(z.string(), z.any())).optional(),
+  client: z.string().optional(),
+});
+
+/**
+ * Create a new submission (direct creation endpoint)
+ * POST /api/submissions
+ * 
+ * This endpoint allows direct submission creation with proposal data.
+ * It creates a proposal if proposalData is provided, then creates the submission.
+ */
+router.post('/', async (req, res) => {
+  try {
+    // Validate request body
+    const validationResult = CreateSubmissionSchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request data',
+        details: validationResult.error.issues.map(err => ({
+          field: err.path.join('.'),
+          message: err.message,
+          code: err.code,
+        })),
+      });
+    }
+
+    const data = validationResult.data;
+
+    // Handle empty payload
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Request payload is required',
+        details: 'Please provide submission data in the request body',
+      });
+    }
+
+    // If rfpId is provided, verify RFP exists and is valid
+    let rfpId: string | undefined;
+    let portalId: string = '';
+
+    if (data.rfpId) {
+      const rfp = await storage.getRFP(data.rfpId);
+      if (!rfp) {
+        return res.status(404).json({
+          success: false,
+          error: 'RFP not found',
+          details: `RFP with ID ${data.rfpId} does not exist`,
+        });
+      }
+
+      // Check if RFP is active/approved
+      if (rfp.status !== 'active' && rfp.status !== 'approved') {
+        return res.status(400).json({
+          success: false,
+          error: 'RFP is not active',
+          details: `RFP status is ${rfp.status}. Only active or approved RFPs can be submitted.`,
+        });
+      }
+
+      // Check deadline - prevent future-dated RFPs if not allowed
+      if (rfp.deadline && new Date(rfp.deadline) < new Date()) {
+        return res.status(400).json({
+          success: false,
+          error: 'RFP deadline has passed',
+          details: `RFP deadline was ${rfp.deadline}`,
+        });
+      }
+
+      rfpId = rfp.id;
+      portalId = rfp.portalId || '';
+    } else if (data.url || data.sourceUrl) {
+      // If URL provided but no rfpId, try to find or create RFP from URL
+      const url = data.url || data.sourceUrl;
+      // For now, return error - this would require RFP creation logic
+      return res.status(400).json({
+        success: false,
+        error: 'RFP ID is required',
+        details:
+          'Please provide an rfpId or create the RFP first using POST /api/rfps/manual',
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required field',
+        details: 'Either rfpId or url/sourceUrl must be provided',
+      });
+    }
+
+    // Create proposal (required by schema)
+    // Always create a proposal, even if minimal data provided
+    const proposalData = {
+      ...(data.proposalData || {}),
+      title: data.title,
+      description: data.description,
+      author: data.author,
+      details: data.details,
+      team: data.team,
+      client: data.client,
+      budget: data.budget,
+      duration: data.duration,
+      amount: data.amount,
+      url: data.url || data.sourceUrl,
+      userNotes: data.userNotes,
+    };
+
+    const proposal = await storage.createProposal({
+      rfpId: rfpId!,
+      content: JSON.stringify(proposalData),
+      proposalData: JSON.stringify(proposalData),
+      status: 'draft',
+    });
+
+    const proposalId = proposal.id;
+
+    // Create submission
+    const submission = await storage.createSubmission({
+      rfpId: rfpId!,
+      proposalId: proposalId,
+      portalId: portalId || '',
+      status: 'pending',
+      submissionData: data.userNotes
+        ? { userNotes: data.userNotes }
+        : undefined,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        submissionId: submission.id,
+        rfpId: submission.rfpId,
+        sessionId: submission.id, // Use submission ID as session ID for compatibility
+        proposalId: proposalId,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating submission:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to create submission',
+      details:
+        process.env.NODE_ENV === 'development'
+          ? error instanceof Error
+            ? error.stack
+            : String(error)
+          : undefined,
+    });
+  }
+});
+
 /**
  * Start automated submission pipeline for a proposal
  */

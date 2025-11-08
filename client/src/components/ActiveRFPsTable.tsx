@@ -36,6 +36,7 @@ export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [manualRfpUrl, setManualRfpUrl] = useState('');
+  const [manualRfpUrlError, setManualRfpUrlError] = useState('');
   const [manualRfpNotes, setManualRfpNotes] = useState('');
   const [manualRfpDialogOpen, setManualRfpDialogOpen] = useState(false);
   const [progressSessionId, setProgressSessionId] = useState<string | null>(
@@ -317,7 +318,14 @@ export default function ActiveRFPsTable() {
                   <form
                     onSubmit={e => {
                       e.preventDefault();
-                      if (!manualRfpUrl.trim()) {
+                      
+                      // Clear previous errors
+                      setManualRfpUrlError('');
+                      
+                      // Validate URL
+                      const url = manualRfpUrl.trim();
+                      if (!url) {
+                        setManualRfpUrlError('URL is required');
                         toast({
                           title: 'URL Required',
                           description: 'Please enter a valid RFP URL',
@@ -325,8 +333,22 @@ export default function ActiveRFPsTable() {
                         });
                         return;
                       }
+                      
+                      // Validate URL format
+                      try {
+                        new URL(url);
+                      } catch {
+                        setManualRfpUrlError('Please enter a valid URL format (e.g., https://example.com/rfp)');
+                        toast({
+                          title: 'Invalid URL',
+                          description: 'Please enter a valid URL format',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+                      
                       manualRfpMutation.mutate({
-                        url: manualRfpUrl.trim(),
+                        url: url,
                         userNotes: manualRfpNotes.trim() || undefined,
                       });
                     }}
@@ -345,11 +367,28 @@ export default function ActiveRFPsTable() {
                           type="url"
                           placeholder="https://example.com/rfp/12345"
                           value={manualRfpUrl}
-                          onChange={e => setManualRfpUrl(e.target.value)}
-                          className="mt-1"
+                          onChange={e => {
+                            setManualRfpUrl(e.target.value);
+                            // Clear error when user types
+                            if (manualRfpUrlError) {
+                              setManualRfpUrlError('');
+                            }
+                          }}
+                          className={`mt-1 ${manualRfpUrlError ? 'border-red-500' : ''}`}
                           required
                           data-testid="manual-rfp-url-input"
+                          aria-invalid={!!manualRfpUrlError}
+                          aria-describedby={manualRfpUrlError ? 'rfp-url-error' : undefined}
                         />
+                        {manualRfpUrlError && (
+                          <p
+                            id="rfp-url-error"
+                            className="text-xs text-red-500 mt-1"
+                            role="alert"
+                          >
+                            {manualRfpUrlError}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground mt-1">
                           Enter the URL of any RFP from any portal platform. Our
                           AI will analyze and process it automatically.

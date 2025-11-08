@@ -72,6 +72,11 @@ function Router() {
                 <Route path="/agent-monitoring" component={AgentMonitoring} />
                 <Route path="/safla-dashboard" component={SAFLADashboard} />
                 <Route path="/system-settings" component={SystemSettings} />
+                {/* Activity Feed route - redirects to Dashboard with activity tab */}
+                <Route
+                  path="/activity-feed"
+                  component={() => <Redirect to="/?tab=activity" />}
+                />
                 <Route component={NotFound} />
               </Switch>
             </Suspense>

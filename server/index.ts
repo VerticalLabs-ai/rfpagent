@@ -201,6 +201,22 @@ app.use((req, res, next) => {
   configureRoutes(app);
   log('✓ Routes configured');
 
+  // 404 handler for unmatched API routes (must be after route configuration)
+  // Use a function to match API routes instead of wildcard pattern
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({
+        success: false,
+        error: 'Route not found',
+        details: `The requested endpoint ${req.method} ${req.path} does not exist`,
+        path: req.path,
+        method: req.method,
+      });
+    } else {
+      next();
+    }
+  });
+
   // Add health endpoint for Fly.io/Render health checks
   app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
