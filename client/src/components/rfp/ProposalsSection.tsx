@@ -124,7 +124,15 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   });
 
   const recordOutcomeMutation = useMutation({
-    mutationFn: async ({ proposalId, status, details }: { proposalId: string; status: string; details?: any }) => {
+    mutationFn: async ({
+      proposalId,
+      status,
+      details,
+    }: {
+      proposalId: string;
+      status: string;
+      details?: any;
+    }) => {
       const response = await fetch(`/api/proposals/${proposalId}/outcome`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -150,7 +158,8 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       toast({
         title: 'Failed to Record Outcome',
         description:
-          error?.message || 'Failed to record proposal outcome. Please try again.',
+          error?.message ||
+          'Failed to record proposal outcome. Please try again.',
         variant: 'destructive',
       });
     },
@@ -165,7 +174,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     }
   };
 
-  const handleRecordOutcome = (proposalId: string, status: 'awarded' | 'lost' | 'rejected') => {
+  const handleRecordOutcome = (
+    proposalId: string,
+    status: 'awarded' | 'lost' | 'rejected'
+  ) => {
     const confirmed = window.confirm(
       `Record this proposal as ${status.toUpperCase()}?\n\nThis will:\n• Update the proposal status\n• Feed data to the SAFLA learning system\n• Help improve future proposal strategies`
     );
@@ -1716,30 +1728,35 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
 
                   <div className="flex gap-2 flex-wrap">
                     {/* Outcome tracking buttons - only show if not already marked */}
-                    {proposal.status !== 'won' && proposal.status !== 'lost' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-green-500 text-green-600 hover:bg-green-50"
-                          onClick={() => handleRecordOutcome(proposal.id, 'awarded')}
-                          disabled={recordOutcomeMutation.isPending}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Won
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-red-500 text-red-600 hover:bg-red-50"
-                          onClick={() => handleRecordOutcome(proposal.id, 'lost')}
-                          disabled={recordOutcomeMutation.isPending}
-                        >
-                          <X className="w-4 h-4 mr-2" />
-                          Lost
-                        </Button>
-                      </>
-                    )}
+                    {proposal.status !== 'won' &&
+                      proposal.status !== 'lost' && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-green-500 text-green-600 hover:bg-green-50"
+                            onClick={() =>
+                              handleRecordOutcome(proposal.id, 'awarded')
+                            }
+                            disabled={recordOutcomeMutation.isPending}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Won
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-red-500 text-red-600 hover:bg-red-50"
+                            onClick={() =>
+                              handleRecordOutcome(proposal.id, 'lost')
+                            }
+                            disabled={recordOutcomeMutation.isPending}
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            Lost
+                          </Button>
+                        </>
+                      )}
 
                     <Button variant="outline" size="sm">
                       <Download className="w-4 h-4 mr-2" />

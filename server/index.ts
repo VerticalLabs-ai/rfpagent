@@ -336,7 +336,9 @@ app.use((req, res, next) => {
 
       // Shutdown circuit breaker manager
       try {
-        const { circuitBreakerManager } = await import('./utils/circuitBreaker');
+        const { circuitBreakerManager } = await import(
+          './utils/circuitBreaker'
+        );
         circuitBreakerManager.shutdown();
       } catch {
         // Service may not be initialized
@@ -358,7 +360,10 @@ app.use((req, res, next) => {
         process.exit(1);
       }, 10000);
     } catch (error) {
-      log('❌ Error during shutdown:', error instanceof Error ? error.message : String(error));
+      log(
+        '❌ Error during shutdown:',
+        error instanceof Error ? error.message : String(error)
+      );
       process.exit(1);
     }
   });

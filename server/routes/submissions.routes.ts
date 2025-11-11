@@ -106,7 +106,7 @@ const CreateSubmissionSchema = z.object({
 /**
  * Create a new submission (direct creation endpoint)
  * POST /api/submissions
- * 
+ *
  * This endpoint allows direct submission creation with proposal data.
  * It creates a proposal if proposalData is provided, then creates the submission.
  */

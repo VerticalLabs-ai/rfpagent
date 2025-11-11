@@ -440,7 +440,7 @@ router.post(
     const validStatuses = ['awarded', 'lost', 'rejected', 'withdrawn'];
     if (!status || !validStatuses.includes(status)) {
       return res.status(400).json({
-        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
       });
     }
 
@@ -465,15 +465,15 @@ router.post(
         strategiesUsed: (proposal as any).strategies || {},
         marketConditions: {},
         competitiveFactors: details?.competitorInfo || {},
-        internalFactors: {}
+        internalFactors: {},
       },
-      timestamp: new Date()
+      timestamp: new Date(),
     });
 
     // Update proposal status in database
     await storage.updateProposal(proposalId, {
       status: status === 'awarded' ? 'awarded' : 'rejected',
-      updatedAt: new Date()
+      updatedAt: new Date(),
     });
 
     // Create notification
@@ -483,14 +483,14 @@ router.post(
       message: `Outcome recorded for proposal. Status: ${status}`,
       relatedEntityType: 'proposal',
       relatedEntityId: proposalId,
-      isRead: false
+      isRead: false,
     });
 
     res.json({
       success: true,
       message: `Proposal outcome recorded: ${status}`,
       proposalId,
-      status
+      status,
     });
   })
 );

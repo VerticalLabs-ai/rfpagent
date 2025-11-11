@@ -318,10 +318,10 @@ export default function ActiveRFPsTable() {
                   <form
                     onSubmit={e => {
                       e.preventDefault();
-                      
+
                       // Clear previous errors
                       setManualRfpUrlError('');
-                      
+
                       // Validate URL
                       const url = manualRfpUrl.trim();
                       if (!url) {
@@ -333,12 +333,14 @@ export default function ActiveRFPsTable() {
                         });
                         return;
                       }
-                      
+
                       // Validate URL format
                       try {
                         new URL(url);
                       } catch {
-                        setManualRfpUrlError('Please enter a valid URL format (e.g., https://example.com/rfp)');
+                        setManualRfpUrlError(
+                          'Please enter a valid URL format (e.g., https://example.com/rfp)'
+                        );
                         toast({
                           title: 'Invalid URL',
                           description: 'Please enter a valid URL format',
@@ -346,7 +348,7 @@ export default function ActiveRFPsTable() {
                         });
                         return;
                       }
-                      
+
                       manualRfpMutation.mutate({
                         url: url,
                         userNotes: manualRfpNotes.trim() || undefined,
@@ -378,7 +380,9 @@ export default function ActiveRFPsTable() {
                           required
                           data-testid="manual-rfp-url-input"
                           aria-invalid={!!manualRfpUrlError}
-                          aria-describedby={manualRfpUrlError ? 'rfp-url-error' : undefined}
+                          aria-describedby={
+                            manualRfpUrlError ? 'rfp-url-error' : undefined
+                          }
                         />
                         {manualRfpUrlError && (
                           <p
