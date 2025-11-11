@@ -1,0 +1,30 @@
+---
+title: Cleanup Roadmap
+description: Actionable plan to merge, archive, or rewrite legacy documentation.
+lastUpdated: 2025-02-14
+category: legacy
+---
+
+The cleanup roadmap is generated from `docs/governance/cleanup-manifest.json`. It summarises actions for the next sprint.
+
+## Priority merges
+
+| Source files | Action | Target |
+| --- | --- | --- |
+| `guides/development-setup.md`, `guides/environment-setup.md` | Merge | `src/content/docs/operations/dev-environment.mdx` (to be created) |
+| `optimization/code-optimization-report.md`, `analysis/performance-review.md` | Merge | `quality/performance-optimization.mdx` |
+| `technical/agents-architecture.md`, `technical/route-refactoring-guide.md` | Update | `workflows/agent-orchestration.mdx` |
+
+## Archive candidates
+
+- Status reports older than 2024 in `docs/archive/`
+- One-off debugging notes under `docs/troubleshooting/`
+- Session transcripts stored in dated folders within `docs/reviews/`
+
+## Rewrite backlog
+
+1. Update the PDF processing guide with new pipeline steps.
+2. Replace `mastra-cloud-deployment.md` with deployment instructions inside Starlight.
+3. Consolidate testing docs into the canonical testing overview page.
+
+Progress is tracked by the governance agent and surfaced during CI runs.

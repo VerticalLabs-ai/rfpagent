@@ -1,0 +1,26 @@
+---
+title: Agent Orchestration Overview
+description: How Mastra orchestrates Claude, GPT, and tooling agents in the RFP Agent workflows.
+lastUpdated: 2025-02-14
+category: workflows
+---
+
+## Execution layers
+
+1. **Request intake** begins with Mastra orchestrators defined in `src/mastra/index.ts`.
+2. **Tools & memory** leverage shared providers in `src/mastra/tools` and `src/mastra/memory`.
+3. **Workflow runners** call out to Claude Code and GPT with prompt templates stored adjacent to each agent.
+
+## Documentation sources
+
+- Prompt rationale is captured inline in agent files using docblocks.
+- Workflow diagrams and timing data will be centralised here as we migrate from the legacy backlog.
+- TypeDoc ensures each exported workflow exposes parameters and expected outputs.
+
+## Governance hooks
+
+- Any new agent must reference an existing doc section or extend this page.
+- Duplicate workflow summaries are rejected by the governance agent and merged into the canonical entry.
+- For experiments, use the legacy backlog and mark with an expiry date.
+
+Refer to the [workflow catalogue](./workflow-catalogue) for status tracking and cleanup actions.

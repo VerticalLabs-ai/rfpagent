@@ -1,0 +1,23 @@
+---
+title: Performance Optimization Overview
+description: Consolidated optimisation guidance replacing scattered AI-generated reports.
+lastUpdated: 2025-02-14
+category: quality
+---
+
+## Focus areas
+
+- **API latency**: monitor p95 < 2s, ensure caching on expensive routes.
+- **Workflow throughput**: parallelise agent steps where safe, avoid redundant retrieval calls.
+- **Client rendering**: leverage suspense boundaries and memoization for heavy proposal tables.
+
+## Consolidation targets
+
+- Merge historical reports from `docs/optimization/` and `docs/analysis/` into this central document.
+- Archive status updates older than 90 days to the legacy backlog.
+- Prefer metrics pulled from observability dashboards over anecdotal improvements.
+
+## Automation hooks
+
+- Governance agent flags new optimisation docs and routes them to this page via pull request comment.
+- TypeDoc reference ensures helper utilities (e.g. caching, batching) link here for implementation notes.

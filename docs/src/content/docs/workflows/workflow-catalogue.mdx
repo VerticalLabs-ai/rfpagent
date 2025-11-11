@@ -1,0 +1,30 @@
+---
+title: Workflow Catalogue
+description: Inventory of active, deprecated, and planned Mastra workflows managed by the governance agent.
+lastUpdated: 2025-02-14
+category: workflows
+---
+
+The catalogue combines static metadata with the governance agent's nightly snapshot. Source data lives in
+`docs/governance/cleanup-manifest.json` and is rendered into this section during build time.
+
+## Active workflows
+
+- **Proposal generation v2** – Coordinates retrieval, drafting, and validation agents.
+- **Incremental portal scanning** – Schedules portal scans to identify new opportunities.
+- **Compliance validation** – Runs legal and eligibility checks before submission.
+
+## Under review
+
+- **Legacy proposal summariser** – Candidate for archive; duplicated in multiple legacy docs.
+- **Alternate scoring model** – Requires updated evaluation metrics and tests before re-enable.
+
+## Migration timeline
+
+| Week | Focus | Owner |
+| --- | --- | --- |
+| W1 | Merge environment setup guides | Docs team |
+| W2 | Consolidate optimisation reports | AI platform |
+| W3 | Promote observability runbooks | DevOps |
+
+Changes to workflow scope must be captured via `pnpm docs:changelog`.

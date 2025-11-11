@@ -1,0 +1,22 @@
+---
+title: Storybook Integration
+description: How Storybook stories feed the Starlight reference site and governance agent.
+lastUpdated: 2025-02-14
+category: reference
+---
+
+## Source of truth
+
+- Storybook configuration: `client/.storybook`
+- Component stories: `client/src/components/**/__stories__/*.stories.tsx`
+
+## Documentation pipeline
+
+1. Storybook emits JSON via `pnpm storybook:extract` (script to be added) which is consumed by the governance agent.
+2. Components with `docs` parameters automatically link into this page.
+3. Screenshots or visual regression diffs are attached to PRs and referenced in the changelog.
+
+## Governance rules
+
+- Component documentation should live with the story. The governance agent rejects Markdown duplicates.
+- Use MDX in stories for long-form documentation; Starlight will ingest the output automatically.

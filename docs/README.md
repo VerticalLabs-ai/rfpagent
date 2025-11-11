@@ -1,191 +1,98 @@
-# Documentation Index
+# Documentation System Overview
 
-**Last Updated**: October 2025
+**Last Updated**: February 2025
 
-This directory contains all project documentation organized by category.
+The `/docs` directory now powers a Starlight (Astro) site that serves as the single source of truth for platform,
+workflow, and operations documentation. All hand-written content lives under `docs/src/content/docs`, is decorated with
+front matter, and is governed by automated scripts.
 
 ---
 
-## 📁 Documentation Structure
+## 📁 Structure
 
 ```
 docs/
-├── README.md                         # This file - documentation index
-├── mastra-cloud-deployment.md        # Mastra Cloud deployment guide
-├── api/                              # API documentation and OpenAPI specs
-│   ├── README.md                    # API overview
-│   └── openapi.yaml                 # OpenAPI 3.0 specification
-├── technical/                        # Technical architecture and implementation
-│   ├── models-reference.md          # AI models (GPT-5, Claude 4.5)
-│   ├── agents-architecture.md       # Multi-agent system design
-│   ├── logging-and-observability.md # Logging, correlation IDs, tracing
-│   ├── incremental-scanning.md      # Incremental portal scanning
-│   ├── mcp-server-setup.md          # Local MCP server setup
-│   ├── pdf-processing.md            # PDF processing implementation
-│   ├── security.md                  # Security documentation
-│   ├── browserbase-migration.md     # Browserbase migration
-│   ├── confidence-scoring.md        # Confidence scoring system
-│   ├── ml-integration-plan.md       # ML integration
-│   ├── compliance-integration-fix.md # Compliance fixes
-│   ├── refactoring-plan.md          # Code refactoring plans
-│   └── route-refactoring-guide.md   # Route refactoring
-├── testing/                          # Testing guides and procedures
-│   ├── testing-guide.md             # General testing guide
-│   ├── testing-with-database.md     # Database testing guide
-│   └── portal-scanning-tests.md     # Portal scanning test docs
-├── deployment/                       # Deployment and infrastructure
-│   ├── deployment-guide.md          # Fly.io deployment guide
-│   ├── cgc-analysis-report.md       # Code Graph Context analysis
-│   ├── sentry-setup.md              # Sentry error tracking setup
-│   └── wasm-fix-mastra-cloud.md     # WASM deployment fix
-├── guides/                           # User guides and tutorials
-│   ├── development-setup.md         # Development environment setup
-│   ├── environment-setup.md         # Environment configuration
-│   ├── integration-guide.md         # Integration guide
-│   └── video-tutorial-scripts.md    # Video tutorial scripts
-├── optimization/                     # Performance and code optimization
-│   ├── code-optimization-report.md  # Code optimization analysis
-│   └── optimization-summary.md      # Performance optimization summary
-└── archive/                          # Historical documents and reports
-    └── 2025-01-24-cleanup/          # Archived outdated docs
-        └── (15 archived summary/status files)
+├── README.md                     # This file
+├── astro.config.mjs (root)       # Astro + Starlight configuration (in repo root)
+├── starlight.config.mjs (root)   # Sidebar, navigation, metadata (in repo root)
+├── generated/                    # TypeDoc output (auto-generated)
+├── governance/                   # Audit outputs and cleanup manifests
+├── public/                       # Static assets for the doc site
+└── src/
+    └── content/
+        └── docs/                 # Published documentation grouped by category
+            ├── governance/       # Governance, changelog, automation policies
+            ├── platform/         # Architecture and subsystem coverage
+            ├── workflows/        # Agent orchestration + workflow catalogue
+            ├── operations/       # CI/CD, observability, deployment runbooks
+            ├── quality/          # Testing and performance guidance
+            ├── reference/        # API, TypeDoc, Storybook integration
+            ├── legacy/           # Links to legacy backlog + cleanup roadmap
+            └── changelog/        # Release notes (optional human-authored content)
 ```
 
----
-
-## 🚀 Quick Links
-
-### For Developers
-
-- [Testing Guide](testing/testing-guide.md) - How to test your changes
-- [Logging & Observability](technical/logging-and-observability.md) - Structured logging and tracing
-- [Models Reference](technical/models-reference.md) - AI model configuration
-- [Agents Architecture](technical/agents-architecture.md) - Multi-agent system
-- [API Documentation](api/README.md) - REST API reference
-
-### For DevOps
-
-- [Deployment Guide](deployment/deployment-guide.md) - Fly.io deployment
-- [Mastra Cloud Deployment](mastra-cloud-deployment.md) - Mastra Cloud deployment
-- [Security Documentation](technical/security.md) - Security best practices
-- Database: See CLAUDE.md in project root
-
-### For Product/Business
-
-- Architecture Overview: See CLAUDE.md in project root
-- AI Capabilities: [Models Reference](technical/models-reference.md)
-- Integration: [Integration Guide](guides/integration-guide.md)
+All legacy Markdown files generated by previous AI agents remain under their original directories (e.g.
+`docs/technical`, `docs/guides`). They are catalogued automatically and scheduled for consolidation via the governance
+manifest.
 
 ---
 
-## 📝 Documentation Guidelines
+## 🧭 Governance Commands
 
-### 🚨 CRITICAL RULES (STRICTLY ENFORCED)
-
-1. **NO documentation for minor fixes or one-time issues**
-   - Bug fixes, small tweaks, routine updates → NO documentation
-   - Only document features, architecture, or processes
-
-2. **CONSOLIDATE - Do NOT create duplicate docs**
-   - Search existing docs FIRST before creating new
-   - If related doc exists → UPDATE it, don't create new
-   - Maximum 2 docs on the same topic = consolidate immediately
-
-3. **NAMING CONVENTION: kebab-case ONLY**
-   - ✅ `mastra-cloud-deployment.md`
-   - ❌ `MASTRA_CONFIGURATION.md`
-   - ❌ `MastraConfiguration.md`
-   - Exception: Technical acronyms like `CLAUDE.md`, `README.md` in root
-
-4. **ROOT docs/ folder: MAX 2 files**
-   - Only `README.md` (this file)
-   - All other docs → subdirectories
-
-5. **NEVER create docs in project root**
-   - ❌ `/Users/mgunnin/Developer/.../rfpagent/my-doc.md`
-   - ✅ `/Users/mgunnin/Developer/.../rfpagent/docs/technical/my-doc.md`
-   - Exception: `CLAUDE.md`, `README.md`, `package.json` (config files)
-
-6. **Archive old docs, don't delete**
-   - Outdated/completed docs → `archive/YYYY-MM-DD-cleanup/`
-   - Never leave stale docs in main directories
-
-### ✅ Before Creating New Documentation
-
-**MANDATORY CHECKLIST:**
-
-- [ ] Is this a feature/architecture/process? (If no → don't document)
-- [ ] Did I search `/docs` for existing docs on this topic?
-- [ ] Can I update an existing doc instead? (If yes → update, don't create)
-- [ ] Is the filename in kebab-case? (If no → fix it)
-- [ ] Is it in the correct subdirectory? (Never in root)
-- [ ] Does it have "Last Updated" date at top?
-- [ ] Does it cross-reference related docs?
-
-### 📋 When to Document
-
-**✅ DO document:**
-
-- New features (user-facing or developer-facing)
-- Architecture decisions
-- API changes
-- Deployment procedures
-- Testing strategies
-- Security considerations
-
-**❌ DON'T document:**
-
-- Bug fixes
-- Typo corrections
-- Dependency updates
-- Code refactoring (unless architectural)
-- One-time fixes
-- Temporary workarounds
+| Command | Description |
+| --- | --- |
+| `pnpm docs:audit` | Generates `docs/governance/repo-audit-report.md` and `docs/governance/cleanup-manifest.json`. |
+| `pnpm docs:governance` | Runs the audit plus validation for front matter and naming conventions. |
+| `pnpm docs:typedoc` | Emits TypeScript API docs to `docs/generated/typedoc`. |
+| `pnpm docs:generate` | Runs TypeDoc and builds the Starlight site. |
+| `pnpm docs:changelog -- --base origin/main` | Appends entries to `CHANGELOG.md` based on changed files. |
 
 ---
 
-## 📂 Directory Purposes
+## ✅ Required Metadata
 
-### `/technical`
+Every page under `docs/src/content/docs` must provide the following front matter fields:
 
-Technical implementation details, architecture decisions, system design, security documentation, and migration guides.
+```
+---
+title: ...
+description: ...
+lastUpdated: YYYY-MM-DD
+category: <overview|governance|platform|workflows|operations|quality|reference|legacy|changelog>
+---
+```
 
-### `/testing`
-
-Testing strategies, test execution guides, test documentation, and quality assurance procedures.
-
-### `/deployment`
-
-Deployment procedures, infrastructure setup, production operations, and DevOps guides.
-
-### `/api`
-
-API documentation, OpenAPI specifications, endpoint references, and integration examples.
-
-### `/guides`
-
-User-facing guides, tutorials, integration instructions, and how-to documentation.
-
-### `/archive`
-
-Historical documents, dated reports, completed analyses, and deprecated documentation.
+Filenames must be kebab-case (e.g. `agent-orchestration.mdx`). The governance agent enforces these rules locally and in
+CI; violations block merges.
 
 ---
 
-## 🔄 Maintenance
+## 🗄️ Legacy Content Policy
 
-Documentation should be updated:
-
-- When features are added/removed
-- When deployment process changes
-- When dependencies are updated
-- When API changes occur
-- At least quarterly for general review
-
-**Last full audit**: October 2025
+1. **Do not add new Markdown files outside `docs/src/content/docs`.** Update existing canonical pages instead.
+2. **When referencing legacy docs**, link to the `legacy/` pages which describe consolidation targets.
+3. **Archive rather than delete.** Move deprecated material into `docs/archive/<date>-cleanup/` and record the action in
+   the changelog.
 
 ---
 
-## 📧 Questions?
+## 🔁 Change Process
 
-For documentation questions or suggestions, open an issue in the repository.
+1. Update or create content inside `docs/src/content/docs`.
+2. Run `pnpm docs:governance` locally to catch metadata or duplication issues.
+3. Run `pnpm docs:changelog -- --base origin/main` to add entries under the appropriate release.
+4. Submit your PR. CI will re-run audit, enforcement, docs generation, and deployment.
+
+---
+
+## 🚀 Deployment
+
+The `docs-maintenance` GitHub Action runs on every push and performs:
+
+1. `pnpm install --frozen-lockfile`
+2. `pnpm lint && pnpm type-check && pnpm test`
+3. `pnpm docs:governance`
+4. `pnpm docs:generate`
+5. Deployment to the configured Netlify/Vercel target using `DOCS_DEPLOY_TOKEN`
+
+Deployment results, audit summaries, and changelog updates are attached to the workflow summary for traceability.

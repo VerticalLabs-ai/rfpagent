@@ -1,0 +1,35 @@
+---
+title: Platform Architecture Overview
+description: High-level architecture of the RFP Agent platform across client, server, shared, and AI workflows.
+lastUpdated: 2025-02-14
+category: platform
+---
+
+The RFP Agent platform is a full-stack TypeScript system that blends deterministic services with adaptive AI orchestration.
+This overview summarises the core subsystems so technical and operations documentation can reference a single source.
+
+## Subsystems
+
+| Subsystem | Location | Responsibilities |
+| --- | --- | --- |
+| **Client** | `client/src` | React + TanStack Query front-end, Storybook-documented components, proposal workflows |
+| **Server** | `server/` | Express HTTP APIs, Drizzle ORM access layer, background job scheduling |
+| **Shared** | `shared/` | Type-safe DTOs, validation schemas, utilities reused across client and server |
+| **Mastra Workflows** | `src/mastra/` | Agent definitions, memory providers, workflow automation for proposal drafting |
+| **Scripts** | `scripts/` | Operational tooling: migrations, testing harnesses, governance scripts |
+| **Tests** | `tests/` | Jest suites, fixtures, Playwright integration |
+
+## Data flow
+
+1. Source RFP documents are ingested via the `server` service, persisted, and normalised.
+2. Workflow triggers call into Mastra orchestrations which coordinate Claude Code, GPT, and other providers.
+3. Shared types ensure parity between REST responses and UI consumption.
+4. Observability integrates Sentry, structured logging, and correlation IDs described in the legacy documentation backlog.
+
+## Documentation sources
+
+- **TypeDoc** surfaces API-level signatures for each exported module.
+- **Storybook** snapshots component usage and accessibility states.
+- **Runbooks** and **Guides** are curated Markdown documents stored under `docs/src/content/docs`.
+
+For subsystem-specific coverage numbers see the [repository audit map](./repository-audit-map).

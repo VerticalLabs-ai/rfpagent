@@ -1,0 +1,24 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [
+    "server/index.ts",
+    "src/mastra/index.ts",
+    "shared/index.ts",
+    "client/src/index.tsx"
+  ],
+  "tsconfig": "tsconfig.json",
+  "out": "docs/generated/typedoc",
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "categorizeByGroup": false,
+  "navigation": {
+    "includeCategories": true
+  },
+  "entryPointStrategy": "expand",
+  "mergeModules": true,
+  "hideGenerator": true,
+  "cleanOutputDir": true,
+  "githubPages": false,
+  "logLevel": "Warn",
+  "sort": ["source-order", "kind", "alphabetical"]
+}

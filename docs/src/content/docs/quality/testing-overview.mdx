@@ -1,0 +1,26 @@
+---
+title: Testing Strategy Overview
+description: Unified testing plan and documentation intake process enforced by the governance agent.
+lastUpdated: 2025-02-14
+category: quality
+---
+
+## Testing layers
+
+| Layer | Command | Purpose |
+| --- | --- | --- |
+| Unit | `pnpm test` | Validate isolated logic in `server`, `shared`, and `src/mastra` |
+| Integration | `pnpm test -- tests/integration` | Multi-service workflows and database checks |
+| E2E | `pnpm playwright test` | Browser flows recorded for proposal submission |
+| Agent | `pnpm test-agents` | Mastra workflow verification |
+
+## Documentation policy
+
+- All new testing strategies must update this page instead of creating standalone docs.
+- The governance agent merges redundant testing guides into this canonical entry.
+- Test data fixtures should link back to sections here for context.
+
+## Reporting
+
+- Coverage reports publish to the CI summary and are linked in the changelog when thresholds change.
+- Regressions open an incident linked from [Observability & Runbooks](../operations/observability-runbooks).

@@ -1,0 +1,91 @@
+name: Docs Governance & Deployment
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'scripts/doc-governance.ts'
+      - 'astro.config.mjs'
+      - 'starlight.config.mjs'
+      - 'typedoc.json'
+      - '.github/workflows/docs-maintenance.yml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'scripts/doc-governance.ts'
+      - 'astro.config.mjs'
+      - 'starlight.config.mjs'
+      - 'typedoc.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Unit tests
+        run: pnpm test -- --runInBand
+
+      - name: Documentation governance
+        run: pnpm docs:governance
+
+      - name: Build documentation
+        run: pnpm docs:generate
+
+      - name: Validate changelog (PR)
+        if: github.event_name == 'pull_request'
+        run: pnpm docs:changelog -- --base origin/${{ github.event.pull_request.base.ref }} --dry-run
+
+      - name: Update changelog (main)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: pnpm docs:changelog -- --base origin/main --release $(date +%Y.%m.%d)
+        shell: bash
+
+      - name: Commit governance artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(docs): update generated documentation assets'
+          file_pattern: |
+            CHANGELOG.md
+            docs/governance/repo-audit-report.md
+            docs/governance/cleanup-manifest.json
+
+      - name: Deploy documentation
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.DOCS_DEPLOY_TOKEN != ''
+        env:
+          DOCS_DEPLOY_TOKEN: ${{ secrets.DOCS_DEPLOY_TOKEN }}
+        run: |
+          pnpm dlx vercel deploy docs/dist --prod --token "$DOCS_DEPLOY_TOKEN"

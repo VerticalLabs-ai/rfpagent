@@ -1,0 +1,37 @@
+---
+title: CI/CD and Deployment Automation
+description: GitHub Actions, pnpm workflows, and hosting targets for the Starlight documentation site.
+lastUpdated: 2025-02-14
+category: operations
+---
+
+## Pipeline overview
+
+1. **Install dependencies** with `pnpm install --frozen-lockfile`.
+2. **Run checks**: `pnpm lint`, `pnpm type-check`, `pnpm test`, and the docs governance suite.
+3. **Generate docs**: `pnpm docs:generate` builds TypeDoc output and the Starlight site.
+4. **Deploy**: Artifacts sync to Netlify or Vercel depending on environment variables.
+
+## Required secrets
+
+| Secret | Purpose |
+| --- | --- |
+| `DOCS_DEPLOY_TOKEN` | Deploy access token for Netlify/Vercel |
+| `GITHUB_TOKEN` | Required for changelog commits |
+| `CI` | Set to `true` for pnpm to respect non-interactive mode |
+
+## Command reference
+
+```bash
+pnpm lint
+pnpm test
+pnpm docs:governance
+pnpm docs:generate
+```
+
+## Hosting targets
+
+- **Preview**: Deploy from pull requests to temporary environments.
+- **Production**: Deploy from `main` after governance + changelog steps pass.
+
+Read the [`docs-maintenance` workflow](../../../../.github/workflows/docs-maintenance.yml) for full job configuration.
