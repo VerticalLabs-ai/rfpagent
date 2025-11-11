@@ -253,6 +253,75 @@ router.post('/', async (req, res) => {
 });
 
 /**
+ * Get all submissions (list endpoint)
+ * GET /api/submissions
+ *
+ * Returns a list of submissions with optional filtering and pagination.
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { status, limit, offset, rfpId } = req.query;
+
+    // Validate query parameters
+    const limitNum = limit ? parseInt(String(limit), 10) : 100;
+    const offsetNum = offset ? parseInt(String(offset), 10) : 0;
+
+    if (limitNum < 1 || limitNum > 200) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid limit',
+        details: 'Limit must be between 1 and 200',
+      });
+    }
+
+    if (offsetNum < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid offset',
+        details: 'Offset must be >= 0',
+      });
+    }
+
+    // Get submissions from storage
+    let submissions;
+    if (rfpId && typeof rfpId === 'string') {
+      submissions = await storage.getSubmissionsByRFP(rfpId);
+    } else {
+      submissions = await storage.getSubmissions({
+        limit: limitNum,
+        status: status as string | undefined,
+      });
+    }
+
+    // Apply pagination if not already applied by storage
+    const paginatedSubmissions = submissions.slice(offsetNum, offsetNum + limitNum);
+
+    res.json({
+      success: true,
+      data: {
+        submissions: paginatedSubmissions,
+        total: submissions.length,
+        limit: limitNum,
+        offset: offsetNum,
+      },
+    });
+  } catch (error) {
+    console.error('Error getting submissions:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to get submissions',
+      details:
+        process.env.NODE_ENV === 'development'
+          ? error instanceof Error
+            ? error.stack
+            : String(error)
+          : undefined,
+    });
+  }
+});
+
+/**
  * Start automated submission pipeline for a proposal
  */
 router.post('/pipeline/start', async (req, res) => {
