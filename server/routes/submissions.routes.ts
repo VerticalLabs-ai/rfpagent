@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { storage } from '../storage';
 import { submissionService } from '../services/core/submissionService';
+import { storage } from '../storage';
 
 const router = Router();
 
@@ -174,7 +174,6 @@ router.post('/', async (req, res) => {
       portalId = rfp.portalId || '';
     } else if (data.url || data.sourceUrl) {
       // If URL provided but no rfpId, try to find or create RFP from URL
-      const url = data.url || data.sourceUrl;
       // For now, return error - this would require RFP creation logic
       return res.status(400).json({
         success: false,
@@ -187,6 +186,15 @@ router.post('/', async (req, res) => {
         success: false,
         error: 'Missing required field',
         details: 'Either rfpId or url/sourceUrl must be provided',
+      });
+    }
+
+    // At this point, rfpId is guaranteed to be defined (all other paths return early)
+    if (!rfpId) {
+      return res.status(400).json({
+        success: false,
+        error: 'RFP ID is required',
+        details: 'RFP ID must be provided',
       });
     }
 
@@ -208,7 +216,7 @@ router.post('/', async (req, res) => {
     };
 
     const proposal = await storage.createProposal({
-      rfpId: rfpId!,
+      rfpId,
       content: JSON.stringify(proposalData),
       proposalData: JSON.stringify(proposalData),
       status: 'draft',
@@ -218,7 +226,7 @@ router.post('/', async (req, res) => {
 
     // Create submission
     const submission = await storage.createSubmission({
-      rfpId: rfpId!,
+      rfpId,
       proposalId: proposalId,
       portalId: portalId || '',
       status: 'pending',
@@ -294,7 +302,10 @@ router.get('/', async (req, res) => {
     }
 
     // Apply pagination if not already applied by storage
-    const paginatedSubmissions = submissions.slice(offsetNum, offsetNum + limitNum);
+    const paginatedSubmissions = submissions.slice(
+      offsetNum,
+      offsetNum + limitNum
+    );
 
     res.json({
       success: true,
