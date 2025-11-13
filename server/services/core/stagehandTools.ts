@@ -1,9 +1,39 @@
-import { Stagehand } from '@browserbasehq/stagehand';
 import { z } from 'zod';
 import { sessionManager } from '../../../src/mastra/tools/session-manager';
 
 // SessionManager has been moved to src/mastra/tools/session-manager.ts
 // Now using the new Mastra-compliant implementation
+
+/**
+ * Default timeout for Stagehand operations (observe, extract, act)
+ */
+const STAGEHAND_OPERATION_TIMEOUT = 30000; // 30 seconds
+
+/**
+ * Wraps a Stagehand operation with timeout protection
+ * @param operation - The Stagehand operation to execute
+ * @param timeoutMs - Timeout in milliseconds (default: 30000)
+ * @param operationName - Name of the operation for error messages
+ * @returns Promise that resolves with the operation result or rejects on timeout
+ */
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number = STAGEHAND_OPERATION_TIMEOUT,
+  operationName: string = 'Stagehand operation'
+): Promise<T> {
+  return Promise.race([
+    operation,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(`${operationName} timed out after ${timeoutMs / 1000}s`)
+          ),
+        timeoutMs
+      )
+    ),
+  ]);
+}
 
 export interface WebActionResult {
   success: boolean;
@@ -30,7 +60,8 @@ export async function performWebAction(
   action: string,
   sessionId: string = 'default'
 ): Promise<WebActionResult> {
-  const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+  const { stagehand, page } =
+    await sessionManager.getStagehandAndPage(sessionId);
 
   try {
     // Navigate to URL if provided
@@ -39,9 +70,13 @@ export async function performWebAction(
       await page.goto(url);
     }
 
-    // Perform the action using Stagehand instance
+    // Perform the action using Stagehand instance with timeout protection
     console.log(`🎬 Stagehand performing action: ${action}`);
-    await stagehand.act(action);
+    await withTimeout(
+      stagehand.act(action),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'act'
+    );
 
     const currentUrl = page.url();
 
@@ -64,7 +99,8 @@ export async function performWebObservation(
   instruction: string,
   sessionId: string = 'default'
 ): Promise<WebObservationResult> {
-  const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+  const { stagehand, page } =
+    await sessionManager.getStagehandAndPage(sessionId);
 
   try {
     // Navigate to URL if provided
@@ -73,9 +109,13 @@ export async function performWebObservation(
       await page.goto(url);
     }
 
-    // Observe the page using Stagehand instance
+    // Observe the page using Stagehand instance with timeout protection
     console.log(`👀 Stagehand observing: ${instruction}`);
-    const observations = await stagehand.observe(instruction);
+    const observations = await withTimeout(
+      stagehand.observe(instruction),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'observe'
+    );
 
     const currentUrl = page.url();
 
@@ -98,7 +138,8 @@ export async function performWebExtraction(
   schema: any,
   sessionId: string = 'default'
 ): Promise<WebExtractionResult> {
-  const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+  const { stagehand, page } =
+    await sessionManager.getStagehandAndPage(sessionId);
 
   try {
     // Navigate to URL if provided
@@ -118,9 +159,13 @@ export async function performWebExtraction(
     // Use schema directly if it's already a Zod schema, otherwise wrap it
     const zodSchema = schema?._def ? schema : z.object(schema);
 
-    // Extract data
+    // Extract data with timeout protection
     console.log(`📤 Stagehand extracting: ${instruction}`);
-    const data = await stagehand.extract(instruction, zodSchema);
+    const data = await withTimeout(
+      stagehand.extract(instruction, zodSchema),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'extract'
+    );
 
     const currentUrl = page.url();
 
@@ -275,17 +320,23 @@ async function performBonfireLoginOnly(
     // Check for the "Login to Euna Supplier Network" dialog
     console.log('🔍 Looking for Euna Supplier Network login dialog...');
 
-    // Observe the current page structure
-    const pageObservation = await stagehand.observe(
-      'Look for login dialog, buttons, or forms on the page'
+    // Observe the current page structure with timeout protection
+    const pageObservation = await withTimeout(
+      stagehand.observe('Look for login dialog, buttons, or forms on the page'),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'observe'
     );
     console.log('📄 Page structure:', pageObservation);
 
     // Try to find and click the "Log In" button if there's a modal/dialog
     console.log('🎯 Looking for Log In button...');
     try {
-      // Wait for login button or dialog to appear
-      await stagehand.act('click the "Log In" button or login link if visible');
+      // Wait for login button or dialog to appear with timeout protection
+      await withTimeout(
+        stagehand.act('click the "Log In" button or login link if visible'),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'act'
+      );
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
       console.log(
@@ -296,13 +347,21 @@ async function performBonfireLoginOnly(
     // Multi-step Euna login flow: First enter email, then wait for password field
     console.log('📝 Step 1: Looking for email address field...');
     try {
-      await stagehand.act(
-        `type "${username}" in the email address field, email field, or username field`
+      await withTimeout(
+        stagehand.act(
+          `type "${username}" in the email address field, email field, or username field`
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'act'
       );
     } catch (emailError) {
       console.log('⚠️ Email field entry failed, trying alternate approach...');
-      await stagehand.act(
-        `type "${username}" in the input field for email or username`
+      await withTimeout(
+        stagehand.act(
+          `type "${username}" in the input field for email or username`
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'act'
       );
     }
 
@@ -310,8 +369,12 @@ async function performBonfireLoginOnly(
       '▶️ Step 2: Clicking Continue button to proceed to password step...'
     );
     try {
-      await stagehand.act(
-        'click the "Continue" button, "Next" button, or submit button'
+      await withTimeout(
+        stagehand.act(
+          'click the "Continue" button, "Next" button, or submit button'
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'act'
       );
     } catch (continueError) {
       console.log('⚠️ Continue button click failed, trying Enter key...');
@@ -373,9 +436,15 @@ async function performBonfireLoginOnly(
     console.log('🔑 Step 4: Entering password using detected selector...');
     await page.fill(matchedPasswordSelector, password);
 
-    // Submit the login form
+    // Submit the login form with timeout protection
     console.log('🚀 Submitting Euna Supplier Network login...');
-    await stagehand.act('click the login button, submit button, or "Log In" button');
+    await withTimeout(
+      stagehand.act(
+        'click the login button, submit button, or "Log In" button'
+      ),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'act'
+    );
 
     // Wait for authentication to complete
     console.log('⏳ Waiting for authentication to complete...');
@@ -383,8 +452,12 @@ async function performBonfireLoginOnly(
 
     // Check if we successfully logged in by looking for typical post-login indicators
     try {
-      const postLoginCheck = await stagehand.observe(
-        'Look for success indicators like dashboard, opportunities, welcome message, or vendor portal content'
+      const postLoginCheck = await withTimeout(
+        stagehand.observe(
+          'Look for success indicators like dashboard, opportunities, welcome message, or vendor portal content'
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'observe'
       );
       console.log('✅ Post-login check:', postLoginCheck);
 
@@ -617,7 +690,8 @@ export async function performBrowserAuthentication(
   targetUrl: string,
   sessionId: string = 'default'
 ): Promise<{ success: boolean; sessionData: any; targetUrl: string }> {
-  const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+  const { stagehand, page } =
+    await sessionManager.getStagehandAndPage(sessionId);
 
   try {
     console.log(`🔐 Starting browser authentication for: ${loginUrl}`);
@@ -649,23 +723,39 @@ export async function performBrowserAuthentication(
     // Generic authentication for other portals
     console.log('🔍 Using generic authentication flow...');
 
-    // First, observe the page to understand the login form structure
-    const loginObservations = await stagehand.observe(
-      'find the login form with username and password fields'
+    // First, observe the page to understand the login form structure with timeout protection
+    const loginObservations = await withTimeout(
+      stagehand.observe(
+        'find the login form with username and password fields'
+      ),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'observe'
     );
     console.log('🔍 Login form observations:', loginObservations);
 
     // Fill in username (SECURITY: Never log actual credentials)
     console.log(`👤 Entering username: [REDACTED]`);
-    await stagehand.act(`type "${username}" in the username field`);
+    await withTimeout(
+      stagehand.act(`type "${username}" in the username field`),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'act'
+    );
 
     // Fill in password (SECURITY: Never log actual credentials)
     console.log('🔑 Entering password: [REDACTED]');
-    await stagehand.act(`type "${password}" in the password field`);
+    await withTimeout(
+      stagehand.act(`type "${password}" in the password field`),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'act'
+    );
 
     // Submit the form
     console.log('🚀 Submitting login form...');
-    await stagehand.act('click the login button or submit button');
+    await withTimeout(
+      stagehand.act('click the login button or submit button'),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'act'
+    );
 
     // Wait for navigation/login to complete
     await new Promise(resolve => setTimeout(resolve, 3000));
@@ -824,7 +914,8 @@ export async function scrapeWithAuthenticatedSession(
   extractionInstruction: string,
   sessionId: string = 'default'
 ): Promise<{ opportunities: any[]; sessionData: any }> {
-  const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+  const { stagehand, page } =
+    await sessionManager.getStagehandAndPage(sessionId);
 
   try {
     console.log(`🔍 Scraping authenticated content from: ${targetUrl}`);
@@ -847,9 +938,10 @@ export async function scrapeWithAuthenticatedSession(
       ),
     });
 
-    const result = (await stagehand.extract(
-      extractionInstruction,
-      extractionSchema as any
+    const result = (await withTimeout(
+      stagehand.extract(extractionInstruction, extractionSchema as any),
+      STAGEHAND_OPERATION_TIMEOUT,
+      'extract'
     )) as any;
 
     // Get current session data (cast to any to access cookies method)

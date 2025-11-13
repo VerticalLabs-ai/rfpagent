@@ -375,8 +375,8 @@ export class IncrementalPortalScanService {
     // Wait for content to load
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Get page content (cast to any to access content method)
-    const content = await (page as any).content();
+    // Get page content - page is properly typed from sessionManager.getPage()
+    const content = await page.content();
 
     // Use Austin Finance extractor
     const extractor = new AustinFinanceContentExtractor();

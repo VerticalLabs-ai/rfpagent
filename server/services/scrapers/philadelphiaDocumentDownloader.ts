@@ -3,6 +3,37 @@ import { Stagehand } from '@browserbasehq/stagehand';
 import { z } from 'zod';
 import { ObjectStorageService, objectStorageClient } from '../../objectStorage';
 
+/**
+ * Default timeout for Stagehand operations (observe, extract, act)
+ */
+const STAGEHAND_OPERATION_TIMEOUT = 30000; // 30 seconds
+
+/**
+ * Wraps a Stagehand operation with timeout protection
+ * @param operation - The Stagehand operation to execute
+ * @param timeoutMs - Timeout in milliseconds (default: 30000)
+ * @param operationName - Name of the operation for error messages
+ * @returns Promise that resolves with the operation result or rejects on timeout
+ */
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number = STAGEHAND_OPERATION_TIMEOUT,
+  operationName: string = 'Stagehand operation'
+): Promise<T> {
+  return Promise.race([
+    operation,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error(`${operationName} timed out after ${timeoutMs / 1000}s`)
+          ),
+        timeoutMs
+      )
+    ),
+  ]);
+}
+
 export interface PhiladelphiaDocument {
   name: string;
   url?: string;
@@ -94,15 +125,10 @@ export class PhiladelphiaDocumentDownloader {
    */
   private createStagehandConfig() {
     return {
-      env: 'BROWSERBASE',
-      verbose: 1,
-      modelName: 'google/gemini-2.0-flash-exp',
-      disablePino: true,
+      env: 'BROWSERBASE' as const,
+      verbose: 1 as const,
       apiKey: this.browserbaseApiKey,
       projectId: this.browserbaseProjectId,
-      modelClientOptions: {
-        apiKey: this.googleApiKey,
-      },
       browserbaseSessionCreateParams: {
         projectId: this.browserbaseProjectId,
         keepAlive: true,
@@ -118,7 +144,7 @@ export class PhiladelphiaDocumentDownloader {
             height: 1080,
           },
         },
-        region: 'us-west-2',
+        region: 'us-west-2' as const,
       },
     };
   }
@@ -134,55 +160,61 @@ export class PhiladelphiaDocumentDownloader {
       stagehand = new Stagehand(this.createStagehandConfig());
       await stagehand.init();
 
-      const page = stagehand.context.pages()[0];
-      if (!page) {
-        throw new Error('Failed to get page instance from Stagehand');
-      }
+      // V3 API: Get page with defensive check
+      const pages = await stagehand.context.pages();
+      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       console.log(`🌐 Navigating to: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
       console.log('📊 Extracting RFP details...');
-      const extractedData = (await stagehand.extract(
-        `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
-        z.object({
-          bidNumber: z.string().optional(),
-          description: z.string().optional(),
-          bidOpeningDate: z.string().optional(),
-          purchaser: z.string().optional(),
-          organization: z.string().optional(),
-          department: z.string().optional(),
-          location: z.string().optional(),
-          fiscalYear: z.string().optional(),
-          typeCode: z.string().optional(),
-          allowElectronicQuote: z.string().optional(),
-          requiredDate: z.string().optional(),
-          availableDate: z.string().optional(),
-          infoContact: z.string().optional(),
-          bidType: z.string().optional(),
-          purchaseMethod: z.string().optional(),
-          bulletinDescription: z.string().optional(),
-          shipToAddress: z
-            .object({
-              name: z.string().optional(),
-              address: z.string().optional(),
-              email: z.string().optional(),
-              phone: z.string().optional(),
+      // V3 API: extract(instruction, schema, options)
+      const schema = z.object({
+        bidNumber: z.string().optional(),
+        description: z.string().optional(),
+        bidOpeningDate: z.string().optional(),
+        purchaser: z.string().optional(),
+        organization: z.string().optional(),
+        department: z.string().optional(),
+        location: z.string().optional(),
+        fiscalYear: z.string().optional(),
+        typeCode: z.string().optional(),
+        allowElectronicQuote: z.string().optional(),
+        requiredDate: z.string().optional(),
+        availableDate: z.string().optional(),
+        infoContact: z.string().optional(),
+        bidType: z.string().optional(),
+        purchaseMethod: z.string().optional(),
+        bulletinDescription: z.string().optional(),
+        shipToAddress: z
+          .object({
+            name: z.string().optional(),
+            address: z.string().optional(),
+            email: z.string().optional(),
+            phone: z.string().optional(),
+          })
+          .optional(),
+        items: z
+          .array(
+            z.object({
+              itemNumber: z.string().optional(),
+              description: z.string().optional(),
+              nigpCode: z.string().optional(),
+              quantity: z.string().optional(),
+              unitOfMeasure: z.string().optional(),
             })
-            .optional(),
-          items: z
-            .array(
-              z.object({
-                itemNumber: z.string().optional(),
-                description: z.string().optional(),
-                nigpCode: z.string().optional(),
-                quantity: z.string().optional(),
-                unitOfMeasure: z.string().optional(),
-              })
-            )
-            .optional(),
-          attachments: z.array(z.string()).optional(),
-        })
+          )
+          .optional(),
+        attachments: z.array(z.string()).optional(),
+      });
+
+      const extractedData = (await withTimeout(
+        stagehand.extract(
+          `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
+          schema as any
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'extract'
       )) as RFPDetails;
 
       console.log('✅ Extracted RFP details:', extractedData);
@@ -379,19 +411,53 @@ export class PhiladelphiaDocumentDownloader {
       stagehand = new Stagehand(this.createStagehandConfig());
       await stagehand.init();
 
-      const page = stagehand.context.pages()[0];
-      if (!page) {
-        throw new Error('Failed to get page instance from Stagehand');
-      }
+      // V3 API: Get page with defensive check
+      const pages = await stagehand.context.pages();
+      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       // Navigate to RFP page
       console.log(`🌐 Navigating to RFP page: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
-      // Wait for file attachments section to load - Philadelphia specific
-      // Wait for file attachments section - using a simple timeout since locator APIs are limited
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log(`📋 File Attachments section found`);
+      // Wait for file attachments section with polling instead of fixed timeout
+      console.log(`🔍 Waiting for file attachments section...`);
+      const maxAttempts = 20; // 10 seconds total (20 * 500ms)
+      let sectionFound = false;
+
+      for (let i = 0; i < maxAttempts; i++) {
+        try {
+          // Check if attachment elements exist on the page
+          const hasAttachments = await page.evaluate(() => {
+            const selectors = [
+              '.file-attachments',
+              '[class*="attachment"]',
+              '[class*="document"]',
+              '[id*="attachment"]',
+              'a[href*=".pdf"]',
+            ];
+            return selectors.some(selector => document.querySelector(selector));
+          });
+
+          if (hasAttachments) {
+            sectionFound = true;
+            console.log(
+              `📋 File Attachments section found after ${(i + 1) * 500}ms`
+            );
+            break;
+          }
+
+          // Wait 500ms before next attempt
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch (_error) {
+          // Continue polling on errors
+        }
+
+        if (i === maxAttempts - 1 && !sectionFound) {
+          console.log(
+            `⚠️ File attachments section not found after ${maxAttempts * 500}ms, proceeding anyway`
+          );
+        }
+      }
 
       // Set up proper file capture with response interception
       const capturedFiles: Map<
@@ -487,7 +553,9 @@ export class PhiladelphiaDocumentDownloader {
         if (!browserbaseSessionId) {
           // Try extracting from various URL sources
           const debugUrl =
-            ((page as any).context?.() as any)?._debugUrl || (page as any)._debugUrl || '';
+            ((page as any).context?.() as any)?._debugUrl ||
+            (page as any)._debugUrl ||
+            '';
           const wsUrl =
             ((page as any).context?.() as any)?._wsEndpoint ||
             (page as any)._wsEndpoint ||
@@ -549,9 +617,13 @@ export class PhiladelphiaDocumentDownloader {
           const startTime = Date.now();
           const initialCapturedCount = capturedFiles.size;
 
-          // Use proven Stagehand approach - directly click the document link by name
+          // Use proven Stagehand approach - directly click the document link by name with timeout protection
           console.log(`📎 Clicking document: "${docName}"`);
-          await stagehand.act(`click the "${docName}" link`);
+          await withTimeout(
+            stagehand.act(`click the "${docName}" link`),
+            STAGEHAND_OPERATION_TIMEOUT,
+            'act'
+          );
 
           // Wait for the download to be captured with polling
           let downloadCompleted = false;
@@ -600,8 +672,25 @@ export class PhiladelphiaDocumentDownloader {
 
           // Navigate back to the RFP page to continue with other documents
           console.log(`↩️ Navigating back from ${docName}`);
-          await page.goBack();
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          try {
+            await Promise.race([
+              page.goBack(),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () =>
+                    reject(new Error('Navigation back timed out after 10s')),
+                  10000
+                )
+              ),
+            ]);
+            // Wait for page to stabilize after navigation
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (navError) {
+            console.warn(
+              `⚠️ Navigation back failed, continuing anyway:`,
+              navError
+            );
+          }
         } catch (error: any) {
           console.error(`❌ Failed to download ${docName}:`, error);
           doc.downloadStatus = 'failed';
@@ -609,7 +698,16 @@ export class PhiladelphiaDocumentDownloader {
 
           // Try to get back to the main page if we're stuck
           try {
-            await page.goBack();
+            await Promise.race([
+              page.goBack(),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () =>
+                    reject(new Error('Navigation back timed out after 10s')),
+                  10000
+                )
+              ),
+            ]);
             await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (backError) {
             console.error(`Failed to navigate back after error:`, backError);
@@ -966,17 +1064,20 @@ export class PhiladelphiaDocumentDownloader {
       stagehand = new Stagehand(this.createStagehandConfig());
       await stagehand.init();
 
-      const page = stagehand.context.pages()[0];
-      if (!page) {
-        throw new Error('Failed to get page instance from Stagehand');
-      }
+      // V3 API: Get page with defensive check
+      const pages = await stagehand.context.pages();
+      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       console.log(`📊 Extracting document information from: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
-      // Extract document information using Stagehand act method
-      const extractionResult = await stagehand.act(
-        `Extract all document information from this RFP page, including names, types, sizes, and any download links`
+      // Extract document information using Stagehand act method with timeout protection
+      const extractionResult = await withTimeout(
+        stagehand.act(
+          `Extract all document information from this RFP page, including names, types, sizes, and any download links`
+        ),
+        STAGEHAND_OPERATION_TIMEOUT,
+        'act'
       );
 
       // Parse the result

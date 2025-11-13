@@ -82,9 +82,11 @@ export class PortalAuthenticationSpecialist {
 
         // Wait for page to load and take screenshot
         await stagehand.context.pages()[0].waitForLoadState('networkidle');
-        const loginPageScreenshot = await stagehand.context.pages()[0].screenshot({
-          fullPage: true,
-        });
+        const loginPageScreenshot = await stagehand.context
+          .pages()[0]
+          .screenshot({
+            fullPage: true,
+          });
 
         // Check if already logged in
         const isLoggedIn = await this.checkIfLoggedIn(stagehand, portal);
@@ -124,9 +126,11 @@ export class PortalAuthenticationSpecialist {
         }
 
         // Take success screenshot
-        const successScreenshot = await stagehand.context.pages()[0].screenshot({
-          fullPage: true,
-        });
+        const successScreenshot = await stagehand.context
+          .pages()[0]
+          .screenshot({
+            fullPage: true,
+          });
 
         console.log('✅ Portal authentication successful');
 
@@ -198,7 +202,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const selector of loggedInSelectors) {
         try {
-          const element = await stagehand.context.pages()[0].locator(selector).first();
+          const element = await stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             return true;
           }
@@ -216,7 +223,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const selector of loginSelectors) {
         try {
-          const element = await stagehand.context.pages()[0].locator(selector).first();
+          const element = await stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             return false; // Login form present, not logged in
           }
@@ -436,7 +446,10 @@ export class PortalAuthenticationSpecialist {
       let mfaDetected = false;
       for (const selector of mfaSelectors) {
         try {
-          const element = stagehand.context.pages()[0].locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 2000 })) {
             mfaDetected = true;
             console.log(`🔐 MFA detected via selector: ${selector}`);
@@ -493,7 +506,8 @@ export class PortalAuthenticationSpecialist {
 
           // Create promises for each selector check with short timeout
           const visibilityChecks = successSelectors.map(selector =>
-            stagehand.context.pages()[0]
+            stagehand.context
+              .pages()[0]
               .locator(selector)
               .first()
               .isVisible({ timeout: 300 })
@@ -569,7 +583,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const indicator of successIndicators) {
         try {
-          const element = stagehand.context.pages()[0].locator(indicator).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(indicator)
+            .first();
           if (await element.isVisible({ timeout: 5000 })) {
             return { success: true, indicator };
           }
@@ -590,7 +607,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const indicator of errorIndicators) {
         try {
-          const element = stagehand.context.pages()[0].locator(indicator).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(indicator)
+            .first();
           if (await element.isVisible({ timeout: 2000 })) {
             const errorText = await element.textContent();
             return { success: false, error: errorText };
@@ -781,9 +801,11 @@ export class FormSubmissionSpecialist {
       const validationResults = await this.validatePopulatedForms(stagehand);
 
       // Take screenshot of completed forms
-      const completedFormsScreenshot = await stagehand.context.pages()[0].screenshot({
-        fullPage: true,
-      });
+      const completedFormsScreenshot = await stagehand.context
+        .pages()[0]
+        .screenshot({
+          fullPage: true,
+        });
 
       // Store form data in agent memory
       await agentMemoryService.storeMemory({
@@ -887,7 +909,10 @@ export class FormSubmissionSpecialist {
 
       for (const selector of submissionSelectors) {
         try {
-          const element = stagehand.context.pages()[0].locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             const href = await element.getAttribute('href');
             if (href) {
@@ -1586,7 +1611,10 @@ export class DocumentUploadSpecialist {
 
       for (const selector of successSelectors) {
         try {
-          const element = stagehand.context.pages()[0].locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 3000 })) {
             return true;
           }
@@ -1605,7 +1633,10 @@ export class DocumentUploadSpecialist {
 
       for (const selector of errorSelectors) {
         try {
-          const element = stagehand.context.pages()[0].locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 1000 })) {
             return false;
           }
@@ -1644,7 +1675,10 @@ export class DocumentUploadSpecialist {
       let foundUploadList = false;
       for (const selector of uploadListSelectors) {
         try {
-          const element = stagehand.context.pages()[0].locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             foundUploadList = true;
             break;
