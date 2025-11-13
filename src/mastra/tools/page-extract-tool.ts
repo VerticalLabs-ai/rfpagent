@@ -39,7 +39,7 @@ export const pageExtractTool = createTool({
   execute: async ({ context }) => {
     const { url, instruction, schema, sessionId } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     try {
       console.log(`📊 Extracting: "${instruction}"`);
@@ -82,10 +82,7 @@ export const pageExtractTool = createTool({
         console.warn('Unexpected schema format, using default schema');
         extractionSchema = defaultSchema;
       }
-      const extractedData = await page.extract({
-        instruction,
-        schema: extractionSchema,
-      });
+      const extractedData = await stagehand.extract(instruction, extractionSchema);
 
       console.log(`✅ Successfully extracted data for: ${instruction}`);
 

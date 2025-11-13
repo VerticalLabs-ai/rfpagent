@@ -18,10 +18,7 @@ export class BrowserbaseSessionManager {
         apiKey: process.env.BROWSERBASE_API_KEY,
         projectId: process.env.BROWSERBASE_PROJECT_ID,
         verbose: 1,
-        modelName: 'google/gemini-2.0-flash-exp', // Use Google Gemini for extraction
-        modelClientOptions: {
-          apiKey: process.env.GOOGLE_API_KEY,
-        },
+        // V3 API: model configuration moved to method calls
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
           keepAlive: true,
@@ -50,6 +47,20 @@ export class BrowserbaseSessionManager {
     }
 
     return stagehand;
+  }
+
+  // V3 API: Helper to get the page object from context
+  async getPage(sessionId: string = this.defaultSessionId) {
+    const stagehand = await this.ensureStagehand(sessionId);
+    const pages = await stagehand.context.pages();
+    return pages[0]; // Return the first (and typically only) page
+  }
+
+  // V3 API: Helper to get both stagehand and page
+  async getStagehandAndPage(sessionId: string = this.defaultSessionId) {
+    const stagehand = await this.ensureStagehand(sessionId);
+    const pages = await stagehand.context.pages();
+    return { stagehand, page: pages[0] };
   }
 
   async closeSession(sessionId: string): Promise<void> {

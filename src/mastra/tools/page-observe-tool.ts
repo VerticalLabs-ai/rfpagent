@@ -32,7 +32,7 @@ export const pageObserveTool = createTool({
   execute: async ({ context }) => {
     const { url, instruction, sessionId } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     try {
       console.log(`🔍 Observing: "${instruction}"`);
@@ -43,7 +43,7 @@ export const pageObserveTool = createTool({
         await page.waitForLoadState('domcontentloaded');
       }
 
-      const observations = await page.observe({ instruction });
+      const observations = await stagehand.observe(instruction);
       console.log(
         `✅ Found ${observations.length} observations for: ${instruction}`
       );
