@@ -1,4 +1,5 @@
 import express from 'express';
+import { z } from 'zod';
 import { storage } from '../storage';
 import { insertProposalSchema } from '@shared/schema';
 import { enhancedProposalService } from '../services/proposals/enhancedProposalService';
@@ -11,8 +12,31 @@ import {
   aiOperationLimiter,
   heavyOperationLimiter,
 } from './middleware/rateLimiting';
+import { validateSchema } from './middleware/zodValidation';
 
 const router = express.Router();
+
+// Validation schemas
+const enhancedProposalGenerationSchema = z.object({
+  rfpId: z.string().uuid('RFP ID must be a valid UUID'),
+  companyProfileId: z.string().uuid('Company Profile ID must be a valid UUID').optional(),
+  sessionId: z.string().optional(),
+  options: z.record(z.any()).default({}),
+});
+
+const pipelineProposalGenerationSchema = z.object({
+  rfpIds: z.array(z.string().uuid()).min(1, 'At least one RFP ID is required'),
+  companyProfileId: z.string().uuid('Company Profile ID must be a valid UUID'),
+  priority: z.coerce.number().int().min(1).max(10).default(5),
+  parallelExecution: z.boolean().default(true),
+  options: z.object({
+    generatePricing: z.boolean().default(true),
+    generateCompliance: z.boolean().default(true),
+    proposalType: z.string().optional(),
+    qualityThreshold: z.coerce.number().min(0).max(1).optional(),
+    autoSubmit: z.boolean().default(false),
+  }).default({}),
+});
 
 /**
  * Proposal Management Routes
@@ -61,16 +85,11 @@ router.delete(
 router.post(
   '/enhanced/generate',
   heavyOperationLimiter,
+  validateSchema(enhancedProposalGenerationSchema),
   handleAsyncError(async (req, res) => {
-    const { rfpId, companyProfileId, options = {} } = req.body;
+    const { rfpId, companyProfileId, sessionId: providedSessionId, options } = req.body;
 
-    if (!rfpId) {
-      return res.status(400).json({
-        error: 'RFP ID is required',
-      });
-    }
-
-    const sessionId = `enhanced_${rfpId}_${Date.now()}`;
+    const sessionId = providedSessionId || `enhanced_${rfpId}_${Date.now()}`;
 
     // Start enhanced proposal generation
     enhancedProposalService
@@ -99,26 +118,15 @@ router.post(
 router.post(
   '/pipeline/generate',
   heavyOperationLimiter,
+  validateSchema(pipelineProposalGenerationSchema),
   handleAsyncError(async (req, res) => {
     const {
       rfpIds,
       companyProfileId,
-      priority = 5,
-      parallelExecution = true,
-      options = {},
+      priority,
+      parallelExecution,
+      options,
     } = req.body;
-
-    if (!rfpIds || !Array.isArray(rfpIds) || rfpIds.length === 0) {
-      return res.status(400).json({
-        error: 'RFP IDs array is required',
-      });
-    }
-
-    if (!companyProfileId) {
-      return res.status(400).json({
-        error: 'Company profile ID is required',
-      });
-    }
 
     const pipelineResults = await Promise.all(
       rfpIds.map((rfpId: string) =>

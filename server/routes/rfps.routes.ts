@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
+import { ZodError } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
 import { ObjectStorageService } from '../objectStorage';
 import { DocumentParsingService } from '../services/processing/documentParsingService';
@@ -10,11 +11,20 @@ import { getMastraScrapingService } from '../services/scrapers/mastraScrapingSer
 import { progressTracker } from '../services/monitoring/progressTracker';
 import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import { storage } from '../storage';
+import { validateSchema, validateQuery } from '../middleware/zodValidation';
 
 const router = Router();
 const objectStorageService = new ObjectStorageService();
 const documentService = new DocumentParsingService();
 const manualRfpService = new ManualRfpService();
+
+// Query validation schema for GET /api/rfps
+const getRfpsQuerySchema = z.object({
+  status: z.string().optional(),
+  portalId: z.string().uuid('Portal ID must be a valid UUID').optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
 
 // Manual RFP Input Schema
 const ManualRfpInputSchema = z.object({
@@ -25,22 +35,38 @@ const ManualRfpInputSchema = z.object({
 /**
  * Get all RFPs with pagination and filtering
  */
-router.get('/', async (req, res) => {
+router.get('/', validateQuery(getRfpsQuerySchema), async (req, res) => {
   try {
-    const { status, portalId, page = '1', limit = '20' } = req.query;
-    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
+    const { status, portalId, page, limit } = req.query as z.infer<
+      typeof getRfpsQuerySchema
+    >;
+    const offset = (page - 1) * limit;
 
     const result = await storage.getAllRFPs({
-      status: status as string,
-      portalId: portalId as string,
-      limit: parseInt(limit as string),
+      status,
+      portalId,
+      limit,
       offset,
     });
 
-    res.json(result);
+    // Return standardized paginated response
+    res.json({
+      success: true,
+      data: result.data,
+      pagination: {
+        total: result.total,
+        page,
+        limit,
+        totalPages: Math.ceil(result.total / limit),
+      },
+    });
   } catch (error) {
     console.error('Error fetching RFPs:', error);
-    res.status(500).json({ error: 'Failed to fetch RFPs' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch RFPs',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 
@@ -91,10 +117,9 @@ router.get('/:id/documents', async (req, res) => {
 /**
  * Create a new RFP
  */
-router.post('/', async (req, res) => {
+router.post('/', validateSchema(insertRfpSchema), async (req, res) => {
   try {
-    const rfpData = insertRfpSchema.parse(req.body);
-    const rfp = await storage.createRFP(rfpData);
+    const rfp = await storage.createRFP(req.body);
 
     // Create audit log
     await storage.createAuditLog({
@@ -104,10 +129,18 @@ router.post('/', async (req, res) => {
       details: { source: 'manual' },
     });
 
-    res.status(201).json(rfp);
+    res.status(201).json({
+      success: true,
+      data: rfp,
+      message: 'RFP created successfully',
+    });
   } catch (error) {
     console.error('Error creating RFP:', error);
-    res.status(400).json({ error: 'Failed to create RFP' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create RFP',
+      details: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 

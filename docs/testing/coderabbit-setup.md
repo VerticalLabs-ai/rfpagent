@@ -12,15 +12,15 @@ The CodeRabbit AI code review system has been fully configured for the RFP Agent
 
 ## 📊 Configuration Statistics
 
-| Metric | Value |
-|--------|-------|
-| **Path-Specific Instructions** | 17 sets |
-| **Path Exclusion Filters** | 27 patterns |
-| **Enabled Code Quality Tools** | 9 tools |
-| **JSDoc Generation Rules** | 3 paths |
-| **Unit Test Generation Rules** | 3 paths |
-| **Knowledge Base Files** | 5 patterns |
-| **Total Lines** | 862 lines |
+| Metric                         | Value       |
+| ------------------------------ | ----------- |
+| **Path-Specific Instructions** | 17 sets     |
+| **Path Exclusion Filters**     | 27 patterns |
+| **Enabled Code Quality Tools** | 9 tools     |
+| **JSDoc Generation Rules**     | 3 paths     |
+| **Unit Test Generation Rules** | 3 paths     |
+| **Knowledge Base Files**       | 5 patterns  |
+| **Total Lines**                | 862 lines   |
 
 ## 🛠️ Enabled Tools
 
@@ -39,6 +39,7 @@ The CodeRabbit AI code review system has been fully configured for the RFP Agent
 ### 1. AI Agent System Coverage ⭐
 
 Specialized review instructions for:
+
 - **11 AI Agents** (`src/mastra/agents/`) - Primary Orchestrator, 3 Managers, 7 Specialists
 - **5 Workflows** (`src/mastra/workflows/`) - Master orchestration, document processing, etc.
 - **Agent Tools** (`src/mastra/tools/`) - Browser automation, page navigation, coordination
@@ -103,6 +104,7 @@ node scripts/validate-coderabbit-config.js
 ```
 
 Expected output:
+
 ```
 ✓ Configuration file found
 ✓ YAML syntax is valid
@@ -122,6 +124,7 @@ Expected output:
 ### 3. Interact with CodeRabbit
 
 In the PR comments, you can:
+
 - 🤖 Ask questions: `@coderabbitai explain this change`
 - 🔍 Request specific reviews: `@coderabbitai review the security of this code`
 - 📝 Request documentation: `@coderabbitai generate JSDoc for this function`
@@ -226,6 +229,7 @@ reviews:
 ### Too Many/Few Comments
 
 Adjust review profile in `.coderabbit.yaml`:
+
 - `chill` for fewer comments (critical issues only)
 - `assertive` for balanced feedback (current)
 
@@ -237,11 +241,11 @@ Adjust review profile in `.coderabbit.yaml`:
 
 ## 🔗 Additional Resources
 
-- **CodeRabbit Documentation**: https://docs.coderabbit.ai/
-- **Configuration Schema**: https://coderabbit.ai/integrations/schema.v2.json
-- **Mastra.ai Framework**: https://mastra.dev/
-- **Drizzle ORM**: https://orm.drizzle.team/
-- **React Testing Library**: https://testing-library.com/react
+- **CodeRabbit Documentation**: <https://docs.coderabbit.ai/>
+- **Configuration Schema**: <https://coderabbit.ai/integrations/schema.v2.json>
+- **Mastra.ai Framework**: <https://mastra.dev/>
+- **Drizzle ORM**: <https://orm.drizzle.team/>
+- **React Testing Library**: <https://testing-library.com/react>
 
 ## ✅ Next Steps
 
