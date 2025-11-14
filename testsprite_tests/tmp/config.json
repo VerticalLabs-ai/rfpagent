@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "rfpagent",
+    "projectPath": "/Users/mgunnin/Developer/08_Clients/ibyte/rfpagent",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-HPBhVtrLC7l70HSYttZQgjoR5b_DNd6zNREIhXNnV7ntBbIL7AZel5QpLOTXbRtCUhi8q_TZdOBZYcDVgwbBSjHAoJeaoPfNjO24XsUz4RfP9RoFCCXXaMg9801l3pOm2EQ"
+    }
+  },
+  "proxy": "http://f1ee7f3c-0bb9-404a-843d-24224e350594:WHsJUjFU5MNe2cIfmcZWwaS41EBdzrCY@tun.testsprite.com:8080"
+}

@@ -366,16 +366,16 @@ export class IncrementalPortalScanService {
 
     // Get Stagehand page from session manager
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     // Navigate to the portal
     await page.goto(url);
     await page.waitForLoadState('domcontentloaded');
 
     // Wait for content to load
-    await page.waitForTimeout(2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // Get page content
+    // Get page content - page is properly typed from sessionManager.getPage()
     const content = await page.content();
 
     // Use Austin Finance extractor

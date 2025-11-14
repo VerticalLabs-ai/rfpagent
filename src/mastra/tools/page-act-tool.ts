@@ -30,7 +30,7 @@ export const pageActTool = createTool({
   execute: async ({ context }) => {
     const { url, action, sessionId } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     try {
       console.log(`🎭 Performing action: "${action}"`);
@@ -42,7 +42,7 @@ export const pageActTool = createTool({
       }
 
       if (action) {
-        await page.act({ action });
+        await stagehand.act(action);
         console.log(`✅ Successfully performed: ${action}`);
       }
 

@@ -78,13 +78,15 @@ export class PortalAuthenticationSpecialist {
       try {
         // Navigate to portal login page
         console.log(`🌐 Navigating to portal: ${portal.url}`);
-        await stagehand.page.goto(portal.url);
+        await stagehand.context.pages()[0].goto(portal.url);
 
         // Wait for page to load and take screenshot
-        await stagehand.page.waitForLoadState('networkidle');
-        const loginPageScreenshot = await stagehand.page.screenshot({
-          fullPage: true,
-        });
+        await stagehand.context.pages()[0].waitForLoadState('networkidle');
+        const loginPageScreenshot = await stagehand.context
+          .pages()[0]
+          .screenshot({
+            fullPage: true,
+          });
 
         // Check if already logged in
         const isLoggedIn = await this.checkIfLoggedIn(stagehand, portal);
@@ -124,9 +126,11 @@ export class PortalAuthenticationSpecialist {
         }
 
         // Take success screenshot
-        const successScreenshot = await stagehand.page.screenshot({
-          fullPage: true,
-        });
+        const successScreenshot = await stagehand.context
+          .pages()[0]
+          .screenshot({
+            fullPage: true,
+          });
 
         console.log('✅ Portal authentication successful');
 
@@ -139,7 +143,7 @@ export class PortalAuthenticationSpecialist {
             method: 'login_form',
             mfaUsed: mfaResult.mfaDetected,
             screenshot: successScreenshot,
-            currentUrl: stagehand.page.url(),
+            currentUrl: stagehand.context.pages()[0].url(),
           }
         );
       } catch (browserError) {
@@ -198,7 +202,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const selector of loggedInSelectors) {
         try {
-          const element = await stagehand.page.locator(selector).first();
+          const element = await stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             return true;
           }
@@ -216,7 +223,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const selector of loginSelectors) {
         try {
-          const element = await stagehand.page.locator(selector).first();
+          const element = await stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             return false; // Login form present, not logged in
           }
@@ -271,13 +281,13 @@ export class PortalAuthenticationSpecialist {
     const selectors = portal.selectors as any;
     return {
       usernameField: selectors.username
-        ? stagehand.page.locator(selectors.username)
+        ? stagehand.context.pages()[0].locator(selectors.username)
         : null,
       passwordField: selectors.password
-        ? stagehand.page.locator(selectors.password)
+        ? stagehand.context.pages()[0].locator(selectors.password)
         : null,
       loginButton: selectors.loginButton
-        ? stagehand.page.locator(selectors.loginButton)
+        ? stagehand.context.pages()[0].locator(selectors.loginButton)
         : null,
     };
   }
@@ -319,7 +329,7 @@ export class PortalAuthenticationSpecialist {
     // Find username field
     for (const selector of usernameSelectors) {
       try {
-        const element = stagehand.page.locator(selector).first();
+        const element = stagehand.context.pages()[0].locator(selector).first();
         if (await element.isVisible()) {
           usernameField = element;
           break;
@@ -332,7 +342,7 @@ export class PortalAuthenticationSpecialist {
     // Find password field
     for (const selector of passwordSelectors) {
       try {
-        const element = stagehand.page.locator(selector).first();
+        const element = stagehand.context.pages()[0].locator(selector).first();
         if (await element.isVisible()) {
           passwordField = element;
           break;
@@ -345,7 +355,7 @@ export class PortalAuthenticationSpecialist {
     // Find login button
     for (const selector of loginButtonSelectors) {
       try {
-        const element = stagehand.page.locator(selector).first();
+        const element = stagehand.context.pages()[0].locator(selector).first();
         if (await element.isVisible()) {
           loginButton = element;
           break;
@@ -393,12 +403,12 @@ export class PortalAuthenticationSpecialist {
     // Clear and fill username
     await loginElements.usernameField.clear();
     await loginElements.usernameField.fill(portal.username);
-    await stagehand.page.waitForTimeout(500);
+    await stagehand.context.pages()[0].waitForTimeout(500);
 
     // Clear and fill password
     await loginElements.passwordField.clear();
     await loginElements.passwordField.fill(portal.password);
-    await stagehand.page.waitForTimeout(500);
+    await stagehand.context.pages()[0].waitForTimeout(500);
 
     // Click login button or submit form
     if (loginElements.loginButton) {
@@ -409,7 +419,7 @@ export class PortalAuthenticationSpecialist {
     }
 
     // Wait for navigation or response
-    await stagehand.page.waitForTimeout(3000);
+    await stagehand.context.pages()[0].waitForTimeout(3000);
   }
 
   private async handleMFA(
@@ -436,7 +446,10 @@ export class PortalAuthenticationSpecialist {
       let mfaDetected = false;
       for (const selector of mfaSelectors) {
         try {
-          const element = stagehand.page.locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 2000 })) {
             mfaDetected = true;
             console.log(`🔐 MFA detected via selector: ${selector}`);
@@ -468,7 +481,7 @@ export class PortalAuthenticationSpecialist {
 
         while (Date.now() - startTime < mfaTimeoutMs) {
           // Check if we've navigated away from MFA page
-          const currentUrl = stagehand.page.url();
+          const currentUrl = stagehand.context.pages()[0].url();
           const currentUrlLower = currentUrl.toLowerCase();
           const isMfaPage =
             currentUrlLower.includes('mfa') ||
@@ -493,7 +506,8 @@ export class PortalAuthenticationSpecialist {
 
           // Create promises for each selector check with short timeout
           const visibilityChecks = successSelectors.map(selector =>
-            stagehand.page
+            stagehand.context
+              .pages()[0]
               .locator(selector)
               .first()
               .isVisible({ timeout: 300 })
@@ -528,7 +542,7 @@ export class PortalAuthenticationSpecialist {
           if (mfaCompleted) break;
 
           // Wait before next poll
-          await stagehand.page.waitForTimeout(pollInterval);
+          await stagehand.context.pages()[0].waitForTimeout(pollInterval);
         }
 
         if (!mfaCompleted) {
@@ -557,7 +571,7 @@ export class PortalAuthenticationSpecialist {
   ): Promise<any> {
     try {
       // Wait for potential redirects
-      await stagehand.page.waitForTimeout(3000);
+      await stagehand.context.pages()[0].waitForTimeout(3000);
 
       // Check for success indicators
       const successIndicators = [
@@ -569,7 +583,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const indicator of successIndicators) {
         try {
-          const element = stagehand.page.locator(indicator).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(indicator)
+            .first();
           if (await element.isVisible({ timeout: 5000 })) {
             return { success: true, indicator };
           }
@@ -590,7 +607,10 @@ export class PortalAuthenticationSpecialist {
 
       for (const indicator of errorIndicators) {
         try {
-          const element = stagehand.page.locator(indicator).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(indicator)
+            .first();
           if (await element.isVisible({ timeout: 2000 })) {
             const errorText = await element.textContent();
             return { success: false, error: errorText };
@@ -601,7 +621,7 @@ export class PortalAuthenticationSpecialist {
       }
 
       // If no clear indicators, consider it successful if we're not on login page
-      const currentUrl = stagehand.page.url();
+      const currentUrl = stagehand.context.pages()[0].url();
       const isOnLoginPage =
         currentUrl.includes('login') || currentUrl.includes('signin');
 
@@ -756,15 +776,15 @@ export class FormSubmissionSpecialist {
         phase: 'filling',
         level: 'info',
         message: 'Starting form population',
-        details: { currentUrl: stagehand.page.url() },
+        details: { currentUrl: stagehand.context.pages()[0].url() },
         agentId: 'form-submission-specialist',
       });
 
       // Navigate to submission form if not already there
       const formUrl = await this.findSubmissionFormUrl(stagehand, formMapping);
-      if (formUrl && formUrl !== stagehand.page.url()) {
-        await stagehand.page.goto(formUrl);
-        await stagehand.page.waitForLoadState('networkidle');
+      if (formUrl && formUrl !== stagehand.context.pages()[0].url()) {
+        await stagehand.context.pages()[0].goto(formUrl);
+        await stagehand.context.pages()[0].waitForLoadState('networkidle');
       }
 
       // Extract form data from proposal
@@ -781,9 +801,11 @@ export class FormSubmissionSpecialist {
       const validationResults = await this.validatePopulatedForms(stagehand);
 
       // Take screenshot of completed forms
-      const completedFormsScreenshot = await stagehand.page.screenshot({
-        fullPage: true,
-      });
+      const completedFormsScreenshot = await stagehand.context
+        .pages()[0]
+        .screenshot({
+          fullPage: true,
+        });
 
       // Store form data in agent memory
       await agentMemoryService.storeMemory({
@@ -825,7 +847,7 @@ export class FormSubmissionSpecialist {
           form_data: formData,
           populated_fields: populationResults.fieldsPopulated,
           validation_status: validationResults.status,
-          current_url: stagehand.page.url(),
+          current_url: stagehand.context.pages()[0].url(),
         },
         metadata: {
           phase: 'form_population',
@@ -887,11 +909,14 @@ export class FormSubmissionSpecialist {
 
       for (const selector of submissionSelectors) {
         try {
-          const element = stagehand.page.locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             const href = await element.getAttribute('href');
             if (href) {
-              return new URL(href, stagehand.page.url()).href;
+              return new URL(href, stagehand.context.pages()[0].url()).href;
             }
           }
         } catch (_e) {
@@ -1020,7 +1045,7 @@ export class FormSubmissionSpecialist {
     const elements = [];
     for (const selector of formSelectors) {
       try {
-        const locators = stagehand.page.locator(selector);
+        const locators = stagehand.context.pages()[0].locator(selector);
         const count = await locators.count();
         for (let i = 0; i < count; i++) {
           const element = locators.nth(i);
@@ -1155,7 +1180,7 @@ export class FormSubmissionSpecialist {
       const errors = [];
       for (const selector of errorSelectors) {
         try {
-          const errorElements = stagehand.page.locator(selector);
+          const errorElements = stagehand.context.pages()[0].locator(selector);
           const count = await errorElements.count();
           for (let i = 0; i < count; i++) {
             const element = errorElements.nth(i);
@@ -1247,7 +1272,7 @@ export class DocumentUploadSpecialist {
         phase: 'uploading',
         level: 'info',
         message: 'Starting document uploads',
-        details: { currentUrl: stagehand.page.url() },
+        details: { currentUrl: stagehand.context.pages()[0].url() },
         agentId: 'document-upload-specialist',
       });
 
@@ -1295,7 +1320,7 @@ export class DocumentUploadSpecialist {
       );
 
       // Take screenshot of completed uploads
-      const uploadsScreenshot = await stagehand.page.screenshot({
+      const uploadsScreenshot = await stagehand.context.pages()[0].screenshot({
         fullPage: true,
       });
 
@@ -1460,7 +1485,7 @@ export class DocumentUploadSpecialist {
     const uploadAreas = [];
     for (const selector of uploadSelectors) {
       try {
-        const elements = stagehand.page.locator(selector);
+        const elements = stagehand.context.pages()[0].locator(selector);
         const count = await elements.count();
         for (let i = 0; i < count; i++) {
           const element = elements.nth(i);
@@ -1504,7 +1529,7 @@ export class DocumentUploadSpecialist {
         await fileInput.setInputFiles(document.path);
 
         // Wait for upload to process
-        await stagehand.page.waitForTimeout(2000);
+        await stagehand.context.pages()[0].waitForTimeout(2000);
 
         // Check for upload success indicators
         const uploadSuccess = await this.checkUploadSuccess(
@@ -1586,7 +1611,10 @@ export class DocumentUploadSpecialist {
 
       for (const selector of successSelectors) {
         try {
-          const element = stagehand.page.locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 3000 })) {
             return true;
           }
@@ -1605,7 +1633,10 @@ export class DocumentUploadSpecialist {
 
       for (const selector of errorSelectors) {
         try {
-          const element = stagehand.page.locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible({ timeout: 1000 })) {
             return false;
           }
@@ -1644,7 +1675,10 @@ export class DocumentUploadSpecialist {
       let foundUploadList = false;
       for (const selector of uploadListSelectors) {
         try {
-          const element = stagehand.page.locator(selector).first();
+          const element = stagehand.context
+            .pages()[0]
+            .locator(selector)
+            .first();
           if (await element.isVisible()) {
             foundUploadList = true;
             break;

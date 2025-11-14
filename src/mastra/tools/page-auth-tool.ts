@@ -58,7 +58,7 @@ export const pageAuthTool = createTool({
     } = context;
     let { username, password } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     try {
       // Retrieve credentials from 1Password if enabled
@@ -112,10 +112,10 @@ export const pageAuthTool = createTool({
 
       // Handle cookie consent if present
       try {
-        await page.act(
+        await stagehand.act(
           'dismiss cookie consent banner or accept cookies if present'
         );
-        await page.waitForTimeout(1000);
+        await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (e) {
         // Cookie consent may not be present, continue
       }
@@ -125,39 +125,27 @@ export const pageAuthTool = createTool({
         console.log(`🔥 Performing Bonfire Hub (Euna) authentication...`);
 
         // Bonfire uses Euna Supplier Network - multi-step auth
-        await page.act({
-          action: 'Type in the username: %username%',
-          variables: { username },
-        });
-        await page.act('click continue or next button to proceed');
-        await page.waitForTimeout(2000); // Wait for password field to appear
+        await stagehand.act(`Type in the username: ${username}`);
+        await stagehand.act('click continue or next button to proceed');
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for password field to appear
 
-        await page.act({
-          action: 'Type in the password: %password%',
-          variables: { password },
-        });
-        await page.act('click login or sign in button to submit');
+        await stagehand.act(`Type in the password: ${password}`);
+        await stagehand.act('click login or sign in button to submit');
       } else {
         console.log(`🔍 Performing generic portal authentication...`);
 
         // Generic authentication flow with secure variable substitution
-        await page.act({
-          action: 'Type in the username: %username%',
-          variables: { username },
-        });
-        await page.act({
-          action: 'Type in the password: %password%',
-          variables: { password },
-        });
-        await page.act('click login or sign in button to submit');
+        await stagehand.act(`Type in the username: ${username}`);
+        await stagehand.act(`Type in the password: ${password}`);
+        await stagehand.act('click login or sign in button to submit');
       }
 
       // Wait for authentication to complete
-      await page.waitForTimeout(3000);
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // Check for authentication errors
       try {
-        const errorCheck = await page.observe(
+        const errorCheck = await stagehand.observe(
           'check for login errors, invalid credentials messages, or authentication failures'
         );
         if (errorCheck.length > 0) {
@@ -179,7 +167,7 @@ export const pageAuthTool = createTool({
         pageTitle.includes('Please wait')
       ) {
         console.log(`🛡️ Cloudflare protection detected, waiting for bypass...`);
-        await page.waitForLoadState('networkidle', { timeout: 30000 });
+        await page.waitForLoadState('networkidle', 30000);
       }
 
       const currentUrl = await page.url();

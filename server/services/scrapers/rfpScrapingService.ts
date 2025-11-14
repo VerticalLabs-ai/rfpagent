@@ -19,7 +19,10 @@ const rfpExtractionSchema = z.object({
     .string()
     .optional()
     .describe('RFP description or scope of work'),
-  deadline: z.string().optional().describe('Submission deadline date and time (Due Date)'),
+  deadline: z
+    .string()
+    .optional()
+    .describe('Submission deadline date and time (Due Date)'),
   estimatedValue: z
     .string()
     .optional()
@@ -183,9 +186,14 @@ export class RFPScrapingService {
             updatedAt: new Date(),
             requirements: {
               solicitation_number: extractedData.solicitation_number,
-              questions_due_date: questionsDueDate?.toISOString() || extractedData.questions_due_date,
-              conference_date: conferenceDate?.toISOString() || extractedData.conference_date,
-              pre_bid_meeting: preBidMeetingDate?.toISOString() || extractedData.pre_bid_meeting,
+              questions_due_date:
+                questionsDueDate?.toISOString() ||
+                extractedData.questions_due_date,
+              conference_date:
+                conferenceDate?.toISOString() || extractedData.conference_date,
+              pre_bid_meeting:
+                preBidMeetingDate?.toISOString() ||
+                extractedData.pre_bid_meeting,
               contact: {
                 name: extractedData.contactName,
                 email: extractedData.contactEmail,
@@ -214,9 +222,14 @@ export class RFPScrapingService {
             manuallyAddedAt: userId === 'manual' ? new Date() : null,
             requirements: {
               solicitation_number: extractedData.solicitation_number,
-              questions_due_date: questionsDueDate?.toISOString() || extractedData.questions_due_date,
-              conference_date: conferenceDate?.toISOString() || extractedData.conference_date,
-              pre_bid_meeting: preBidMeetingDate?.toISOString() || extractedData.pre_bid_meeting,
+              questions_due_date:
+                questionsDueDate?.toISOString() ||
+                extractedData.questions_due_date,
+              conference_date:
+                conferenceDate?.toISOString() || extractedData.conference_date,
+              pre_bid_meeting:
+                preBidMeetingDate?.toISOString() ||
+                extractedData.pre_bid_meeting,
               contact: {
                 name: extractedData.contactName,
                 email: extractedData.contactEmail,

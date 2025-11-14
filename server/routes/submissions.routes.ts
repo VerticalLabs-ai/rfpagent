@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { storage } from '../storage';
 import { submissionService } from '../services/core/submissionService';
+import { storage } from '../storage';
 
 const router = Router();
 
@@ -106,7 +106,7 @@ const CreateSubmissionSchema = z.object({
 /**
  * Create a new submission (direct creation endpoint)
  * POST /api/submissions
- * 
+ *
  * This endpoint allows direct submission creation with proposal data.
  * It creates a proposal if proposalData is provided, then creates the submission.
  */
@@ -174,7 +174,6 @@ router.post('/', async (req, res) => {
       portalId = rfp.portalId || '';
     } else if (data.url || data.sourceUrl) {
       // If URL provided but no rfpId, try to find or create RFP from URL
-      const url = data.url || data.sourceUrl;
       // For now, return error - this would require RFP creation logic
       return res.status(400).json({
         success: false,
@@ -187,6 +186,15 @@ router.post('/', async (req, res) => {
         success: false,
         error: 'Missing required field',
         details: 'Either rfpId or url/sourceUrl must be provided',
+      });
+    }
+
+    // At this point, rfpId is guaranteed to be defined (all other paths return early)
+    if (!rfpId) {
+      return res.status(400).json({
+        success: false,
+        error: 'RFP ID is required',
+        details: 'RFP ID must be provided',
       });
     }
 
@@ -208,7 +216,7 @@ router.post('/', async (req, res) => {
     };
 
     const proposal = await storage.createProposal({
-      rfpId: rfpId!,
+      rfpId,
       content: JSON.stringify(proposalData),
       proposalData: JSON.stringify(proposalData),
       status: 'draft',
@@ -218,7 +226,7 @@ router.post('/', async (req, res) => {
 
     // Create submission
     const submission = await storage.createSubmission({
-      rfpId: rfpId!,
+      rfpId,
       proposalId: proposalId,
       portalId: portalId || '',
       status: 'pending',
@@ -242,6 +250,78 @@ router.post('/', async (req, res) => {
       success: false,
       error:
         error instanceof Error ? error.message : 'Failed to create submission',
+      details:
+        process.env.NODE_ENV === 'development'
+          ? error instanceof Error
+            ? error.stack
+            : String(error)
+          : undefined,
+    });
+  }
+});
+
+/**
+ * Get all submissions (list endpoint)
+ * GET /api/submissions
+ *
+ * Returns a list of submissions with optional filtering and pagination.
+ */
+router.get('/', async (req, res) => {
+  try {
+    const { status, limit, offset, rfpId } = req.query;
+
+    // Validate query parameters
+    const limitNum = limit ? parseInt(String(limit), 10) : 100;
+    const offsetNum = offset ? parseInt(String(offset), 10) : 0;
+
+    if (limitNum < 1 || limitNum > 200) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid limit',
+        details: 'Limit must be between 1 and 200',
+      });
+    }
+
+    if (offsetNum < 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid offset',
+        details: 'Offset must be >= 0',
+      });
+    }
+
+    // Get submissions from storage
+    let submissions;
+    if (rfpId && typeof rfpId === 'string') {
+      submissions = await storage.getSubmissionsByRFP(rfpId);
+    } else {
+      submissions = await storage.getSubmissions({
+        limit: limitNum,
+        status: status as string | undefined,
+      });
+    }
+
+    // Apply pagination if not already applied by storage
+    const paginatedSubmissions = submissions.slice(
+      offsetNum,
+      offsetNum + limitNum
+    );
+
+    res.json({
+      success: true,
+      data: {
+        submissions: paginatedSubmissions,
+        total: submissions.length,
+        limit: limitNum,
+        offset: offsetNum,
+      },
+    });
+  } catch (error) {
+    console.error('Error getting submissions:', error);
+    res.status(500).json({
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to get submissions',
       details:
         process.env.NODE_ENV === 'development'
           ? error instanceof Error

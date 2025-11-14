@@ -80,16 +80,19 @@ export class SAFLALearningEngine {
    * Start automatic memory pruning (runs every 6 hours)
    */
   private startAutomaticPruning(): void {
-    this.pruningInterval = setInterval(async () => {
-      try {
-        console.log('🧹 SAFLA: Starting automatic memory pruning...');
-        await this.pruneOldLearningEvents();
-        await this.pruneLowConfidenceStrategies();
-        console.log('✅ SAFLA: Memory pruning complete');
-      } catch (error) {
-        console.error('❌ SAFLA: Memory pruning error:', error);
-      }
-    }, 6 * 60 * 60 * 1000); // Every 6 hours
+    this.pruningInterval = setInterval(
+      async () => {
+        try {
+          console.log('🧹 SAFLA: Starting automatic memory pruning...');
+          await this.pruneOldLearningEvents();
+          await this.pruneLowConfidenceStrategies();
+          console.log('✅ SAFLA: Memory pruning complete');
+        } catch (error) {
+          console.error('❌ SAFLA: Memory pruning error:', error);
+        }
+      },
+      6 * 60 * 60 * 1000
+    ); // Every 6 hours
   }
 
   /**
@@ -99,7 +102,9 @@ export class SAFLALearningEngine {
   private async pruneOldLearningEvents(): Promise<void> {
     try {
       const startMemory = process.memoryUsage().heapUsed / 1024 / 1024;
-      console.log(`🧹 SAFLA: Starting pruning (heap: ${startMemory.toFixed(1)}MB)`);
+      console.log(
+        `🧹 SAFLA: Starting pruning (heap: ${startMemory.toFixed(1)}MB)`
+      );
 
       // Phase 1: Discover agent IDs with learning events
       // Reduced limit from 10,000 to 2,000 to minimize initial memory load
@@ -228,7 +233,9 @@ export class SAFLALearningEngine {
           (!lastApplied || lastApplied < cutoffDate)
         ) {
           await agentMemoryService.deleteMemory(strategy.id);
-          console.log(`🗑️ Pruned unused low-confidence strategy: ${strategy.title}`);
+          console.log(
+            `🗑️ Pruned unused low-confidence strategy: ${strategy.title}`
+          );
         }
       }
     } catch (error) {

@@ -26,7 +26,7 @@ export const pageNavigateTool = createTool({
   execute: async ({ context }) => {
     const { url, sessionId, waitFor } = context;
     const stagehand = await sessionManager.ensureStagehand(sessionId);
-    const page = stagehand.page;
+    const page = await sessionManager.getPage(sessionId);
 
     try {
       console.log(`🌐 Navigating to: ${url}`);
@@ -41,7 +41,7 @@ export const pageNavigateTool = createTool({
         pageTitle.includes('Please wait')
       ) {
         console.log(`🛡️ Cloudflare protection detected, waiting for bypass...`);
-        await page.waitForLoadState('networkidle', { timeout: 30000 });
+        await page.waitForLoadState('networkidle', 30000);
       }
 
       const currentUrl = await page.url();

@@ -1613,12 +1613,44 @@ export const insertPortalSchema = createInsertSchema(portals).omit({
   lastScanned: true,
 });
 
-export const insertRfpSchema = createInsertSchema(rfps).omit({
-  id: true,
-  createdAt: true,
-  discoveredAt: true,
-  updatedAt: true,
-});
+// Base insert schema with required fields
+export const insertRfpSchema = createInsertSchema(rfps)
+  .omit({
+    id: true,
+    createdAt: true,
+    discoveredAt: true,
+    updatedAt: true,
+  })
+  .extend({
+    // Make required fields explicit with better error messages
+    title: z.string().min(3, 'Title must be at least 3 characters').max(500),
+    agency: z.string().min(2, 'Agency name is required').max(200),
+    sourceUrl: z.string().url('Must be a valid URL'),
+    // Optional fields with sensible defaults
+    description: z.string().optional(),
+    category: z.string().optional(),
+    portalId: z.string().uuid('Must be a valid portal ID').optional(),
+    deadline: z.coerce.date().optional(),
+    estimatedValue: z.coerce.number().optional(),
+    status: z
+      .enum([
+        'discovered',
+        'parsing',
+        'drafting',
+        'review',
+        'approved',
+        'submitted',
+        'closed',
+      ])
+      .default('discovered'),
+    progress: z.coerce.number().min(0).max(100).default(0),
+    requirements: z.record(z.any()).optional(),
+    complianceItems: z.record(z.any()).optional(),
+    riskFlags: z.record(z.any()).optional(),
+    analysis: z.record(z.any()).optional(),
+    addedBy: z.enum(['manual', 'automatic']).default('manual'),
+    manuallyAddedAt: z.coerce.date().optional(),
+  });
 
 export const insertProposalSchema = z
   .object({

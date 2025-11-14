@@ -3111,7 +3111,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       // Get the existing authenticated session
       const stagehand = await sessionManager.ensureStagehand(sessionId);
-      const page = stagehand.page;
+      const page = await sessionManager.getPage(sessionId);
 
       console.log(`🎯 Navigating authenticated session to: ${url}`);
 
@@ -3568,17 +3568,17 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         // Fallback to static HTML extraction
         html = await page.content();
         console.log(
-          `✅ Successfully extracted ${html.length} characters using authenticated session`
+          `✅ Successfully extracted ${html?.length ?? 0} characters using authenticated session`
         );
 
-        if (html.length < 1000) {
+        if (html && html.length < 1000) {
           console.log(
             `⚠️ Warning: Extracted content is suspiciously small (${html.length} chars)`
           );
         }
 
         return {
-          html: html,
+          html: html ?? undefined,
           isStructured: false,
         };
       } catch (extractError) {

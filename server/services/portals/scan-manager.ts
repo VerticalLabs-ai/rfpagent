@@ -119,10 +119,13 @@ export class ScanManager {
     this.activeScans.set(scanId, scanState);
 
     // Safety timeout - force cleanup after 30 minutes if scan doesn't complete
-    const timeout = setTimeout(() => {
-      console.warn(`ScanManager: Scan ${scanId} timeout - force completing`);
-      this.completeScan(scanId, false);
-    }, 30 * 60 * 1000); // 30 minutes
+    const timeout = setTimeout(
+      () => {
+        console.warn(`ScanManager: Scan ${scanId} timeout - force completing`);
+        this.completeScan(scanId, false);
+      },
+      30 * 60 * 1000
+    ); // 30 minutes
     this.cleanupTimeouts.set(scanId, timeout);
 
     // Emit initial event

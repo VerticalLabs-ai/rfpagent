@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "get_all_rfps_with_pagination_and_filtering",
+    "description": "Verify that the API endpoint /api/rfps correctly returns a paginated list of RFPs filtered by status and portalId query parameters, with default pagination values applied when not specified."
+  },
+  {
+    "id": "TC002",
+    "title": "create_new_rfp",
+    "description": "Test the POST /api/rfps endpoint to ensure a new RFP can be created successfully with valid input data and returns a 201 status code."
+  },
+  {
+    "id": "TC003",
+    "title": "get_specific_rfp_by_id",
+    "description": "Validate that the GET /api/rfps/{id} endpoint returns the correct RFP details for a valid ID and returns 404 for a non-existent RFP ID."
+  },
+  {
+    "id": "TC004",
+    "title": "get_documents_for_specific_rfp",
+    "description": "Check that the GET /api/rfps/{id}/documents endpoint returns the list of documents associated with the specified RFP ID."
+  },
+  {
+    "id": "TC005",
+    "title": "get_detailed_rfps_with_compliance_data",
+    "description": "Ensure the GET /api/rfps/detailed endpoint returns detailed RFP information including compliance data accurately."
+  },
+  {
+    "id": "TC006",
+    "title": "enhanced_ai_powered_proposal_generation",
+    "description": "Test the POST /api/proposals/enhanced/generate endpoint to verify that enhanced AI-powered proposal generation starts correctly with required parameters and returns a session ID."
+  },
+  {
+    "id": "TC007",
+    "title": "pipeline_based_proposal_generation",
+    "description": "Validate that the POST /api/proposals/pipeline/generate endpoint initiates the pipeline-based proposal generation process and returns a success response."
+  },
+  {
+    "id": "TC008",
+    "title": "get_all_portals_with_rfp_counts",
+    "description": "Verify that the GET /api/portals endpoint returns a list of government procurement portals along with their associated RFP counts and statistics."
+  },
+  {
+    "id": "TC009",
+    "title": "start_rfp_discovery_workflow",
+    "description": "Test the POST /api/discovery endpoint to ensure that the RFP discovery workflow can be started successfully and returns a 201 status code."
+  },
+  {
+    "id": "TC010",
+    "title": "health_check_endpoint_returns_system_healthy",
+    "description": "Verify that the GET /api/health endpoint returns a 200 status code with a message indicating the system is healthy under normal operating conditions."
+  }
+]

@@ -1,5 +1,15 @@
 import { Stagehand } from '@browserbasehq/stagehand';
 
+// Stagehand's Page type doesn't fully expose all Playwright Page methods in TypeScript
+// At runtime, this IS a Playwright Page with all standard methods like content(), goto(), etc.
+// We define an interface that includes the methods we need for type safety
+export interface PageWithContent {
+  goto(url: string, options?: any): Promise<any>;
+  waitForLoadState(state?: string, options?: any): Promise<void>;
+  content(): Promise<string>;
+  [key: string]: any; // Allow other Playwright Page methods
+}
+
 // Session manager for consistent Browserbase sessions
 export class BrowserbaseSessionManager {
   private sessions: Map<string, Stagehand> = new Map();
@@ -18,10 +28,7 @@ export class BrowserbaseSessionManager {
         apiKey: process.env.BROWSERBASE_API_KEY,
         projectId: process.env.BROWSERBASE_PROJECT_ID,
         verbose: 1,
-        modelName: 'google/gemini-2.0-flash-exp', // Use Google Gemini for extraction
-        modelClientOptions: {
-          apiKey: process.env.GOOGLE_API_KEY,
-        },
+        // V3 API: model configuration moved to method calls
         browserbaseSessionCreateParams: {
           projectId: process.env.BROWSERBASE_PROJECT_ID!,
           keepAlive: true,
@@ -50,6 +57,46 @@ export class BrowserbaseSessionManager {
     }
 
     return stagehand;
+  }
+
+  // V3 API: Helper to get the page object from context
+  // Returns Playwright Page object from Stagehand's BrowserContext
+  // At runtime this is a full Playwright Page, but we type it with our interface for safety
+  async getPage(
+    sessionId: string = this.defaultSessionId
+  ): Promise<PageWithContent> {
+    const stagehand = await this.ensureStagehand(sessionId);
+    const pages = await stagehand.context.pages();
+
+    // Defensive check: ensure pages array is not empty
+    if (!pages || pages.length === 0) {
+      console.log(
+        `📄 No pages found for session ${sessionId}, creating new page`
+      );
+      const newPage = await stagehand.context.newPage();
+      return newPage as unknown as PageWithContent;
+    }
+
+    return pages[0] as unknown as PageWithContent; // Runtime is Playwright Page
+  }
+
+  // V3 API: Helper to get both stagehand and page
+  async getStagehandAndPage(
+    sessionId: string = this.defaultSessionId
+  ): Promise<{ stagehand: Stagehand; page: PageWithContent }> {
+    const stagehand = await this.ensureStagehand(sessionId);
+    const pages = await stagehand.context.pages();
+
+    // Defensive check: ensure pages array is not empty
+    if (!pages || pages.length === 0) {
+      console.log(
+        `📄 No pages found for session ${sessionId}, creating new page`
+      );
+      const newPage = await stagehand.context.newPage();
+      return { stagehand, page: newPage as unknown as PageWithContent };
+    }
+
+    return { stagehand, page: pages[0] as unknown as PageWithContent };
   }
 
   async closeSession(sessionId: string): Promise<void> {
