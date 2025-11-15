@@ -58,11 +58,35 @@ async def run_test():
         # -> Perform POST request to /api/scans/trigger with valid portalId and sessionId in request body to trigger manual portal scan and verify response status 202.
         await page.goto('http://localhost:5001/api', timeout=10000)
         await asyncio.sleep(3) 
+        # -> Connect to the SSE endpoint to listen for real-time scan progress and completion messages and verify their accuracy.
+        await page.goto('http://localhost:5001/api/scans/events?portalId=validPortalId&sessionId=validSessionId', timeout=10000)
+        await asyncio.sleep(3)
+        
+
+        # -> Investigate alternative SSE endpoints or documentation to find the correct endpoint for real-time scan progress.
+        await page.goto('http://localhost:5001/api/docs', timeout=10000)
+        await asyncio.sleep(3)
+        
+
+        # -> Look for any UI or other accessible pages that might provide information or links to the SSE endpoint or scan progress.
+        await page.goto('http://localhost:5001/', timeout=10000)
+        await asyncio.sleep(3)
+        
+
+        # -> Attempt to discover SSE endpoint by trying common or guessed paths related to scans or events, or try to extract any available API endpoints from server error messages or headers.
+        await page.goto('http://localhost:5001/api/scans/progress?portalId=validPortalId&sessionId=validSessionId', timeout=10000)
+        await asyncio.sleep(3)
+        
+
+        await page.goto('http://localhost:5001/api/scans/stream?portalId=validPortalId&sessionId=validSessionId', timeout=10000)
+        await asyncio.sleep(3)
+        
+
         # --> Assertions to verify final state
         try:
-            await expect(page.locator('text=Scan Completed Successfully').first).to_be_visible(timeout=30000)
+            await expect(page.locator('text=Scan completed successfully').first).to_be_visible(timeout=1000)
         except AssertionError:
-            raise AssertionError('Test failed: The scan did not start or progress messages were not received in real-time via SSE as expected from the API trigger with valid portalId and sessionId.')
+            raise AssertionError('Test case failed: The scan progress was not delivered in real-time via SSE as expected after triggering the scan with valid portalId and sessionId.')
         await asyncio.sleep(5)
 
     finally:

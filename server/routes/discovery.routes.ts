@@ -99,12 +99,6 @@ router.post(
         options = {},
       } = req.body;
 
-      if (!portalIds || !Array.isArray(portalIds) || portalIds.length === 0) {
-        return res.status(400).json({
-          error: 'portalIds array is required and must not be empty',
-        });
-      }
-
       // Validate portal IDs exist
       const portals = await Promise.all(
         portalIds.map((id: string) => storage.getPortal(id))

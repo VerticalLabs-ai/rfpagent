@@ -6,9 +6,8 @@ import {
 } from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
-// Disable Mastra telemetry warning (telemetry is deprecated)
-// We use Sentry for observability instead
-(globalThis as any).___MASTRA_TELEMETRY___ = true;
+// Mastra AI Tracing is now enabled in src/mastra/index.ts (observability config)
+// No need for telemetry workaround as we've migrated to AI Tracing
 
 init({
   dsn: process.env.SENTRY_DSN,

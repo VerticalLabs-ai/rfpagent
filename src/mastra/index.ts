@@ -1,5 +1,6 @@
 import { ConsoleLogger, LogLevel } from '@mastra/core/logger';
 import { Mastra } from '@mastra/core/mastra';
+import { DefaultExporter, SensitiveDataFilter } from '@mastra/core/ai-tracing';
 
 // Agent Registry System (Phase 1) - Static imports for Mastra Cloud compatibility
 import { agentHierarchyConfig } from './config/agent-hierarchy';
@@ -64,6 +65,16 @@ if (featureFlags.isDevelopment || resolvedLogLevel === LogLevel.DEBUG) {
 // Mastra configuration with complete 3-tier agent system and workflows
 export const mastra = new Mastra({
   logger: mastraLogger,
+  // AI Tracing Configuration (replaces deprecated telemetry)
+  observability: {
+    default: {
+      enabled: true,
+      serviceName: 'rfp-agent-platform',
+      sampling: { type: 'always' },
+      processors: [new SensitiveDataFilter()],
+      exporters: [new DefaultExporter()],
+    },
+  },
   // 3-Tier Agent System Configuration
   agents: {
     // Tier 1: Orchestrator (1 agent)
