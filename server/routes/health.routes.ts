@@ -3,7 +3,7 @@ import { healthCheckService } from '../services/monitoring/healthCheckService';
 import { circuitBreakerManager } from '../services/core/circuitBreaker';
 import { aiService } from '../services/core/aiService';
 import { ApiResponse } from '../utils/apiResponse';
-import { handleAsyncError } from './middleware/errorHandling';
+import { handleAsyncError } from '../middleware/errorHandling';
 
 const router = Router();
 

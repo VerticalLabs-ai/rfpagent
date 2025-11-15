@@ -1,0 +1,302 @@
+[
+  {
+    "id": "TC001",
+    "title": "RFP Discovery: Retrieve RFP list with filtering and pagination",
+    "description": "Verify that the system correctly retrieves RFP listings filtered by status and portalId, supports pagination with valid page and limit parameters, and returns correct status codes and data structure.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send GET request to /api/rfps with valid status filter, portalId, page=1, and limit=20"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 200"
+      },
+      {
+        "type": "assertion",
+        "description": "Response body contains list of RFPs matching filter and pagination parameters"
+      },
+      {
+        "type": "action",
+        "description": "Send GET request to /api/rfps with invalid page (e.g., 0) and limit (e.g., 101)"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 400 with appropriate error message for invalid parameters"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Manual RFP Creation from URL",
+    "description": "Test manual creation of RFP using valid and invalid URLs and optional user notes.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/rfps/manual with valid URL and userNotes"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 201 and RFP resource is created with correct URL and notes"
+      },
+      {
+        "type": "action",
+        "description": "POST to /api/rfps/manual with invalid URL format"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 400 with validation error message"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Proposal Generation: Successful Enhanced AI Proposal Generation",
+    "description": "Verify enhanced AI proposal can be generated for a valid RFP ID with correct options and that the quality threshold is respected.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/proposals/enhanced/generate with valid rfpId, companyProfileId, sessionId, and options (generatePricing=true, generateCompliance=true, qualityThreshold=0.85)"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 202 indicating generation started"
+      },
+      {
+        "type": "assertion",
+        "description": "Real-time SSE updates include proposal sections (executive summary, technical approach, pricing) and quality scores meeting threshold"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Proposal Generation: Handling Missing Required Fields",
+    "description": "Ensure proposal generation endpoint validates required fields and returns errors for missing or malformed input.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/proposals/enhanced/generate without rfpId or with invalid rfpId format"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 400 with appropriate validation error messages"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Submission Pipeline: Start submission workflow with valid credentials and browser options",
+    "description": "Verify full submission pipeline workflow starts successfully with valid submission ID, portal credentials including MFA, and browser options.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/submissions/pipeline/start with valid submissionId, portalCredentials (username, password, valid mfaMethod), and browserOptions (headless=false, timeout=120000)"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 202 indicating submission pipeline started"
+      },
+      {
+        "type": "assertion",
+        "description": "System authenticates portal, completes document upload and form filling with retry logic, and reports status via SSE or API updates"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Submission Pipeline: Handle invalid portal credentials and MFA failure",
+    "description": "Verify the system correctly reports authentication failures including invalid credentials or MFA failure and allows retry attempts.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/submissions/pipeline/start with invalid username/password or incorrect MFA method"
+      },
+      {
+        "type": "assertion",
+        "description": "Response includes error status and descriptive authentication failure message"
+      },
+      {
+        "type": "assertion",
+        "description": "System retries authentication as configured or informs user to retry manually"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Portal Scanning: Trigger manual portal scan and receive real-time updates",
+    "description": "Test manual triggering of portal scan via API with valid portalId and sessionId and verify the scan progress is delivered in real-time via SSE.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/scans/trigger with valid portalId and sessionId"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 202 indicating scan started"
+      },
+      {
+        "type": "assertion",
+        "description": "Real-time Server-Sent Events provide accurate scan progress and scan completion messages"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Document Processing: Parse RFP document and extract requirements",
+    "description": "Verify AI-powered parsing of uploaded PDF/Word RFP documents extracts meaningful requirements and generates compliance checklists accurately.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "POST to /api/documents/{rfpId}/parse with valid rfpId and properly formatted RFP document"
+      },
+      {
+        "type": "assertion",
+        "description": "Response status code is 200"
+      },
+      {
+        "type": "assertion",
+        "description": "Extracted data contains key requirements and compliance checklist items with correct mapping"
+      },
+      {
+        "type": "action",
+        "description": "POST to /api/documents/{rfpId}/parse with corrupted or unsupported document format"
+      },
+      {
+        "type": "assertion",
+        "description": "Error handling returns clear descriptive error with appropriate HTTP code"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Rate Limiting: Enforce rate limits on API endpoints",
+    "description": "Verify that the API correctly enforces rate limits for standard, AI, and heavy operations and returns proper status codes when exceeded.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send rapid repeated requests to AI-enhanced proposal generation endpoint exceeding allowed threshold"
+      },
+      {
+        "type": "assertion",
+        "description": "Server returns HTTP 429 Too Many Requests status with retry-after header"
+      },
+      {
+        "type": "action",
+        "description": "Send rapid repeated requests to lightweight endpoints and verify rate limits are separately applied"
+      },
+      {
+        "type": "assertion",
+        "description": "Server enforces limits and returns appropriate responses for each class"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Workflow Control: Suspend, Resume, and Cancel workflows with consistent states",
+    "description": "Test ability to suspend, resume, and cancel running workflows such as proposal generation and submission pipelines, ensuring state is consistent and progress updates are accurate.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Start a long-running proposal generation workflow"
+      },
+      {
+        "type": "action",
+        "description": "Invoke suspend operation via API"
+      },
+      {
+        "type": "assertion",
+        "description": "Workflow suspends and status updates indicate suspension"
+      },
+      {
+        "type": "action",
+        "description": "Resume the suspended workflow"
+      },
+      {
+        "type": "assertion",
+        "description": "Workflow continues from suspension point with consistent state"
+      },
+      {
+        "type": "action",
+        "description": "Cancel the workflow before completion"
+      },
+      {
+        "type": "assertion",
+        "description": "Workflow stops and status reflects cancellation; resources cleaned up"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Proposal PDF Assembly: Generate correctly formatted branded PDF with customizations",
+    "description": "Validate that the proposal PDF assembly workflow produces high quality PDF documents incorporating headers, footers, pricing tables, and stores files in cloud storage.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Invoke proposal PDF assembly workflow with customization parameters (custom headers, footers, pricing tables)"
+      },
+      {
+        "type": "assertion",
+        "description": "Generated PDF is professionally formatted matching input options"
+      },
+      {
+        "type": "assertion",
+        "description": "PDF is successfully uploaded to cloud storage and can be retrieved"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "API Authentication and Authorization",
+    "description": "Ensure all API endpoints require valid session-based authentication tokens and reject unauthorized access with proper status and error messages.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Send API requests to secured endpoints without authentication token"
+      },
+      {
+        "type": "assertion",
+        "description": "Responses return HTTP 401 Unauthorized with error message"
+      },
+      {
+        "type": "action",
+        "description": "Send requests with expired or invalid tokens"
+      },
+      {
+        "type": "assertion",
+        "description": "Responses return HTTP 401 Unauthorized with appropriate error"
+      },
+      {
+        "type": "action",
+        "description": "Send authenticated requests with valid tokens to verify successful access"
+      },
+      {
+        "type": "assertion",
+        "description": "Responses return expected successful data and status codes"
+      }
+    ]
+  }
+]

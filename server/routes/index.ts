@@ -2,8 +2,8 @@ import type { Express } from 'express';
 import express from 'express';
 
 // Import middleware
-import { errorHandler } from './middleware/errorHandling';
-import { rateLimiter } from './middleware/rateLimiting';
+import { errorHandler } from '../middleware/errorHandling';
+import { rateLimiter } from '../middleware/rateLimiting';
 
 // Import all route modules
 import agentRoutes from './agents.routes';

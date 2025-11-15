@@ -1,90 +1,88 @@
 {
   "meta": {
-    "project": "AI-Powered RFP Agent Platform",
+    "project": "BidHive RFP Agent",
     "date": "2025-11-14",
     "prepared_by": "BidHive Development Team"
   },
-  "product_overview": "AI-Powered RFP Agent Platform is a comprehensive SaaS solution enabling government procurement professionals and contractors to discover, analyze, and respond to Request for Proposals (RFPs) efficiently. It leverages advanced AI capabilities for RFP discovery, enhanced proposal generation, compliance validation, workflow orchestration, and submission tracking, providing fully automated pipelines with real-time monitoring and insights.",
+  "product_overview": "BidHive RFP Agent is an AI-powered platform designed to streamline government procurement by automating discovery, proposal generation, submission workflows, and document intelligence for Request for Proposals (RFPs). It integrates advanced AI models, browser automation, and customizable workflows to support efficient bid management and submission.",
   "core_goals": [
-    "Automate discovery and ingestion of government RFPs across multiple procurement portals.",
-    "Enable AI-powered generation of high-quality, compliant proposals tailored to each RFP and company profile.",
-    "Provide a robust 3-tier agent system for workflow orchestration, processing, and monitoring of RFP-related tasks.",
-    "Offer real-time status updates and analytics dashboards for comprehensive platform monitoring.",
-    "Support full end-to-end RFP response workflows including document processing, proposal assembly, and submission pipelines.",
-    "Ensure system reliability with extensive audit logging, health checks, and a scalable architecture.",
-    "Facilitate developer integration via a rich REST API supporting session-based authentication and planned JWT/token enhancements."
+    "Automate discovery and monitoring of government RFP portals to surface relevant opportunities.",
+    "Leverage AI to generate high-quality, multi-section proposals with pricing and compliance features.",
+    "Provide end-to-end submission management including portal authentication, document uploading, and form filling with retry logic.",
+    "Enable configurable, automated workflows covering discovery, proposal generation, PDF assembly, and submission.",
+    "Deliver real-time progress updates and detailed error handling for robust user experience.",
+    "Facilitate extensibility and scalability with 3-tier agent architecture and workflow orchestration."
   ],
   "key_features": [
-    "RFP Management: Discovery, storage, status tracking, filtering, and detailed compliance analysis of RFPs.",
-    "Proposal Generation: AI-powered enhanced and pipeline-based proposal creation with compliance validation, pricing, and quality controls.",
-    "Portal Management: Automated government portal monitoring and scanning with real-time event streaming for RFP detection.",
-    "Document Processing: AI document parsing and requirement extraction to inform compliance and proposal generation.",
-    "Compliance Checking: Automated validation against RFP criteria with detailed compliance matrices.",
-    "AI Chat & Assistance: Interactive AI chat for querying RFPs and guidance on proposal generation.",
-    "Company Profile Management: Profile creation and management for personalized proposal tailoring.",
-    "Workflow Orchestration: Multi-agent workflows supporting discovery, proposal generation, document processing, and submission execution.",
-    "Dashboard Analytics: Real-time metrics and statistics for system and workflow health monitoring.",
-    "Submission Management: Proposal submission pipelines with status tracking and execution controls.",
-    "Scan Management: Configurable portal scanning with history and status endpoints.",
-    "Notifications: Real-time alerting for RFP events and system updates.",
-    "Audit Logs: Comprehensive tracking for compliance and troubleshooting.",
-    "Agent Management: Monitoring AI agents’ activities and performance metrics.",
-    "SAFLA Learning System: Self-aware feedback loop for continuous system optimization.",
-    "Health Monitoring and Metrics Collection: System-wide health checks and performance metrics."
+    "RFP Discovery and Management: Discover and manage RFPs via portal scanning and manual input with support for filtering, pagination, and status tracking.",
+    "AI-Powered Proposal Generation: Generate proposals with GPT-5.1 and Claude 4.5 including technical narratives, pricing, compliance checklists, and iterative refinement.",
+    "Submission Pipeline Workflow: Automate submission with portal authentication (2FA support), document upload, form filling, and tracking with browser automation.",
+    "Portal Scanning and Monitoring: Automated scheduled scans of multiple government procurement portals with real-time Server-Sent Events (SSE) updates.",
+    "Document Processing and Intelligence: AI-driven parsing of PDF/Word RFP documents for requirement extraction and compliance checklists generation.",
+    "Master Orchestration Workflow: Single API to execute discovery, proposal generation, or full pipeline automation with concurrency and error recovery.",
+    "Proposal PDF Assembly Workflow: Generate branded, formatted PDFs with customizable headers, footers, and pricing tables, stored in cloud.",
+    "Comprehensive API with session-based authentication, rate limiting, error handling, and SDK examples for seamless integration."
   ],
   "user_flow_summary": [
-    "User submits or system discovers an RFP via portal scanning or manual entry.",
-    "The system processes RFP documents using AI-powered parsing and analysis.",
-    "Users generate proposals leveraging AI with options for enhanced quality, pricing, and compliance features.",
-    "Proposals undergo quality validation and can be monitored in real-time via event streams.",
-    "Users initiate submission pipelines to submit proposals to portals, tracked through detailed status endpoints.",
-    "Administrators monitor system health, workflow statuses, and agent performance via dashboards and logs.",
-    "Users interact with AI chat for assistance and queries about RFPs and proposals.",
-    "Developers utilize REST APIs for integration, including batch operations and workflow orchestration endpoints."
+    "User discovers RFPs either via automated portal scan or manual URL submission.",
+    "System processes RFP documents, extracting key requirements and statuses.",
+    "User initiates AI-powered proposal generation for selected RFP with options for pricing and compliance.",
+    "Proposal generation provides iterative progress via SSE to keep user informed.",
+    "User submits proposals through the submission pipeline with automated portal login and document upload.",
+    "System tracks submission status with periodic updates until completion.",
+    "Users can trigger advanced workflows (discovery, proposal, full pipeline) via a master orchestration endpoint for batch or parallel processing.",
+    "Proposal PDFs can be created via a dedicated workflow with customization options and automatic cloud storage.",
+    "Administrators and users monitor workflows and phases, suspend/resume or cancel as needed with detailed status endpoints."
   ],
   "validation_criteria": [
-    "Successful discovery and ingestion of RFPs from targeted government portals with configurable filters.",
-    "Validated AI-powered proposal generation supporting enhanced and pipeline modes delivering quality-compliant proposals.",
-    "Accurate compliance checking with detailed matrices aligning to RFP requirements.",
-    "Real-time event streaming for portal scans, proposal generation, and submissions without data loss or errors.",
-    "Complete audit logs for workflow events, RFP lifecycle changes, and system actions.",
-    "Health checks return system status as healthy under normal operating conditions.",
-    "Workflow orchestration supports execution, suspension, resumption, and cancellation with correct state transitions.",
-    "Rate limiting correctly enforced for standard, AI, and heavy operations with proper retry/backoff mechanisms.",
-    "Authentication via session-based cookies, with JWT planned for future.",
-    "API error handling consistent with documented error formats and HTTP status codes.",
-    "Client SDKs and code examples compile and execute successfully, demonstrating full RFP-to-submission flow."
+    "API endpoints respond correctly with proper status codes and error formats for invalid input and unauthorized access.",
+    "All workflows execute per mode with correct validations, concurrency controls, and retry logic.",
+    "Real-time updates via SSE streams reflect accurate progress and completion states.",
+    "Proposal generation must meet configurable quality thresholds and include all requested sections.",
+    "Document parsing extracts meaningful requirement and compliance data from RFP documents reliably.",
+    "Submission workflow successfully authenticates portals including MFA, uploads documents, fills forms, and submits with retry handling.",
+    "Rate limiting enforces defined thresholds for standard, AI, and heavy operations.",
+    "Error handling gracefully manages transient failures with retries and user notifications.",
+    "Workflows support manual phase transitions and suspend/resume/cancel operations with state consistency.",
+    "PDF assembly produces professionally formatted documents matching requested options and uploads for retrieval."
   ],
   "code_summary": {
     "tech_stack": [
       "TypeScript",
-      "Node.js",
-      "Express.js",
+      "Node.js 20+",
+      "Express 5",
       "React 19",
       "Vite 7",
-      "PostgreSQL 16",
+      "PostgreSQL 16+",
       "Drizzle ORM",
-      "OpenAI GPT-4/5",
-      "Anthropic Claude 4.5",
-      "Mastra.ai",
       "TailwindCSS 4",
       "shadcn/ui",
-      "Browserbase",
-      "Stagehand",
+      "OpenAI GPT-4/GPT-4o",
+      "Anthropic Claude 4.5",
+      "Mastra.ai (Agent Framework)",
+      "Browserbase (Browser Automation)",
+      "Stagehand (Portal Scraping)",
+      "Winston Logger",
+      "Zod (Schema Validation)",
       "WebSocket",
-      "Zod"
+      "Server-Sent Events (SSE)"
     ],
     "features": [
       {
-        "name": "RFP Management",
-        "description": "Comprehensive RFP discovery, storage, and management system with document parsing and analysis",
+        "name": "RFP Discovery and Management",
+        "description": "Discover, list, create, and manage Request for Proposal (RFP) opportunities from government procurement portals. Supports manual RFP creation from URLs and automated portal scanning.",
         "files": [
           "server/routes/rfps.routes.ts",
-          "server/storage.ts",
-          "shared/schema.ts"
+          "server/services/scrapers/mastraScrapingService.ts",
+          "server/services/core/rfpService.ts",
+          "server/storage/rfp.storage.ts"
         ],
         "api_doc": {
           "openapi": "3.0.0",
+          "info": {
+            "title": "RFP Discovery API",
+            "version": "1.0.0"
+          },
           "paths": {
             "/api/rfps": {
               "get": {
@@ -101,306 +99,53 @@
                     "name": "portalId",
                     "in": "query",
                     "schema": {
-                      "type": "string"
+                      "type": "string",
+                      "format": "uuid"
                     }
                   },
                   {
                     "name": "page",
                     "in": "query",
                     "schema": {
-                      "type": "string",
-                      "default": "1"
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 1
                     }
                   },
                   {
                     "name": "limit",
                     "in": "query",
                     "schema": {
-                      "type": "string",
-                      "default": "20"
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100,
+                      "default": 20
                     }
                   }
-                ],
-                "responses": {
-                  "200": {
-                    "description": "List of RFPs with pagination"
-                  }
-                }
-              },
+                ]
+              }
+            },
+            "/api/rfps/manual": {
               "post": {
-                "summary": "Create a new RFP",
+                "summary": "Create RFP manually from URL",
                 "requestBody": {
-                  "required": true,
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/RFP"
-                      }
-                    }
-                  }
-                },
-                "responses": {
-                  "201": {
-                    "description": "RFP created successfully"
-                  }
-                }
-              }
-            },
-            "/api/rfps/{id}": {
-              "get": {
-                "summary": "Get a specific RFP by ID",
-                "parameters": [
-                  {
-                    "name": "id",
-                    "in": "path",
-                    "required": true,
-                    "schema": {
-                      "type": "string"
-                    }
-                  }
-                ],
-                "responses": {
-                  "200": {
-                    "description": "RFP details"
-                  },
-                  "404": {
-                    "description": "RFP not found"
-                  }
-                }
-              }
-            },
-            "/api/rfps/{id}/documents": {
-              "get": {
-                "summary": "Get documents for a specific RFP",
-                "responses": {
-                  "200": {
-                    "description": "List of RFP documents"
-                  }
-                }
-              }
-            },
-            "/api/rfps/detailed": {
-              "get": {
-                "summary": "Get detailed RFPs with compliance data",
-                "responses": {
-                  "200": {
-                    "description": "Detailed RFPs with compliance information"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Proposal Generation",
-        "description": "AI-powered proposal generation with enhanced quality, compliance validation, and pipeline orchestration",
-        "files": [
-          "server/routes/proposals.routes.ts",
-          "server/services/proposals/enhancedProposalService.ts",
-          "server/services/orchestrators/proposalGenerationOrchestrator.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/proposals/rfp/{rfpId}": {
-              "get": {
-                "summary": "Get proposals for specific RFP",
-                "parameters": [
-                  {
-                    "name": "rfpId",
-                    "in": "path",
-                    "required": true,
-                    "schema": {
-                      "type": "string"
-                    }
-                  }
-                ],
-                "responses": {
-                  "200": {
-                    "description": "List of proposals for the RFP"
-                  }
-                }
-              }
-            },
-            "/api/proposals/{id}": {
-              "delete": {
-                "summary": "Delete a specific proposal",
-                "parameters": [
-                  {
-                    "name": "id",
-                    "in": "path",
-                    "required": true,
-                    "schema": {
-                      "type": "string"
-                    }
-                  }
-                ],
-                "responses": {
-                  "200": {
-                    "description": "Proposal deleted successfully"
-                  },
-                  "404": {
-                    "description": "Proposal not found"
-                  }
-                }
-              }
-            },
-            "/api/proposals/enhanced/generate": {
-              "post": {
-                "summary": "Enhanced AI-powered proposal generation",
-                "requestBody": {
-                  "required": true,
                   "content": {
                     "application/json": {
                       "schema": {
                         "type": "object",
+                        "required": ["url"],
                         "properties": {
-                          "rfpId": {
-                            "type": "string"
-                          },
-                          "companyProfileId": {
-                            "type": "string"
-                          },
-                          "options": {
-                            "type": "object"
-                          }
-                        },
-                        "required": [
-                          "rfpId"
-                        ]
-                      }
-                    }
-                  }
-                },
-                "responses": {
-                  "200": {
-                    "description": "Proposal generation started with session ID"
-                  }
-                }
-              }
-            },
-            "/api/proposals/pipeline/generate": {
-              "post": {
-                "summary": "Pipeline-based proposal generation",
-                "responses": {
-                  "200": {
-                    "description": "Pipeline generation started"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Portal Management",
-        "description": "Government procurement portal monitoring, scanning, and RFP discovery automation",
-        "files": [
-          "server/routes/portals.routes.ts",
-          "server/services/portals/scan-manager.ts",
-          "server/services/monitoring/portal-monitoring-service.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/portals": {
-              "get": {
-                "summary": "Get all portals with RFP counts",
-                "responses": {
-                  "200": {
-                    "description": "List of portals with statistics"
-                  }
-                }
-              },
-              "post": {
-                "summary": "Create a new portal",
-                "requestBody": {
-                  "required": true,
-                  "content": {
-                    "application/json": {
-                      "schema": {
-                        "$ref": "#/components/schemas/Portal"
-                      }
-                    }
-                  }
-                },
-                "responses": {
-                  "201": {
-                    "description": "Portal created successfully"
-                  }
-                }
-              }
-            },
-            "/api/portals/{id}": {
-              "put": {
-                "summary": "Update a portal",
-                "parameters": [
-                  {
-                    "name": "id",
-                    "in": "path",
-                    "required": true,
-                    "schema": {
-                      "type": "string"
-                    }
-                  }
-                ],
-                "responses": {
-                  "200": {
-                    "description": "Portal updated successfully"
-                  }
-                }
-              }
-            },
-            "/api/portals/activity": {
-              "get": {
-                "summary": "Get portal activity statistics",
-                "responses": {
-                  "200": {
-                    "description": "Portal activity data"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Document Processing",
-        "description": "AI-powered document parsing, requirement extraction, and intelligence analysis for RFP documents",
-        "files": [
-          "server/routes/documents.routes.ts",
-          "server/services/processing/documentParsingService.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/documents": {
-              "post": {
-                "summary": "Upload and process RFP documents",
-                "requestBody": {
-                  "required": true,
-                  "content": {
-                    "multipart/form-data": {
-                      "schema": {
-                        "type": "object",
-                        "properties": {
-                          "file": {
+                          "url": {
                             "type": "string",
-                            "format": "binary"
+                            "format": "uri"
                           },
-                          "rfpId": {
+                          "userNotes": {
                             "type": "string"
                           }
                         }
                       }
                     }
                   }
-                },
-                "responses": {
-                  "201": {
-                    "description": "Document uploaded and parsed"
-                  }
                 }
               }
             }
@@ -408,383 +153,164 @@
         }
       },
       {
-        "name": "Compliance Checking",
-        "description": "Automated compliance validation and matrix generation for RFP requirements",
+        "name": "Proposal Generation Pipeline",
+        "description": "AI-powered proposal generation with multi-section content creation (executive summary, technical approach, pricing), quality scoring (0.0-1.0), and iterative refinement using GPT-4 and Claude 4.5",
         "files": [
-          "server/routes/compliance.routes.ts",
-          "server/services/compliance/complianceChecker.ts"
+          "server/routes/proposals.routes.ts",
+          "server/services/proposals/enhancedProposalService.ts",
+          "server/services/orchestrators/proposalGenerationOrchestrator.ts",
+          "server/services/agents/contentGeneratorAgent.ts"
         ],
         "api_doc": {
           "openapi": "3.0.0",
+          "info": {
+            "title": "Proposal Generation API",
+            "version": "1.0.0"
+          },
           "paths": {
-            "/api/compliance": {
-              "get": {
-                "summary": "Get compliance data for RFPs",
-                "responses": {
-                  "200": {
-                    "description": "Compliance analysis results"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "AI Chat & Assistance",
-        "description": "AI-powered chat interface for RFP assistance and proposal generation guidance",
-        "files": [
-          "server/routes/ai.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/ai/chat": {
+            "/api/proposals/enhanced/generate": {
               "post": {
-                "summary": "Send message to AI assistant",
+                "summary": "Generate enhanced AI proposal for an RFP",
                 "requestBody": {
-                  "required": true,
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "required": ["rfpId"],
+                        "properties": {
+                          "rfpId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "companyProfileId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sessionId": {
+                            "type": "string"
+                          },
+                          "options": {
+                            "type": "object",
+                            "properties": {
+                              "generatePricing": {
+                                "type": "boolean",
+                                "default": true
+                              },
+                              "generateCompliance": {
+                                "type": "boolean",
+                                "default": true
+                              },
+                              "qualityThreshold": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1,
+                                "default": 0.8
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "name": "Submission Management Pipeline",
+        "description": "Complete submission workflow including portal authentication (with 2FA support), document upload, form filling, and submission tracking with retry logic and browser automation",
+        "files": [
+          "server/routes/submissions.routes.ts",
+          "server/services/core/submissionService.ts",
+          "server/services/workflows/submissionPipelineWorkflow.ts"
+        ],
+        "api_doc": {
+          "openapi": "3.0.0",
+          "info": {
+            "title": "Submission Management API",
+            "version": "1.0.0"
+          },
+          "paths": {
+            "/api/submissions": {
+              "get": {
+                "summary": "List all submissions with filtering and pagination"
+              },
+              "post": {
+                "summary": "Create a new submission",
+                "requestBody": {
                   "content": {
                     "application/json": {
                       "schema": {
                         "type": "object",
                         "properties": {
-                          "message": {
+                          "rfpId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "proposalData": {
+                            "type": "object"
+                          },
+                          "title": {
                             "type": "string"
                           },
-                          "context": {
-                            "type": "object"
+                          "deadline": {
+                            "type": "string",
+                            "format": "date-time"
                           }
-                        },
-                        "required": [
-                          "message"
-                        ]
+                        }
                       }
                     }
-                  }
-                },
-                "responses": {
-                  "200": {
-                    "description": "AI response"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Company Profile Management",
-        "description": "Company profile data management for proposal generation and customization",
-        "files": [
-          "server/routes/company.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/company": {
-              "get": {
-                "summary": "Get company profiles",
-                "responses": {
-                  "200": {
-                    "description": "List of company profiles"
-                  }
-                }
-              },
-              "post": {
-                "summary": "Create company profile",
-                "responses": {
-                  "201": {
-                    "description": "Profile created"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Workflow Orchestration",
-        "description": "Multi-agent workflow coordination for RFP processing and proposal generation",
-        "files": [
-          "server/routes/workflows.routes.ts",
-          "server/services/workflows/workflowCoordinator.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/workflows": {
-              "get": {
-                "summary": "Get workflow status and history",
-                "responses": {
-                  "200": {
-                    "description": "Workflow data"
-                  }
-                }
-              },
-              "post": {
-                "summary": "Start a new workflow",
-                "responses": {
-                  "201": {
-                    "description": "Workflow started"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Dashboard Analytics",
-        "description": "Real-time metrics, statistics, and analytics dashboard for RFP platform monitoring",
-        "files": [
-          "server/routes/dashboard.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/dashboard": {
-              "get": {
-                "summary": "Get dashboard metrics and analytics",
-                "responses": {
-                  "200": {
-                    "description": "Dashboard data with metrics"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Submission Management",
-        "description": "Proposal submission pipeline and tracking for government portals",
-        "files": [
-          "server/routes/submissions.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/submissions": {
-              "get": {
-                "summary": "Get submission history and status",
-                "responses": {
-                  "200": {
-                    "description": "List of submissions"
-                  }
-                }
-              },
-              "post": {
-                "summary": "Submit proposal to portal",
-                "responses": {
-                  "201": {
-                    "description": "Submission initiated"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Scan Management",
-        "description": "Portal scanning operations and scheduling for RFP discovery",
-        "files": [
-          "server/routes/scans.routes.ts",
-          "server/services/portals/scan-manager.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/scans": {
-              "get": {
-                "summary": "Get scan history and status",
-                "responses": {
-                  "200": {
-                    "description": "Scan data"
-                  }
-                }
-              },
-              "post": {
-                "summary": "Start portal scan",
-                "responses": {
-                  "201": {
-                    "description": "Scan started"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Discovery Workflows",
-        "description": "Automated RFP discovery and ingestion workflows",
-        "files": [
-          "server/routes/discovery.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/discovery": {
-              "post": {
-                "summary": "Start RFP discovery workflow",
-                "responses": {
-                  "201": {
-                    "description": "Discovery workflow started"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Notifications",
-        "description": "Real-time notification system for RFP alerts and system events",
-        "files": [
-          "server/routes/notifications.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/notifications": {
-              "get": {
-                "summary": "Get user notifications",
-                "responses": {
-                  "200": {
-                    "description": "List of notifications"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Audit Logs",
-        "description": "Comprehensive audit logging and tracking system for compliance and monitoring",
-        "files": [
-          "server/routes/audit-logs.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/audit-logs": {
-              "get": {
-                "summary": "Get audit log entries",
-                "responses": {
-                  "200": {
-                    "description": "Audit log data"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Agent Management",
-        "description": "AI agent activity monitoring, performance tracking, and coordination",
-        "files": [
-          "server/routes/agents.routes.ts",
-          "server/services/agents/agentRegistryService.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/agent-activity": {
-              "get": {
-                "summary": "Get agent activity and performance metrics",
-                "responses": {
-                  "200": {
-                    "description": "Agent metrics"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "SAFLA Learning System",
-        "description": "Self-Aware Feedback Loop Algorithm (SAFLA) for system self-improvement and optimization",
-        "files": [
-          "server/routes/safla-monitoring.ts",
-          "server/services/learning/saflaSystemIntegration.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/safla": {
-              "get": {
-                "summary": "Get SAFLA system status and learning metrics",
-                "responses": {
-                  "200": {
-                    "description": "SAFLA learning data"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Health Monitoring",
-        "description": "System health checks and service status monitoring",
-        "files": [
-          "server/routes/health.routes.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/health": {
-              "get": {
-                "summary": "Health check endpoint",
-                "responses": {
-                  "200": {
-                    "description": "System is healthy"
                   }
                 }
               }
             },
-            "/health": {
-              "get": {
-                "summary": "Root health check for load balancers",
-                "responses": {
-                  "200": {
-                    "description": "OK"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      {
-        "name": "Analysis Pipeline",
-        "description": "Phase 7 analysis pipeline for comprehensive RFP analysis and insights",
-        "files": [
-          "server/routes/analysis.ts",
-          "server/services/orchestrators/analysisOrchestrator.ts"
-        ],
-        "api_doc": {
-          "openapi": "3.0.0",
-          "paths": {
-            "/api/analysis": {
+            "/api/submissions/pipeline/start": {
               "post": {
-                "summary": "Start analysis pipeline for RFP",
-                "responses": {
-                  "201": {
-                    "description": "Analysis started"
-                  }
-                }
-              },
-              "get": {
-                "summary": "Get analysis results",
-                "responses": {
-                  "200": {
-                    "description": "Analysis data"
+                "summary": "Start submission pipeline workflow with browser automation",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "required": ["submissionId"],
+                        "properties": {
+                          "submissionId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "portalCredentials": {
+                            "type": "object",
+                            "properties": {
+                              "username": {
+                                "type": "string"
+                              },
+                              "password": {
+                                "type": "string"
+                              },
+                              "mfaMethod": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "browserOptions": {
+                            "type": "object",
+                            "properties": {
+                              "headless": {
+                                "type": "boolean",
+                                "default": false
+                              },
+                              "timeout": {
+                                "type": "integer",
+                                "minimum": 30000,
+                                "maximum": 600000
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -793,28 +319,41 @@
         }
       },
       {
-        "name": "System Configuration",
-        "description": "System configuration management and service control",
+        "name": "Portal Scanning and Monitoring",
+        "description": "Automated scanning of government procurement portals (SAM.gov, BonfireHub, BeaconBid, Philadelphia) with scheduled monitoring using Browserbase and Stagehand browser automation",
         "files": [
-          "server/routes/system.routes.ts"
+          "server/routes/portals.routes.ts",
+          "server/routes/scans.routes.ts",
+          "server/services/scrapers/mastraScrapingService.ts",
+          "server/services/agents/portalScannerAgent.ts"
         ],
         "api_doc": {
           "openapi": "3.0.0",
+          "info": {
+            "title": "Portal Scanning API",
+            "version": "1.0.0"
+          },
           "paths": {
-            "/api/system": {
-              "get": {
-                "summary": "Get system configuration",
-                "responses": {
-                  "200": {
-                    "description": "System config"
-                  }
-                }
-              },
-              "put": {
-                "summary": "Update system configuration",
-                "responses": {
-                  "200": {
-                    "description": "Config updated"
+            "/api/scans/trigger": {
+              "post": {
+                "summary": "Trigger a manual portal scan",
+                "requestBody": {
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "type": "object",
+                        "required": ["portalId"],
+                        "properties": {
+                          "portalId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sessionId": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -823,22 +362,34 @@
         }
       },
       {
-        "name": "Metrics Collection",
-        "description": "Real-time system metrics collection and performance monitoring",
+        "name": "Document Processing and Intelligence",
+        "description": "AI-powered document parsing for PDF and Word files, requirement extraction from RFP documents, and compliance checklist generation",
         "files": [
-          "server/routes/metrics.routes.ts"
+          "server/routes/documents.routes.ts",
+          "server/services/processing/documentParsingService.ts",
+          "server/services/processing/requirementExtractionService.ts"
         ],
         "api_doc": {
           "openapi": "3.0.0",
+          "info": {
+            "title": "Document Processing API",
+            "version": "1.0.0"
+          },
           "paths": {
-            "/api/metrics": {
-              "get": {
-                "summary": "Get system performance metrics",
-                "responses": {
-                  "200": {
-                    "description": "Performance metrics"
+            "/api/documents/{rfpId}/parse": {
+              "post": {
+                "summary": "Parse RFP documents and extract requirements using AI",
+                "parameters": [
+                  {
+                    "name": "rfpId",
+                    "in": "path",
+                    "required": true,
+                    "schema": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
                   }
-                }
+                ]
               }
             }
           }

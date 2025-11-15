@@ -198,8 +198,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Create proposal (required by schema)
-    // Always create a proposal, even if minimal data provided
+    // Check if proposal already exists for this RFP (enforce 1:1 relationship)
+    const existingProposal = await storage.getProposalByRFP(rfpId);
+
     const proposalData = {
       ...(data.proposalData || {}),
       title: data.title,
@@ -215,12 +216,19 @@ router.post('/', async (req, res) => {
       userNotes: data.userNotes,
     };
 
-    const proposal = await storage.createProposal({
-      rfpId,
-      content: JSON.stringify(proposalData),
-      proposalData: JSON.stringify(proposalData),
-      status: 'draft',
-    });
+    // Create or update proposal (enforce business rule: one proposal per RFP)
+    const proposal = existingProposal
+      ? await storage.updateProposal(existingProposal.id, {
+          content: JSON.stringify(proposalData),
+          proposalData: JSON.stringify(proposalData),
+          status: 'draft',
+        })
+      : await storage.createProposal({
+          rfpId,
+          content: JSON.stringify(proposalData),
+          proposalData: JSON.stringify(proposalData),
+          status: 'draft',
+        });
 
     const proposalId = proposal.id;
 

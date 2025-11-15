@@ -111,6 +111,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   lte,
   or,
   sql,
@@ -971,21 +972,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getRFPsWithDetails(): Promise<RfpDetail[]> {
-    const rows = await db
+    // Get RFPs with portals first
+    const rfpsWithPortals = await db
       .select({
         rfp: rfps,
         portal: publicPortalSelection,
-        proposal: proposals,
       })
       .from(rfps)
       .leftJoin(portals, eq(rfps.portalId, portals.id))
-      .leftJoin(proposals, eq(rfps.id, proposals.rfpId))
       .orderBy(desc(rfps.discoveredAt));
 
-    return rows.map(({ rfp, portal, proposal }) => ({
+    // Get the latest proposal for each RFP separately to avoid duplicates
+    const rfpIds = rfpsWithPortals.map(({ rfp }) => rfp.id);
+
+    if (rfpIds.length === 0) {
+      return [];
+    }
+
+    const proposalsQuery = await db
+      .select()
+      .from(proposals)
+      .where(inArray(proposals.rfpId, rfpIds))
+      .orderBy(desc(proposals.generatedAt));
+
+    // Create a map of rfpId -> latest proposal
+    const proposalMap = new Map<string, typeof proposalsQuery[0]>();
+    for (const proposal of proposalsQuery) {
+      if (!proposalMap.has(proposal.rfpId)) {
+        proposalMap.set(proposal.rfpId, proposal);
+      }
+    }
+
+    return rfpsWithPortals.map(({ rfp, portal }) => ({
       rfp,
       portal: portal ?? null,
-      proposal: proposal ? toProposal(proposal) : null,
+      proposal: proposalMap.get(rfp.id) ? toProposal(proposalMap.get(rfp.id)!) : null,
     }));
   }
 

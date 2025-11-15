@@ -115,8 +115,10 @@ export class EnhancedProposalService {
 
     await storage.updateRFP(request.rfpId, { progress: 80 });
 
-    // Step 4: Create proposal record with all generated content
-    const proposal = await storage.createProposal({
+    // Step 4: Check if proposal already exists for this RFP (enforce 1:1 relationship)
+    const existingProposal = await storage.getProposalByRFP(request.rfpId);
+
+    const proposalData = {
       rfpId: request.rfpId,
       content: proposalContent,
       forms: filledForms,
@@ -141,7 +143,12 @@ export class EnhancedProposalService {
           ).toString()
         : null,
       status: 'draft',
-    });
+    };
+
+    // Create or update proposal (enforce business rule: one proposal per RFP)
+    const proposal = existingProposal
+      ? await storage.updateProposal(existingProposal.id, proposalData)
+      : await storage.createProposal(proposalData);
 
     // Step 5: Create audit log
     await storage.createAuditLog({

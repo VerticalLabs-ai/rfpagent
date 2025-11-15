@@ -368,6 +368,13 @@ export class ScanManager {
   }
 
   /**
+   * Get EventEmitter for a specific scan (for SSE) - alias for compatibility
+   */
+  getEventEmitter(scanId: string): EventEmitter | undefined {
+    return this.scanEmitters.get(scanId);
+  }
+
+  /**
    * Get all active scans
    */
   getActiveScans(): ScanState[] {

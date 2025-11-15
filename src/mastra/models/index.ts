@@ -12,7 +12,7 @@ import { openai } from '@ai-sdk/openai';
  * - Claude Opus 4.1: Backup specialized reasoning tasks (Released August 2025)
  *
  * OpenAI Models:
- * - GPT-5: General use, unified model (Released August 2025)
+ * - GPT-5.1: Latest general use model with enhanced reasoning (Released November 2025)
  * - GPT-5 Pro: Hardest tasks, deep reasoning
  * - GPT-5 Mini: Smaller tasks
  * - GPT-5 Nano: Fastest/smallest model
@@ -35,8 +35,8 @@ export const claudeOpus41 = anthropic('claude-opus-4-1');
 // OPENAI MODELS
 // ============================================================================
 
-// GPT-5 (General use)
-export const gpt5 = openai('gpt-5');
+// GPT-5.1 (Latest general use model with enhanced reasoning)
+export const gpt51 = openai('gpt-5.1');
 
 // GPT-5 Pro (Hardest tasks, deep reasoning)
 export const gpt5Pro = openai('gpt-5-pro');
@@ -56,9 +56,9 @@ export const gpt5Nano = openai('gpt-5-nano');
  * - Proposal narratives
  * - Marketing content
  * - Executive summaries
- * Recommended: GPT-5
+ * Recommended: GPT-5.1 (latest model with enhanced reasoning)
  */
-export const creativeModel = gpt5;
+export const creativeModel = gpt51;
 
 /**
  * For Technical Analysis & Coding:
@@ -109,7 +109,7 @@ export const fastModel = claudeHaiku45;
 /**
  * Default model for general purposes
  */
-export const defaultModel = gpt5;
+export const defaultModel = gpt51;
 
 /**
  * Deep reasoning model for hardest problems
@@ -135,14 +135,14 @@ export function getModelForAgent(agentType: string) {
       return analyticalModel; // Claude Sonnet 4.5 for analysis
 
     case 'proposal-manager':
-      return creativeModel; // GPT-5 for creative writing
+      return creativeModel; // GPT-5.1 for creative writing
 
     case 'portal-scanner':
     case 'portal-monitor':
       return codeModel; // Claude Sonnet 4.5 for technical tasks
 
     case 'content-generator':
-      return creativeModel; // GPT-5 for content generation
+      return creativeModel; // GPT-5.1 for content generation
 
     case 'compliance-checker':
     case 'document-processor':
@@ -161,16 +161,16 @@ export function getModelForAgent(agentType: string) {
  * Model capabilities and pricing information (As of November 2025)
  */
 export const modelCapabilities = {
-  gpt5: {
-    name: 'GPT-5',
+  gpt51: {
+    name: 'GPT-5.1',
     provider: 'OpenAI',
-    released: 'August 7, 2025',
+    released: 'November 2025',
     contextWindow: 128000,
     strengths: [
-      'Unified reasoning + fast responses',
+      'Enhanced reasoning capabilities',
+      'Improved performance on complex tasks',
       'State-of-the-art across coding, math, writing',
-      '94.6% on AIME 2025 (math)',
-      '74.9% on SWE-bench Verified (coding)',
+      'Better instruction following',
       'Multimodal (vision, audio)',
       'Real-time intelligent routing',
     ],
@@ -285,7 +285,7 @@ export default {
   claudeHaiku45,
   claudeOpus41,
   // OpenAI models
-  gpt5,
+  gpt51,
   gpt5Pro,
   gpt5Mini,
   gpt5Nano,

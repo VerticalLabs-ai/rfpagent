@@ -8,6 +8,7 @@ import {
   pgTable,
   text,
   timestamp,
+  unique,
   varchar,
 } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from 'drizzle-zod';
@@ -143,6 +144,8 @@ export const proposals = pgTable(
       'gin',
       table.narratives
     ),
+    // Enforce business rule: one proposal per RFP
+    uniqueRfpIdConstraint: unique('unique_rfp_id_per_proposal').on(table.rfpId),
   })
 );
 

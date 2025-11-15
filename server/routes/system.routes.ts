@@ -3,7 +3,7 @@ import { PortalSchedulerService } from '../services/portals/portal-scheduler-ser
 import { PortalMonitoringService } from '../services/monitoring/portal-monitoring-service';
 import { workflowCoordinator } from '../services/workflows/workflowCoordinator';
 import { storage } from '../storage';
-import { authenticateJWT, requireRole } from './middleware/auth';
+import { authenticateJWT, requireRole } from '../middleware/auth';
 
 const router = Router();
 

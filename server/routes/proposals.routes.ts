@@ -6,13 +6,13 @@ import { enhancedProposalService } from '../services/proposals/enhancedProposalS
 import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
 import { submissionMaterialsService } from '../services/processing/submissionMaterialsService';
 import { progressTracker } from '../services/monitoring/progressTracker';
-import { validateRequest } from './middleware/validation';
-import { handleAsyncError } from './middleware/errorHandling';
+import { validateRequest } from '../middleware/validation';
+import { handleAsyncError } from '../middleware/errorHandling';
 import {
   aiOperationLimiter,
   heavyOperationLimiter,
-} from './middleware/rateLimiting';
-import { validateSchema } from './middleware/zodValidation';
+} from '../middleware/rateLimiting';
+import { validateSchema } from '../middleware/zodValidation';
 
 const router = express.Router();
 

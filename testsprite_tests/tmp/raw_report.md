@@ -12,142 +12,72 @@
 
 ## 2️⃣ Requirement Validation Summary
 
-#### Test TC001
-- **Test Name:** get_all_rfps_with_pagination_and_filtering
-- **Test Code:** [TC001_get_all_rfps_with_pagination_and_filtering.py](./TC001_get_all_rfps_with_pagination_and_filtering.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 44, in <module>
-  File "<string>", line 28, in test_get_all_rfps_with_pagination_and_filtering
-AssertionError: Response JSON is not a list
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/f5814cc0-5f04-4452-ab8c-ef3c36f85293
-- **Status:** ❌ Failed
-- **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
----
-
 #### Test TC002
-- **Test Name:** create_new_rfp
-- **Test Code:** [TC002_create_new_rfp.py](./TC002_create_new_rfp.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 30, in <module>
-  File "<string>", line 22, in test_create_new_rfp
-AssertionError: Expected status code 201, got 400
+- **Test Name:** TC002-Manual RFP Creation from URL
+- **Test Code:** [TC002_Manual_RFP_Creation_from_URL.py](./TC002_Manual_RFP_Creation_from_URL.py)
+- **Test Error:** The task goal was to manually create an RFP using valid and invalid URLs, specifically testing the functionality of the 'Manual RFP' button. The last action attempted was to click this button to open the manual RFP creation form for an invalid URL test. However, the click action failed due to a timeout error, indicating that the button could not be clicked within the specified time limit of 5000ms.
 
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/b3d4e5d2-f1b9-4114-ae5e-eeb612bb0451
+The error log reveals that the button was visible and enabled, but a modal overlay (a div with a background that intercepts pointer events) was blocking the click action. This overlay was likely displayed as a result of a previous action or state in the application, preventing interaction with the button. 
+
+To resolve this issue, you should ensure that any modal or overlay is closed before attempting to click the 'Manual RFP' button. This may involve adding a step to dismiss the overlay or checking the application's state before performing the click action.
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/a7f52c27-dfb8-4741-a487-2d7efc0836ba/7dc56f52-6226-4609-90c7-f70f2f1929da
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
 
 #### Test TC003
-- **Test Name:** get_specific_rfp_by_id
-- **Test Code:** [TC003_get_specific_rfp_by_id.py](./TC003_get_specific_rfp_by_id.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 53, in <module>
-  File "<string>", line 34, in test_get_specific_rfp_by_id
-  File "<string>", line 16, in create_rfp
-  File "/var/task/requests/models.py", line 1024, in raise_for_status
-    raise HTTPError(http_error_msg, response=self)
-requests.exceptions.HTTPError: 400 Client Error: Bad Request for url: http://localhost:5173/api/rfps
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/73dda6de-6bfe-4d87-a9cd-8acab172afc5
-- **Status:** ❌ Failed
-- **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
----
-
-#### Test TC004
-- **Test Name:** get_documents_for_specific_rfp
-- **Test Code:** [TC004_get_documents_for_specific_rfp.py](./TC004_get_documents_for_specific_rfp.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 53, in <module>
-  File "<string>", line 26, in test_get_documents_for_specific_rfp
-AssertionError: Failed to create RFP, status code: 400
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/924a05a9-042a-44e4-82da-52dd0f295b8c
+- **Test Name:** TC003-Proposal Generation: Successful Enhanced AI Proposal Generation
+- **Test Code:** [TC003_Proposal_Generation_Successful_Enhanced_AI_Proposal_Generation.py](./TC003_Proposal_Generation_Successful_Enhanced_AI_Proposal_Generation.py)
+- **Test Error:** The task to verify enhanced AI proposal generation for a valid RFP ID with correct options and quality threshold was partially completed. We successfully navigated to the proposal details and company profiles sections, attempted to extract companyProfileId and sessionId from UI, browser storage, cookies, and network requests but could not find explicit values. Attempts to input dummy values via UI failed. However, previous POST requests to /api/proposals/enhanced/generate with dummy companyProfileId and sessionId returned status 202, indicating the generation process started. SSE monitoring for proposal sections and quality scores was part of earlier steps but not fully confirmed here. Overall, the system appears to accept the request and initiate generation with the given options and quality threshold, but the exact IDs are not exposed in the UI or storage. Task success is set to false due to incomplete confirmation of SSE updates and missing exact IDs.
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/a7f52c27-dfb8-4741-a487-2d7efc0836ba/56956c9e-3d46-477e-8f9e-b985a55a3a12
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
 
 #### Test TC005
-- **Test Name:** get_detailed_rfps_with_compliance_data
-- **Test Code:** [TC005_get_detailed_rfps_with_compliance_data.py](./TC005_get_detailed_rfps_with_compliance_data.py)
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/c2bf0bc5-b9a9-4ee7-bfba-7250e4653901
-- **Status:** ✅ Passed
-- **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
----
-
-#### Test TC006
-- **Test Name:** enhanced_ai_powered_proposal_generation
-- **Test Code:** [TC006_enhanced_ai_powered_proposal_generation.py](./TC006_enhanced_ai_powered_proposal_generation.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 92, in <module>
-  File "<string>", line 27, in test_enhanced_ai_powered_proposal_generation
-AssertionError: Failed to create RFP: {"error":"Failed to create RFP"}
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/69c059ed-d588-42f8-968b-613ca911824d
+- **Test Name:** TC005-Submission Pipeline: Start submission workflow with valid credentials and browser options
+- **Test Code:** [TC005_Submission_Pipeline_Start_submission_workflow_with_valid_credentials_and_browser_options.py](./TC005_Submission_Pipeline_Start_submission_workflow_with_valid_credentials_and_browser_options.py)
+- **Test Error:** Test execution timed out after 15 minutes
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/a7f52c27-dfb8-4741-a487-2d7efc0836ba/a0d97929-c880-427f-9a21-160533ca5ac9
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
 
 #### Test TC007
-- **Test Name:** pipeline_based_proposal_generation
-- **Test Code:** [TC007_pipeline_based_proposal_generation.py](./TC007_pipeline_based_proposal_generation.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 28, in <module>
-  File "<string>", line 13, in test_pipeline_based_proposal_generation
-AssertionError: Expected status code 200 but got 400
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/d24b1d27-63f8-4307-9ffa-dc7b34a8c210
+- **Test Name:** TC007-Portal Scanning: Trigger manual portal scan and receive real-time updates
+- **Test Code:** [TC007_Portal_Scanning_Trigger_manual_portal_scan_and_receive_real_time_updates.py](./TC007_Portal_Scanning_Trigger_manual_portal_scan_and_receive_real_time_updates.py)
+- **Test Error:** 
+Browser Console Logs:
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+[ERROR] WebSocket connection to 'ws://localhost:5001/?token=qRYMfriefMLi' failed: Invalid frame header (at http://localhost:5001/@vite/client:744:0)
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/a7f52c27-dfb8-4741-a487-2d7efc0836ba/03b11e0f-dd8a-46e5-8691-66a4bbbb39e0
 - **Status:** ❌ Failed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
 
 #### Test TC008
-- **Test Name:** get_all_portals_with_rfp_counts
-- **Test Code:** [TC008_get_all_portals_with_rfp_counts.py](./TC008_get_all_portals_with_rfp_counts.py)
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/ec05c28a-1f96-4cea-901a-03d3e3266c5b
-- **Status:** ✅ Passed
-- **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
----
-
-#### Test TC009
-- **Test Name:** start_rfp_discovery_workflow
-- **Test Code:** [TC009_start_rfp_discovery_workflow.py](./TC009_start_rfp_discovery_workflow.py)
-- **Test Error:** Traceback (most recent call last):
-  File "/var/task/handler.py", line 258, in run_with_retry
-    exec(code, exec_env)
-  File "<string>", line 20, in <module>
-  File "<string>", line 16, in test_start_rfp_discovery_workflow
-AssertionError: Expected status code 201 but got 404
-
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/bc0b7eb9-b33d-40da-a7b7-206bf3d75551
+- **Test Name:** TC008-Document Processing: Parse RFP document and extract requirements
+- **Test Code:** [TC008_Document_Processing_Parse_RFP_document_and_extract_requirements.py](./TC008_Document_Processing_Parse_RFP_document_and_extract_requirements.py)
+- **Test Error:** Test execution timed out after 15 minutes
+- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/a7f52c27-dfb8-4741-a487-2d7efc0836ba/fb11975f-0fb8-4cee-999f-28dcbbbc8454
 - **Status:** ❌ Failed
-- **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
----
-
-#### Test TC010
-- **Test Name:** health_check_endpoint_returns_system_healthy
-- **Test Code:** [TC010_health_check_endpoint_returns_system_healthy.py](./TC010_health_check_endpoint_returns_system_healthy.py)
-- **Test Visualization and Result:** https://www.testsprite.com/dashboard/mcp/tests/846fe612-99ec-4601-ac0c-ddf796a601e0/ff461f8f-d0ab-40d3-aad4-17336c01dde4
-- **Status:** ✅ Passed
 - **Analysis / Findings:** {{TODO:AI_ANALYSIS}}.
 ---
 
 
 ## 3️⃣ Coverage & Matching Metrics
 
-- **30.00** of tests passed
+- **0.00** of tests passed
 
 | Requirement        | Total Tests | ✅ Passed | ❌ Failed  |
 |--------------------|-------------|-----------|------------|
