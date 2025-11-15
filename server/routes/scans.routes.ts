@@ -139,6 +139,44 @@ router.get('/active', async (req, res) => {
 });
 
 /**
+ * SSE endpoint with query params (legacy/test compatibility)
+ * GET /api/scans/stream?portalId=X&sessionId=Y
+ * Redirects to scanId-based stream if scan exists for portal
+ */
+router.get('/stream', async (req, res) => {
+  try {
+    const { portalId, sessionId } = req.query;
+
+    if (!portalId) {
+      return res.status(400).json({
+        error: 'portalId query parameter required',
+        hint: 'Use GET /api/scans/stream?portalId=<id> or POST /api/scans/trigger to start a scan first'
+      });
+    }
+
+    // Check if portal is being scanned
+    const activeScans = scanManager.getActiveScans();
+    const scan = activeScans.find(s => s.portalId === portalId);
+
+    if (!scan) {
+      return res.status(404).json({
+        error: 'No active scan found for this portal',
+        portalId,
+        hint: 'Call POST /api/scans/trigger first to start a scan and get a scanId',
+        activeScans: activeScans.map(s => ({ scanId: s.scanId, portalId: s.portalId }))
+      });
+    }
+
+    // Redirect to scanId-based stream endpoint
+    console.log(`[SSE] Redirecting query-param stream request for portal ${portalId} to scan ${scan.scanId}`);
+    return req.url = `/${scan.scanId}/stream`, router.handle(req, res);
+  } catch (error) {
+    console.error('Error setting up scan stream with query params:', error);
+    res.status(500).json({ error: 'Failed to set up scan stream' });
+  }
+});
+
+/**
  * SSE endpoint for real-time scan streaming
  * GET /api/scans/:scanId/stream
  */
