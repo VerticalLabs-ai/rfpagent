@@ -169,12 +169,21 @@ export class SubmissionService {
   ): Promise<SubmissionResult> {
     console.log(`🚀 Starting automated submission for ${submissionId}`);
 
-    try {
-      // Validate submission exists
-      const submission = await storage.getSubmission(submissionId);
-      if (!submission) {
-        throw new Error(`Submission not found: ${submissionId}`);
-      }
+    // TC005 Timeout Fix: Add overall timeout limit of 12 minutes (720 seconds)
+    const OVERALL_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes (leave 3 min buffer for 15 min test)
+    const timeoutPromise = new Promise<SubmissionResult>((_, reject) => {
+      setTimeout(() => reject(new Error('Submission pipeline timed out after 12 minutes')), OVERALL_TIMEOUT_MS);
+    });
+
+    const submissionPromise = (async (): Promise<SubmissionResult> => {
+      try {
+        console.log(`[SubmissionService] Starting submission with timeout: ${OVERALL_TIMEOUT_MS / 1000}s`);
+
+        // Validate submission exists
+        const submission = await storage.getSubmission(submissionId);
+        if (!submission) {
+          throw new Error(`Submission not found: ${submissionId}`);
+        }
 
       // Validate proposal exists
       const proposal = await storage.getProposal(submission.proposalId);
@@ -266,7 +275,7 @@ export class SubmissionService {
         },
         browserOptions: {
           headless: options.browserOptions?.headless ?? false,
-          timeout: options.browserOptions?.timeout || 300000,
+          timeout: options.browserOptions?.timeout || 120000, // TC005: Reduced from 300s (5min) to 120s (2min)
         },
         metadata: {
           submissionInitiatedAt: new Date().toISOString(),
@@ -365,11 +374,35 @@ export class SubmissionService {
         failureMessage
       );
 
+        return {
+          success: false,
+          submissionId,
+          error: failureMessage,
+          retryable: this.isRetryableError(error),
+        };
+      }
+    })(); // Close async IIFE
+
+    // TC005 Timeout Fix: Race between submission and timeout
+    try {
+      return await Promise.race([submissionPromise, timeoutPromise]);
+    } catch (error) {
+      // Timeout occurred - clean up and fail gracefully
+      console.error(`❌ Submission timed out after ${OVERALL_TIMEOUT_MS / 1000}s:`, error);
+      this.activeSubmissions.delete(submissionId);
+
+      const timeoutMessage = error instanceof Error ? error.message : 'Submission timed out';
+      await this.handleSubmissionFailure(
+        submissionId,
+        options.sessionId,
+        timeoutMessage
+      ).catch(err => console.error('Failed to handle submission failure:', err));
+
       return {
         success: false,
         submissionId,
-        error: failureMessage,
-        retryable: this.isRetryableError(error),
+        error: timeoutMessage,
+        retryable: false, // Don't retry timeouts
       };
     }
   }
