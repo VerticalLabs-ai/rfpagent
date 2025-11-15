@@ -43,11 +43,22 @@ export default function ActiveRFPsTable() {
     null
   );
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [selectedCompanyProfileId, setSelectedCompanyProfileId] = useState<string>('');
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
   const { data: rfpData, isLoading } = useQuery({
     queryKey: ['/api/rfps', 'detailed'],
+  });
+
+  // Fetch company profiles for the selector
+  const { data: companyProfiles } = useQuery({
+    queryKey: ['/api/company/profiles'],
+    queryFn: async () => {
+      const response = await fetch('/api/company/profiles');
+      if (!response.ok) throw new Error('Failed to fetch company profiles');
+      return response.json();
+    },
   });
 
   const generateProposalMutation = useMutation({
@@ -299,6 +310,25 @@ export default function ActiveRFPsTable() {
                   <SelectItem value="review">Review</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={selectedCompanyProfileId}
+                onValueChange={setSelectedCompanyProfileId}
+              >
+                <SelectTrigger
+                  className="w-48"
+                  data-testid="company-profile-select"
+                >
+                  <SelectValue placeholder="Select Company Profile" />
+                </SelectTrigger>
+                <SelectContent>
+                  {companyProfiles && Array.isArray(companyProfiles) && companyProfiles.map((profile: any) => (
+                    <SelectItem key={profile.id} value={profile.id}>
+                      {profile.companyName}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -624,6 +654,8 @@ export default function ActiveRFPsTable() {
                               }
                               disabled={generateProposalMutation.isPending}
                               data-testid={`generate-proposal-${item.rfp.id}`}
+                              data-company-profile-id={selectedCompanyProfileId}
+                              data-rfp-id={item.rfp.id}
                             >
                               <i className="fas fa-robot mr-1"></i>
                               Generate
