@@ -35,12 +35,14 @@ export const StagehandOpportunitySchema = z
 export const StagehandExtractionResultSchema = z
   .object({
     data: z
-      .object({
-        opportunities: z.array(StagehandOpportunitySchema).optional(),
-        fullContent: z.string().optional(),
-        pageTitle: z.string().optional(),
-      })
-      .partial()
+      .union([
+        z.object({
+          opportunities: z.array(StagehandOpportunitySchema).optional(),
+          fullContent: z.string().optional(),
+          pageTitle: z.string().optional(),
+        }),
+        z.string(), // Allow string for raw text extraction
+      ])
       .optional(),
     opportunities: z.array(StagehandOpportunitySchema).optional(),
     status: z.string().optional(),

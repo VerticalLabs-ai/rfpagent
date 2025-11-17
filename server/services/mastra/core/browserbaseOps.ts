@@ -175,9 +175,12 @@ export async function unifiedBrowserbaseWebScrape(
           : ''),
     });
 
+    // Handle both object and string data formats from Stagehand
     const rawOpportunities =
       extractionResult.opportunities ??
-      extractionResult.data?.opportunities ??
+      (typeof extractionResult.data === 'object'
+        ? extractionResult.data?.opportunities
+        : undefined) ??
       [];
 
     // Filter and ensure title is always present (required by UnifiedScrapeResult)

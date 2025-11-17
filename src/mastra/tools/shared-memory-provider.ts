@@ -5,33 +5,25 @@ import { agentMemoryService } from '../../../server/services/agents/agentMemoryS
  * Centralized Memory Provider for all Mastra agents
  * Uses agentMemoryService for persistence and provides credential security
  *
- * Note: This is a simplified implementation using Mastra's built-in memory.
- * For custom storage integration, use @mastra/pg, @mastra/upstash, etc.
+ * Note: Memory is disabled by default. Agents use agentMemoryService for storage.
+ * If you need Mastra Memory, configure storage in the Mastra instance.
  */
 export class SharedMemoryProvider {
-  private static instance: Memory;
+  private static instance: Memory | null = null;
 
   /**
    * Get or create the shared Memory instance
    *
-   * Using Mastra's built-in memory with options for:
-   * - lastMessages: Number of recent messages to include
-   * - semanticRecall: Disabled for now (requires vector storage)
-   * - workingMemory: Disabled (requires special template)
+   * Returns null by default - agents should use agentMemoryService instead
+   * To enable Memory, add storage config to your Mastra instance
    */
-  public static getSharedMemory(): Memory {
-    if (!SharedMemoryProvider.instance) {
-      console.log('🧠 Creating shared Memory instance with built-in storage');
-
-      SharedMemoryProvider.instance = new Memory({
-        options: {
-          lastMessages: 10, // Keep last 10 messages in context
-          semanticRecall: false, // Disabled - requires vector storage (PgVector, etc.)
-        },
-      });
-    }
-
-    return SharedMemoryProvider.instance;
+  public static getSharedMemory(): Memory | null {
+    // Memory disabled - use agentMemoryService instead
+    // This avoids the "Memory requires a storage provider" error
+    console.log(
+      '💾 Memory provider disabled - agents use agentMemoryService for persistent storage'
+    );
+    return null;
   }
 
   /**
