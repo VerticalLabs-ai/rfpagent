@@ -162,7 +162,8 @@ export class PhiladelphiaDocumentDownloader {
 
       // V3 API: Get page with defensive check
       const pages = await stagehand.context.pages();
-      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
+      const page =
+        pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       console.log(`🌐 Navigating to: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
@@ -413,7 +414,8 @@ export class PhiladelphiaDocumentDownloader {
 
       // V3 API: Get page with defensive check
       const pages = await stagehand.context.pages();
-      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
+      const page =
+        pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       // Navigate to RFP page
       console.log(`🌐 Navigating to RFP page: ${rfpUrl}`);
@@ -1066,7 +1068,8 @@ export class PhiladelphiaDocumentDownloader {
 
       // V3 API: Get page with defensive check
       const pages = await stagehand.context.pages();
-      const page = pages.length > 0 ? pages[0] : await stagehand.context.newPage();
+      const page =
+        pages.length > 0 ? pages[0] : await stagehand.context.newPage();
 
       console.log(`📊 Extracting document information from: ${rfpUrl}`);
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });

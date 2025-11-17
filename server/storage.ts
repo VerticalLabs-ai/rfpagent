@@ -996,7 +996,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(proposals.generatedAt));
 
     // Create a map of rfpId -> latest proposal
-    const proposalMap = new Map<string, typeof proposalsQuery[0]>();
+    const proposalMap = new Map<string, (typeof proposalsQuery)[0]>();
     for (const proposal of proposalsQuery) {
       if (!proposalMap.has(proposal.rfpId)) {
         proposalMap.set(proposal.rfpId, proposal);
@@ -1006,7 +1006,9 @@ export class DatabaseStorage implements IStorage {
     return rfpsWithPortals.map(({ rfp, portal }) => ({
       rfp,
       portal: portal ?? null,
-      proposal: proposalMap.get(rfp.id) ? toProposal(proposalMap.get(rfp.id)!) : null,
+      proposal: proposalMap.get(rfp.id)
+        ? toProposal(proposalMap.get(rfp.id)!)
+        : null,
     }));
   }
 

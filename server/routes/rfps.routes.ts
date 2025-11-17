@@ -37,7 +37,7 @@ const ManualRfpInputSchema = z.object({
  */
 router.get('/', validateQuery(getRfpsQuerySchema), async (req, res) => {
   try {
-    const { status, portalId, page, limit } = req.query as z.infer<
+    const { status, portalId, page, limit } = req.query as unknown as z.infer<
       typeof getRfpsQuerySchema
     >;
     const offset = (page - 1) * limit;
@@ -52,7 +52,7 @@ router.get('/', validateQuery(getRfpsQuerySchema), async (req, res) => {
     // Return standardized paginated response
     res.json({
       success: true,
-      data: result.data,
+      data: result.rfps,
       pagination: {
         total: result.total,
         page,

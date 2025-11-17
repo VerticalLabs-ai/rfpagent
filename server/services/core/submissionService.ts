@@ -172,12 +172,18 @@ export class SubmissionService {
     // TC005 Timeout Fix: Add overall timeout limit of 12 minutes (720 seconds)
     const OVERALL_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes (leave 3 min buffer for 15 min test)
     const timeoutPromise = new Promise<SubmissionResult>((_, reject) => {
-      setTimeout(() => reject(new Error('Submission pipeline timed out after 12 minutes')), OVERALL_TIMEOUT_MS);
+      setTimeout(
+        () =>
+          reject(new Error('Submission pipeline timed out after 12 minutes')),
+        OVERALL_TIMEOUT_MS
+      );
     });
 
     const submissionPromise = (async (): Promise<SubmissionResult> => {
       try {
-        console.log(`[SubmissionService] Starting submission with timeout: ${OVERALL_TIMEOUT_MS / 1000}s`);
+        console.log(
+          `[SubmissionService] Starting submission with timeout: ${OVERALL_TIMEOUT_MS / 1000}s`
+        );
 
         // Validate submission exists
         const submission = await storage.getSubmission(submissionId);
@@ -185,194 +191,194 @@ export class SubmissionService {
           throw new Error(`Submission not found: ${submissionId}`);
         }
 
-      // Validate proposal exists
-      const proposal = await storage.getProposal(submission.proposalId);
-      if (!proposal) {
-        throw new Error(`Proposal not found: ${submission.proposalId}`);
-      }
+        // Validate proposal exists
+        const proposal = await storage.getProposal(submission.proposalId);
+        if (!proposal) {
+          throw new Error(`Proposal not found: ${submission.proposalId}`);
+        }
 
-      // Validate portal exists
-      const portal = await storage.getPortal(submission.portalId);
-      if (!portal) {
-        throw new Error(`Portal not found: ${submission.portalId}`);
-      }
+        // Validate portal exists
+        const portal = await storage.getPortal(submission.portalId);
+        if (!portal) {
+          throw new Error(`Portal not found: ${submission.portalId}`);
+        }
 
-      // Check if submission is already in progress
-      if (this.activeSubmissions.has(submissionId)) {
-        console.log('⚠️ Submission already in progress');
-        return {
-          success: false,
+        // Check if submission is already in progress
+        if (this.activeSubmissions.has(submissionId)) {
+          console.log('⚠️ Submission already in progress');
+          return {
+            success: false,
+            submissionId,
+            error: 'Submission already in progress',
+          };
+        }
+
+        // Validate submission readiness
+        const readinessCheck = await this.validateSubmissionReadiness(
+          submission,
+          proposal,
+          portal
+        );
+        if (!readinessCheck.ready) {
+          throw new Error(`Submission not ready: ${readinessCheck.reason}`);
+        }
+
+        // Create session for this submission
+        const sessionId =
+          options.sessionId || `submission_${submissionId}_${Date.now()}`;
+
+        // Track active submission
+        this.activeSubmissions.set(submissionId, {
+          sessionId,
+          startedAt: new Date(),
+          status: 'initiating',
+        });
+
+        // Create audit log (sanitized - NO CREDENTIALS)
+        await storage.createAuditLog({
+          entityType: 'submission',
+          entityId: submissionId,
+          action: 'submission_initiated',
+          details: {
+            proposalId: submission.proposalId,
+            portalId: submission.portalId,
+            sessionId,
+            options: this.sanitizeOptionsForLogging(options),
+          },
+        });
+
+        // Update submission status to in_progress when pipeline starts
+        await storage.updateSubmission(submissionId, {
+          status: 'in_progress',
+          submissionData: this.mergeSubmissionData(submission.submissionData, {
+            sessionId,
+            initiatedAt: new Date().toISOString(),
+            portalName: portal.name,
+            automatedSubmission: true,
+          }),
+        });
+
+        // Create initial notification
+        await storage.createNotification({
+          type: 'submission',
+          title: 'Automated Submission Started',
+          message: `Automated submission pipeline initiated for ${portal.name}`,
+          relatedEntityType: 'submission',
+          relatedEntityId: submissionId,
+          isRead: false,
+        });
+
+        // Prepare submission pipeline request
+        const pipelineRequest: SubmissionPipelineRequest = {
           submissionId,
-          error: 'Submission already in progress',
+          sessionId,
+          portalCredentials: options.portalCredentials,
+          priority: options.priority || 5,
+          deadline: options.deadline,
+          retryOptions: {
+            maxRetries: options.retryOptions?.maxRetries || 3,
+            retryDelay: options.retryOptions?.retryDelay || 30000,
+          },
+          browserOptions: {
+            headless: options.browserOptions?.headless ?? false,
+            timeout: options.browserOptions?.timeout || 120000, // TC005: Reduced from 300s (5min) to 120s (2min)
+          },
+          metadata: {
+            submissionInitiatedAt: new Date().toISOString(),
+            portalName: portal.name,
+            rfpTitle: readinessCheck.rfp?.title,
+            ...options.metadata,
+          },
         };
-      }
 
-      // Validate submission readiness
-      const readinessCheck = await this.validateSubmissionReadiness(
-        submission,
-        proposal,
-        portal
-      );
-      if (!readinessCheck.ready) {
-        throw new Error(`Submission not ready: ${readinessCheck.reason}`);
-      }
+        // Store submission request in agent memory for tracking (sanitized - NO CREDENTIALS)
+        const sanitizedPipelineRequest = {
+          ...pipelineRequest,
+          portalCredentials: pipelineRequest.portalCredentials
+            ? '[REDACTED]'
+            : undefined,
+        };
 
-      // Create session for this submission
-      const sessionId =
-        options.sessionId || `submission_${submissionId}_${Date.now()}`;
+        await agentMemoryService.storeMemory({
+          agentId: 'submission-service',
+          memoryType: 'working',
+          contextKey: `submission_request_${submissionId}`,
+          title: `Submission Request - ${portal.name}`,
+          content: {
+            submissionId,
+            sessionId,
+            pipelineRequest: sanitizedPipelineRequest,
+            initiatedAt: new Date().toISOString(),
+          },
+          importance: 9,
+          tags: ['submission_request', 'active_submission', portal.name],
+          metadata: { submissionId, sessionId },
+        });
 
-      // Track active submission
-      this.activeSubmissions.set(submissionId, {
-        sessionId,
-        startedAt: new Date(),
-        status: 'initiating',
-      });
+        // Initiate submission pipeline through orchestrator
+        const pipelineResult =
+          await submissionOrchestrator.initiateSubmissionPipeline(
+            pipelineRequest
+          );
 
-      // Create audit log (sanitized - NO CREDENTIALS)
-      await storage.createAuditLog({
-        entityType: 'submission',
-        entityId: submissionId,
-        action: 'submission_initiated',
-        details: {
-          proposalId: submission.proposalId,
-          portalId: submission.portalId,
+        if (!pipelineResult.success) {
+          // Handle pipeline initiation failure
+          await this.handleSubmissionFailure(
+            submissionId,
+            sessionId,
+            pipelineResult.error || 'Pipeline initiation failed'
+          );
+
+          return {
+            success: false,
+            submissionId,
+            error: pipelineResult.error || 'Pipeline initiation failed',
+            retryable: true,
+          };
+        }
+
+        // Update active submission tracking
+        this.activeSubmissions.set(submissionId, {
           sessionId,
-          options: this.sanitizeOptionsForLogging(options),
-        },
-      });
+          pipelineId: pipelineResult.pipelineId,
+          startedAt: new Date(),
+          status: 'in_progress',
+          currentPhase: pipelineResult.currentPhase,
+        });
 
-      // Update submission status to in_progress when pipeline starts
-      await storage.updateSubmission(submissionId, {
-        status: 'in_progress',
-        submissionData: this.mergeSubmissionData(submission.submissionData, {
-          sessionId,
-          initiatedAt: new Date().toISOString(),
-          portalName: portal.name,
-          automatedSubmission: true,
-        }),
-      });
+        if (pipelineResult.pipelineId) {
+          const refreshedSubmission = await storage.getSubmission(submissionId);
+          await storage.updateSubmission(submissionId, {
+            submissionData: this.mergeSubmissionData(
+              refreshedSubmission?.submissionData ?? null,
+              { pipelineId: pipelineResult.pipelineId }
+            ),
+          });
+        }
 
-      // Create initial notification
-      await storage.createNotification({
-        type: 'submission',
-        title: 'Automated Submission Started',
-        message: `Automated submission pipeline initiated for ${portal.name}`,
-        relatedEntityType: 'submission',
-        relatedEntityId: submissionId,
-        isRead: false,
-      });
-
-      // Prepare submission pipeline request
-      const pipelineRequest: SubmissionPipelineRequest = {
-        submissionId,
-        sessionId,
-        portalCredentials: options.portalCredentials,
-        priority: options.priority || 5,
-        deadline: options.deadline,
-        retryOptions: {
-          maxRetries: options.retryOptions?.maxRetries || 3,
-          retryDelay: options.retryOptions?.retryDelay || 30000,
-        },
-        browserOptions: {
-          headless: options.browserOptions?.headless ?? false,
-          timeout: options.browserOptions?.timeout || 120000, // TC005: Reduced from 300s (5min) to 120s (2min)
-        },
-        metadata: {
-          submissionInitiatedAt: new Date().toISOString(),
-          portalName: portal.name,
-          rfpTitle: readinessCheck.rfp?.title,
-          ...options.metadata,
-        },
-      };
-
-      // Store submission request in agent memory for tracking (sanitized - NO CREDENTIALS)
-      const sanitizedPipelineRequest = {
-        ...pipelineRequest,
-        portalCredentials: pipelineRequest.portalCredentials
-          ? '[REDACTED]'
-          : undefined,
-      };
-
-      await agentMemoryService.storeMemory({
-        agentId: 'submission-service',
-        memoryType: 'working',
-        contextKey: `submission_request_${submissionId}`,
-        title: `Submission Request - ${portal.name}`,
-        content: {
-          submissionId,
-          sessionId,
-          pipelineRequest: sanitizedPipelineRequest,
-          initiatedAt: new Date().toISOString(),
-        },
-        importance: 9,
-        tags: ['submission_request', 'active_submission', portal.name],
-        metadata: { submissionId, sessionId },
-      });
-
-      // Initiate submission pipeline through orchestrator
-      const pipelineResult =
-        await submissionOrchestrator.initiateSubmissionPipeline(
-          pipelineRequest
+        console.log(
+          `✅ Submission pipeline initiated successfully: ${pipelineResult.pipelineId}`
         );
 
-      if (!pipelineResult.success) {
-        // Handle pipeline initiation failure
+        return {
+          success: true,
+          submissionId,
+          pipelineId: pipelineResult.pipelineId,
+        };
+      } catch (error) {
+        console.error(`❌ Failed to submit proposal ${submissionId}:`, error);
+
+        // Clean up active submission tracking
+        this.activeSubmissions.delete(submissionId);
+
+        // Handle submission failure
+        const failureMessage =
+          error instanceof Error ? error.message : 'Submission failed';
         await this.handleSubmissionFailure(
           submissionId,
-          sessionId,
-          pipelineResult.error || 'Pipeline initiation failed'
+          options.sessionId,
+          failureMessage
         );
-
-        return {
-          success: false,
-          submissionId,
-          error: pipelineResult.error || 'Pipeline initiation failed',
-          retryable: true,
-        };
-      }
-
-      // Update active submission tracking
-      this.activeSubmissions.set(submissionId, {
-        sessionId,
-        pipelineId: pipelineResult.pipelineId,
-        startedAt: new Date(),
-        status: 'in_progress',
-        currentPhase: pipelineResult.currentPhase,
-      });
-
-      if (pipelineResult.pipelineId) {
-        const refreshedSubmission = await storage.getSubmission(submissionId);
-        await storage.updateSubmission(submissionId, {
-          submissionData: this.mergeSubmissionData(
-            refreshedSubmission?.submissionData ?? null,
-            { pipelineId: pipelineResult.pipelineId }
-          ),
-        });
-      }
-
-      console.log(
-        `✅ Submission pipeline initiated successfully: ${pipelineResult.pipelineId}`
-      );
-
-      return {
-        success: true,
-        submissionId,
-        pipelineId: pipelineResult.pipelineId,
-      };
-    } catch (error) {
-      console.error(`❌ Failed to submit proposal ${submissionId}:`, error);
-
-      // Clean up active submission tracking
-      this.activeSubmissions.delete(submissionId);
-
-      // Handle submission failure
-      const failureMessage =
-        error instanceof Error ? error.message : 'Submission failed';
-      await this.handleSubmissionFailure(
-        submissionId,
-        options.sessionId,
-        failureMessage
-      );
 
         return {
           success: false,
@@ -388,15 +394,21 @@ export class SubmissionService {
       return await Promise.race([submissionPromise, timeoutPromise]);
     } catch (error) {
       // Timeout occurred - clean up and fail gracefully
-      console.error(`❌ Submission timed out after ${OVERALL_TIMEOUT_MS / 1000}s:`, error);
+      console.error(
+        `❌ Submission timed out after ${OVERALL_TIMEOUT_MS / 1000}s:`,
+        error
+      );
       this.activeSubmissions.delete(submissionId);
 
-      const timeoutMessage = error instanceof Error ? error.message : 'Submission timed out';
+      const timeoutMessage =
+        error instanceof Error ? error.message : 'Submission timed out';
       await this.handleSubmissionFailure(
         submissionId,
         options.sessionId,
         timeoutMessage
-      ).catch(err => console.error('Failed to handle submission failure:', err));
+      ).catch(err =>
+        console.error('Failed to handle submission failure:', err)
+      );
 
       return {
         success: false,

@@ -1647,10 +1647,10 @@ export const insertRfpSchema = createInsertSchema(rfps)
       ])
       .default('discovered'),
     progress: z.coerce.number().min(0).max(100).default(0),
-    requirements: z.record(z.any()).optional(),
-    complianceItems: z.record(z.any()).optional(),
-    riskFlags: z.record(z.any()).optional(),
-    analysis: z.record(z.any()).optional(),
+    requirements: z.record(z.string(), z.any()).optional(),
+    complianceItems: z.record(z.string(), z.any()).optional(),
+    riskFlags: z.record(z.string(), z.any()).optional(),
+    analysis: z.record(z.string(), z.any()).optional(),
     addedBy: z.enum(['manual', 'automatic']).default('manual'),
     manuallyAddedAt: z.coerce.date().optional(),
   });

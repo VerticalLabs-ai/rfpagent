@@ -71,14 +71,15 @@ router.post('/trigger', async (req, res) => {
     res.status(202).json({
       success: true,
       scanId,
-      message: 'Portal scan started. Connect to the scan stream for real-time updates.',
+      message:
+        'Portal scan started. Connect to the scan stream for real-time updates.',
       streamUrl: `/api/scans/${scanId}/stream`,
     });
   } catch (error) {
     console.error('Error triggering portal scan:', error);
     res.status(500).json({
       success: false,
-      error: 'Failed to trigger portal scan'
+      error: 'Failed to trigger portal scan',
     });
   }
 });
@@ -150,7 +151,7 @@ router.get('/stream', async (req, res) => {
     if (!portalId) {
       return res.status(400).json({
         error: 'portalId query parameter required',
-        hint: 'Use GET /api/scans/stream?portalId=<id> or POST /api/scans/trigger to start a scan first'
+        hint: 'Use GET /api/scans/stream?portalId=<id> or POST /api/scans/trigger to start a scan first',
       });
     }
 
@@ -163,13 +164,19 @@ router.get('/stream', async (req, res) => {
         error: 'No active scan found for this portal',
         portalId,
         hint: 'Call POST /api/scans/trigger first to start a scan and get a scanId',
-        activeScans: activeScans.map(s => ({ scanId: s.scanId, portalId: s.portalId }))
+        activeScans: activeScans.map(s => ({
+          scanId: s.scanId,
+          portalId: s.portalId,
+        })),
       });
     }
 
     // Redirect to scanId-based stream endpoint
-    console.log(`[SSE] Redirecting query-param stream request for portal ${portalId} to scan ${scan.scanId}`);
-    return req.url = `/${scan.scanId}/stream`, router.handle(req, res);
+    console.log(
+      `[SSE] Redirecting query-param stream request for portal ${portalId} to scan ${scan.scanId}`
+    );
+    req.url = `/${scan.scanId}/stream`;
+    return res.redirect(`/api/scans/${scan.scanId}/stream`);
   } catch (error) {
     console.error('Error setting up scan stream with query params:', error);
     res.status(500).json({ error: 'Failed to set up scan stream' });

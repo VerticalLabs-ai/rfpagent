@@ -46,7 +46,11 @@ export class ManualRfpService {
     // TC002 Timeout Fix: Add overall timeout limit of 12 minutes (720 seconds)
     const OVERALL_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes (leave 3 min buffer for 15 min test)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Manual RFP processing timed out after 12 minutes')), OVERALL_TIMEOUT_MS);
+      setTimeout(
+        () =>
+          reject(new Error('Manual RFP processing timed out after 12 minutes')),
+        OVERALL_TIMEOUT_MS
+      );
     });
 
     try {
@@ -83,14 +87,20 @@ export class ManualRfpService {
       // TC002 Timeout Fix: Wrap scraping in timeout (8 minutes max for primary scraping)
       const SCRAPING_TIMEOUT_MS = 8 * 60 * 1000;
       const scrapingTimeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Primary scraping timed out after 8 minutes')), SCRAPING_TIMEOUT_MS);
+        setTimeout(
+          () => reject(new Error('Primary scraping timed out after 8 minutes')),
+          SCRAPING_TIMEOUT_MS
+        );
       });
 
       const scrapingResult = await Promise.race([
         scrapeRFPFromUrl(input.url, 'manual'),
-        scrapingTimeoutPromise
-      ]).catch((error) => {
-        console.warn(`[ManualRfpService] Primary scraping failed or timed out:`, error.message);
+        scrapingTimeoutPromise,
+      ]).catch(error => {
+        console.warn(
+          `[ManualRfpService] Primary scraping failed or timed out:`,
+          error.message
+        );
         return null; // Return null to trigger fallback
       });
 
@@ -104,7 +114,8 @@ export class ManualRfpService {
           'Primary extraction failed - RFP URL may be incompatible'
         );
 
-        const errorMessage = 'Primary RFP extraction failed. This portal may not be supported yet.';
+        const errorMessage =
+          'Primary RFP extraction failed. This portal may not be supported yet.';
         console.error(`[ManualRfpService] ${errorMessage}:`, input.url);
 
         progressTracker.failTracking(sessionId, errorMessage);
@@ -112,7 +123,8 @@ export class ManualRfpService {
           success: false,
           sessionId,
           error: errorMessage,
-          message: 'Unable to extract RFP information from this portal. Supported portals: BeaconBid, Austin Finance, SAM.gov. Please verify the URL or try a supported portal.',
+          message:
+            'Unable to extract RFP information from this portal. Supported portals: BeaconBid, Austin Finance, SAM.gov. Please verify the URL or try a supported portal.',
         };
       }
 
@@ -252,7 +264,10 @@ Respond with JSON only:
       });
 
       const analysisTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Portal analysis timed out after 30 seconds')), 30000);
+        setTimeout(
+          () => reject(new Error('Portal analysis timed out after 30 seconds')),
+          30000
+        );
       });
 
       const response = await Promise.race([analysisPromise, analysisTimeout]);
@@ -454,10 +469,16 @@ If any field cannot be determined, use null or empty values.`;
       });
 
       const extractionTimeout = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('RFP extraction timed out after 45 seconds')), 45000);
+        setTimeout(
+          () => reject(new Error('RFP extraction timed out after 45 seconds')),
+          45000
+        );
       });
 
-      const response = await Promise.race([extractionPromise, extractionTimeout]);
+      const response = await Promise.race([
+        extractionPromise,
+        extractionTimeout,
+      ]);
 
       const extracted = JSON.parse(response.choices[0].message.content || '{}');
 

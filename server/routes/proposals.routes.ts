@@ -19,9 +19,12 @@ const router = express.Router();
 // Validation schemas
 const enhancedProposalGenerationSchema = z.object({
   rfpId: z.string().uuid('RFP ID must be a valid UUID'),
-  companyProfileId: z.string().uuid('Company Profile ID must be a valid UUID').optional(),
+  companyProfileId: z
+    .string()
+    .uuid('Company Profile ID must be a valid UUID')
+    .optional(),
   sessionId: z.string().optional(),
-  options: z.record(z.any()).default({}),
+  options: z.record(z.string(), z.any()).optional().default({}),
 });
 
 const pipelineProposalGenerationSchema = z.object({
@@ -29,13 +32,20 @@ const pipelineProposalGenerationSchema = z.object({
   companyProfileId: z.string().uuid('Company Profile ID must be a valid UUID'),
   priority: z.coerce.number().int().min(1).max(10).default(5),
   parallelExecution: z.boolean().default(true),
-  options: z.object({
-    generatePricing: z.boolean().default(true),
-    generateCompliance: z.boolean().default(true),
-    proposalType: z.string().optional(),
-    qualityThreshold: z.coerce.number().min(0).max(1).optional(),
-    autoSubmit: z.boolean().default(false),
-  }).default({}),
+  options: z
+    .object({
+      generatePricing: z.boolean().default(true),
+      generateCompliance: z.boolean().default(true),
+      proposalType: z.string().optional(),
+      qualityThreshold: z.coerce.number().min(0).max(1).optional(),
+      autoSubmit: z.boolean().default(false),
+    })
+    .optional()
+    .default({
+      generatePricing: true,
+      generateCompliance: true,
+      autoSubmit: false,
+    }),
 });
 
 /**
@@ -87,7 +97,12 @@ router.post(
   heavyOperationLimiter,
   validateSchema(enhancedProposalGenerationSchema),
   handleAsyncError(async (req, res) => {
-    const { rfpId, companyProfileId, sessionId: providedSessionId, options } = req.body;
+    const {
+      rfpId,
+      companyProfileId,
+      sessionId: providedSessionId,
+      options,
+    } = req.body;
 
     const sessionId = providedSessionId || `enhanced_${rfpId}_${Date.now()}`;
 
@@ -120,13 +135,8 @@ router.post(
   heavyOperationLimiter,
   validateSchema(pipelineProposalGenerationSchema),
   handleAsyncError(async (req, res) => {
-    const {
-      rfpIds,
-      companyProfileId,
-      priority,
-      parallelExecution,
-      options,
-    } = req.body;
+    const { rfpIds, companyProfileId, priority, parallelExecution, options } =
+      req.body;
 
     const pipelineResults = await Promise.all(
       rfpIds.map((rfpId: string) =>

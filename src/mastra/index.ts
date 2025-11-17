@@ -69,10 +69,6 @@ export const mastra = new Mastra({
   observability: {
     default: {
       enabled: true,
-      serviceName: 'rfp-agent-platform',
-      sampling: { type: 'always' },
-      processors: [new SensitiveDataFilter()],
-      exporters: [new DefaultExporter()],
     },
   },
   // 3-Tier Agent System Configuration

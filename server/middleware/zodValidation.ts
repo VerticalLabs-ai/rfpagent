@@ -14,12 +14,12 @@ export function validateSchema(schema: ZodSchema) {
     } catch (error) {
       if (error instanceof ZodError) {
         // Format Zod validation errors into a user-friendly structure
-        const formattedErrors = error.errors.map(err => ({
+        const formattedErrors = error.issues.map(err => ({
           field: err.path.join('.'),
           message: err.message,
           code: err.code,
-          expected: 'expected' in err ? err.expected : undefined,
-          received: 'received' in err ? err.received : undefined,
+          expected: 'expected' in err ? (err as any).expected : undefined,
+          received: 'received' in err ? (err as any).received : undefined,
         }));
 
         return res.status(400).json({
@@ -48,11 +48,12 @@ export function validateSchema(schema: ZodSchema) {
 export function validateQuery(schema: ZodSchema) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      req.query = await schema.parseAsync(req.query);
+      const parsed = await schema.parseAsync(req.query);
+      req.query = parsed as any;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = error.errors.map(err => ({
+        const formattedErrors = error.issues.map(err => ({
           field: err.path.join('.'),
           message: err.message,
           code: err.code,
@@ -79,11 +80,12 @@ export function validateQuery(schema: ZodSchema) {
 export function validateParams(schema: ZodSchema) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      req.params = await schema.parseAsync(req.params);
+      const parsed = await schema.parseAsync(req.params);
+      req.params = parsed as any;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        const formattedErrors = error.errors.map(err => ({
+        const formattedErrors = error.issues.map(err => ({
           field: err.path.join('.'),
           message: err.message,
           code: err.code,

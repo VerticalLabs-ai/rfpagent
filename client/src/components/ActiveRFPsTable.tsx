@@ -43,7 +43,8 @@ export default function ActiveRFPsTable() {
     null
   );
   const [progressDialogOpen, setProgressDialogOpen] = useState(false);
-  const [selectedCompanyProfileId, setSelectedCompanyProfileId] = useState<string>('');
+  const [selectedCompanyProfileId, setSelectedCompanyProfileId] =
+    useState<string>('');
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
@@ -324,11 +325,13 @@ export default function ActiveRFPsTable() {
                   <SelectValue placeholder="Select Company Profile" />
                 </SelectTrigger>
                 <SelectContent>
-                  {companyProfiles && Array.isArray(companyProfiles) && companyProfiles.map((profile: any) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.companyName}
-                    </SelectItem>
-                  ))}
+                  {companyProfiles &&
+                    Array.isArray(companyProfiles) &&
+                    companyProfiles.map((profile: any) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.companyName}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
 
