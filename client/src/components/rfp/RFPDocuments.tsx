@@ -72,24 +72,24 @@ export function RFPDocuments({
                   {fillableDocuments.map(doc => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-3 bg-orange-50/50 dark:bg-orange-950/20 rounded-lg border border-orange-200/50 dark:border-orange-800/30 backdrop-blur-sm"
+                      className="flex items-center justify-between gap-3 p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg border border-orange-200 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/40 transition-colors"
                       data-testid={`fillable-doc-${doc.id}`}
                     >
-                      <div className="flex items-center gap-3">
-                        <FileText className="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <FileText className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
                             {doc.filename}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                          <p className="text-xs text-gray-600 dark:text-gray-300">
                             {doc.fileType.toUpperCase()} •{' '}
-                            {(doc.parsedData as any)?.category || 'Document'}
+                            {(doc.parsedData as any)?.category || 'e-bid form attachment'}
                           </p>
                         </div>
                       </div>
                       <Badge
                         variant="outline"
-                        className="text-orange-600 dark:text-orange-300 border-orange-300 dark:border-orange-700 bg-transparent dark:bg-orange-950/30"
+                        className="text-orange-700 dark:text-orange-200 border-orange-400 dark:border-orange-600 bg-orange-100/50 dark:bg-orange-900/50 font-medium whitespace-nowrap flex-shrink-0"
                       >
                         Needs Completion
                       </Badge>
@@ -102,28 +102,35 @@ export function RFPDocuments({
             {/* Reference Documents */}
             {referenceDocuments.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <FileQuestion className="w-4 h-4 text-blue-500" />
+                <h4 className="text-sm font-medium mb-2 flex items-center gap-2 text-foreground dark:text-foreground">
+                  <FileQuestion className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                   Reference Documents
                 </h4>
                 <div className="space-y-2">
                   {referenceDocuments.map(doc => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-2 bg-muted/50 rounded"
+                      className="flex items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-900/60 transition-colors"
                       data-testid={`reference-doc-${doc.id}`}
                     >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm">{doc.filename}</p>
-                          <p className="text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <FileText className="w-5 h-5 text-slate-600 dark:text-slate-300 flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">
+                            {doc.filename}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300">
                             {doc.fileType.toUpperCase()} •{' '}
-                            {(doc.parsedData as any)?.category || 'Document'}
+                            {(doc.parsedData as any)?.category || 'solicitation'}
                           </p>
                         </div>
                       </div>
-                      <Badge variant="secondary">Reference</Badge>
+                      <Badge
+                        variant="secondary"
+                        className="bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-600 font-medium whitespace-nowrap flex-shrink-0"
+                      >
+                        Reference
+                      </Badge>
                     </div>
                   ))}
                 </div>
