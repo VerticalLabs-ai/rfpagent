@@ -1,18 +1,31 @@
 import { BaseContentExtractor } from '../ContentExtractor';
 import { RFPOpportunity } from '../../types';
 import * as cheerio from 'cheerio';
+import axios from 'axios';
+import { logger } from '../../../../utils/logger';
 
 /**
  * Specialized content extractor for SAM.gov portal
  * Handles federal government procurement opportunities
+ *
+ * Supports two extraction modes:
+ * 1. API-based extraction (primary, preferred)
+ * 2. HTML scraping (fallback when API is unavailable)
+ *
+ * @see https://open.gsa.gov/api/opportunities-api/
  */
 export class SAMGovContentExtractor extends BaseContentExtractor {
+  private readonly SAM_BASE_URL = 'https://api.sam.gov/opportunities/v2';
+
   constructor() {
     super('sam.gov');
   }
 
   /**
    * Extract opportunities from SAM.gov content
+   *
+   * Intelligently chooses between API extraction and HTML scraping
+   * based on content type and availability
    */
   async extract(
     content: string,
@@ -20,42 +33,223 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     portalContext: string
   ): Promise<RFPOpportunity[]> {
     try {
-      console.log(`🏛️ Starting SAM.gov content extraction for ${url}`);
+      logger.info('Starting SAM.gov content extraction', { url, portalContext });
 
+      // Strategy 1: Try API-based extraction first if we have API key
+      if (this.hasApiKey()) {
+        const apiOpportunities = await this.extractFromAPI(url, portalContext);
+        if (apiOpportunities.length > 0) {
+          logger.info('SAM.gov API extraction successful', {
+            url,
+            count: apiOpportunities.length,
+          });
+          return apiOpportunities;
+        }
+        logger.warn('SAM.gov API extraction returned no results, falling back to HTML');
+      }
+
+      // Strategy 2: Fall back to HTML scraping
       if (!this.validateContent(content)) {
-        console.warn(`⚠️ Invalid content provided for SAM.gov extraction`);
+        logger.warn('Invalid content provided for SAM.gov extraction', { url });
         return [];
       }
 
-      const $ = cheerio.load(content);
-      const opportunities: RFPOpportunity[] = [];
+      const htmlOpportunities = await this.extractFromHTML(content, url, portalContext);
 
-      // SAM.gov specific extraction strategies
-      const searchResults = this.extractSearchResults($, url);
-      const detailPages = this.extractDetailPages($, url);
-      const listingPages = this.extractListingPages($, url);
+      logger.info('SAM.gov extraction completed', {
+        url,
+        count: htmlOpportunities.length,
+        method: 'HTML',
+      });
 
-      opportunities.push(...searchResults, ...detailPages, ...listingPages);
+      return htmlOpportunities;
+    } catch (error: any) {
+      logger.error('SAM.gov content extraction failed', error, { url });
+      return [];
+    }
+  }
 
-      // Calculate confidence scores and filter
-      opportunities.forEach(opp => {
+  /**
+   * Check if SAM.gov API key is available
+   */
+  private hasApiKey(): boolean {
+    return !!(process.env.SAM_GOV_API_KEY && process.env.SAM_GOV_API_KEY.trim().length > 0);
+  }
+
+  /**
+   * Extract opportunities using SAM.gov API
+   * Primary extraction method - more reliable and structured
+   */
+  private async extractFromAPI(
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
+    try {
+      const apiKey = process.env.SAM_GOV_API_KEY;
+      if (!apiKey) {
+        return [];
+      }
+
+      // Extract search parameters from URL or use defaults
+      const searchParams = this.extractSearchParamsFromURL(url);
+
+      logger.info('Fetching opportunities from SAM.gov API', { searchParams });
+
+      const response = await axios.get(`${this.SAM_BASE_URL}/search`, {
+        params: {
+          limit: searchParams.limit || 50,
+          offset: searchParams.offset || 0,
+          postedFrom: searchParams.postedFrom,
+          postedTo: searchParams.postedTo,
+          ...searchParams.filters,
+        },
+        headers: {
+          'X-Api-Key': apiKey,
+          'User-Agent': 'RFP-Agent/1.0',
+          Accept: 'application/json',
+        },
+        timeout: 30000,
+      });
+
+      if (response.status !== 200) {
+        logger.warn('SAM.gov API returned non-200 status', {
+          status: response.status,
+          statusText: response.statusText,
+        });
+        return [];
+      }
+
+      const data = response.data;
+      const opportunitiesData = data?.opportunitiesData || [];
+
+      logger.info('SAM.gov API response received', {
+        total: opportunitiesData.length,
+      });
+
+      // Convert API response to RFPOpportunity format
+      const opportunities = opportunitiesData.map((opp: any) =>
+        this.convertAPIOpportunityToRFP(opp)
+      );
+
+      // Calculate confidence scores
+      opportunities.forEach((opp) => {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
-      const filteredOpportunities = opportunities.filter(
-        opp => (opp.confidence || 0) >= minConfidence
+      const filtered = opportunities.filter(
+        (opp) => (opp.confidence || 0) >= minConfidence
       );
 
-      console.log(
-        `🏛️ SAM.gov extraction completed: ${opportunities.length} found, ${filteredOpportunities.length} above confidence threshold`
-      );
-
-      return this.removeDuplicates(filteredOpportunities);
-    } catch (error) {
-      console.error(`❌ SAM.gov content extraction failed for ${url}:`, error);
+      return this.removeDuplicates(filtered);
+    } catch (error: any) {
+      logger.error('SAM.gov API extraction failed', error, {
+        endpoint: `${this.SAM_BASE_URL}/search`,
+      });
       return [];
     }
+  }
+
+  /**
+   * Convert SAM.gov API opportunity to RFPOpportunity format
+   */
+  private convertAPIOpportunityToRFP(apiOpp: any): RFPOpportunity {
+    return {
+      title: apiOpp.title || 'Untitled Opportunity',
+      description: apiOpp.description || apiOpp.synopsis || '',
+      agency: apiOpp.organizationName || apiOpp.department || apiOpp.subtierName,
+      deadline: apiOpp.responseDeadLine || apiOpp.archiveDate,
+      estimatedValue: apiOpp.awardCeiling
+        ? `$${apiOpp.awardCeiling}`
+        : apiOpp.awardFloor
+          ? `$${apiOpp.awardFloor}`
+          : undefined,
+      url: `https://sam.gov/opp/${apiOpp.noticeId}/view`,
+      link: `https://sam.gov/opp/${apiOpp.noticeId}/view`,
+      category: apiOpp.type || apiOpp.typeOfSetAsideDescription || 'Federal Opportunity',
+      confidence: 0.95, // API data is highly reliable
+    };
+  }
+
+  /**
+   * Extract search parameters from SAM.gov URL
+   */
+  private extractSearchParamsFromURL(url: string): {
+    limit?: number;
+    offset?: number;
+    postedFrom?: string;
+    postedTo?: string;
+    filters?: Record<string, any>;
+  } {
+    try {
+      const urlObj = new URL(url);
+      const params = urlObj.searchParams;
+
+      // Get current date for default range
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const yearStart = `01/01/${currentYear}`;
+      const yearEnd = `12/31/${currentYear + 1}`;
+
+      return {
+        limit: parseInt(params.get('limit') || '50', 10),
+        offset: parseInt(params.get('offset') || '0', 10),
+        postedFrom: params.get('postedFrom') || yearStart,
+        postedTo: params.get('postedTo') || yearEnd,
+        filters: {
+          keyword: params.get('keyword') || undefined,
+          organizationName: params.get('organizationName') || undefined,
+          state: params.get('state') || undefined,
+        },
+      };
+    } catch (error) {
+      // If URL parsing fails, return defaults
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      return {
+        limit: 50,
+        offset: 0,
+        postedFrom: `01/01/${currentYear}`,
+        postedTo: `12/31/${currentYear + 1}`,
+      };
+    }
+  }
+
+  /**
+   * Extract opportunities from HTML content (fallback method)
+   */
+  private async extractFromHTML(
+    content: string,
+    url: string,
+    portalContext: string
+  ): Promise<RFPOpportunity[]> {
+    const $ = cheerio.load(content);
+    const opportunities: RFPOpportunity[] = [];
+
+    // SAM.gov specific extraction strategies
+    const searchResults = this.extractSearchResults($, url);
+    const detailPages = this.extractDetailPages($, url);
+    const listingPages = this.extractListingPages($, url);
+
+    opportunities.push(...searchResults, ...detailPages, ...listingPages);
+
+    // Calculate confidence scores and filter
+    opportunities.forEach((opp) => {
+      opp.confidence = this.getConfidenceScore(opp);
+    });
+
+    const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+    const filteredOpportunities = opportunities.filter(
+      (opp) => (opp.confidence || 0) >= minConfidence
+    );
+
+    logger.info('SAM.gov HTML extraction completed', {
+      url,
+      total: opportunities.length,
+      filtered: filteredOpportunities.length,
+    });
+
+    return this.removeDuplicates(filteredOpportunities);
   }
 
   /**
