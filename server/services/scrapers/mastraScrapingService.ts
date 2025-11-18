@@ -18,6 +18,7 @@ import {
   stagehandExtractTool,
 } from '../../../src/mastra/tools';
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
+import { SAMGovDocumentDownloader } from './samGovDocumentDownloader';
 import { performBrowserAuthentication } from '../core/stagehandTools'; // Add missing import
 import {
   executeStagehandTool,
@@ -61,6 +62,7 @@ import {
 import {
   normalizePortalType,
   shouldUseAustinPortalExtraction,
+  shouldUseSAMGovExtraction,
 } from './utils/portalTypeUtils';
 
 // Zod schema for agent response validation
@@ -93,6 +95,7 @@ export class MastraScrapingService {
   private requestLimiter = pLimit(3); // Limit concurrent requests
   private aiLimiter = pLimit(2); // Limit concurrent AI calls
   private activeCoordinationIds: Map<string, string> = new Map(); // portalId -> coordinationId
+  private samGovDownloader = new SAMGovDocumentDownloader(); // SAM.gov document downloader
 
   constructor() {
     // Memory now enabled with shared, secure memory provider
@@ -313,6 +316,46 @@ export class MastraScrapingService {
           }
         } catch (austinError) {
           console.error(`❌ Austin Finance scraper failed:`, austinError);
+          // Fall back to general scraping
+        }
+      }
+
+      // Special handling for SAM.gov URLs
+      if (portalType === 'sam.gov') {
+        console.log(
+          `🎯 SAM.gov detected: Using specialized SAM.gov document downloader`
+        );
+        try {
+          // Extract notice ID from URL
+          const noticeIdMatch = url.match(/opp-([^/]+)|opportunity\/([^/]+)/i);
+          const noticeId = noticeIdMatch ? (noticeIdMatch[1] || noticeIdMatch[2]) : null;
+
+          if (noticeId && existingRfpId) {
+            const samGovDocs = await this.samGovDownloader.downloadRFPDocuments(
+              noticeId,
+              existingRfpId
+            );
+
+            if (samGovDocs && Array.isArray(samGovDocs)) {
+              documentsCount = samGovDocs.length;
+              console.log(
+                `✅ SAM.gov downloader captured ${documentsCount} documents`
+              );
+
+              return {
+                success: true,
+                message: `SAM.gov RFP re-scraped successfully using API document downloader`,
+                documentsCount,
+                opportunities: 1,
+              };
+            }
+          } else {
+            console.log(
+              `⚠️ Could not extract notice ID from SAM.gov URL: ${url}`
+            );
+          }
+        } catch (samGovError) {
+          console.error(`❌ SAM.gov downloader failed:`, samGovError);
           // Fall back to general scraping
         }
       }
@@ -1652,6 +1695,31 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         } catch (error) {
           console.error(
             `❌ Failed to download documents for RFP ${rfp.id}:`,
+            error
+          );
+          // Continue with RFP creation even if document download fails
+        }
+      }
+
+      // Download documents for SAM.gov RFPs
+      if (
+        (portal.url.includes('sam.gov') || shouldUseSAMGovExtraction(portal.type, portal.url)) &&
+        opportunity.noticeId
+      ) {
+        try {
+          console.log(
+            `📄 Downloading documents for SAM.gov RFP: ${rfp.title} (Notice ID: ${opportunity.noticeId})`
+          );
+          const documents = await this.samGovDownloader.downloadRFPDocuments(
+            opportunity.noticeId,
+            rfp.id
+          );
+          console.log(
+            `✅ Downloaded ${documents.length} documents for SAM.gov RFP ${rfp.id}`
+          );
+        } catch (error) {
+          console.error(
+            `❌ Failed to download SAM.gov documents for RFP ${rfp.id}:`,
             error
           );
           // Continue with RFP creation even if document download fails
