@@ -1,0 +1,45 @@
+---
+title: Documentation Governance Overview
+description: How the Doc Governance Agent consolidates AI-generated docs and enforces metadata hygiene.
+lastUpdated: 2025-02-14
+category: governance
+---
+
+import Callout from '@astrojs/starlight/components/Callout.astro';
+
+The **Doc Governance Agent** is a TypeScript utility that runs locally via `pnpm docs:governance` and in CI prior to merge.
+It performs three primary responsibilities:
+
+1. **Inventory & Categorisation.** Scans every `.ts`, `.tsx`, `.md`, and `.mdx` file via `git ls-files`, mapping them to
+   subsystems (API, agents, workflows, testing, deployment, shared) using heuristics and keyword matching.
+2. **Duplicate Detection.** Normalises document slugs, compares embeddings generated from cosine similarity on Markdown
+   headings, and proposes merge targets when content overlap exceeds 70%.
+3. **Change Management.** Blocks new documentation that lacks front-matter metadata, violates kebab-case naming, or does not
+   meaningfully extend an existing topic. The same process ensures a changelog entry accompanies any accepted docs.
+
+<Callout type="caution">
+Docs without `title`, `description`, `lastUpdated`, and `category` fields are rejected. The enforcement script will fail CI and
+point contributors to the original canonical file when duplicates are found.
+</Callout>
+
+## Governance workflow
+
+| Stage | Responsibility | Trigger |
+| --- | --- | --- |
+| **Audit** | `pnpm docs:audit` | Nightly GitHub Action, manual health checks |
+| **Enforce** | `pnpm docs:governance` | PR preflight, CI gating |
+| **Changelog** | `pnpm docs:changelog -- --base origin/main` | Required in CI before deploy |
+
+## Metadata contracts
+
+- **Kebab-case filenames.** Verified by the governance agent; violations propose renames.
+- **Front matter** must include: `title`, `description`, `lastUpdated`, `category`.
+- **Cross-links** are auto-rewritten to the canonical path using Starlight slug resolution.
+
+## Cleanup cadence
+
+- Weekly automation composes an updated [cleanup manifest](../legacy/cleanup-roadmap) to track consolidation tasks.
+- Docs older than 90 days without updates are flagged for review and optionally archived.
+- Content promoted from the legacy backlog is re-run through linting, link validation, and metadata enrichment before publishing.
+
+Review the [CI/CD automation](../operations/ci-and-deployment) guide to wire these checks into every branch and deployment.

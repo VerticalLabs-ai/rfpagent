@@ -1,0 +1,31 @@
+---
+title: Observability and Runbooks
+description: Aggregating logging, metrics, and alerting procedures for the RFP Agent deployment.
+lastUpdated: 2025-02-14
+category: operations
+---
+
+## Logging and metrics
+
+- Application logs stream via Winston and Sentry (see legacy doc `technical/logging-and-observability.md`).
+- Structured fields include `correlationId`, `requestId`, and agent identifiers for cross-trace analysis.
+- Metrics exported to your APM solution should include workflow latency, success rates, and proposal throughput.
+
+## Alerting thresholds
+
+| Signal | Threshold | Runbook |
+| --- | --- | --- |
+| Workflow failure rate | > 5% in 10 minutes | Restart Mastra workflows, inspect queue backlog |
+| API latency | > 2s p95 | Scale server pods, inspect DB indices |
+| Proposal generation SLA | Missed 3+ tasks | Trigger manual review and notify customer success |
+
+## Incident response
+
+1. Confirm the alert in your observability dashboard.
+2. Create an incident channel referencing the relevant workflow or subsystem.
+3. Follow the per-signal runbook and capture remediation steps in the changelog.
+
+## Documentation hooks
+
+- When a runbook changes, update the [changelog discipline guide](../governance/changelog-discipline) and include the incident ID.
+- For new metrics or dashboards, add a Storybook note or TypeDoc comment to the associated module for traceability.

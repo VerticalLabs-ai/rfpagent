@@ -1,0 +1,40 @@
+:root {
+  --rfp-primary: #3f51b5;
+  --rfp-secondary: #00c2a8;
+  --rfp-surface: #0b1120;
+  --rfp-surface-alt: #111d3a;
+  --rfp-border: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme='light'] {
+  --sl-color-accent: var(--rfp-primary);
+  --sl-color-text-accent: var(--rfp-secondary);
+}
+
+html[data-theme='dark'] {
+  --sl-color-accent: var(--rfp-secondary);
+  --sl-color-text-accent: var(--rfp-primary);
+}
+
+.sl-markdown-content blockquote {
+  border-left: 0.2rem solid var(--sl-color-accent);
+  padding-left: 1.25rem;
+  font-style: italic;
+}
+
+.sl-markdown-content table {
+  border: 1px solid var(--rfp-border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.sl-markdown-content code {
+  background: rgba(63, 81, 181, 0.12);
+  border-radius: 0.4rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.sl-banner {
+  background: linear-gradient(135deg, rgba(63, 81, 181, 0.9), rgba(0, 194, 168, 0.9));
+  color: white;
+}

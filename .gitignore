@@ -1,5 +1,10 @@
 node_modules
 dist
+docs/dist
+docs/.astro
+docs/generated
+.astro/
+.starlight/
 .DS_Store
 server/public
 vite.config.ts.*

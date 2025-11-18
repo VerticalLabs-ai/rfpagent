@@ -1,0 +1,35 @@
+---
+title: Welcome to the Unified Documentation Hub
+description: Single-source-of-truth documentation and automation controls for the RFP Agent platform.
+lastUpdated: 2025-02-14
+category: overview
+---
+
+import Callout from '@astrojs/starlight/components/Callout.astro';
+
+# RFP Agent Documentation
+
+Welcome to the consolidated documentation and changelog system for the RFP Agent platform. This site combines
+automated API references, curated architecture guides, agent workflow explainers, and operations runbooks in one
+versioned location.
+
+<Callout type="note">
+The Doc Governance Agent runs on every pull request to audit changes, merge duplicate files, and enforce
+naming, metadata, and changelog policies.
+</Callout>
+
+## Why this hub exists
+
+- **Stop doc sprawl.** Starlight provides a single publishing surface, while the governance agent rewrites or merges
+  redundant Markdown during CI.
+- **Stay accurate.** TypeDoc, Storybook metadata, and repository scans are re-generated on every merge.
+- **Deliver fast onboarding.** Consistent navigation and categories mirror the architecture of the platform, so new
+  contributors find the context they need without hunting across folders.
+
+## Key automation pillars
+
+1. **Typedoc pipeline** captures server, client, shared, and agent interfaces under `/reference/typedoc-index`.
+2. **Doc Governance Agent** validates metadata, detects duplicates, and appends changelog entries.
+3. **CI/CD workflows** run `pnpm docs:generate` and deploy the Starlight site to your chosen hosting target.
+
+Continue with the [governance overview](./governance/overview) to understand how content is triaged and merged.

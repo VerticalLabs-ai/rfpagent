@@ -1,0 +1,32 @@
+---
+title: Changelog Discipline
+description: Automating CHANGELOG updates for every substantive code or documentation change.
+lastUpdated: 2025-02-14
+category: governance
+---
+
+## Principles
+
+- **One entry per merge.** Every merged PR must create or update a release section in `CHANGELOG.md`.
+- **Automation first.** The Doc Governance Agent parses git history, groups changes by scope, and inserts templated notes.
+- **Signal over noise.** Refactors, dependency bumps, and typo fixes are ignored unless they include user-facing change.
+
+## How the automation works
+
+1. `pnpm docs:changelog -- --base origin/main` compares the feature branch with `origin/main`.
+2. Changes are bucketed into _Code_, _Documentation_, _Infrastructure_, or _Operations_ based on file globs.
+3. The script writes to `CHANGELOG.md` using keep-a-changelog format. New releases are dated automatically.
+
+```bash
+pnpm docs:changelog -- --base origin/main --release 2025.02.14
+```
+
+If the release flag is omitted, the script appends to an `Unreleased` section.
+
+## Review checklist
+
+- [ ] Entry lives under the correct release heading.
+- [ ] Scope labels match files touched.
+- [ ] Links to PR numbers or issues are added manually after merge.
+
+Learn more about the CLI flags in `scripts/doc-governance.ts`.

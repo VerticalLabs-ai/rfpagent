@@ -1,0 +1,26 @@
+---
+title: TypeDoc API Index
+description: Entry point for generated TypeScript API reference content.
+lastUpdated: 2025-02-14
+category: reference
+---
+
+TypeDoc output is generated during `pnpm docs:typedoc` and published under `/generated/typedoc` at build time. Starlight
+consumes the markdown output and exposes module pages within this section.
+
+## Commands
+
+```bash
+pnpm docs:typedoc
+```
+
+## Coverage
+
+| Package | Entry Point |
+| --- | --- |
+| Server | `server/index.ts` |
+| Mastra workflows | `src/mastra/index.ts` |
+| Shared types | `shared/index.ts` |
+| Client bootstrap | `client/src/index.tsx` |
+
+Entries appear in the sidebar after the generator runs; no manual edits required.

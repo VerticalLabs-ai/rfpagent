@@ -1,0 +1,22 @@
+---
+title: API Reference Index
+description: Gateway into generated API docs and OpenAPI specifications.
+lastUpdated: 2025-02-14
+category: reference
+---
+
+## REST API
+
+- Base URL: `https://api.rfpagent.example.com`
+- Authentication: Bearer tokens issued via the 1Password-integrated secrets manager.
+- OpenAPI spec: `docs/legacy/api/openapi.yaml` (scheduled to migrate into TypeDoc-backed reference pages).
+
+## Typedoc integration
+
+TypeDoc extracts route handler signatures, DTOs, and supporting utilities. See the [TypeDoc index](./typedoc-index) for
+automatically generated content.
+
+## Change process
+
+- API changes must update this index rather than creating individual Markdown files.
+- Governance agent blocks duplicate endpoint docs and rewrites links to the canonical section.
