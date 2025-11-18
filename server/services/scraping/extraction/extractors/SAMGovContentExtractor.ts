@@ -132,13 +132,13 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       );
 
       // Calculate confidence scores
-      opportunities.forEach((opp) => {
+      opportunities.forEach((opp: RFPOpportunity) => {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
       const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
       const filtered = opportunities.filter(
-        (opp) => (opp.confidence || 0) >= minConfidence
+        (opp: RFPOpportunity) => (opp.confidence || 0) >= minConfidence
       );
 
       return this.removeDuplicates(filtered);
