@@ -5,8 +5,8 @@
  */
 
 import type { Portal } from '@shared/schema';
-import { extractRFPId, extractSolicitationId } from './helpers';
 import { logger } from '../../../utils/logger';
+import { extractRFPId, extractSolicitationId } from './helpers';
 
 /**
  * Validate and fix source URL for a given portal and opportunity
@@ -28,6 +28,20 @@ export function validateAndFixSourceUrl(
     portal: portal.name,
     url,
   });
+
+  // Portal-specific URL validation and fixing
+  // Check these first to allow specific patterns that might be rejected by generic checks
+  if (portal.url.includes('findrfp.com')) {
+    return validateFindRFPUrl(url, opportunity);
+  } else if (portal.url.includes('austintexas.gov')) {
+    return validateAustinFinanceUrl(url, opportunity);
+  } else if (portal.url.includes('bonfire')) {
+    return validateBonfireUrl(url, opportunity);
+  } else if (portal.url.includes('sam.gov')) {
+    return validateSAMGovUrl(url, opportunity);
+  } else if (portal.url.includes('beaconbid.com')) {
+    return validateBeaconBidUrl(url, opportunity);
+  }
 
   // List of generic/category URL patterns that should be rejected
   const genericPatterns = [
@@ -53,17 +67,6 @@ export function validateAndFixSourceUrl(
       });
       return null;
     }
-  }
-
-  // Portal-specific URL validation and fixing
-  if (portal.url.includes('findrfp.com')) {
-    return validateFindRFPUrl(url, opportunity);
-  } else if (portal.url.includes('austintexas.gov')) {
-    return validateAustinFinanceUrl(url, opportunity);
-  } else if (portal.url.includes('bonfire')) {
-    return validateBonfireUrl(url, opportunity);
-  } else if (portal.url.includes('sam.gov')) {
-    return validateSAMGovUrl(url, opportunity);
   }
 
   // For other portals, basic validation
@@ -154,6 +157,28 @@ export function validateBonfireUrl(
 }
 
 /**
+ * Validate BeaconBid URLs
+ * Must contain solicitations path and UUID
+ */
+export function validateBeaconBidUrl(
+  url: string,
+  opportunity: any
+): string | null {
+  // BeaconBid URLs typically contain /solicitations/ and a UUID
+  // Format: /solicitations/[agency]/[uuid]/[slug]
+  if (
+    url.includes('/solicitations/') &&
+    /[a-f0-9-]{36}/i.test(url)
+  ) {
+    logger.debug('Valid BeaconBid detail URL', { url });
+    return url;
+  }
+
+  logger.debug('Invalid BeaconBid URL (missing /solicitations/ path or UUID)', { url });
+  return null;
+}
+
+/**
  * Validate SAM.gov URLs
  * Must contain opportunity IDs
  */
@@ -162,9 +187,12 @@ export function validateSAMGovUrl(
   opportunity: any
 ): string | null {
   // SAM.gov URLs typically contain opportunity IDs
+  // Support both /opportunities/ (legacy/search) and /opp/ (direct link) formats
   if (
-    url.includes('/opportunities/') &&
-    (url.includes('opp-') || url.includes('opportunity-'))
+    (url.includes('/opportunities/') || url.includes('/opp/')) &&
+    (url.includes('opp-') ||
+      url.includes('opportunity-') ||
+      /[a-f0-9]{32}/i.test(url))
   ) {
     logger.debug('Valid SAM.gov detail URL', { url });
     return url;

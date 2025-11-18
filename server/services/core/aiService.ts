@@ -1,18 +1,19 @@
+import { captureException, withScope } from '@sentry/node';
 import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
 import OpenAI from 'openai';
-import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 import { circuitBreakerManager } from './circuitBreaker';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
-});
+// OpenAI client will be initialized lazily
+let openai: OpenAI | null = null;
 
-// Check if OpenAI API key is available
-if (!process.env.OPENAI_API_KEY && !process.env.OPENAI_API_KEY_ENV_VAR) {
-  console.warn(
-    'Warning: OpenAI API key not found. AI features will be limited.'
-  );
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR,
+    });
+  }
+  return openai;
 }
 
 // Initialize circuit breakers for different AI operations
@@ -88,7 +89,7 @@ export class AIService {
       // Execute OpenAI call with circuit breaker protection
       const completion = await conversationCircuit.execute(
         () =>
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: process.env.OPENAI_MODEL || 'gpt-5',
             messages,
           }),
@@ -386,7 +387,7 @@ ${documentText}
       // Execute OpenAI call with circuit breaker protection
       const response = await analysisCircuit.execute(
         () =>
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: process.env.OPENAI_MODEL || 'gpt-5',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' },
@@ -583,7 +584,7 @@ Use professional language suitable for government procurement.
     // Execute OpenAI call with circuit breaker protection
     const response = await generationCircuit.execute(
       () =>
-        openai.chat.completions.create({
+        getOpenAI().chat.completions.create({
           model: process.env.OPENAI_MODEL || 'gpt-5',
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
@@ -659,7 +660,7 @@ Target 40% gross margin. Be competitive but profitable.
     // Execute OpenAI call with circuit breaker protection
     const response = await generationCircuit.execute(
       () =>
-        openai.chat.completions.create({
+        getOpenAI().chat.completions.create({
           model: process.env.OPENAI_MODEL || 'gpt-5',
           messages: [{ role: 'user', content: prompt }],
           response_format: { type: 'json_object' },
@@ -743,7 +744,7 @@ Content: ${scrapedContent}
       // Execute OpenAI call with circuit breaker protection
       const response = await analysisCircuit.execute(
         () =>
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: process.env.OPENAI_MODEL || 'gpt-5',
             messages: [{ role: 'user', content: prompt }],
             response_format: { type: 'json_object' },
@@ -789,7 +790,7 @@ Content: ${scrapedContent}
       // Execute OpenAI call with circuit breaker protection
       const response = await generationCircuit.execute(
         () =>
-          openai.chat.completions.create({
+          getOpenAI().chat.completions.create({
             model: process.env.OPENAI_MODEL || 'gpt-5',
             messages: [{ role: 'user', content: prompt }],
           }),

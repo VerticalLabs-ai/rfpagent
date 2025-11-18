@@ -12,7 +12,7 @@
 
 - **Automated Portal Monitoring** - Scans government procurement portals (federal, state, municipal) for new RFP opportunities
 - **Intelligent Document Processing** - Uses AI to parse PDF/Word documents and extract requirements, deadlines, and evaluation criteria
-- **AI-Powered Proposal Generation** - Generates high-quality, compliant proposals using GPT-4 and Claude 4.5
+- **AI-Powered Proposal Generation** - Generates high-quality, compliant proposals using GPT-5.1 and Claude 4.5
 - **Compliance Validation** - Automatically checks proposals against RFP requirements and generates compliance matrices
 - **Submission Management** - Handles the complete submission pipeline including authentication and document upload
 
@@ -21,7 +21,7 @@
 **Frontend**: React 18, TypeScript, TailwindCSS, shadcn/ui, Vite
 **Backend**: Express, Node.js, TypeScript, Drizzle ORM
 **Database**: PostgreSQL 16+ with JSONB indexing
-**AI**: OpenAI GPT-4/5, Anthropic Claude 4.5, Mastra.ai agent framework
+**AI**: OpenAI GPT-5.1, Anthropic Claude 4.5, Mastra.ai agent framework
 **Automation**: Browserbase, Stagehand (browser automation)
 **Real-time**: WebSocket, Server-Sent Events (SSE)
 
@@ -254,7 +254,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 
 ## 🎯 Claude Code vs MCP Tools
 
-### Claude Code Handles ALL EXECUTION:
+### Claude Code Handles ALL EXECUTION
 
 - **Task tool**: Spawn and run agents concurrently for actual work
 - File operations (Read, Write, Edit, MultiEdit, Glob, Grep)
@@ -267,7 +267,7 @@ This project uses SPARC (Specification, Pseudocode, Architecture, Refinement, Co
 - Package management
 - Testing and debugging
 
-### MCP Tools ONLY COORDINATE:
+### MCP Tools ONLY COORDINATE
 
 - Swarm initialization (topology setup)
 - Agent type definitions (coordination patterns)
@@ -332,14 +332,14 @@ Flow-Nexus extends MCP capabilities with 70+ cloud-based orchestration tools:
 
 ## 🚀 Agent Execution Flow with Claude Code
 
-### The Correct Pattern:
+### The Correct Pattern
 
 1. **Optional**: Use MCP tools to set up coordination topology
 2. **REQUIRED**: Use Claude Code's Task tool to spawn agents that do actual work
 3. **REQUIRED**: Each agent runs hooks for coordination
 4. **REQUIRED**: Batch all operations in single messages
 
-### Example Full-Stack Development:
+### Example Full-Stack Development
 
 ```javascript
 // Single message with all agent spawning via Claude Code's Task tool
@@ -362,7 +362,7 @@ Flow-Nexus extends MCP capabilities with 70+ cloud-based orchestration tools:
 
 ## 📋 Agent Coordination Protocol
 
-### Every Agent Spawned via Task Tool MUST:
+### Every Agent Spawned via Task Tool MUST
 
 **1️⃣ BEFORE Work:**
 
@@ -426,7 +426,7 @@ npx claude-flow@alpha hooks session-end --export-metrics true
   Write "app/docs/API.md"
 ```
 
-### ❌ WRONG (Multiple Messages):
+### ❌ WRONG (Multiple Messages)
 
 ```javascript
 Message 1: mcp__claude-flow__swarm_init
@@ -492,9 +492,9 @@ Message 4: Write "file.js"
 
 ## Support
 
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
-- Flow-Nexus Platform: https://flow-nexus.ruv.io (registration required for cloud features)
+- Documentation: <https://github.com/ruvnet/claude-flow>
+- Issues: <https://github.com/ruvnet/claude-flow/issues>
+- Flow-Nexus Platform: <https://flow-nexus.ruv.io> (registration required for cloud features)
 
 ---
 

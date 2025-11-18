@@ -1,32 +1,32 @@
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { queryClient } from '@/lib/queryClient';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import {
-  Send,
-  Bot,
-  User,
-  Loader2,
-  Search,
-  FileText,
-  Lightbulb,
-  Trash2,
-  Clock,
   BarChart3,
-  CheckSquare,
+  Bot,
   Calendar,
+  CheckSquare,
+  Clock,
   Download,
-  TrendingUp,
   FileEdit,
   FileSearch,
+  FileText,
+  Lightbulb,
+  Loader2,
+  Search,
+  Send,
+  Trash2,
+  TrendingUp,
+  User,
 } from 'lucide-react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 
 interface ChatMessage {
@@ -52,11 +52,11 @@ interface ChatResponse {
   conversationId: string;
   message: string;
   messageType:
-    | 'text'
-    | 'rfp_results'
-    | 'search_results'
-    | 'analysis'
-    | 'follow_up';
+  | 'text'
+  | 'rfp_results'
+  | 'search_results'
+  | 'analysis'
+  | 'follow_up';
   data?: any;
   followUpQuestions?: string[];
   actionSuggestions?: ActionSuggestion[];
@@ -378,13 +378,12 @@ export default function AIChat() {
                         </Badge>
                         <Badge
                           variant="secondary"
-                          className={`text-xs px-1.5 py-0.5 ${
-                            suggestion.priority === 'high'
-                              ? 'bg-red-100 text-red-800'
-                              : suggestion.priority === 'medium'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-blue-100 text-blue-800'
-                          }`}
+                          className={`text-xs px-1.5 py-0.5 ${suggestion.priority === 'high'
+                            ? 'bg-red-100 text-red-800'
+                            : suggestion.priority === 'medium'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-blue-100 text-blue-800'
+                            }`}
                         >
                           {suggestion.priority}
                         </Badge>
@@ -424,9 +423,9 @@ export default function AIChat() {
   return (
     <div className="flex h-full">
       {/* Conversations Sidebar */}
-      <div className="w-80 border-r bg-card">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
+      <div className="w-80 border-r bg-card flex flex-col h-full">
+        <div className="p-4 border-b shrink-0">
+          <div className="flex items-center justify-between">
             <h2 className="font-semibold text-foreground">AI Conversations</h2>
             <Button
               size="sm"
@@ -436,63 +435,65 @@ export default function AIChat() {
               New Chat
             </Button>
           </div>
+        </div>
 
-          <ScrollArea className="h-[calc(100vh-200px)]">
-            <div className="space-y-2">
-              {(conversations as Conversation[])?.map(
-                (conversation: Conversation) => (
-                  <Card
-                    key={conversation.id}
-                    className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                      currentConversationId === conversation.id
-                        ? 'ring-2 ring-primary'
-                        : ''
+        <ScrollArea className="flex-1">
+          <div className="p-4 space-y-2">
+            {(conversations as Conversation[])?.map(
+              (conversation: Conversation) => (
+                <Card
+                  key={conversation.id}
+                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${currentConversationId === conversation.id
+                    ? 'ring-2 ring-primary'
+                    : ''
                     }`}
-                    onClick={() => selectConversation(conversation.id)}
-                    data-testid={`conversation-card-${conversation.id}`}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-foreground truncate flex-1">
+                  onClick={() => selectConversation(conversation.id)}
+                  data-testid={`conversation-card-${conversation.id}`}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-tight">
                           {conversation.title}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary" className="text-xs">
-                            {conversation.type}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleDeleteConversation(conversation.id);
-                            }}
-                            data-testid={`button-delete-conversation-${conversation.id}`}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive -mt-1 -mr-1"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conversation.id);
+                          }}
+                          title="Delete conversation"
+                          data-testid={`button-delete-conversation-${conversation.id}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(conversation.updatedAt).toLocaleDateString()}
-                      </p>
-                    </CardContent>
-                  </Card>
-                )
-              )}
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 h-5 font-normal">
+                          {conversation.type}
+                        </Badge>
+                        <span>
+                          {new Date(conversation.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            )}
 
-              {(!conversations ||
-                (conversations as Conversation[])?.length === 0) && (
+            {(!conversations ||
+              (conversations as Conversation[])?.length === 0) && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No conversations yet</p>
                   <p className="text-xs">Start chatting with the AI agent</p>
                 </div>
               )}
-            </div>
-          </ScrollArea>
-        </div>
+          </div>
+        </ScrollArea>
       </div>
 
       {/* Main Chat Area */}
@@ -521,9 +522,8 @@ export default function AIChat() {
               (message: ChatMessage) => (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                    }`}
                 >
                   {message.role !== 'user' && (
                     <Avatar className="h-8 w-8">
@@ -534,11 +534,10 @@ export default function AIChat() {
                   )}
 
                   <div
-                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
+                    className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                      }`}
                     data-testid={`message-${message.role}-${message.id}`}
                   >
                     {message.role === 'user' ? (

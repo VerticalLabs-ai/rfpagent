@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
-  Plus,
-  AlertTriangle,
-  Users,
-  Shield,
-  MapPin,
-  FileText,
-  Building2,
-} from 'lucide-react';
+  CompanyProfileCard,
+  CompanyProfileForm,
+  ContactList,
+  type CompanyCertification,
+  type CompanyContact,
+  type CompanyInsurance,
+  type CompanyProfile,
+  type NormalizedCompanyContact,
+} from '@/components/company';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -17,8 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -27,23 +25,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { apiRequest } from '@/lib/queryClient';
-import {
-  CompanyProfileForm,
-  CompanyProfileCard,
-  ContactList,
-  type CompanyProfile,
-  type CompanyContact,
-  type CompanyCertification,
-  type CompanyInsurance,
-  type NormalizedCompanyContact,
-} from '@/components/company';
 import {
   calculateDecisionAreaCoverage,
   countCompaniesWithDecisionMakers,
   getDecisionMakers,
   normalizeCompanyContact,
 } from '@/utils/companyProfiles';
+import { useQuery } from '@tanstack/react-query';
+import {
+  AlertTriangle,
+  Building2,
+  FileText,
+  MapPin,
+  Plus,
+  Shield,
+  Users,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
 
 type ExpiringDialogType = 'certifications' | 'insurance' | 'all';
 
@@ -160,340 +161,346 @@ export default function CompanyProfiles() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Company Profiles</h1>
-          <p className="text-muted-foreground">
-            Manage your company information and credentials
-          </p>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-6 pb-0 shrink-0 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Company Profiles</h1>
+            <p className="text-muted-foreground">
+              Manage your company information and credentials
+            </p>
+          </div>
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-profile">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Company Profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create Company Profile</DialogTitle>
+                <DialogDescription>
+                  Add a new company profile to manage RFP proposals
+                </DialogDescription>
+              </DialogHeader>
+              <CompanyProfileForm onSuccess={() => setCreateDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
-        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-profile">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Company Profile
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Company Profile</DialogTitle>
-              <DialogDescription>
-                Add a new company profile to manage RFP proposals
-              </DialogDescription>
-            </DialogHeader>
-            <CompanyProfileForm onSuccess={() => setCreateDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+
+        {hasExpiringItems && (
+          <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                <AlertTriangle className="w-5 h-5" />
+                Expiring Items Alert
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {expiringCertifications.length > 0 && (
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    {expiringCertifications.length} certification(s) expiring soon
+                  </p>
+                )}
+                {expiringInsurance.length > 0 && (
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    {expiringInsurance.length} insurance policy(ies) expiring soon
+                  </p>
+                )}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setExpiringDialogType('all');
+                      setIsExpiringDialogOpen(true);
+                    }}
+                  >
+                    View All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setExpiringDialogType('certifications');
+                      setIsExpiringDialogOpen(true);
+                    }}
+                  >
+                    Certifications
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setExpiringDialogType('insurance');
+                      setIsExpiringDialogOpen(true);
+                    }}
+                  >
+                    Insurance
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {hasExpiringItems && (
-        <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-200">
-              <AlertTriangle className="w-5 h-5" />
-              Expiring Items Alert
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {expiringCertifications.length > 0 && (
-                <p className="text-sm text-orange-700 dark:text-orange-300">
-                  {expiringCertifications.length} certification(s) expiring soon
-                </p>
-              )}
-              {expiringInsurance.length > 0 && (
-                <p className="text-sm text-orange-700 dark:text-orange-300">
-                  {expiringInsurance.length} insurance policy(ies) expiring soon
-                </p>
-              )}
-              <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setExpiringDialogType('all');
-                    setIsExpiringDialogOpen(true);
-                  }}
-                >
-                  View All
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setExpiringDialogType('certifications');
-                    setIsExpiringDialogOpen(true);
-                  }}
-                >
-                  Certifications
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setExpiringDialogType('insurance');
-                    setIsExpiringDialogOpen(true);
-                  }}
-                >
-                  Insurance
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Tabs defaultValue="profiles" className="flex flex-col flex-1 overflow-hidden mt-6">
+        <div className="px-6 pb-4 shrink-0">
+          <TabsList>
+            <TabsTrigger value="profiles" data-testid="tab-profiles">
+              <Building2 className="w-4 h-4 mr-2" />
+              Profiles ({profiles.length})
+            </TabsTrigger>
+            <TabsTrigger value="contacts" data-testid="tab-contacts">
+              <Users className="w-4 h-4 mr-2" />
+              Contacts
+            </TabsTrigger>
+            <TabsTrigger value="overview" data-testid="tab-overview">
+              <FileText className="w-4 h-4 mr-2" />
+              Overview
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      <Tabs defaultValue="profiles" className="w-full">
-        <TabsList>
-          <TabsTrigger value="profiles" data-testid="tab-profiles">
-            <Building2 className="w-4 h-4 mr-2" />
-            Profiles ({profiles.length})
-          </TabsTrigger>
-          <TabsTrigger value="contacts" data-testid="tab-contacts">
-            <Users className="w-4 h-4 mr-2" />
-            Contacts
-          </TabsTrigger>
-          <TabsTrigger value="overview" data-testid="tab-overview">
-            <FileText className="w-4 h-4 mr-2" />
-            Overview
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="profiles" className="space-y-6">
-          {profiles.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No Company Profiles
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Create your first company profile to start managing RFP
-                  proposals
-                </p>
-                <Dialog
-                  open={createDialogOpen}
-                  onOpenChange={setCreateDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button data-testid="button-create-first-profile">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Create First Profile
-                    </Button>
-                  </DialogTrigger>
-                </Dialog>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {profiles.map(profile => (
-                <CompanyProfileCard key={profile.id} profile={profile} />
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="contacts" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Contact Management</h2>
-          </div>
-
-          {profiles.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No Company Profiles
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  Create company profiles first to manage contacts
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {profiles.map(profile => (
-                <Card key={profile.id} className="overflow-hidden">
-                  <CardHeader className="bg-muted/30">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5" />
-                        <CardTitle>{profile.companyName}</CardTitle>
-                      </div>
-                      <Badge
-                        variant={profile.isActive ? 'default' : 'secondary'}
-                      >
-                        {profile.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                    {profile.dba && (
-                      <CardDescription>DBA: {profile.dba}</CardDescription>
-                    )}
-                  </CardHeader>
-                  <CardContent className="p-6">
-                    <ContactList companyProfileId={profile.id} />
+        <ScrollArea className="flex-1">
+          <div className="p-6 pt-0 space-y-6">
+            <TabsContent value="profiles" className="m-0 space-y-6">
+              {profiles.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Company Profiles
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create your first company profile to start managing RFP
+                      proposals
+                    </p>
+                    <Dialog
+                      open={createDialogOpen}
+                      onOpenChange={setCreateDialogOpen}
+                    >
+                      <DialogTrigger asChild>
+                        <Button data-testid="button-create-first-profile">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create First Profile
+                        </Button>
+                      </DialogTrigger>
+                    </Dialog>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Profiles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div
-                  className="text-2xl font-bold"
-                  data-testid="stat-total-profiles"
-                >
-                  {profiles.length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Active Profiles
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {profiles.filter(profile => profile.isActive).length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Contacts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
-                  {allContacts.length}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Decision Makers
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
-                  {decisionMakers.length}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {companiesWithDecisionMakers}/{profiles.length} companies
-                  covered
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
-                  Decision Area Coverage
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {decisionAreaCoverage.map(area => (
-                    <div
-                      key={area.value}
-                      className="flex items-center justify-between"
-                    >
-                      <span className="text-sm">{area.label}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{
-                              width: `${
-                                decisionMakers.length > 0
-                                  ? (area.count / decisionMakers.length) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground w-8 text-right">
-                          {area.count}
-                        </span>
-                      </div>
-                    </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {profiles.map(profile => (
+                    <CompanyProfileCard key={profile.id} profile={profile} />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </TabsContent>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="w-5 h-5" />
-                  Geographic Distribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {Array.from(
-                    new Set(
-                      profiles
-                        .map(profile => profile.registrationState)
-                        .filter(Boolean)
-                    )
-                  )
-                    .slice(0, 5)
-                    .map(state => {
-                      const count = profiles.filter(
-                        profile => profile.registrationState === state
-                      ).length;
+            <TabsContent value="contacts" className="m-0 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold">Contact Management</h2>
+              </div>
 
-                      return (
+              {profiles.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Company Profiles
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create company profiles first to manage contacts
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {profiles.map(profile => (
+                    <Card key={profile.id} className="overflow-hidden">
+                      <CardHeader className="bg-muted/30">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-5 h-5" />
+                            <CardTitle>{profile.companyName}</CardTitle>
+                          </div>
+                          <Badge
+                            variant={profile.isActive ? 'default' : 'secondary'}
+                          >
+                            {profile.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                        {profile.dba && (
+                          <CardDescription>DBA: {profile.dba}</CardDescription>
+                        )}
+                      </CardHeader>
+                      <CardContent className="p-6">
+                        <ContactList companyProfileId={profile.id} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="overview" className="m-0 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Profiles
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className="text-2xl font-bold"
+                      data-testid="stat-total-profiles"
+                    >
+                      {profiles.length}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Active Profiles
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {profiles.filter(profile => profile.isActive).length}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Contacts
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {allContacts.length}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Decision Makers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-purple-600">
+                      {decisionMakers.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {companiesWithDecisionMakers}/{profiles.length} companies
+                      covered
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      Decision Area Coverage
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {decisionAreaCoverage.map(area => (
                         <div
-                          key={state as string}
+                          key={area.value}
                           className="flex items-center justify-between"
                         >
-                          <span className="text-sm">{state}</span>
+                          <span className="text-sm">{area.label}</span>
                           <div className="flex items-center gap-2">
                             <div className="w-16 bg-muted rounded-full h-2">
                               <div
                                 className="bg-primary h-2 rounded-full transition-all"
                                 style={{
-                                  width: `${
-                                    profiles.length
-                                      ? (count / profiles.length) * 100
+                                  width: `${decisionMakers.length > 0
+                                      ? (area.count / decisionMakers.length) * 100
                                       : 0
-                                  }%`,
+                                    }%`,
                                 }}
                               />
                             </div>
                             <span className="text-xs text-muted-foreground w-8 text-right">
-                              {count}
+                              {area.count}
                             </span>
                           </div>
                         </div>
-                      );
-                    })}
-                </div>
-              </CardContent>
-            </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MapPin className="w-5 h-5" />
+                      Geographic Distribution
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Array.from(
+                        new Set(
+                          profiles
+                            .map(profile => profile.registrationState)
+                            .filter(Boolean)
+                        )
+                      )
+                        .slice(0, 5)
+                        .map(state => {
+                          const count = profiles.filter(
+                            profile => profile.registrationState === state
+                          ).length;
+
+                          return (
+                            <div
+                              key={state as string}
+                              className="flex items-center justify-between"
+                            >
+                              <span className="text-sm">{state}</span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-16 bg-muted rounded-full h-2">
+                                  <div
+                                    className="bg-primary h-2 rounded-full transition-all"
+                                    style={{
+                                      width: `${profiles.length
+                                          ? (count / profiles.length) * 100
+                                          : 0
+                                        }%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs text-muted-foreground w-8 text-right">
+                                  {count}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
           </div>
-        </TabsContent>
+        </ScrollArea>
       </Tabs>
 
       <Dialog

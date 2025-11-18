@@ -5,17 +5,17 @@ export const getStatusBadgeVariant = (status: string) => {
     case 'discovered':
       return 'secondary' as const;
     case 'parsing':
-      return 'outline-solid' as const;
+      return 'outline' as const;
     case 'drafting':
       return 'default' as const;
     case 'review':
       return 'secondary' as const;
     case 'approved':
-      return 'outline-solid' as const;
+      return 'outline' as const;
     case 'submitted':
       return 'default' as const;
     case 'closed':
-      return 'outline-solid' as const;
+      return 'outline' as const;
     case 'open':
       return 'secondary' as const;
     default:

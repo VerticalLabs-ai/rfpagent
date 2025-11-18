@@ -1,16 +1,6 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -18,15 +8,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 import {
-  getStatusBadgeVariant,
   getStatusBadgeClassName,
-  getStatusLabel,
+  getStatusBadgeVariant,
   getStatusIcon,
+  getStatusLabel,
 } from '@/lib/badge-utils';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   SUBMISSION_PROGRESS_STATUSES,
   type RfpDetail,
@@ -83,7 +84,7 @@ export default function Submissions() {
 
   if (isLoading) {
     return (
-      <div className="p-6">
+      <div className="p-6 space-y-6">
         <div className="mb-6">
           <Skeleton className="h-8 w-64 mb-2" />
           <Skeleton className="h-4 w-96" />
@@ -106,80 +107,86 @@ export default function Submissions() {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1
-          className="text-3xl font-bold text-foreground mb-2"
-          data-testid="page-title"
-        >
-          Submissions
-        </h1>
-        <p className="text-muted-foreground">
-          Manage and monitor proposal submissions to procurement portals
-        </p>
-      </div>
-
-      {/* Search and Filter Controls */}
-      <div className="flex items-center justify-between mb-6 gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Input
-            placeholder="Search submissions..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9"
-            data-testid="search-input"
-          />
-          <i className="fas fa-search absolute left-3 top-3 text-muted-foreground text-xs"></i>
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="p-6 pb-0 shrink-0 space-y-6">
+        <div className="mb-6">
+          <h1
+            className="text-3xl font-bold text-foreground mb-2"
+            data-testid="page-title"
+          >
+            Submissions
+          </h1>
+          <p className="text-muted-foreground">
+            Manage and monitor proposal submissions to procurement portals
+          </p>
         </div>
 
-        <Select
-          value={statusFilter}
-          onValueChange={value =>
-            setStatusFilter(value as SubmissionStatusFilter)
-          }
-        >
-          <SelectTrigger className="w-48" data-testid="status-filter">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusFilterOptions.map(option => (
-              <SelectItem key={option} value={option}>
-                {option === 'all' ? 'All Statuses' : getStatusLabel(option)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Search and Filter Controls */}
+        <div className="flex items-center justify-between mb-6 gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Input
+              placeholder="Search submissions..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9"
+              data-testid="search-input"
+            />
+            <i className="fas fa-search absolute left-3 top-3 text-muted-foreground text-xs"></i>
+          </div>
+
+          <Select
+            value={statusFilter}
+            onValueChange={value =>
+              setStatusFilter(value as SubmissionStatusFilter)
+            }
+          >
+            <SelectTrigger className="w-48" data-testid="status-filter">
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusFilterOptions.map(option => (
+                <SelectItem key={option} value={option}>
+                  {option === 'all' ? 'All Statuses' : getStatusLabel(option)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Submissions Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredRfps.map(item => (
-          <SubmissionCard
-            key={item.rfp.id}
-            item={item}
-            onSubmit={() =>
-              item.proposal && submitProposalMutation.mutate(item.proposal.id)
-            }
-            submitting={submitProposalMutation.isPending}
-          />
-        ))}
-      </div>
+      <ScrollArea className="flex-1">
+        <div className="p-6 pt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredRfps.map(item => (
+              <SubmissionCard
+                key={item.rfp.id}
+                item={item}
+                onSubmit={() =>
+                  item.proposal && submitProposalMutation.mutate(item.proposal.id)
+                }
+                submitting={submitProposalMutation.isPending}
+              />
+            ))}
+          </div>
 
-      {filteredRfps.length === 0 && (
-        <div className="text-center py-12">
-          <i className="fas fa-paper-plane text-4xl text-muted-foreground mb-4"></i>
-          <h3 className="text-lg font-semibold text-foreground mb-2">
-            {searchQuery || statusFilter !== 'all'
-              ? 'No Matching Submissions'
-              : 'No Submissions Ready'}
-          </h3>
-          <p className="text-muted-foreground">
-            {searchQuery || statusFilter !== 'all'
-              ? 'Try adjusting your search criteria'
-              : 'Proposals need to be approved before they can be submitted'}
-          </p>
+          {filteredRfps.length === 0 && (
+            <div className="text-center py-12">
+              <i className="fas fa-paper-plane text-4xl text-muted-foreground mb-4"></i>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'No Matching Submissions'
+                  : 'No Submissions Ready'}
+              </h3>
+              <p className="text-muted-foreground">
+                {searchQuery || statusFilter !== 'all'
+                  ? 'Try adjusting your search criteria'
+                  : 'Proposals need to be approved before they can be submitted'}
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </ScrollArea>
     </div>
   );
 }
@@ -196,9 +203,8 @@ function SubmissionCard({ item, onSubmit, submitting }: SubmissionCardProps) {
 
   return (
     <Card
-      className={`hover:shadow-md transition-shadow ${
-        isSubmitted ? 'border-green-200 dark:border-green-900' : ''
-      }`}
+      className={`hover:shadow-md transition-shadow ${isSubmitted ? 'border-green-200 dark:border-green-900' : ''
+        }`}
       data-testid={`submission-card-${item.rfp.id}`}
     >
       <CardHeader>
@@ -444,13 +450,12 @@ function SubmissionDetailsModal({ item }: SubmissionDetailsModalProps) {
             {riskFlags.slice(0, 3).map((flag, index) => (
               <div
                 key={index}
-                className={`p-2 rounded text-xs ${
-                  flag.type === 'high'
+                className={`p-2 rounded text-xs ${flag.type === 'high'
                     ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
                     : flag.type === 'medium'
                       ? 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                       : 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                }`}
+                  }`}
                 data-testid={`modal-risk-flag-${index}`}
               >
                 <strong>{flag.category}:</strong> {flag.description}

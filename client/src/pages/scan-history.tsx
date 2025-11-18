@@ -1,10 +1,8 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -12,17 +10,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Search,
-  Calendar,
-  Activity,
-  RefreshCw,
-} from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { apiRequest } from '@/lib/queryClient';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  Search,
+  XCircle,
+} from 'lucide-react';
+import { useState } from 'react';
 
 interface ScanHistoryItem {
   id: string;
@@ -142,7 +142,7 @@ export default function ScanHistoryPage() {
 
     return (
       <Badge
-        variant={variants[status as keyof typeof variants] || 'outline-solid'}
+        variant={variants[status as keyof typeof variants] || 'outline'}
       >
         {status.replace('_', ' ')}
       </Badge>
@@ -156,14 +156,14 @@ export default function ScanHistoryPage() {
   // Handle loading state
   if (isLoading) {
     return (
-      <div className="container mx-auto p-6" data-testid="scan-history-page">
-        <div className="flex justify-between items-center mb-6">
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Scan History</h1>
           <Skeleton className="h-6 w-20" />
         </div>
 
         {/* Loading skeleton for filters */}
-        <Card className="mb-6">
+        <Card>
           <CardHeader>
             <CardTitle className="text-lg">Filters</CardTitle>
           </CardHeader>
@@ -210,7 +210,7 @@ export default function ScanHistoryPage() {
   // Handle error state
   if (error) {
     return (
-      <div className="container mx-auto p-6" data-testid="scan-history-page">
+      <div className="p-6" data-testid="scan-history-page">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">Scan History</h1>
         </div>
@@ -229,236 +229,242 @@ export default function ScanHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto p-6" data-testid="scan-history-page">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Scan History</h1>
-          {scanStats && (
-            <p className="text-muted-foreground mt-2">
-              Success rate: {scanStats.successRate.toFixed(1)}% • Avg.{' '}
-              {scanStats.avgRfpsPerScan.toFixed(1)} RFPs per scan •
-              {scanStats.totalRfpsDiscovered} RFPs discovered in last 30 days
-            </p>
-          )}
+    <div className="flex flex-col h-full overflow-hidden" data-testid="scan-history-page">
+      <div className="p-6 pb-0 shrink-0 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Scan History</h1>
+            {scanStats && (
+              <p className="text-muted-foreground mt-2">
+                Success rate: {scanStats.successRate.toFixed(1)}% • Avg.{' '}
+                {scanStats.avgRfpsPerScan.toFixed(1)} RFPs per scan •
+                {scanStats.totalRfpsDiscovered} RFPs discovered in last 30 days
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-4">
+            <Badge variant="outline" data-testid="scan-count">
+              {totalScans} Total Scans
+            </Badge>
+            <Button onClick={() => refetch()} variant="outline" size="sm">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <Badge variant="outline" data-testid="scan-count">
-            {totalScans} Total Scans
-          </Badge>
-          <Button onClick={() => refetch()} variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
+
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search by portal name..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="search-input"
+                  />
+                </div>
+              </div>
+              <Select
+                value={statusFilter}
+                onValueChange={(value: ScanStatus) => setStatusFilter(value)}
+              >
+                <SelectTrigger className="w-48" data-testid="status-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="completed_with_warnings">
+                    Completed with Warnings
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by portal name..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                  data-testid="search-input"
-                />
-              </div>
-            </div>
-            <Select
-              value={statusFilter}
-              onValueChange={(value: ScanStatus) => setStatusFilter(value)}
-            >
-              <SelectTrigger className="w-48" data-testid="status-filter">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="completed_with_warnings">
-                  Completed with Warnings
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Scan History List */}
-      {filteredScans.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <Activity className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-gray-600">
-              {searchTerm || statusFilter !== 'all'
-                ? 'No scans match your filters'
-                : 'No scan history available'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredScans.map((scan: ScanHistoryItem) => (
-            <Card
-              key={scan.id}
-              className="hover:shadow-md transition-shadow"
-              data-testid={`scan-${scan.id}`}
-            >
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(scan.status)}
-                    <div>
-                      <CardTitle
-                        className="text-lg"
-                        data-testid={`scan-portal-${scan.id}`}
-                      >
-                        {scan.portalName}
-                      </CardTitle>
-                      <p className="text-sm text-gray-600">
-                        {scan.scanType} Scan
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    {getStatusBadge(scan.status)}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Started</p>
-                    <p
-                      className="text-sm text-gray-600"
-                      data-testid={`scan-start-${scan.id}`}
-                    >
-                      {formatDateTime(scan.startTime)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      Duration
-                    </p>
-                    <p
-                      className="text-sm text-gray-600"
-                      data-testid={`scan-duration-${scan.id}`}
-                    >
-                      {scan.duration}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      RFPs Found
-                    </p>
-                    <p
-                      className="text-sm text-gray-600"
-                      data-testid={`scan-rfps-${scan.id}`}
-                    >
-                      {scan.rfpsFound}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">Errors</p>
-                    <p
-                      className="text-sm text-gray-600"
-                      data-testid={`scan-errors-${scan.id}`}
-                    >
-                      {scan.errors.length}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Error Details */}
-                {scan.errors.length > 0 && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <h4 className="text-sm font-medium text-red-800 mb-2">
-                      Error Details
-                    </h4>
-                    {scan.errors.map(
-                      (error: ScanHistoryItem['errors'][0], index: number) => (
-                        <div
-                          key={index}
-                          className="text-sm"
-                          data-testid={`error-${scan.id}-${index}`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge
-                              variant="outline"
-                              data-testid={`error-code-${scan.id}-${index}`}
-                            >
-                              {error.code}
-                            </Badge>
-                            <Badge
-                              variant={
-                                error.recoverable ? 'secondary' : 'destructive'
-                              }
-                              data-testid={`error-recovery-${scan.id}-${index}`}
-                            >
-                              {error.recoverable
-                                ? 'Recoverable'
-                                : 'Manual intervention required'}
-                            </Badge>
-                          </div>
-                          <p
-                            className="text-red-700"
-                            data-testid={`error-message-${scan.id}-${index}`}
-                          >
-                            {error.message}
-                          </p>
-                        </div>
-                      )
-                    )}
-                  </div>
-                )}
+      <ScrollArea className="flex-1">
+        <div className="p-6 pt-6 space-y-4">
+          {filteredScans.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6 text-center">
+                <Activity className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-gray-600">
+                  {searchTerm || statusFilter !== 'all'
+                    ? 'No scans match your filters'
+                    : 'No scan history available'}
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4">
+              {filteredScans.map((scan: ScanHistoryItem) => (
+                <Card
+                  key={scan.id}
+                  className="hover:shadow-md transition-shadow"
+                  data-testid={`scan-${scan.id}`}
+                >
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        {getStatusIcon(scan.status)}
+                        <div>
+                          <CardTitle
+                            className="text-lg"
+                            data-testid={`scan-portal-${scan.id}`}
+                          >
+                            {scan.portalName}
+                          </CardTitle>
+                          <p className="text-sm text-gray-600">
+                            {scan.scanType} Scan
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {getStatusBadge(scan.status)}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Started</p>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-testid={`scan-start-${scan.id}`}
+                        >
+                          {formatDateTime(scan.startTime)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          Duration
+                        </p>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-testid={`scan-duration-${scan.id}`}
+                        >
+                          {scan.duration}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">
+                          RFPs Found
+                        </p>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-testid={`scan-rfps-${scan.id}`}
+                        >
+                          {scan.rfpsFound}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-700">Errors</p>
+                        <p
+                          className="text-sm text-gray-600"
+                          data-testid={`scan-errors-${scan.id}`}
+                        >
+                          {scan.errors.length}
+                        </p>
+                      </div>
+                    </div>
 
-      {/* Pagination Controls */}
-      {totalScans > pageSize && (
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing {currentPage * pageSize + 1} to{' '}
-                {Math.min((currentPage + 1) * pageSize, totalScans)} of{' '}
-                {totalScans} scans
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                  disabled={currentPage === 0}
-                >
-                  Previous
-                </Button>
-                <span className="text-sm px-3">
-                  Page {currentPage + 1} of {Math.ceil(totalScans / pageSize)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={!hasMore}
-                >
-                  Next
-                </Button>
-              </div>
+                    {/* Error Details */}
+                    {scan.errors.length > 0 && (
+                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                        <h4 className="text-sm font-medium text-red-800 mb-2">
+                          Error Details
+                        </h4>
+                        {scan.errors.map(
+                          (error: ScanHistoryItem['errors'][0], index: number) => (
+                            <div
+                              key={index}
+                              className="text-sm"
+                              data-testid={`error-${scan.id}-${index}`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge
+                                  variant="outline"
+                                  data-testid={`error-code-${scan.id}-${index}`}
+                                >
+                                  {error.code}
+                                </Badge>
+                                <Badge
+                                  variant={
+                                    error.recoverable ? 'secondary' : 'destructive'
+                                  }
+                                  data-testid={`error-recovery-${scan.id}-${index}`}
+                                >
+                                  {error.recoverable
+                                    ? 'Recoverable'
+                                    : 'Manual intervention required'}
+                                </Badge>
+                              </div>
+                              <p
+                                className="text-red-700"
+                                data-testid={`error-message-${scan.id}-${index}`}
+                              >
+                                {error.message}
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+
+          {/* Pagination Controls */}
+          {totalScans > pageSize && (
+            <Card className="mt-6">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-muted-foreground">
+                    Showing {currentPage * pageSize + 1} to{' '}
+                    {Math.min((currentPage + 1) * pageSize, totalScans)} of{' '}
+                    {totalScans} scans
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                      disabled={currentPage === 0}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm px-3">
+                      Page {currentPage + 1} of {Math.ceil(totalScans / pageSize)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={!hasMore}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }

@@ -1,68 +1,45 @@
-import { openai } from '@ai-sdk/openai';
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
+import { captureException, withScope } from '@sentry/node';
 import type { Portal } from '@shared/schema';
+import axios from 'axios';
 import * as cheerio from 'cheerio';
 import pLimit from 'p-limit';
-import axios from 'axios';
 import { z } from 'zod';
-import { captureException, addBreadcrumb, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 import { AIService } from '../core/aiService';
 // Removed Puppeteer - now using unified Browserbase through Mastra
 import {
-  sessionManager,
-  sharedMemory,
-  stagehandActTool,
-  stagehandAuthTool,
-  stagehandExtractTool,
+    sessionManager,
+    sharedMemory
 } from '../../../src/mastra/tools';
-import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
-import { SAMGovDocumentDownloader } from './samGovDocumentDownloader';
 import { performBrowserAuthentication } from '../core/stagehandTools'; // Add missing import
 import {
-  executeStagehandTool,
-  StagehandActionResultSchema,
-  StagehandAuthResultSchema,
-  StagehandExtractionResultSchema,
-} from '../scraping/utils/stagehand';
-import { logger } from '../../utils/logger';
-import {
-  detectFileType,
-  parseAgentResponse,
-  extractRFPId,
-  extractSolicitationId,
-  redactSensitiveCookies,
-} from '../mastra/utils/helpers';
-import {
-  validateAndFixSourceUrl,
-  validateFindRFPUrl,
-  validateAustinFinanceUrl,
-  validateBonfireUrl,
-  validateSAMGovUrl,
-  validateGenericUrl,
-} from '../mastra/utils/urlValidation';
-import {
-  createGenericRFPAgent,
-  createBonfireAgent,
-  createSAMGovAgent,
-  createFindRFPAgent,
+    createBonfireAgent,
+    createFindRFPAgent,
+    createGenericRFPAgent,
+    createSAMGovAgent,
 } from '../mastra/agents/agentFactory';
 import {
-  createWebScrapingTool,
-  createRFPExtractionTool,
-  createAuthenticationTool,
-  type ToolExecutors,
-} from '../mastra/tools/toolFactory';
-import {
-  unifiedBrowserbaseWebScrape,
-  handleBrowserbaseAuthentication,
-  scrapeBrowserbaseContent,
+    handleBrowserbaseAuthentication,
+    scrapeBrowserbaseContent,
+    unifiedBrowserbaseWebScrape,
 } from '../mastra/core/browserbaseOps';
 import {
-  normalizePortalType,
-  shouldUseAustinPortalExtraction,
-  shouldUseSAMGovExtraction,
+    createAuthenticationTool,
+    createRFPExtractionTool,
+    createWebScrapingTool,
+    type ToolExecutors,
+} from '../mastra/tools/toolFactory';
+import {
+    validateSAMGovUrl
+} from '../mastra/utils/urlValidation';
+import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
+import { SAMGovDocumentDownloader } from './samGovDocumentDownloader';
+import {
+    normalizePortalType,
+    shouldUseAustinPortalExtraction,
+    shouldUseSAMGovExtraction,
 } from './utils/portalTypeUtils';
 
 // Zod schema for agent response validation
@@ -1878,17 +1855,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private validateSAMGovUrl(url: string, opportunity: any): string | null {
-    // SAM.gov URLs typically contain opportunity IDs
-    if (
-      url.includes('/opportunities/') &&
-      (url.includes('opp-') || url.includes('opportunity-'))
-    ) {
-      console.log(`✅ Valid SAM.gov detail URL: ${url}`);
-      return url;
-    }
-
-    console.log(`🚫 Invalid SAM.gov URL (missing opportunity ID): ${url}`);
-    return null;
+    return validateSAMGovUrl(url, opportunity);
   }
 
   private validateGenericUrl(url: string, opportunity: any): string | null {
