@@ -69,11 +69,14 @@ Template file with placeholder values. Safe to commit.
   - `BROWSERBASE_API_KEY="bb_live_..."`
   - `BROWSERBASE_PROJECT_ID="..."`
 
-### Federal Data (Optional)
+### Federal Data (Required for SAM.gov Integration)
 
-**SAM.gov:**
-- Register at: https://sam.gov/content/api
-- Set: `SAM_GOV_API_KEY="..."`
+**SAM.gov Opportunities API:**
+- **Get API Key**: https://open.gsa.gov/api/opportunities-api/
+- **Documentation**: https://open.gsa.gov/api/opportunities-api/
+- **Rate Limits**: 10 requests/second, 10,000 requests/day
+- Set: `SAM_GOV_API_KEY="YOUR-API-KEY-HERE"`
+- **Quick Start**: See [SAM.gov Quick Start Guide](sam-gov-quick-start.md)
 
 ### Security & Monitoring (Production)
 

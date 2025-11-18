@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: October 2025
+**Last Updated**: November 2025
 
 This directory contains all project documentation organized by category.
 
@@ -11,6 +11,7 @@ This directory contains all project documentation organized by category.
 ```
 docs/
 ├── README.md                         # This file - documentation index
+├── SAM_GOV_INTEGRATION.md           # SAM.gov federal portal integration (Complete)
 ├── mastra-cloud-deployment.md        # Mastra Cloud deployment guide
 ├── api/                              # API documentation and OpenAPI specs
 │   ├── README.md                    # API overview
@@ -42,6 +43,7 @@ docs/
 │   ├── development-setup.md         # Development environment setup
 │   ├── environment-setup.md         # Environment configuration
 │   ├── integration-guide.md         # Integration guide
+│   ├── sam-gov-quick-start.md      # SAM.gov 5-minute setup guide
 │   └── video-tutorial-scripts.md    # Video tutorial scripts
 ├── optimization/                     # Performance and code optimization
 │   ├── code-optimization-report.md  # Code optimization analysis
@@ -54,6 +56,11 @@ docs/
 ---
 
 ## 🚀 Quick Links
+
+### Portal Integrations
+
+- **[SAM.gov Integration](SAM_GOV_INTEGRATION.md)** - Federal procurement portal (✅ Complete)
+- **[SAM.gov Quick Start](guides/sam-gov-quick-start.md)** - 5-minute setup guide
 
 ### For Developers
 
