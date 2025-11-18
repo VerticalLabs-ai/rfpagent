@@ -9,7 +9,7 @@ export interface PortalNavigationConfig {
   listingUrl: string;
   requiresAuth?: boolean;
   waitForSelector?: string;
-  extractorType?: 'austin' | 'philadelphia' | 'generic';
+  extractorType?: 'austin' | 'philadelphia' | 'sam_gov' | 'generic';
 }
 
 export class PortalUrlResolver {
@@ -34,6 +34,16 @@ export class PortalUrlResolver {
         requiresAuth: false,
         waitForSelector: '.procurement-listing',
         extractorType: 'philadelphia',
+      },
+    ],
+    // SAM.gov - Federal government procurement portal
+    [
+      'sam.gov',
+      {
+        listingUrl: 'https://sam.gov/search/?index=opp&page=1',
+        requiresAuth: false, // API key authentication, not session-based
+        waitForSelector: '.opportunity-row, .search-result, [data-testid*="opportunity"]',
+        extractorType: 'sam_gov',
       },
     ],
   ]);
@@ -85,7 +95,7 @@ export class PortalUrlResolver {
    */
   static getExtractorType(
     portalUrl: string
-  ): 'austin' | 'philadelphia' | 'generic' {
+  ): 'austin' | 'philadelphia' | 'sam_gov' | 'generic' {
     const config = this.getNavigationConfig(portalUrl);
     return config?.extractorType || 'generic';
   }
