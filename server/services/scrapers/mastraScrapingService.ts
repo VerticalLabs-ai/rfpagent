@@ -328,7 +328,9 @@ export class MastraScrapingService {
         try {
           // Extract notice ID from URL
           const noticeIdMatch = url.match(/opp-([^/]+)|opportunity\/([^/]+)/i);
-          const noticeId = noticeIdMatch ? (noticeIdMatch[1] || noticeIdMatch[2]) : null;
+          const noticeId = noticeIdMatch
+            ? noticeIdMatch[1] || noticeIdMatch[2]
+            : null;
 
           if (noticeId && existingRfpId) {
             const samGovDocs = await this.samGovDownloader.downloadRFPDocuments(
@@ -1703,7 +1705,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       // Download documents for SAM.gov RFPs
       if (
-        (portal.url.includes('sam.gov') || shouldUseSAMGovExtraction(portal.type, portal.url)) &&
+        (portal.url.includes('sam.gov') ||
+          shouldUseSAMGovExtraction(portal.type, portal.url)) &&
         opportunity.noticeId
       ) {
         try {

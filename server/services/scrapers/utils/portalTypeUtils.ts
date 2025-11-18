@@ -98,7 +98,10 @@ export function detectPortalTypeFromUrl(url: string): string {
   }
 
   // Austin Finance Online detection
-  if (urlLower.includes('austintexas.gov') || urlLower.includes('financeonline')) {
+  if (
+    urlLower.includes('austintexas.gov') ||
+    urlLower.includes('financeonline')
+  ) {
     return 'austin_finance';
   }
 

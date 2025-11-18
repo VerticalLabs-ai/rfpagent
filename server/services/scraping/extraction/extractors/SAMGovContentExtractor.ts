@@ -33,7 +33,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     portalContext: string
   ): Promise<RFPOpportunity[]> {
     try {
-      logger.info('Starting SAM.gov content extraction', { url, portalContext });
+      logger.info('Starting SAM.gov content extraction', {
+        url,
+        portalContext,
+      });
 
       // Strategy 1: Try API-based extraction first if we have API key
       if (this.hasApiKey()) {
@@ -45,7 +48,9 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
           });
           return apiOpportunities;
         }
-        logger.warn('SAM.gov API extraction returned no results, falling back to HTML');
+        logger.warn(
+          'SAM.gov API extraction returned no results, falling back to HTML'
+        );
       }
 
       // Strategy 2: Fall back to HTML scraping
@@ -54,7 +59,11 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
         return [];
       }
 
-      const htmlOpportunities = await this.extractFromHTML(content, url, portalContext);
+      const htmlOpportunities = await this.extractFromHTML(
+        content,
+        url,
+        portalContext
+      );
 
       logger.info('SAM.gov extraction completed', {
         url,
@@ -73,7 +82,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
    * Check if SAM.gov API key is available
    */
   private hasApiKey(): boolean {
-    return !!(process.env.SAM_GOV_API_KEY && process.env.SAM_GOV_API_KEY.trim().length > 0);
+    return !!(
+      process.env.SAM_GOV_API_KEY &&
+      process.env.SAM_GOV_API_KEY.trim().length > 0
+    );
   }
 
   /**
@@ -157,7 +169,8 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     return {
       title: apiOpp.title || 'Untitled Opportunity',
       description: apiOpp.description || apiOpp.synopsis || '',
-      agency: apiOpp.organizationName || apiOpp.department || apiOpp.subtierName,
+      agency:
+        apiOpp.organizationName || apiOpp.department || apiOpp.subtierName,
       deadline: apiOpp.responseDeadLine || apiOpp.archiveDate,
       estimatedValue: apiOpp.awardCeiling
         ? `$${apiOpp.awardCeiling}`
@@ -166,7 +179,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
           : undefined,
       url: `https://sam.gov/opp/${apiOpp.noticeId}/view`,
       link: `https://sam.gov/opp/${apiOpp.noticeId}/view`,
-      category: apiOpp.type || apiOpp.typeOfSetAsideDescription || 'Federal Opportunity',
+      category:
+        apiOpp.type ||
+        apiOpp.typeOfSetAsideDescription ||
+        'Federal Opportunity',
       confidence: 0.95, // API data is highly reliable
     };
   }
@@ -234,13 +250,13 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     opportunities.push(...searchResults, ...detailPages, ...listingPages);
 
     // Calculate confidence scores and filter
-    opportunities.forEach((opp) => {
+    opportunities.forEach(opp => {
       opp.confidence = this.getConfidenceScore(opp);
     });
 
     const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
     const filteredOpportunities = opportunities.filter(
-      (opp) => (opp.confidence || 0) >= minConfidence
+      opp => (opp.confidence || 0) >= minConfidence
     );
 
     logger.info('SAM.gov HTML extraction completed', {

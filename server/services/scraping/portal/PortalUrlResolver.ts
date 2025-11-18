@@ -42,7 +42,8 @@ export class PortalUrlResolver {
       {
         listingUrl: 'https://sam.gov/search/?index=opp&page=1',
         requiresAuth: false, // API key authentication, not session-based
-        waitForSelector: '.opportunity-row, .search-result, [data-testid*="opportunity"]',
+        waitForSelector:
+          '.opportunity-row, .search-result, [data-testid*="opportunity"]',
         extractorType: 'sam_gov',
       },
     ],

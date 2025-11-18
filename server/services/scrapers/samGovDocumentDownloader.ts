@@ -152,7 +152,7 @@ export class SAMGovDocumentDownloader {
       }
 
       const successCount = results.filter(
-        (d) => d.downloadStatus === 'completed'
+        d => d.downloadStatus === 'completed'
       ).length;
 
       logger.info('Completed SAM.gov document download', {
@@ -194,21 +194,18 @@ export class SAMGovDocumentDownloader {
   > {
     try {
       // Fetch opportunity details
-      const response = await axios.get(
-        `${this.SAM_BASE_URL}/search`,
-        {
-          params: {
-            noticeId,
-            limit: 1,
-          },
-          headers: {
-            'X-Api-Key': apiKey,
-            'User-Agent': 'RFP-Agent/1.0',
-            Accept: 'application/json',
-          },
-          timeout: 30000,
-        }
-      );
+      const response = await axios.get(`${this.SAM_BASE_URL}/search`, {
+        params: {
+          noticeId,
+          limit: 1,
+        },
+        headers: {
+          'X-Api-Key': apiKey,
+          'User-Agent': 'RFP-Agent/1.0',
+          Accept: 'application/json',
+        },
+        timeout: 30000,
+      });
 
       if (response.status !== 200) {
         throw new Error(
@@ -374,7 +371,9 @@ export class SAMGovDocumentDownloader {
         fileName,
         size: fileBuffer.length,
       });
-      throw new Error(`Storage upload failed: ${error.message || 'Unknown error'}`);
+      throw new Error(
+        `Storage upload failed: ${error.message || 'Unknown error'}`
+      );
     }
   }
 
@@ -457,7 +456,7 @@ export class SAMGovDocumentDownloader {
         effectiveApiKey
       );
 
-      return attachments.map((att) => ({
+      return attachments.map(att => ({
         name: att.name,
         url: att.url,
         fileType: att.fileType,

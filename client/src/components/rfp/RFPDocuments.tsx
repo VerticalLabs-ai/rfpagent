@@ -83,7 +83,8 @@ export function RFPDocuments({
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-300">
                             {doc.fileType.toUpperCase()} •{' '}
-                            {(doc.parsedData as any)?.category || 'e-bid form attachment'}
+                            {(doc.parsedData as any)?.category ||
+                              'e-bid form attachment'}
                           </p>
                         </div>
                       </div>
@@ -121,7 +122,8 @@ export function RFPDocuments({
                           </p>
                           <p className="text-xs text-gray-600 dark:text-gray-300">
                             {doc.fileType.toUpperCase()} •{' '}
-                            {(doc.parsedData as any)?.category || 'solicitation'}
+                            {(doc.parsedData as any)?.category ||
+                              'solicitation'}
                           </p>
                         </div>
                       </div>

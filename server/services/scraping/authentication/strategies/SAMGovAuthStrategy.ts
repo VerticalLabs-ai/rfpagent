@@ -141,7 +141,7 @@ export class SAMGovAuthStrategy extends BaseAuthenticationStrategy {
           Accept: 'application/json',
         },
         timeout: 10000, // 10 second timeout for validation
-        validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+        validateStatus: status => status < 500, // Don't throw on 4xx errors
       });
 
       // Check for successful authentication
@@ -152,10 +152,7 @@ export class SAMGovAuthStrategy extends BaseAuthenticationStrategy {
             response.headers['x-ratelimit-remaining'] || '10000',
             10
           ),
-          limit: parseInt(
-            response.headers['x-ratelimit-limit'] || '10000',
-            10
-          ),
+          limit: parseInt(response.headers['x-ratelimit-limit'] || '10000', 10),
         };
 
         logger.info('SAM.gov API key validated successfully', {
@@ -211,7 +208,8 @@ export class SAMGovAuthStrategy extends BaseAuthenticationStrategy {
         // The request was made but no response was received
         return {
           success: false,
-          error: 'SAM.gov API is unreachable. Please check your internet connection.',
+          error:
+            'SAM.gov API is unreachable. Please check your internet connection.',
         };
       } else {
         // Something happened in setting up the request
