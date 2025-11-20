@@ -1,0 +1,156 @@
+# git-cliff Configuration
+# Generates CHANGELOG.md entries matching Keep a Changelog 1.0.0 format
+# with custom sections: TL;DR, What Changed, Added, Changed, Removed, Fixed, Technical Details, Deployment
+#
+# Documentation: https://git-cliff.org/docs/configuration
+# Source: config/changelog/cliff.toml
+
+[changelog]
+# Changelog header (appears at top of file)
+header = """
+# Changelog
+"""
+
+# Template for each release entry
+{% if version %}\
+## {{ timestamp | date(format="%Y-%m-%d") }} - {{ version | trim_start_matches(pat="v") | upper_first }}
+
+{% for commit in commits %}\
+{% if commit.body is containing("TL;DR:") %}\
+**TL;DR:** {{ commit.body | split(pat="TL;DR:") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+### What Changed
+
+{% for commit in commits %}\
+{% if commit.body is containing("### What Changed") %}\
+{{ commit.body | split(pat="### What Changed") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+{% for group, commits in commits | group_by(attribute="group") %}\
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }}
+{% endfor %}
+
+{% endfor %}\
+### Technical Details
+
+{% for commit in commits %}\
+{% if commit.body is containing("### Technical Details") %}\
+{{ commit.body | split(pat="### Technical Details") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+### Deployment
+
+{% for commit in commits %}\
+{% if commit.body is containing("### Deployment") %}\
+{{ commit.body | split(pat="### Deployment") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+{% else %}\
+## [Unreleased]
+
+{% for commit in commits %}\
+{% if commit.body is containing("TL;DR:") %}\
+**TL;DR:** {{ commit.body | split(pat="TL;DR:") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+### What Changed
+
+{% for commit in commits %}\
+{% if commit.body is containing("### What Changed") %}\
+{{ commit.body | split(pat="### What Changed") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+{% for group, commits in commits | group_by(attribute="group") %}\
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {{ commit.message | split(pat="\n") | first }}
+{% endfor %}
+
+{% endfor %}\
+
+### Technical Details
+
+{% for commit in commits %}\
+{% if commit.body is containing("### Technical Details") %}\
+{{ commit.body | split(pat="### Technical Details") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+### Deployment
+
+{% for commit in commits %}\
+{% if commit.body is containing("### Deployment") %}\
+{{ commit.body | split(pat="### Deployment") | last | split(pat="###") | first | trim }}
+{% endif %}\
+{% endfor %}
+
+{% endif %}\
+"""
+
+# Changelog footer
+footer = ""
+
+# Output file path
+output = "CHANGELOG.md"
+
+# Prepend new entries to top of file (newest first)
+prepend = true
+
+# Trim whitespace
+trim = true
+
+# Postprocessors for final cleanup
+postprocessors = [
+  # Remove empty sections
+  { pattern = '###\s+\w+\s+\n\n', replace = "" },
+  # Clean up multiple newlines
+  { pattern = '\n{3,}', replace = "\n\n" },
+]
+
+[git]
+# Parse conventional commits
+conventional_commits = true
+
+# Filter commits (only include user-facing changes)
+filter_commits = true
+
+# Commit parsers - categorize commits by type
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^style", group = "Changed" },
+  { message = "^docs", skip = true },
+  { message = "^test", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^ci", skip = true },
+  { message = "^build", skip = true },
+  { message = "^revert", group = "Fixed" },
+]
+
+# Protect breaking changes (always include)
+protect_breaking_commits = false
+
+# Filter out commits
+filter_unconventional = true
+
+# Ignore tags matching pattern (skip RC/beta releases)
+ignore_tags = "v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+"
+
+# Sort commits oldest first within each group
+sort_commits = "oldest"
+
+[bump]
+# Version bumping configuration
+features_always_bump_minor = true
+breaking_always_bump_major = true
