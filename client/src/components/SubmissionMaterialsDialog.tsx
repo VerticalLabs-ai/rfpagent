@@ -10,6 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { RFPProcessingProgressModal } from './RFPProcessingProgress';
@@ -20,7 +27,77 @@ import {
   FileText,
   CheckSquare,
   Settings,
+  Brain,
+  Sparkles,
+  Zap,
+  Crown,
 } from 'lucide-react';
+
+// Quality level type for Claude-based generation
+type ProposalQualityLevel = 'fast' | 'standard' | 'enhanced' | 'premium' | 'maximum';
+
+// Quality level configuration with UI info
+const qualityLevelOptions: Array<{
+  value: ProposalQualityLevel;
+  label: string;
+  description: string;
+  model: string;
+  thinkingBudget: number | null;
+  estimatedCost: string;
+  estimatedTime: string;
+  icon: React.ReactNode;
+}> = [
+  {
+    value: 'fast',
+    label: 'Quick Draft',
+    description: 'Fast generation for initial drafts. No extended thinking.',
+    model: 'Claude Sonnet 4.5',
+    thinkingBudget: null,
+    estimatedCost: '$0.10-0.30',
+    estimatedTime: '15-30 seconds',
+    icon: <Zap className="w-4 h-4" />,
+  },
+  {
+    value: 'standard',
+    label: 'Standard',
+    description: 'Balanced quality with extended thinking for better reasoning.',
+    model: 'Claude Sonnet 4.5',
+    thinkingBudget: 10000,
+    estimatedCost: '$0.50-1.00',
+    estimatedTime: '1-2 minutes',
+    icon: <FileText className="w-4 h-4" />,
+  },
+  {
+    value: 'enhanced',
+    label: 'Enhanced',
+    description: 'Higher quality for important RFPs. Extended thinking.',
+    model: 'Claude Sonnet 4.5',
+    thinkingBudget: 16000,
+    estimatedCost: '$1.00-2.00',
+    estimatedTime: '2-4 minutes',
+    icon: <Sparkles className="w-4 h-4" />,
+  },
+  {
+    value: 'premium',
+    label: 'Premium',
+    description: 'Premium quality using Opus 4.5 for high-value contracts.',
+    model: 'Claude Opus 4.5',
+    thinkingBudget: 24000,
+    estimatedCost: '$5.00-10.00',
+    estimatedTime: '4-8 minutes',
+    icon: <Brain className="w-4 h-4" />,
+  },
+  {
+    value: 'maximum',
+    label: 'Maximum',
+    description: 'Maximum quality for critical, high-stakes RFPs. Full thinking.',
+    model: 'Claude Opus 4.5',
+    thinkingBudget: 32000,
+    estimatedCost: '$10.00-20.00',
+    estimatedTime: '8-15 minutes',
+    icon: <Crown className="w-4 h-4" />,
+  },
+];
 
 interface PricingItem {
   name: string;
@@ -57,6 +134,13 @@ export function SubmissionMaterialsDialog({
   const [generatePricing, setGeneratePricing] = useState(true);
   const [autoSubmit, setAutoSubmit] = useState(false);
   const [customInstructions, setCustomInstructions] = useState('');
+
+  // Claude quality level state
+  const [qualityLevel, setQualityLevel] = useState<ProposalQualityLevel>('standard');
+  const [enableThinking, setEnableThinking] = useState(true);
+
+  // Get current quality level info
+  const currentQualityInfo = qualityLevelOptions.find(q => q.value === qualityLevel);
 
   // Pricing data state
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([
@@ -168,6 +252,9 @@ export function SubmissionMaterialsDialog({
       generatePricing,
       autoSubmit,
       customInstructions: customInstructions || undefined,
+      // Claude quality level options
+      qualityLevel,
+      enableThinking,
     };
 
     generateMaterialsMutation.mutate(requestData);
@@ -192,6 +279,95 @@ export function SubmissionMaterialsDialog({
             </TabsList>
 
             <TabsContent value="settings" className="space-y-6">
+              {/* AI Quality Level Selection */}
+              <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Brain className="w-4 h-4 text-primary" />
+                    AI Quality Level
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="quality-level">Select Quality Level</Label>
+                    <Select
+                      value={qualityLevel}
+                      onValueChange={(value) => setQualityLevel(value as ProposalQualityLevel)}
+                    >
+                      <SelectTrigger className="w-full mt-1">
+                        <SelectValue placeholder="Select quality level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {qualityLevelOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            <div className="flex items-center gap-2">
+                              {option.icon}
+                              <span className="font-medium">{option.label}</span>
+                              <span className="text-muted-foreground text-xs">({option.model})</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Quality Level Info Box */}
+                  {currentQualityInfo && (
+                    <div className="bg-muted/50 p-4 rounded-lg border border-border space-y-3">
+                      <div className="flex items-center gap-2">
+                        {currentQualityInfo.icon}
+                        <span className="font-medium">{currentQualityInfo.label}</span>
+                        {(qualityLevel === 'premium' || qualityLevel === 'maximum') && (
+                          <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-600">
+                            Opus 4.5
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{currentQualityInfo.description}</p>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div>
+                          <span className="text-muted-foreground">Model:</span>
+                          <p className="font-medium">{currentQualityInfo.model}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Est. Cost:</span>
+                          <p className="font-medium">{currentQualityInfo.estimatedCost}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Est. Time:</span>
+                          <p className="font-medium">{currentQualityInfo.estimatedTime}</p>
+                        </div>
+                      </div>
+                      {currentQualityInfo.thinkingBudget && (
+                        <div className="flex items-center gap-2 text-xs text-primary">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Extended thinking enabled ({currentQualityInfo.thinkingBudget.toLocaleString()} budget tokens)</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Extended Thinking Toggle */}
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="enable-thinking" className="flex items-center gap-2">
+                        <Brain className="w-4 h-4" />
+                        Enable Extended Thinking
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Uses Claude's thinking mode for deeper reasoning (recommended for quality proposals)
+                      </p>
+                    </div>
+                    <Switch
+                      id="enable-thinking"
+                      checked={enableThinking}
+                      onCheckedChange={setEnableThinking}
+                      disabled={qualityLevel === 'fast'}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">Generation Options</CardTitle>
@@ -447,6 +623,47 @@ export function SubmissionMaterialsDialog({
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
+                        <Brain className="w-4 h-4" />
+                        AI Quality
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Quality Level:
+                          </span>
+                          <span className="font-medium flex items-center gap-1">
+                            {currentQualityInfo?.icon}
+                            {currentQualityInfo?.label}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            AI Model:
+                          </span>
+                          <span className="font-medium">
+                            {currentQualityInfo?.model}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Extended Thinking:
+                          </span>
+                          <span className="font-medium">
+                            {enableThinking && qualityLevel !== 'fast' ? 'Enabled' : 'Disabled'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Est. Cost:
+                          </span>
+                          <span className="font-medium">
+                            {currentQualityInfo?.estimatedCost}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                     <div className="space-y-3">
                       <h4 className="font-medium text-sm text-foreground flex items-center gap-2">
                         <Settings className="w-4 h-4" />

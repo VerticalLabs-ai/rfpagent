@@ -1,15 +1,8 @@
 {
   "mcpServers": {
-    "apify": {
-      "url": "https://mcp.apify.com"
-    },
     "TestSprite": {
       "command": "npx",
       "args": ["-y", "@testsprite/mcp-server@latest"]
     }
-  },
-  "playwright": {
-    "command": "npx",
-    "args": ["@playwright/mcp@latest"]
   }
 }

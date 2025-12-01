@@ -12,7 +12,7 @@
  * The MCP server communicates via stdin/stdout using the MCP protocol.
  */
 
-import { rfpMcpServer } from '../src/mastra/mcp/server';
+import { rfpMcpServer } from '../../src/mastra/mcp/server';
 
 async function startServer() {
   try {

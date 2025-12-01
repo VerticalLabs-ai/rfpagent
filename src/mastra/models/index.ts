@@ -7,29 +7,37 @@ import { openai } from '@ai-sdk/openai';
  * CURRENT AI MODELS (Updated November 2025):
  *
  * Anthropic Models:
+ * - Claude Opus 4.5: Most intelligent model, maximum capability (Released November 2025)
  * - Claude Sonnet 4.5: Best coding model, general use (Released September 2025)
  * - Claude Haiku 4.5: Fast/quick tasks
- * - Claude Opus 4.1: Backup specialized reasoning tasks (Released August 2025)
  *
  * OpenAI Models:
  * - GPT-5.1: Latest general use model with enhanced reasoning (Released November 2025)
  * - GPT-5 Pro: Hardest tasks, deep reasoning
  * - GPT-5 Mini: Smaller tasks
  * - GPT-5 Nano: Fastest/smallest model
+ *
+ * Extended Thinking Mode (Claude 4.5 models):
+ * - Sonnet 4.5: Up to 10,000 budget_tokens for complex reasoning
+ * - Opus 4.5: Up to 32,000 budget_tokens for maximum capability
+ * - Enable with thinking: { type: 'enabled', budget_tokens: N }
  */
 
 // ============================================================================
 // ANTHROPIC MODELS
 // ============================================================================
 
+// Claude Opus 4.5 (Most intelligent model, maximum capability)
+export const claudeOpus45 = anthropic('claude-opus-4-5-20251101');
+
 // Claude Sonnet 4.5 (Best coding model, general use)
-export const claudeSonnet45 = anthropic('claude-sonnet-4-5');
+export const claudeSonnet45 = anthropic('claude-sonnet-4-5-20250929');
 
 // Claude Haiku 4.5 (Fast/quick tasks)
-export const claudeHaiku45 = anthropic('claude-haiku-4-5');
+export const claudeHaiku45 = anthropic('claude-haiku-4-5-20251001');
 
-// Claude Opus 4.1 (Backup specialized reasoning)
-export const claudeOpus41 = anthropic('claude-opus-4-1');
+// Legacy alias for backward compatibility
+export const claudeOpus41 = claudeOpus45;
 
 // ============================================================================
 // OPENAI MODELS
@@ -93,9 +101,27 @@ export const codeModel = claudeSonnet45;
  * - Complex reasoning
  * - Multi-step problem solving
  * - Critical decisions
- * Recommended: GPT-5 Pro or Claude Opus 4.1
+ * Recommended: Claude Opus 4.5 (with extended thinking for best results)
  */
-export const maximumCapabilityModel = gpt5Pro;
+export const maximumCapabilityModel = claudeOpus45;
+
+/**
+ * For Proposal Generation (Standard):
+ * - High-quality proposal narratives
+ * - Executive summaries
+ * - Technical approaches
+ * Recommended: Claude Sonnet 4.5 with extended thinking
+ */
+export const proposalModel = claudeSonnet45;
+
+/**
+ * For Critical Proposals (Premium):
+ * - Final RFP submissions
+ * - High-value contract proposals
+ * - Maximum quality and depth
+ * Recommended: Claude Opus 4.5 with maximum thinking budget
+ */
+export const criticalProposalModel = claudeOpus45;
 
 /**
  * For Fast/Quick Tasks:
@@ -237,12 +263,18 @@ export const modelCapabilities = {
       'Maintains focus for 30+ hours',
       'Leads SWE-bench Verified, OSWorld',
       'Advanced computer use capabilities',
-      'Improved reasoning and math',
-      'Most aligned frontier model',
+      'Extended thinking up to 10,000 tokens',
+      'Ideal for standard proposal generation',
     ],
+    thinking: {
+      supported: true,
+      maxBudgetTokens: 10000,
+      recommendedBudget: 8000,
+    },
     pricing: {
       input: '$3.00/1M tokens',
       output: '$15.00/1M tokens',
+      thinkingTokens: '$3.00/1M tokens',
     },
   },
   claudeHaiku45: {
@@ -261,29 +293,92 @@ export const modelCapabilities = {
       output: '$4.00/1M tokens',
     },
   },
-  claudeOpus41: {
-    name: 'Claude Opus 4.1',
+  claudeOpus45: {
+    name: 'Claude Opus 4.5',
     provider: 'Anthropic',
-    released: 'August 5, 2025',
+    released: 'November 1, 2025',
     contextWindow: 200000,
     strengths: [
-      'Maximum capability',
-      'Complex reasoning',
-      'Critical analysis',
-      'Nuanced understanding',
+      'Most intelligent model',
+      'Maximum capability with practical performance',
+      'Best-in-class reasoning and coding',
+      'Extended thinking up to 32,000 tokens',
+      'Ideal for critical proposals and complex analysis',
+      'Long-running agent capabilities',
     ],
+    thinking: {
+      supported: true,
+      maxBudgetTokens: 32000,
+      recommendedBudget: 16000,
+    },
     pricing: {
       input: '$15.00/1M tokens',
       output: '$75.00/1M tokens',
+      thinkingTokens: '$15.00/1M tokens',
     },
   },
 };
 
+/**
+ * Extended Thinking Configuration for Claude 4.5 Models
+ *
+ * Use these configurations when generating proposals to enable
+ * deeper reasoning and more thorough content generation.
+ */
+export const thinkingConfigs = {
+  // Standard proposal generation with Sonnet
+  standard: {
+    model: 'claude-sonnet-4-5-20250929',
+    maxTokens: 16000,
+    thinking: {
+      type: 'enabled' as const,
+      budget_tokens: 10000,
+    },
+  },
+  // Enhanced proposal generation for important RFPs
+  enhanced: {
+    model: 'claude-sonnet-4-5-20250929',
+    maxTokens: 32000,
+    thinking: {
+      type: 'enabled' as const,
+      budget_tokens: 16000,
+    },
+  },
+  // Premium/Critical proposal generation with Opus
+  premium: {
+    model: 'claude-opus-4-5-20251101',
+    maxTokens: 32000,
+    thinking: {
+      type: 'enabled' as const,
+      budget_tokens: 24000,
+    },
+  },
+  // Maximum capability for highest-value proposals
+  maximum: {
+    model: 'claude-opus-4-5-20251101',
+    maxTokens: 64000,
+    thinking: {
+      type: 'enabled' as const,
+      budget_tokens: 32000,
+    },
+  },
+  // Fast mode without thinking (for drafts/previews)
+  fast: {
+    model: 'claude-sonnet-4-5-20250929',
+    maxTokens: 8000,
+    thinking: undefined,
+  },
+};
+
+export type ThinkingConfigKey = keyof typeof thinkingConfigs;
+export type ThinkingConfig = (typeof thinkingConfigs)[ThinkingConfigKey];
+
 export default {
   // Anthropic models
+  claudeOpus45,
   claudeSonnet45,
   claudeHaiku45,
-  claudeOpus41,
+  claudeOpus41, // Legacy alias
   // OpenAI models
   gpt51,
   gpt5Pro,
@@ -299,6 +394,11 @@ export default {
   defaultModel,
   reasoningModel,
   guardrailModel,
+  // Proposal-specific exports
+  proposalModel,
+  criticalProposalModel,
+  // Thinking configurations
+  thinkingConfigs,
   // Utilities
   getModelForAgent,
   modelCapabilities,

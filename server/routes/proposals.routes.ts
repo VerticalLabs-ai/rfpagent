@@ -6,6 +6,10 @@ import { enhancedProposalService } from '../services/proposals/enhancedProposalS
 import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
 import { submissionMaterialsService } from '../services/processing/submissionMaterialsService';
 import { progressTracker } from '../services/monitoring/progressTracker';
+import {
+  claudeProposalService,
+  type ProposalQualityLevel,
+} from '../services/proposals/claude-proposal-service';
 import { validateRequest } from '../middleware/validation';
 import { handleAsyncError } from '../middleware/errorHandling';
 import {
@@ -17,6 +21,16 @@ import { validateSchema } from '../middleware/zodValidation';
 const router = express.Router();
 
 // Validation schemas
+
+// Quality level options for Claude-based generation
+const proposalQualityLevelSchema = z.enum([
+  'fast',
+  'standard',
+  'enhanced',
+  'premium',
+  'maximum',
+]);
+
 const enhancedProposalGenerationSchema = z.object({
   rfpId: z.string().uuid('RFP ID must be a valid UUID'),
   companyProfileId: z
@@ -24,7 +38,28 @@ const enhancedProposalGenerationSchema = z.object({
     .uuid('Company Profile ID must be a valid UUID')
     .optional(),
   sessionId: z.string().optional(),
-  options: z.record(z.string(), z.any()).optional().default({}),
+  options: z
+    .object({
+      qualityLevel: proposalQualityLevelSchema.optional(),
+      enableThinking: z.boolean().optional(),
+      customBudgetTokens: z.number().min(1000).max(32000).optional(),
+      generatePricing: z.boolean().optional(),
+      generateCompliance: z.boolean().optional(),
+    })
+    .optional(),
+});
+
+// Schema for direct Claude proposal generation
+const claudeProposalGenerationSchema = z.object({
+  rfpId: z.string().uuid('RFP ID must be a valid UUID'),
+  companyProfileId: z
+    .string()
+    .uuid('Company Profile ID must be a valid UUID')
+    .optional(),
+  qualityLevel: proposalQualityLevelSchema.default('standard'),
+  enableThinking: z.boolean().default(true),
+  customBudgetTokens: z.number().min(1000).max(32000).optional(),
+  sections: z.array(z.string()).optional(),
 });
 
 const pipelineProposalGenerationSchema = z.object({
@@ -89,6 +124,234 @@ router.delete(
 );
 
 /**
+ * Get available quality levels for Claude proposal generation
+ * GET /api/proposals/claude/quality-levels
+ */
+router.get(
+  '/claude/quality-levels',
+  handleAsyncError(async (req, res) => {
+    const qualityLevels = claudeProposalService.getQualityLevels();
+    res.json({
+      success: true,
+      qualityLevels,
+      description:
+        'Quality levels for Claude-based proposal generation with extended thinking',
+    });
+  })
+);
+
+/**
+ * Generate proposal using Claude with extended thinking
+ * POST /api/proposals/claude/generate
+ *
+ * This endpoint uses Claude Sonnet 4.5 or Opus 4.5 with extended thinking
+ * for more comprehensive and thoughtful proposal generation.
+ */
+router.post(
+  '/claude/generate',
+  heavyOperationLimiter,
+  validateSchema(claudeProposalGenerationSchema),
+  handleAsyncError(async (req, res) => {
+    const {
+      rfpId,
+      companyProfileId,
+      qualityLevel,
+      enableThinking,
+      customBudgetTokens,
+      sections,
+    } = req.body;
+
+    // Get RFP details
+    const rfp = await storage.getRFP(rfpId);
+    if (!rfp) {
+      return res.status(404).json({ error: 'RFP not found' });
+    }
+
+    // Get company profile if provided, otherwise use default
+    let companyMapping;
+    if (companyProfileId) {
+      const companyProfile = await storage.getCompanyProfile(companyProfileId);
+      if (!companyProfile) {
+        return res.status(404).json({ error: 'Company profile not found' });
+      }
+
+      // Get related company data
+      const [certifications, insurances, contacts, identifiers, addresses] =
+        await Promise.all([
+          storage.getCompanyCertifications(companyProfileId),
+          storage.getCompanyInsurance(companyProfileId),
+          storage.getCompanyContacts(companyProfileId),
+          storage.getCompanyIdentifiers(companyProfileId),
+          storage.getCompanyAddresses(companyProfileId),
+        ]);
+
+      // Import ai-proposal-service to use the mapping function
+      const { aiProposalService } = await import(
+        '../services/proposals/ai-proposal-service'
+      );
+
+      // First analyze the RFP
+      const rfpText =
+        (rfp.description || '') +
+        '\n\n' +
+        (rfp.analysis ? JSON.stringify(rfp.analysis) : '');
+      const analysis = await aiProposalService.analyzeRFPDocument(
+        rfpText.slice(0, 50000)
+      );
+
+      // Map company data
+      companyMapping = await aiProposalService.mapCompanyDataToRequirements(
+        analysis,
+        companyProfile,
+        certifications,
+        insurances,
+        contacts,
+        identifiers,
+        addresses.map(addr => ({
+          type: addr.addressType,
+          line1: addr.addressLine1,
+          line2: addr.addressLine2 || undefined,
+          city: addr.city,
+          state: addr.state,
+          zipCode: addr.zipCode,
+        }))
+      );
+
+      // Generate proposal with Claude
+      const proposalContent =
+        await claudeProposalService.generateProposalContent(
+          analysis,
+          companyMapping,
+          rfpText,
+          {
+            qualityLevel,
+            enableThinking,
+            customBudgetTokens,
+            sections,
+          }
+        );
+
+      // Save or update proposal
+      const existingProposal = await storage.getProposalByRFP(rfpId);
+
+      const proposalData = {
+        rfpId,
+        content: proposalContent,
+        status: 'review' as const,
+        proposalData: {
+          ...proposalContent,
+          generatedWith: 'claude',
+          qualityLevel,
+          thinkingEnabled: enableThinking,
+        },
+      };
+
+      let savedProposal;
+      if (existingProposal) {
+        savedProposal = await storage.updateProposal(
+          existingProposal.id,
+          proposalData
+        );
+      } else {
+        savedProposal = await storage.createProposal(proposalData);
+      }
+
+      // Create notification
+      await storage.createNotification({
+        type: 'success',
+        title: 'Proposal Generated with Claude',
+        message: `Proposal generated using Claude ${qualityLevel === 'premium' || qualityLevel === 'maximum' ? 'Opus 4.5' : 'Sonnet 4.5'} with ${enableThinking ? 'extended thinking' : 'standard mode'}`,
+        relatedEntityType: 'proposal',
+        relatedEntityId: savedProposal?.id,
+        isRead: false,
+      });
+
+      res.json({
+        success: true,
+        proposal: savedProposal,
+        metadata: proposalContent.metadata,
+        message: `Proposal generated successfully with Claude ${proposalContent.metadata.model}`,
+      });
+    } else {
+      // Use default company mapping
+      const { createDefaultCompanyMapping } = await import(
+        '../config/defaultCompanyMapping'
+      );
+      const defaultMapping = createDefaultCompanyMapping();
+
+      // Import ai-proposal-service to analyze RFP
+      const { aiProposalService } = await import(
+        '../services/proposals/ai-proposal-service'
+      );
+
+      const rfpText =
+        (rfp.description || '') +
+        '\n\n' +
+        (rfp.analysis ? JSON.stringify(rfp.analysis) : '');
+      const analysis = await aiProposalService.analyzeRFPDocument(
+        rfpText.slice(0, 50000)
+      );
+
+      // Generate proposal with Claude
+      const proposalContent =
+        await claudeProposalService.generateProposalContent(
+          analysis,
+          defaultMapping,
+          rfpText,
+          {
+            qualityLevel,
+            enableThinking,
+            customBudgetTokens,
+            sections,
+          }
+        );
+
+      // Save or update proposal
+      const existingProposal = await storage.getProposalByRFP(rfpId);
+
+      const proposalData = {
+        rfpId,
+        content: proposalContent,
+        status: 'review' as const,
+        proposalData: {
+          ...proposalContent,
+          generatedWith: 'claude',
+          qualityLevel,
+          thinkingEnabled: enableThinking,
+        },
+      };
+
+      let savedProposal;
+      if (existingProposal) {
+        savedProposal = await storage.updateProposal(
+          existingProposal.id,
+          proposalData
+        );
+      } else {
+        savedProposal = await storage.createProposal(proposalData);
+      }
+
+      // Create notification
+      await storage.createNotification({
+        type: 'success',
+        title: 'Proposal Generated with Claude',
+        message: `Proposal generated using Claude ${qualityLevel === 'premium' || qualityLevel === 'maximum' ? 'Opus 4.5' : 'Sonnet 4.5'} with ${enableThinking ? 'extended thinking' : 'standard mode'}`,
+        relatedEntityType: 'proposal',
+        relatedEntityId: savedProposal?.id,
+        isRead: false,
+      });
+
+      res.json({
+        success: true,
+        proposal: savedProposal,
+        metadata: proposalContent.metadata,
+        message: `Proposal generated successfully with Claude ${proposalContent.metadata.model}`,
+      });
+    }
+  })
+);
+
+/**
  * Enhanced proposal generation (moved before parameterized routes)
  * POST /api/proposals/enhanced/generate
  */
@@ -106,13 +369,17 @@ router.post(
 
     const sessionId = providedSessionId || `enhanced_${rfpId}_${Date.now()}`;
 
-    // Start enhanced proposal generation
+    // Start enhanced proposal generation with quality level options
     enhancedProposalService
       .generateEnhancedProposal({
         rfpId,
         companyProfileId,
         sessionId,
-        options,
+        options: {
+          ...options,
+          qualityLevel: options?.qualityLevel || 'standard',
+          enableThinking: options?.enableThinking ?? true,
+        },
       })
       .catch(error => {
         console.error('Enhanced proposal generation failed:', error);
@@ -122,6 +389,8 @@ router.post(
       success: true,
       sessionId,
       message: 'Enhanced proposal generation started',
+      qualityLevel: options?.qualityLevel || 'standard',
+      thinkingEnabled: options?.enableThinking ?? true,
     });
   })
 );
