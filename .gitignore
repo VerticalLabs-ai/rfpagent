@@ -28,6 +28,10 @@ yarn.lock
 .env
 .env.local
 .env.production
+.env.test
+.env.*.local
+*.env
+!*.env.example
 
 # Coverage reports
 coverage/
