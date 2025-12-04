@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { createWriteStream } from 'fs';
 import * as path from 'path';
 import { pipeline } from 'stream/promises';
-import { z } from 'zod';
+import type { z } from 'zod';
 import { db } from '../../db';
 import { storage } from '../../storage';
 import { performWebExtraction } from '../core/stagehandTools';
@@ -342,7 +342,7 @@ export class RFPScrapingService {
                 if (!validUrl.protocol.startsWith('http')) {
                   throw new Error('URL must use http or https protocol');
                 }
-              } catch (urlError) {
+              } catch {
                 errors.push(
                   `Invalid URL format for document: ${doc.name} - ${doc.url}`
                 );
@@ -488,10 +488,8 @@ export class RFPScrapingService {
         success: true,
         timestamp: new Date().toISOString(),
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error extracting Philadelphia RFP data:', error);
-      console.error('Error details:', error.message || error);
-      console.error('Error stack:', error.stack);
 
       // Fall back to generic extraction
       return performWebExtraction(

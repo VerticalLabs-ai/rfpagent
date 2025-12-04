@@ -4,13 +4,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 interface LoadingCardsProps {
   count?: number;
   variant?: 'grid' | 'list';
-  cardHeight?: string;
 }
 
 export function LoadingCards({
   count = 3,
   variant = 'grid',
-  cardHeight = 'h-48',
 }: LoadingCardsProps) {
   const containerClass =
     variant === 'grid'

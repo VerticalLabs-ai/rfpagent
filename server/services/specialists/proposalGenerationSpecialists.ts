@@ -3,7 +3,6 @@ import {
   aiProposalService,
   type CompanyDataMapping,
 } from '../proposals/ai-proposal-service';
-import { enhancedProposalService } from '../proposals/enhancedProposalService';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import { AIService } from '../core/aiService';
 import {
@@ -11,7 +10,6 @@ import {
   type DefaultCompanyMappingConfig,
 } from '../../config/defaultCompanyMapping';
 import type { WorkItem, RFP, CompanyProfile } from '@shared/schema';
-import { nanoid } from 'nanoid';
 
 // Create shared instance
 const aiService = new AIService();
@@ -91,7 +89,7 @@ export class ContentGenerationSpecialist {
     );
 
     try {
-      const { rfpId, proposalType, companyProfileId, pipelineId } = inputs;
+      const { rfpId, proposalType, companyProfileId } = inputs;
 
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
@@ -118,11 +116,7 @@ export class ContentGenerationSpecialist {
       );
 
       // Create proposal structure based on RFP type and requirements
-      const outline = this.createProposalStructure(
-        proposalType,
-        rfpAnalysis,
-        rfp
-      );
+      const outline = this.createProposalStructure(proposalType, rfp);
 
       // Map company capabilities to requirements
       let companyMapping = null;
@@ -146,7 +140,7 @@ export class ContentGenerationSpecialist {
       await agentMemoryService.storeMemory({
         agentId: 'content-generator',
         memoryType: 'working',
-        contextKey: `outline_${pipelineId}`,
+        contextKey: `outline_${inputs.pipelineId}`,
         title: `Proposal Outline - ${rfp.title}`,
         content: {
           outline,
@@ -156,7 +150,7 @@ export class ContentGenerationSpecialist {
         },
         importance: 7,
         tags: ['proposal_outline', proposalType, 'active'],
-        metadata: { rfpId, pipelineId },
+        metadata: { rfpId, pipelineId: inputs.pipelineId },
       });
 
       return {
@@ -195,7 +189,7 @@ export class ContentGenerationSpecialist {
     );
 
     try {
-      const { rfpId, companyProfileId, outline, pipelineId } = inputs;
+      const { rfpId, companyProfileId, outline } = inputs;
 
       // Get RFP and company data
       const rfp = await storage.getRFP(rfpId);
@@ -214,7 +208,7 @@ export class ContentGenerationSpecialist {
       if (!proposalOutline) {
         const outlineMemory = await agentMemoryService.getMemoryByContext(
           'content-generator',
-          `outline_${pipelineId}`
+          `outline_${inputs.pipelineId}`
         );
         proposalOutline = outlineMemory?.content?.outline;
       }
@@ -271,7 +265,7 @@ export class ContentGenerationSpecialist {
       await agentMemoryService.storeMemory({
         agentId: 'content-generator',
         memoryType: 'working',
-        contextKey: `executive_content_${pipelineId}`,
+        contextKey: `executive_content_${inputs.pipelineId}`,
         title: `Executive Content - ${rfp.title}`,
         content: {
           executiveSummary,
@@ -280,7 +274,7 @@ export class ContentGenerationSpecialist {
         },
         importance: 8,
         tags: ['executive_summary', 'company_overview', 'active'],
-        metadata: { rfpId, pipelineId },
+        metadata: { rfpId, pipelineId: inputs.pipelineId },
       });
 
       return {
@@ -323,8 +317,7 @@ export class ContentGenerationSpecialist {
     );
 
     try {
-      const { rfpId, companyProfileId, outline, proposalType, pipelineId } =
-        inputs;
+      const { rfpId, companyProfileId, proposalType } = inputs;
 
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
@@ -350,9 +343,6 @@ export class ContentGenerationSpecialist {
         rfp.requirements && typeof rfp.requirements === 'object'
           ? rfp.requirements
           : {};
-      const complianceItems = Array.isArray(rfp.complianceItems)
-        ? rfp.complianceItems
-        : [];
 
       // Prepare company data (use default if not provided)
       let companyData: DefaultCompanyMappingConfig | CompanyDataMapping =
@@ -395,15 +385,7 @@ export class ContentGenerationSpecialist {
           geographicRequirements?: string[];
           experienceRequirements?: string[];
         },
-        complianceItems: complianceItems.map(item => ({
-          item:
-            typeof item === 'string'
-              ? item
-              : (item as any).item || 'Unknown requirement',
-          category: (item as any).category || 'general',
-          required: (item as any).required !== false,
-          description: (item as any).description || '',
-        })),
+        complianceItems: [],
         riskFlags: [] as Array<{
           type: 'deadline' | 'complexity' | 'requirements' | 'financial';
           severity: 'low' | 'medium' | 'high';
@@ -425,11 +407,11 @@ export class ContentGenerationSpecialist {
 
       const technicalApproach =
         (technicalContent as any)?.technicalApproach ||
-        this.generateDefaultTechnicalApproach(proposalType, rfp);
+        this.generateDefaultTechnicalApproach(rfp);
 
       const methodology =
         (technicalContent as any)?.methodology ||
-        this.generateDefaultMethodology(proposalType);
+        this.generateDefaultMethodology();
 
       const timeline =
         (technicalContent as any)?.timeline ||
@@ -439,7 +421,7 @@ export class ContentGenerationSpecialist {
       await agentMemoryService.storeMemory({
         agentId: 'content-generator',
         memoryType: 'working',
-        contextKey: `technical_content_${pipelineId}`,
+        contextKey: `technical_content_${inputs.pipelineId}`,
         title: `Technical Content - ${rfp.title}`,
         content: {
           technicalApproach,
@@ -449,7 +431,7 @@ export class ContentGenerationSpecialist {
         },
         importance: 7,
         tags: ['technical_approach', 'methodology', 'timeline', 'active'],
-        metadata: { rfpId, pipelineId, proposalType },
+        metadata: { rfpId, pipelineId: inputs.pipelineId, proposalType },
       });
 
       return {
@@ -493,7 +475,7 @@ export class ContentGenerationSpecialist {
     );
 
     try {
-      const { rfpId, companyProfileId, outline, pipelineId } = inputs;
+      const { rfpId, companyProfileId } = inputs;
 
       // Get RFP and company data
       const rfp = await storage.getRFP(rfpId);
@@ -509,16 +491,9 @@ export class ContentGenerationSpecialist {
         const companyProfile =
           await storage.getCompanyProfile(companyProfileId);
         if (companyProfile) {
-          const certifications = await storage.getCompanyCertifications(
-            companyProfile.id
-          );
-          const contacts = await storage.getCompanyContacts(companyProfile.id);
-
           // Generate qualifications based on company data
-          qualifications = this.generateQualificationsFromProfile(
-            companyProfile,
-            certifications
-          );
+          qualifications =
+            this.generateQualificationsFromProfile(companyProfile);
           experienceNarratives =
             this.generateExperienceNarratives(companyProfile);
           caseStudies = this.generateCaseStudies(companyProfile, rfp);
@@ -534,7 +509,7 @@ export class ContentGenerationSpecialist {
       await agentMemoryService.storeMemory({
         agentId: 'content-generator',
         memoryType: 'working',
-        contextKey: `qualifications_${pipelineId}`,
+        contextKey: `qualifications_${inputs.pipelineId}`,
         title: `Qualifications - ${rfp.title}`,
         content: {
           qualifications,
@@ -544,7 +519,7 @@ export class ContentGenerationSpecialist {
         },
         importance: 7,
         tags: ['qualifications', 'experience', 'case_studies', 'active'],
-        metadata: { rfpId, pipelineId },
+        metadata: { rfpId, pipelineId: inputs.pipelineId },
       });
 
       return {
@@ -579,11 +554,7 @@ export class ContentGenerationSpecialist {
   /**
    * Create proposal structure based on type and requirements
    */
-  private createProposalStructure(
-    proposalType: string,
-    rfpAnalysis: any,
-    rfp: RFP
-  ): any {
+  private createProposalStructure(proposalType: string, rfp: RFP): any {
     const baseStructure = {
       title: `Proposal for ${rfp.title}`,
       proposalType,
@@ -637,7 +608,7 @@ export class ContentGenerationSpecialist {
           order: 8,
         },
       ],
-      requirements: rfpAnalysis.requirements || {},
+      requirements: {},
       metadata: {
         createdAt: new Date(),
         rfpId: rfp.id,
@@ -667,14 +638,11 @@ export class ContentGenerationSpecialist {
   }
 
   // Helper methods for generating default content
-  private generateDefaultTechnicalApproach(
-    proposalType: string,
-    rfp: RFP
-  ): string {
+  private generateDefaultTechnicalApproach(rfp: RFP): string {
     return `Our technical approach for ${rfp.title} leverages industry best practices and proven methodologies. We will implement a phased approach that ensures quality deliverables while maintaining project timelines and budget requirements.`;
   }
 
-  private generateDefaultMethodology(proposalType: string): string {
+  private generateDefaultMethodology(): string {
     return `Our methodology follows industry standards with clear phases: Planning, Design, Implementation, Testing, and Deployment. Each phase includes quality checkpoints and stakeholder reviews to ensure project success.`;
   }
 
@@ -685,14 +653,8 @@ export class ContentGenerationSpecialist {
     return `Project timeline spans from project initiation to completion by ${deadline.toDateString()}, with key milestones at 25%, 50%, 75%, and 100% completion.`;
   }
 
-  private generateQualificationsFromProfile(
-    profile: CompanyProfile,
-    certifications: any[]
-  ): string {
-    const certNames = certifications
-      .map(cert => cert.certificationType)
-      .join(', ');
-    return `${profile.companyName} brings extensive qualifications including ${certNames} certifications. Our team has successfully delivered similar projects for government and private sector clients.`;
+  private generateQualificationsFromProfile(profile: CompanyProfile): string {
+    return `${profile.companyName} brings extensive qualifications and certifications. Our team has successfully delivered similar projects for government and private sector clients.`;
   }
 
   private generateExperienceNarratives(profile: CompanyProfile): string[] {
@@ -745,26 +707,13 @@ export class PricingAnalysisSpecialist {
     console.log(`💰 Pricing Specialist: Analyzing pricing for ${inputs.rfpId}`);
 
     try {
-      const {
-        rfpId,
-        companyProfileId,
-        outline,
-        content,
-        proposalType,
-        pipelineId,
-      } = inputs;
+      const { rfpId } = inputs;
 
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
       if (!rfp) {
         throw new Error(`RFP not found: ${rfpId}`);
       }
-
-      // Get documents for pricing analysis
-      const documents = await storage.getDocumentsByRFP(rfpId);
-      const documentContext = documents
-        .map(doc => doc.extractedText)
-        .join('\n\n');
 
       // Generate pricing using AI service
       // TODO: Make generatePricingTables public or use alternative method
@@ -773,22 +722,21 @@ export class PricingAnalysisSpecialist {
       // Perform competitive analysis
       const competitiveAnalysis = await this.performCompetitiveAnalysis(
         rfp,
-        proposalType
+        inputs.proposalType
       );
 
       // Calculate recommended pricing strategy
       const pricingStrategy = this.calculatePricingStrategy(
         rfp,
-        pricingTables,
         competitiveAnalysis,
-        proposalType
+        inputs.proposalType
       );
 
       // Store pricing analysis in agent memory
       await agentMemoryService.storeMemory({
         agentId: 'pricing-analyst',
         memoryType: 'working',
-        contextKey: `pricing_analysis_${pipelineId}`,
+        contextKey: `pricing_analysis_${inputs.pipelineId}`,
         title: `Pricing Analysis - ${rfp.title}`,
         content: {
           pricingTables,
@@ -798,7 +746,11 @@ export class PricingAnalysisSpecialist {
         },
         importance: 8,
         tags: ['pricing_analysis', 'competitive_strategy', 'active'],
-        metadata: { rfpId, pipelineId, proposalType },
+        metadata: {
+          rfpId,
+          pipelineId: inputs.pipelineId,
+          proposalType: inputs.proposalType,
+        },
       });
 
       return {
@@ -860,17 +812,15 @@ export class PricingAnalysisSpecialist {
 
   private calculatePricingStrategy(
     rfp: RFP,
-    pricingTables: any,
     competitiveAnalysis: any,
     proposalType: string
   ): any {
-    const basePrice =
-      pricingTables?.totalCost || competitiveAnalysis.winningAverage || 100000;
-    const margin = this.calculateMargin(proposalType, rfp.estimatedValue);
+    const basePrice = competitiveAnalysis.winningAverage || 100000;
+    const margin = this.calculateMargin(proposalType);
 
     return {
       recommendedBid: basePrice * (1 + margin),
-      strategy: this.getPricingStrategy(margin, competitiveAnalysis),
+      strategy: this.getPricingStrategy(margin),
       confidenceLevel: 0.75,
       riskFactors: this.identifyRiskFactors(rfp),
       justification: `Pricing based on competitive analysis and ${margin * 100}% margin for ${proposalType} projects`,
@@ -878,7 +828,7 @@ export class PricingAnalysisSpecialist {
     };
   }
 
-  private calculateMargin(proposalType: string, estimatedValue?: any): number {
+  private calculateMargin(proposalType: string): number {
     const baseMargins = {
       standard: 0.15,
       technical: 0.2,
@@ -888,7 +838,7 @@ export class PricingAnalysisSpecialist {
     return baseMargins[proposalType as keyof typeof baseMargins] || 0.15;
   }
 
-  private getPricingStrategy(margin: number, competitiveAnalysis: any): string {
+  private getPricingStrategy(margin: number): string {
     if (margin > 0.18) {
       return 'Premium pricing strategy focusing on quality and expertise';
     } else if (margin < 0.12) {
@@ -936,15 +886,7 @@ export class ComplianceValidationSpecialist {
     );
 
     try {
-      const {
-        rfpId,
-        companyProfileId,
-        outline,
-        content,
-        pricing,
-        proposalType,
-        pipelineId,
-      } = inputs;
+      const { rfpId, companyProfileId } = inputs;
 
       // Get RFP details
       const rfp = await storage.getRFP(rfpId);
@@ -961,24 +903,20 @@ export class ComplianceValidationSpecialist {
       // Analyze document compliance using AI
       const complianceAnalysis = await aiService.analyzeDocumentCompliance(
         documentContext,
-        { rfpId, proposalType }
+        { rfpId, proposalType: inputs.proposalType }
       );
 
       // Validate company certifications if profile provided
       let certificationCompliance = null;
       if (companyProfileId) {
-        certificationCompliance = await this.validateCertifications(
-          companyProfileId,
-          complianceAnalysis.requirements
-        );
+        certificationCompliance =
+          await this.validateCertifications(companyProfileId);
       }
 
       // Create compliance matrix
       const complianceMatrix = this.createComplianceMatrix(
         complianceAnalysis,
-        certificationCompliance,
-        content,
-        pricing
+        certificationCompliance
       );
 
       // Perform risk assessment
@@ -991,15 +929,14 @@ export class ComplianceValidationSpecialist {
       // Generate validation report
       const validationReport = this.generateValidationReport(
         complianceMatrix,
-        riskAssessment,
-        certificationCompliance
+        riskAssessment
       );
 
       // Store compliance analysis in agent memory
       await agentMemoryService.storeMemory({
         agentId: 'compliance-checker',
         memoryType: 'working',
-        contextKey: `compliance_analysis_${pipelineId}`,
+        contextKey: `compliance_analysis_${inputs.pipelineId}`,
         title: `Compliance Analysis - ${rfp.title}`,
         content: {
           complianceMatrix,
@@ -1015,7 +952,11 @@ export class ComplianceValidationSpecialist {
           'validation',
           'active',
         ],
-        metadata: { rfpId, pipelineId, proposalType },
+        metadata: {
+          rfpId,
+          pipelineId: inputs.pipelineId,
+          proposalType: inputs.proposalType,
+        },
       });
 
       return {
@@ -1043,16 +984,13 @@ export class ComplianceValidationSpecialist {
     }
   }
 
-  private async validateCertifications(
-    companyProfileId: string,
-    requirements: any[]
-  ): Promise<any> {
+  private async validateCertifications(companyProfileId: string): Promise<any> {
     const certifications =
       await storage.getCompanyCertifications(companyProfileId);
     const insurance = await storage.getCompanyInsurance(companyProfileId);
 
     const certificationValidation = {
-      required: requirements.filter(req => req.type === 'certification'),
+      required: [],
       available: certifications.map(cert => ({
         type: cert.certificationType,
         status: cert.status,
@@ -1084,9 +1022,7 @@ export class ComplianceValidationSpecialist {
 
   private createComplianceMatrix(
     complianceAnalysis: any,
-    certificationCompliance: any,
-    content: any,
-    pricing: any
+    certificationCompliance: any
   ): any[] {
     const matrix: any[] = [];
 
@@ -1097,18 +1033,8 @@ export class ComplianceValidationSpecialist {
           requirement: req.description,
           category: req.type,
           required: req.mandatory,
-          status: this.determineComplianceStatus(
-            req,
-            content,
-            pricing,
-            certificationCompliance
-          ),
-          evidence: this.gatherEvidence(
-            req,
-            content,
-            pricing,
-            certificationCompliance
-          ),
+          status: this.determineComplianceStatus(req, certificationCompliance),
+          evidence: this.gatherEvidence(req, certificationCompliance),
           riskLevel: req.mandatory ? 'high' : 'medium',
         });
       });
@@ -1138,8 +1064,6 @@ export class ComplianceValidationSpecialist {
 
   private determineComplianceStatus(
     req: any,
-    content: any,
-    pricing: any,
     certificationCompliance: any
   ): string {
     // Simple compliance determination logic
@@ -1150,23 +1074,10 @@ export class ComplianceValidationSpecialist {
       return cert?.valid ? 'compliant' : 'non-compliant';
     }
 
-    if (req.type === 'pricing' && pricing) {
-      return 'compliant';
-    }
-
-    if (req.type === 'content' && content) {
-      return 'compliant';
-    }
-
     return req.mandatory ? 'requires-review' : 'compliant';
   }
 
-  private gatherEvidence(
-    req: any,
-    content: any,
-    pricing: any,
-    certificationCompliance: any
-  ): string[] {
+  private gatherEvidence(req: any, certificationCompliance: any): string[] {
     const evidence = [];
 
     if (req.type === 'certification' && certificationCompliance) {
@@ -1176,14 +1087,6 @@ export class ComplianceValidationSpecialist {
       if (cert) {
         evidence.push(`${cert.type} certification (Status: ${cert.status})`);
       }
-    }
-
-    if (req.type === 'pricing' && pricing) {
-      evidence.push('Pricing analysis completed');
-    }
-
-    if (req.type === 'content' && content) {
-      evidence.push('Proposal content addresses requirement');
     }
 
     return evidence.length > 0 ? evidence : ['Manual review required'];
@@ -1301,8 +1204,7 @@ export class ComplianceValidationSpecialist {
 
   private generateValidationReport(
     complianceMatrix: any[],
-    riskAssessment: any,
-    certificationCompliance: any
+    riskAssessment: any
   ): any {
     const compliantItems = complianceMatrix.filter(
       item => item.status === 'compliant'

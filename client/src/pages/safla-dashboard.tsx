@@ -131,13 +131,6 @@ export default function SAFLADashboard() {
     refetchInterval: 15000, // Refresh every 15 seconds
   });
 
-  const { data: improvementPlan } = useQuery({
-    queryKey: ['/api/safla/improvement-plan'],
-    queryFn: () =>
-      apiRequest('GET', '/api/safla/improvement-plan').then(res => res.json()),
-    refetchInterval: 60000,
-  });
-
   const demonstrateMutation = useMutation({
     mutationFn: async (scenario: string) => {
       const response = await apiRequest(
@@ -347,7 +340,10 @@ export default function SAFLADashboard() {
         )}
       </div>
 
-      <Tabs defaultValue="performance" className="flex flex-col flex-1 overflow-hidden mt-6">
+      <Tabs
+        defaultValue="performance"
+        className="flex flex-col flex-1 overflow-hidden mt-6"
+      >
         <div className="px-6 pb-4 shrink-0">
           <TabsList>
             <TabsTrigger value="performance">Performance Metrics</TabsTrigger>
@@ -378,7 +374,9 @@ export default function SAFLADashboard() {
                           {safeDashboard.performanceMetrics.proposalWinRate}%
                         </div>
                         <Progress
-                          value={safeDashboard.performanceMetrics.proposalWinRate}
+                          value={
+                            safeDashboard.performanceMetrics.proposalWinRate
+                          }
                         />
                         <p className="text-sm text-muted-foreground mt-2">
                           Percentage of proposals that win bids
@@ -398,7 +396,9 @@ export default function SAFLADashboard() {
                           {safeDashboard.performanceMetrics.parsingAccuracy}%
                         </div>
                         <Progress
-                          value={safeDashboard.performanceMetrics.parsingAccuracy}
+                          value={
+                            safeDashboard.performanceMetrics.parsingAccuracy
+                          }
                           className="bg-blue-200"
                         />
                         <p className="text-sm text-muted-foreground mt-2">
@@ -416,12 +416,16 @@ export default function SAFLADashboard() {
                       </CardHeader>
                       <CardContent>
                         <div className="text-4xl font-bold text-purple-600 mb-2">
-                          {safeDashboard.performanceMetrics.portalNavigationSuccess}
+                          {
+                            safeDashboard.performanceMetrics
+                              .portalNavigationSuccess
+                          }
                           %
                         </div>
                         <Progress
                           value={
-                            safeDashboard.performanceMetrics.portalNavigationSuccess
+                            safeDashboard.performanceMetrics
+                              .portalNavigationSuccess
                           }
                           className="bg-purple-200"
                         />
@@ -514,7 +518,7 @@ export default function SAFLADashboard() {
                 <CardContent>
                   <div className="space-y-4">
                     {hasValidDashboard &&
-                      safeDashboard.improvementOpportunities.length > 0 ? (
+                    safeDashboard.improvementOpportunities.length > 0 ? (
                       safeDashboard.improvementOpportunities.map(
                         (
                           opportunity: SAFLADashboardData['improvementOpportunities'][number],
@@ -600,7 +604,9 @@ export default function SAFLADashboard() {
                             </div>
                             <Badge
                               variant={
-                                status === 'operational' ? 'default' : 'secondary'
+                                status === 'operational'
+                                  ? 'default'
+                                  : 'secondary'
                               }
                             >
                               {status}
@@ -670,14 +676,16 @@ export default function SAFLADashboard() {
                 <CardHeader>
                   <CardTitle>Test Learning Workflows</CardTitle>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Trigger demonstration learning scenarios to see the system adapt
-                    in real-time
+                    Trigger demonstration learning scenarios to see the system
+                    adapt in real-time
                   </p>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Button
-                      onClick={() => demonstrateMutation.mutate('portal_discovery')}
+                      onClick={() =>
+                        demonstrateMutation.mutate('portal_discovery')
+                      }
                       disabled={demonstrateMutation.isPending}
                       className="h-auto flex-col items-start p-4"
                     >

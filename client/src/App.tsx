@@ -13,7 +13,6 @@ import Header from '@/components/Header';
 // Lazy load pages for code splitting
 const Dashboard = lazy(() => import('@/pages/dashboard'));
 const RFPDetails = lazy(() => import('@/pages/rfp-details'));
-const RFPs = lazy(() => import('@/pages/rfps'));
 const ScanHistory = lazy(() => import('@/pages/scan-history'));
 const Proposals = lazy(() => import('@/pages/proposals'));
 const Compliance = lazy(() => import('@/pages/compliance'));

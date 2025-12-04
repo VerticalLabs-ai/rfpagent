@@ -1,6 +1,6 @@
 import type { Document, RFP } from '@shared/schema';
 import OpenAI from 'openai';
-import { captureException, addBreadcrumb, withScope } from '@sentry/node';
+import { captureException, withScope } from '@sentry/node';
 import { storage } from '../../storage';
 
 export interface FormField {

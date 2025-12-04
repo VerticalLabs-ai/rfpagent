@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -60,11 +59,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const { toast } = useToast();
 
-  const {
-    data: proposals = [],
-    isLoading,
-    error,
-  } = useQuery<Proposal[]>({
+  const { data: proposals = [], isLoading } = useQuery<Proposal[]>({
     queryKey: ['/api/proposals/rfp', rfpId],
     queryFn: async () => {
       try {
@@ -113,11 +108,10 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
         queryKey: ['/api/proposals/rfp', rfpId],
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: 'Delete Failed',
-        description:
-          error?.message || 'Failed to delete proposal. Please try again.',
+        description: 'Failed to delete proposal. Please try again.',
         variant: 'destructive',
       });
     },
@@ -127,39 +121,34 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     mutationFn: async ({
       proposalId,
       status,
-      details,
     }: {
       proposalId: string;
       status: string;
-      details?: any;
     }) => {
       const response = await fetch(`/api/proposals/${proposalId}/outcome`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, details }),
+        body: JSON.stringify({ status }),
       });
       if (!response.ok) {
         throw new Error('Failed to record outcome');
       }
       return response.json();
     },
-    onSuccess: (_, { status }) => {
+    onSuccess: () => {
       toast({
         title: 'Outcome Recorded',
-        description: `Proposal marked as ${status}. SAFLA learning system will analyze this outcome.`,
-        variant: status === 'awarded' ? 'default' : 'default',
+        description: 'SAFLA learning system will analyze this outcome.',
       });
       // Invalidate and refetch proposals
       queryClient.invalidateQueries({
         queryKey: ['/api/proposals/rfp', rfpId],
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: 'Failed to Record Outcome',
-        description:
-          error?.message ||
-          'Failed to record proposal outcome. Please try again.',
+        description: 'Failed to record proposal outcome. Please try again.',
         variant: 'destructive',
       });
     },
@@ -228,12 +217,13 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       setTimeout(() => {
         window.location.reload();
       }, 1500);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: 'Regeneration Failed',
         description:
-          error?.message ||
-          'Failed to start proposal regeneration. Please try again.',
+          error instanceof Error
+            ? error.message
+            : 'Failed to start proposal regeneration. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -262,7 +252,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       queryClient.invalidateQueries({
         queryKey: ['/api/proposals/rfp', rfpId],
       });
-    } catch (error) {
+    } catch {
       toast({
         title: 'Update Failed',
         description: 'Failed to update the proposal section. Please try again.',
@@ -271,10 +261,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     }
   };
 
-  const handleAIImprove = async (
-    sectionKey: string,
-    currentContent: string
-  ) => {
+  const handleAIImprove = async () => {
     try {
       // Here you would call your AI service to improve the content
       toast({
@@ -292,7 +279,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
           queryKey: ['/api/proposals/rfp', rfpId],
         });
       }, 3000);
-    } catch (error) {
+    } catch {
       toast({
         title: 'AI Enhancement Failed',
         description: 'Failed to enhance the section. Please try again.',
@@ -353,7 +340,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
       return rawContent;
     }
 
-    const normalized = { ...rawContent };
+    const normalized: Record<string, any> = { ...rawContent };
 
     const coerceToText = (value: any): string | undefined => {
       if (value == null) return undefined;
@@ -495,8 +482,8 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
             riskManagement: '',
           };
 
-          // Look for section markers
-          const sections = [
+          // Look for section markers - not currently used but defined for future parsing
+          /* const sections = [
             { marker: 'Executive Summary:', field: 'executiveSummary' },
             { marker: 'Technical Approach:', field: 'technicalApproach' },
             {
@@ -518,7 +505,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
               field: 'qualifications',
             },
             { marker: 'Shelf life and coding:', field: 'timeline' },
-          ];
+          ]; */
 
           // If no section markers, extract by content patterns
           if (combinedText.includes('iByte Enterprises LLC')) {
@@ -845,7 +832,7 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleAIImprove(sectionKey, content)}
+                  onClick={() => handleAIImprove()}
                   className="text-purple-400 hover:text-purple-300"
                 >
                   <Wand2 className="w-4 h-4" />
@@ -926,8 +913,6 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     });
   };
 
-  type ComplianceAction = 'upload' | 'certification' | 'report';
-
   const getDisplayMargin = (proposal: Proposal) => {
     if (!proposal.estimatedMargin) return '—';
     const numericMargin = Number(proposal.estimatedMargin);
@@ -937,9 +922,11 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
     return `${numericMargin.toFixed(2)}%`;
   };
 
-  const handleComplianceAction = (action: ComplianceAction) => {
+  const handleComplianceAction = (
+    action: 'upload' | 'certification' | 'report'
+  ) => {
     const actionMap: Record<
-      ComplianceAction,
+      'upload' | 'certification' | 'report',
       { title: string; description: string }
     > = {
       upload: {

@@ -41,7 +41,7 @@ export abstract class BaseAuthenticationStrategy
   /**
    * Check if this strategy can handle the portal
    */
-  canHandle(portalType: string, url: string): boolean {
+  canHandle(portalType: string): boolean {
     return portalType === this.portalType;
   }
 

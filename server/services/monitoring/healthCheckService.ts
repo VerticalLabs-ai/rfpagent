@@ -135,7 +135,7 @@ export class HealthCheckService {
     const start = Date.now();
     try {
       // Test basic storage operations
-      const portals = await storage.getAllPortals();
+      await storage.getAllPortals();
       const responseTime = Date.now() - start;
 
       const result: ServiceHealth = {

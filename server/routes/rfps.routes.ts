@@ -1,7 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { ZodError } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
 import { ObjectStorageService } from '../objectStorage';
 import { DocumentParsingService } from '../services/processing/documentParsingService';
@@ -240,7 +239,7 @@ router.post('/manual', async (req, res) => {
     if (!validationResult.success) {
       return res.status(400).json({
         error: 'Invalid input data',
-        details: validationResult.error.issues.map((e: any) => ({
+        details: validationResult.error.issues.map(e => ({
           field: e.path.join('.'),
           message: e.message,
         })),
@@ -357,7 +356,7 @@ router.get('/manual/status/:rfpId', async (req, res) => {
 router.post('/:id/download-documents', async (req, res) => {
   try {
     const { id } = req.params;
-    const { documentNames } = req.body;
+    const { documentNames = [] } = req.body;
 
     // Get the RFP
     const rfp = await storage.getRFP(id);
@@ -587,7 +586,7 @@ router.post('/:id/download-documents', async (req, res) => {
 router.post('/:id/rescrape', async (req, res) => {
   try {
     const { id } = req.params;
-    const { url, userNotes } = req.body;
+    const { url } = req.body;
 
     console.log(`🔄 Re-scraping RFP ${id} from URL: ${url}`);
 
@@ -655,6 +654,8 @@ router.post('/:id/rescrape', async (req, res) => {
         message: 'Please provide a valid URL',
       });
     }
+
+    const { userNotes } = req.body;
 
     // Use Mastra scraping service directly for proper integration
     const mastraService = getMastraScrapingService();

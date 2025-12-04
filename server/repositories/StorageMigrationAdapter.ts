@@ -7,25 +7,14 @@ import type {
   RFP,
   InsertRFP,
   Proposal,
-  InsertProposal,
   Document,
-  InsertDocument,
   Submission,
-  InsertSubmission,
   SubmissionPipeline,
-  InsertSubmissionPipeline,
   SubmissionEvent,
-  InsertSubmissionEvent,
   SubmissionStatusHistory,
-  InsertSubmissionStatusHistory,
   AuditLog,
-  InsertAuditLog,
   Notification,
-  InsertNotification,
   Scan,
-  InsertScan,
-  ScanEvent,
-  InsertScanEvent,
 } from '@shared/schema';
 
 /**
@@ -155,123 +144,105 @@ export class StorageMigrationAdapter {
   // These methods maintain the interface but will throw not implemented errors
   // They should be implemented as the corresponding repositories are created
 
-  async getProposal(id: string): Promise<Proposal | undefined> {
+  async getProposal(): Promise<Proposal | undefined> {
     throw new Error(
       'Proposal repository not yet implemented in migration adapter'
     );
   }
 
-  async getProposalByRFP(rfpId: string): Promise<Proposal | undefined> {
+  async getProposalByRFP(): Promise<Proposal | undefined> {
     throw new Error(
       'Proposal repository not yet implemented in migration adapter'
     );
   }
 
-  async createProposal(proposal: InsertProposal): Promise<Proposal> {
+  async createProposal(): Promise<Proposal> {
     throw new Error(
       'Proposal repository not yet implemented in migration adapter'
     );
   }
 
-  async updateProposal(
-    id: string,
-    updates: Partial<Proposal>
-  ): Promise<Proposal> {
+  async updateProposal(): Promise<Proposal> {
     throw new Error(
       'Proposal repository not yet implemented in migration adapter'
     );
   }
 
-  async getDocument(id: string): Promise<Document | undefined> {
+  async getDocument(): Promise<Document | undefined> {
     throw new Error(
       'Document repository not yet implemented in migration adapter'
     );
   }
 
-  async getDocumentsByRFP(rfpId: string): Promise<Document[]> {
+  async getDocumentsByRFP(): Promise<Document[]> {
     throw new Error(
       'Document repository not yet implemented in migration adapter'
     );
   }
 
-  async createDocument(document: InsertDocument): Promise<Document> {
+  async createDocument(): Promise<Document> {
     throw new Error(
       'Document repository not yet implemented in migration adapter'
     );
   }
 
-  async updateDocument(
-    id: string,
-    updates: Partial<Document>
-  ): Promise<Document> {
+  async updateDocument(): Promise<Document> {
     throw new Error(
       'Document repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmission(id: string): Promise<Submission | undefined> {
+  async getSubmission(): Promise<Submission | undefined> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionsByRFP(rfpId: string): Promise<Submission[]> {
+  async getSubmissionsByRFP(): Promise<Submission[]> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionsByDateRange(
-    startDate: Date,
-    endDate: Date
-  ): Promise<Submission[]> {
+  async getSubmissionsByDateRange(): Promise<Submission[]> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
     );
   }
 
-  async createSubmission(submission: InsertSubmission): Promise<Submission> {
+  async createSubmission(): Promise<Submission> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
     );
   }
 
-  async updateSubmission(
-    id: string,
-    updates: Partial<Submission>
-  ): Promise<Submission> {
+  async updateSubmission(): Promise<Submission> {
     throw new Error(
       'Submission repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionPipeline(
-    id: string
-  ): Promise<SubmissionPipeline | undefined> {
+  async getSubmissionPipeline(): Promise<SubmissionPipeline | undefined> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionPipelineBySubmission(
-    submissionId: string
-  ): Promise<SubmissionPipeline | undefined> {
+  async getSubmissionPipelineBySubmission(): Promise<
+    SubmissionPipeline | undefined
+  > {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionPipelinesByStatus(
-    status: string
-  ): Promise<SubmissionPipeline[]> {
+  async getSubmissionPipelinesByStatus(): Promise<SubmissionPipeline[]> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionPipelinesByPhase(
-    phase: string
-  ): Promise<SubmissionPipeline[]> {
+  async getSubmissionPipelinesByPhase(): Promise<SubmissionPipeline[]> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
@@ -283,108 +254,87 @@ export class StorageMigrationAdapter {
     );
   }
 
-  async createSubmissionPipeline(
-    pipeline: InsertSubmissionPipeline
-  ): Promise<SubmissionPipeline> {
+  async createSubmissionPipeline(): Promise<SubmissionPipeline> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async updateSubmissionPipeline(
-    id: string,
-    updates: Partial<SubmissionPipeline>
-  ): Promise<SubmissionPipeline> {
+  async updateSubmissionPipeline(): Promise<SubmissionPipeline> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async deleteSubmissionPipeline(id: string): Promise<void> {
+  async deleteSubmissionPipeline(): Promise<void> {
     throw new Error(
       'SubmissionPipeline repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionEvent(id: string): Promise<SubmissionEvent | undefined> {
+  async getSubmissionEvent(): Promise<SubmissionEvent | undefined> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionEventsByPipeline(
-    pipelineId: string
-  ): Promise<SubmissionEvent[]> {
+  async getSubmissionEventsByPipeline(): Promise<SubmissionEvent[]> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionEventsBySubmission(
-    submissionId: string,
-    limit?: number
-  ): Promise<SubmissionEvent[]> {
+  async getSubmissionEventsBySubmission(): Promise<SubmissionEvent[]> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionEventsByType(
-    eventType: string
-  ): Promise<SubmissionEvent[]> {
+  async getSubmissionEventsByType(): Promise<SubmissionEvent[]> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async getRecentSubmissionEvents(limit?: number): Promise<SubmissionEvent[]> {
+  async getRecentSubmissionEvents(): Promise<SubmissionEvent[]> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async createSubmissionEvent(
-    event: InsertSubmissionEvent
-  ): Promise<SubmissionEvent> {
+  async createSubmissionEvent(): Promise<SubmissionEvent> {
     throw new Error(
       'SubmissionEvent repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionStatusHistory(
-    submissionId: string
-  ): Promise<SubmissionStatusHistory[]> {
+  async getSubmissionStatusHistory(): Promise<SubmissionStatusHistory[]> {
     throw new Error(
       'SubmissionStatusHistory repository not yet implemented in migration adapter'
     );
   }
 
-  async getSubmissionStatusHistoryByPipeline(
-    pipelineId: string
-  ): Promise<SubmissionStatusHistory[]> {
+  async getSubmissionStatusHistoryByPipeline(): Promise<
+    SubmissionStatusHistory[]
+  > {
     throw new Error(
       'SubmissionStatusHistory repository not yet implemented in migration adapter'
     );
   }
 
-  async createSubmissionStatusHistory(
-    statusHistory: InsertSubmissionStatusHistory
-  ): Promise<SubmissionStatusHistory> {
+  async createSubmissionStatusHistory(): Promise<SubmissionStatusHistory> {
     throw new Error(
       'SubmissionStatusHistory repository not yet implemented in migration adapter'
     );
   }
 
-  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+  async createAuditLog(): Promise<AuditLog> {
     throw new Error(
       'AuditLog repository not yet implemented in migration adapter'
     );
   }
 
-  async getAuditLogsByEntity(
-    entityType: string,
-    entityId: string
-  ): Promise<AuditLog[]> {
+  async getAuditLogsByEntity(): Promise<AuditLog[]> {
     throw new Error(
       'AuditLog repository not yet implemented in migration adapter'
     );
@@ -393,15 +343,13 @@ export class StorageMigrationAdapter {
   // Additional methods from the original IStorage interface would be added here
   // For brevity, I'm including placeholders for the most commonly used ones
 
-  async getNotifications(userId: string): Promise<Notification[]> {
+  async getNotifications(): Promise<Notification[]> {
     throw new Error(
       'Notification repository not yet implemented in migration adapter'
     );
   }
 
-  async createNotification(
-    notification: InsertNotification
-  ): Promise<Notification> {
+  async createNotification(): Promise<Notification> {
     throw new Error(
       'Notification repository not yet implemented in migration adapter'
     );
@@ -411,7 +359,7 @@ export class StorageMigrationAdapter {
     throw new Error('Scan repository not yet implemented in migration adapter');
   }
 
-  async createScan(scan: InsertScan): Promise<Scan> {
+  async createScan(): Promise<Scan> {
     throw new Error('Scan repository not yet implemented in migration adapter');
   }
 

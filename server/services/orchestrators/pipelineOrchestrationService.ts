@@ -428,7 +428,6 @@ export class PipelineOrchestrationService {
     memoryMB: number;
     cpuPercent: number;
   }> {
-    const totalAgents = this.workloadBalancer.size;
     const activeAgents = Array.from(this.workloadBalancer.values()).filter(
       agent => agent.health === 'healthy' && agent.utilizationPercent < 90
     ).length;
@@ -1171,7 +1170,7 @@ export class PipelineOrchestrationService {
 
       // In a real implementation, this would start the actual pipeline workflow
       // For now, we'll simulate the process
-      await this.simulatePipelineExecution(pipelineId, orchestration);
+      await this.simulatePipelineExecution(pipelineId);
 
       // Check if orchestration should continue
       if (
@@ -1205,7 +1204,7 @@ export class PipelineOrchestrationService {
 
     // Start all pipelines simultaneously
     const pipelinePromises = orchestration.pipelineIds.map(pipelineId =>
-      this.simulatePipelineExecution(pipelineId, orchestration)
+      this.simulatePipelineExecution(pipelineId)
     );
 
     try {
@@ -1248,7 +1247,7 @@ export class PipelineOrchestrationService {
 
       if (shouldProcess) {
         console.log(`🔄 Conditionally processing pipeline: ${pipelineId}`);
-        await this.simulatePipelineExecution(pipelineId, orchestration);
+        await this.simulatePipelineExecution(pipelineId);
       } else {
         console.log(`⏭️ Skipping pipeline based on conditions: ${pipelineId}`);
       }
@@ -1281,7 +1280,7 @@ export class PipelineOrchestrationService {
     );
 
     // Sort pipelines by priority (would use actual pipeline priorities in real implementation)
-    const prioritizedPipelines = [...orchestration.pipelineIds].sort((a, b) => {
+    const prioritizedPipelines = [...orchestration.pipelineIds].sort(() => {
       // Simulate priority sorting - in reality this would look up actual pipeline priorities
       return Math.random() - 0.5; // Random for demonstration
     });
@@ -1293,7 +1292,7 @@ export class PipelineOrchestrationService {
       console.log(
         `🔄 Processing prioritized pipeline ${i + 1}/${prioritizedPipelines.length}: ${pipelineId}`
       );
-      await this.simulatePipelineExecution(pipelineId, orchestration);
+      await this.simulatePipelineExecution(pipelineId);
 
       if (
         orchestration.status === 'suspended' ||
@@ -1315,10 +1314,7 @@ export class PipelineOrchestrationService {
   /**
    * Simulate pipeline execution (in real implementation, this would integrate with workflow engine)
    */
-  private async simulatePipelineExecution(
-    pipelineId: string,
-    orchestration: PipelineCoordinationContext
-  ): Promise<void> {
+  private async simulatePipelineExecution(pipelineId: string): Promise<void> {
     const executionTime = Math.random() * 2000 + 500; // 0.5-2.5 seconds simulation
     await new Promise(resolve => setTimeout(resolve, executionTime));
 

@@ -421,10 +421,11 @@ export default function WorkflowManagement() {
                     {suspendedWorkflows.map((workflow: SuspendedWorkflow) => (
                       <Card
                         key={workflow.id}
-                        className={`cursor-pointer transition-colors ${selectedWorkflow?.id === workflow.id
+                        className={`cursor-pointer transition-colors ${
+                          selectedWorkflow?.id === workflow.id
                             ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950'
                             : 'hover:bg-accent'
-                          }`}
+                        }`}
                         onClick={() => setSelectedWorkflow(workflow)}
                         data-testid={`card-workflow-${workflow.workflowId}`}
                       >
@@ -448,7 +449,9 @@ export default function WorkflowManagement() {
                           <div className="flex items-center justify-between text-xs text-gray-500">
                             <span>Progress: {workflow.progress}%</span>
                             <span>
-                              {new Date(workflow.updatedAt).toLocaleTimeString()}
+                              {new Date(
+                                workflow.updatedAt
+                              ).toLocaleTimeString()}
                             </span>
                           </div>
                         </CardContent>

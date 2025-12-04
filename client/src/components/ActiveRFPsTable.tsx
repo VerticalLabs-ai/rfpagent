@@ -234,15 +234,6 @@ export default function ActiveRFPsTable() {
     return rfp.progress || 0; // Use actual progress from database, default to 0
   };
 
-  const getProgressColor = (status: string, progress: number) => {
-    if (status === 'submitted') return 'bg-green-600 dark:bg-green-500';
-    if (status === 'approved') return 'bg-green-500 dark:bg-green-400';
-    if (status === 'review') return 'bg-orange-500 dark:bg-orange-400';
-    if (status === 'drafting') return 'bg-purple-500 dark:bg-purple-400';
-    if (status === 'parsing') return 'bg-yellow-500 dark:bg-yellow-400';
-    return 'bg-primary';
-  };
-
   const getDeadlineText = (deadline: string | null) => {
     if (!deadline)
       return { text: 'No deadline', color: 'text-muted-foreground' };
@@ -551,10 +542,6 @@ export default function ActiveRFPsTable() {
                 {filteredRfps.map((item: any) => {
                   const deadline = getDeadlineText(item.rfp.deadline);
                   const calculatedProgress = getProgressValue(item.rfp);
-                  const progressColor = getProgressColor(
-                    item.rfp.status,
-                    calculatedProgress
-                  );
 
                   return (
                     <tr

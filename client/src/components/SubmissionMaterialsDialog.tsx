@@ -34,7 +34,12 @@ import {
 } from 'lucide-react';
 
 // Quality level type for Claude-based generation
-type ProposalQualityLevel = 'fast' | 'standard' | 'enhanced' | 'premium' | 'maximum';
+type ProposalQualityLevel =
+  | 'fast'
+  | 'standard'
+  | 'enhanced'
+  | 'premium'
+  | 'maximum';
 
 // Quality level configuration with UI info
 const qualityLevelOptions: Array<{
@@ -60,7 +65,8 @@ const qualityLevelOptions: Array<{
   {
     value: 'standard',
     label: 'Standard',
-    description: 'Balanced quality with extended thinking for better reasoning.',
+    description:
+      'Balanced quality with extended thinking for better reasoning.',
     model: 'Claude Sonnet 4.5',
     thinkingBudget: 10000,
     estimatedCost: '$0.50-1.00',
@@ -90,7 +96,8 @@ const qualityLevelOptions: Array<{
   {
     value: 'maximum',
     label: 'Maximum',
-    description: 'Maximum quality for critical, high-stakes RFPs. Full thinking.',
+    description:
+      'Maximum quality for critical, high-stakes RFPs. Full thinking.',
     model: 'Claude Opus 4.5',
     thinkingBudget: 32000,
     estimatedCost: '$10.00-20.00',
@@ -136,11 +143,14 @@ export function SubmissionMaterialsDialog({
   const [customInstructions, setCustomInstructions] = useState('');
 
   // Claude quality level state
-  const [qualityLevel, setQualityLevel] = useState<ProposalQualityLevel>('standard');
+  const [qualityLevel, setQualityLevel] =
+    useState<ProposalQualityLevel>('standard');
   const [enableThinking, setEnableThinking] = useState(true);
 
   // Get current quality level info
-  const currentQualityInfo = qualityLevelOptions.find(q => q.value === qualityLevel);
+  const currentQualityInfo = qualityLevelOptions.find(
+    q => q.value === qualityLevel
+  );
 
   // Pricing data state
   const [pricingItems, setPricingItems] = useState<PricingItem[]>([
@@ -292,18 +302,24 @@ export function SubmissionMaterialsDialog({
                     <Label htmlFor="quality-level">Select Quality Level</Label>
                     <Select
                       value={qualityLevel}
-                      onValueChange={(value) => setQualityLevel(value as ProposalQualityLevel)}
+                      onValueChange={value =>
+                        setQualityLevel(value as ProposalQualityLevel)
+                      }
                     >
                       <SelectTrigger className="w-full mt-1">
                         <SelectValue placeholder="Select quality level" />
                       </SelectTrigger>
                       <SelectContent>
-                        {qualityLevelOptions.map((option) => (
+                        {qualityLevelOptions.map(option => (
                           <SelectItem key={option.value} value={option.value}>
                             <div className="flex items-center gap-2">
                               {option.icon}
-                              <span className="font-medium">{option.label}</span>
-                              <span className="text-muted-foreground text-xs">({option.model})</span>
+                              <span className="font-medium">
+                                {option.label}
+                              </span>
+                              <span className="text-muted-foreground text-xs">
+                                ({option.model})
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
@@ -316,32 +332,54 @@ export function SubmissionMaterialsDialog({
                     <div className="bg-muted/50 p-4 rounded-lg border border-border space-y-3">
                       <div className="flex items-center gap-2">
                         {currentQualityInfo.icon}
-                        <span className="font-medium">{currentQualityInfo.label}</span>
-                        {(qualityLevel === 'premium' || qualityLevel === 'maximum') && (
-                          <Badge variant="secondary" className="text-xs bg-amber-500/10 text-amber-600">
+                        <span className="font-medium">
+                          {currentQualityInfo.label}
+                        </span>
+                        {(qualityLevel === 'premium' ||
+                          qualityLevel === 'maximum') && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-amber-500/10 text-amber-600"
+                          >
                             Opus 4.5
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">{currentQualityInfo.description}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {currentQualityInfo.description}
+                      </p>
                       <div className="grid grid-cols-3 gap-4 text-xs">
                         <div>
                           <span className="text-muted-foreground">Model:</span>
-                          <p className="font-medium">{currentQualityInfo.model}</p>
+                          <p className="font-medium">
+                            {currentQualityInfo.model}
+                          </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Est. Cost:</span>
-                          <p className="font-medium">{currentQualityInfo.estimatedCost}</p>
+                          <span className="text-muted-foreground">
+                            Est. Cost:
+                          </span>
+                          <p className="font-medium">
+                            {currentQualityInfo.estimatedCost}
+                          </p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Est. Time:</span>
-                          <p className="font-medium">{currentQualityInfo.estimatedTime}</p>
+                          <span className="text-muted-foreground">
+                            Est. Time:
+                          </span>
+                          <p className="font-medium">
+                            {currentQualityInfo.estimatedTime}
+                          </p>
                         </div>
                       </div>
                       {currentQualityInfo.thinkingBudget && (
                         <div className="flex items-center gap-2 text-xs text-primary">
                           <Sparkles className="w-3 h-3" />
-                          <span>Extended thinking enabled ({currentQualityInfo.thinkingBudget.toLocaleString()} budget tokens)</span>
+                          <span>
+                            Extended thinking enabled (
+                            {currentQualityInfo.thinkingBudget.toLocaleString()}{' '}
+                            budget tokens)
+                          </span>
                         </div>
                       )}
                     </div>
@@ -350,12 +388,16 @@ export function SubmissionMaterialsDialog({
                   {/* Extended Thinking Toggle */}
                   <div className="flex items-center justify-between pt-2">
                     <div className="space-y-0.5">
-                      <Label htmlFor="enable-thinking" className="flex items-center gap-2">
+                      <Label
+                        htmlFor="enable-thinking"
+                        className="flex items-center gap-2"
+                      >
                         <Brain className="w-4 h-4" />
                         Enable Extended Thinking
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Uses Claude's thinking mode for deeper reasoning (recommended for quality proposals)
+                        Uses Claude&apos;s thinking mode for deeper reasoning
+                        (recommended for quality proposals)
                       </p>
                     </div>
                     <Switch
@@ -651,7 +693,9 @@ export function SubmissionMaterialsDialog({
                             Extended Thinking:
                           </span>
                           <span className="font-medium">
-                            {enableThinking && qualityLevel !== 'fast' ? 'Enabled' : 'Disabled'}
+                            {enableThinking && qualityLevel !== 'fast'
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </span>
                         </div>
                         <div className="flex justify-between">

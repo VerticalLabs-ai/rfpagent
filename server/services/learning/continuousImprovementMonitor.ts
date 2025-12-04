@@ -1,6 +1,5 @@
 import { randomUUID } from 'crypto';
 import { and, avg, count, eq, gte, lte, sql, sum } from 'drizzle-orm';
-import { z } from 'zod';
 import {
   agentKnowledgeBase,
   agentMemory,
@@ -11,105 +10,89 @@ import {
 } from '@shared/schema';
 import { db } from '../../db';
 
-// Schemas for monitoring data structures
-const MetricTrendSchema = z.object({
-  metricName: z.string(),
-  timeframe: z.enum(['hour', 'day', 'week', 'month']),
-  currentValue: z.number(),
-  previousValue: z.number(),
-  changePercent: z.number(),
-  trend: z.enum(['improving', 'declining', 'stable']),
-  significance: z.enum(['low', 'medium', 'high']),
-  context: z.any().optional() as any,
-});
+// Type definitions for monitoring data structures
+export interface MetricTrend {
+  metricName: string;
+  timeframe: 'hour' | 'day' | 'week' | 'month';
+  currentValue: number;
+  previousValue: number;
+  changePercent: number;
+  trend: 'improving' | 'declining' | 'stable';
+  significance: 'low' | 'medium' | 'high';
+  context?: any;
+}
 
-const PerformanceDashboardSchema = z.object({
-  timestamp: z.string(),
-  systemHealth: z.object({
-    overall: z.number().min(0).max(100),
-    components: z.record(z.string(), z.number().min(0).max(100)),
-  }),
-  learningMetrics: z.object({
-    totalLearningEvents: z.number(),
-    learningRate: z.number(),
-    knowledgeGrowth: z.number(),
-    adaptationSuccess: z.number(),
-  }),
-  performanceMetrics: z.object({
-    proposalWinRate: z.number(),
-    parsingAccuracy: z.number(),
-    portalNavigationSuccess: z.number(),
-    documentProcessingTime: z.number(),
-  }),
-  improvementOpportunities: z.array(
-    z.object({
-      component: z.string(),
-      opportunity: z.string(),
-      impact: z.enum(['low', 'medium', 'high']),
-      effort: z.enum(['low', 'medium', 'high']),
-      recommendation: z.string(),
-    })
-  ),
-  alerts: z.array(
-    z.object({
-      severity: z.enum(['info', 'warning', 'critical']),
-      component: z.string(),
-      message: z.string(),
-      timestamp: z.string(),
-      actionRequired: z.boolean(),
-    })
-  ),
-});
+export interface PerformanceDashboard {
+  timestamp: string;
+  systemHealth: {
+    overall: number;
+    components: Record<string, number>;
+  };
+  learningMetrics: {
+    totalLearningEvents: number;
+    learningRate: number;
+    knowledgeGrowth: number;
+    adaptationSuccess: number;
+  };
+  performanceMetrics: {
+    proposalWinRate: number;
+    parsingAccuracy: number;
+    portalNavigationSuccess: number;
+    documentProcessingTime: number;
+  };
+  improvementOpportunities: Array<{
+    component: string;
+    opportunity: string;
+    impact: 'low' | 'medium' | 'high';
+    effort: 'low' | 'medium' | 'high';
+    recommendation: string;
+  }>;
+  alerts: Array<{
+    severity: 'info' | 'warning' | 'critical';
+    component: string;
+    message: string;
+    timestamp: string;
+    actionRequired: boolean;
+  }>;
+}
 
-const ImprovementPlanSchema = z.object({
-  planId: z.string(),
-  title: z.string(),
-  description: z.string(),
-  targetMetrics: z.array(
-    z.object({
-      metricName: z.string(),
-      currentValue: z.number(),
-      targetValue: z.number(),
-      timeframe: z.string(),
-    })
-  ),
-  actions: z.array(
-    z.object({
-      actionId: z.string(),
-      description: z.string(),
-      priority: z.enum(['low', 'medium', 'high']),
-      estimatedImpact: z.number(),
-      status: z.enum(['planned', 'in_progress', 'completed', 'cancelled']),
-      assignedComponent: z.string(),
-    })
-  ),
-  timeline: z.object({
-    startDate: z.string(),
-    targetDate: z.string(),
-    milestones: z.array(
-      z.object({
-        date: z.string(),
-        description: z.string(),
-        completed: z.boolean(),
-      })
-    ),
-  }),
-  riskAssessment: z.object({
-    risks: z.array(
-      z.object({
-        description: z.string(),
-        probability: z.enum(['low', 'medium', 'high']),
-        impact: z.enum(['low', 'medium', 'high']),
-        mitigation: z.string(),
-      })
-    ),
-    overallRisk: z.enum(['low', 'medium', 'high']),
-  }),
-});
-
-type MetricTrend = z.infer<typeof MetricTrendSchema>;
-type PerformanceDashboard = z.infer<typeof PerformanceDashboardSchema>;
-type ImprovementPlan = z.infer<typeof ImprovementPlanSchema>;
+export interface ImprovementPlan {
+  planId: string;
+  title: string;
+  description: string;
+  targetMetrics: Array<{
+    metricName: string;
+    currentValue: number;
+    targetValue: number;
+    timeframe: string;
+  }>;
+  actions: Array<{
+    actionId: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    estimatedImpact: number;
+    status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+    assignedComponent: string;
+  }>;
+  timeline: {
+    startDate: string;
+    targetDate: string;
+    milestones: Array<{
+      date: string;
+      description: string;
+      completed: boolean;
+    }>;
+  };
+  riskAssessment: {
+    risks: Array<{
+      description: string;
+      probability: 'low' | 'medium' | 'high';
+      impact: 'low' | 'medium' | 'high';
+      mitigation: string;
+    }>;
+    overallRisk: 'low' | 'medium' | 'high';
+  };
+}
 
 export class ContinuousImprovementMonitor {
   private alertThresholds = {
@@ -1049,5 +1032,3 @@ export class ContinuousImprovementMonitor {
 }
 
 export const continuousImprovementMonitor = new ContinuousImprovementMonitor();
-
-export type { ImprovementPlan, MetricTrend, PerformanceDashboard };

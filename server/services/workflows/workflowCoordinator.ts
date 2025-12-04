@@ -857,7 +857,7 @@ export class WorkflowCoordinator {
       keywords?: string;
       scanId?: string;
     };
-    const { portalId, keywords, scanId } = inputs;
+    const { portalId, scanId } = inputs;
 
     try {
       if (!portalId) {
@@ -926,7 +926,7 @@ export class WorkflowCoordinator {
       companyProfileId?: string;
       proposalType?: string;
     };
-    const { rfpId, requirements, companyProfileId, proposalType } = inputs;
+    const { rfpId, companyProfileId, proposalType } = inputs;
     const outlineProvided = Boolean((inputs as Record<string, any>)?.outline);
 
     try {
@@ -1041,7 +1041,7 @@ export class WorkflowCoordinator {
       documentId?: string;
       requirements?: any;
     };
-    const { rfpId, documentId, requirements } = inputs;
+    const { rfpId, documentId } = inputs;
 
     try {
       if (!rfpId && !documentId) {
@@ -1375,7 +1375,7 @@ export class WorkflowCoordinator {
       competitorAnalysis?: any;
       researchType?: string;
     };
-    const { rfpId, market, competitorAnalysis, researchType } = inputs;
+    const { rfpId, market, researchType } = inputs;
 
     try {
       let researchResults: any = {};
@@ -1519,7 +1519,7 @@ export class WorkflowCoordinator {
   private async performPortalSearch(keywords: string): Promise<any[]> {
     try {
       // Use existing scraping service method
-      const portals = await storage.getAllPortals();
+      await storage.getAllPortals();
       const results: any[] = [];
 
       // For now, return mock results until proper search is implemented
@@ -2024,7 +2024,7 @@ export class WorkflowCoordinator {
       if (typeof searchCriteria === 'string') {
         try {
           searchCriteria = JSON.parse(searchCriteria);
-        } catch (error) {
+        } catch {
           // If JSON parsing fails, treat as keywords string
           searchCriteria = { keywords: searchCriteria };
         }
@@ -2241,8 +2241,7 @@ export class WorkflowCoordinator {
    * Execute monitoring phase with optional human input
    */
   private async executeMonitoringPhase(
-    context: WorkflowExecutionContext,
-    humanInput?: any
+    context: WorkflowExecutionContext
   ): Promise<WorkflowResult> {
     context.currentPhase = 'monitoring';
     context.progress = 1.0;
@@ -2433,7 +2432,7 @@ export class WorkflowCoordinator {
     }
 
     // Get work items statistics for more detailed info
-    const workItemStats = await this.getWorkItemStatistics();
+    await this.getWorkItemStatistics();
 
     // Add work item counts to stats
     for (const phase of phases) {
@@ -2984,7 +2983,7 @@ export class WorkflowCoordinator {
       portalId?: string;
       healthCheck?: boolean;
     };
-    const { portalId, healthCheck } = inputs;
+    const { portalId } = inputs;
 
     try {
       if (!portalId) {
@@ -3072,7 +3071,7 @@ export class WorkflowCoordinator {
       scope?: any;
       competitorData?: any;
     };
-    const { rfpId, scope, competitorData } = inputs;
+    const { rfpId } = inputs;
 
     try {
       if (!rfpId) {
@@ -3192,8 +3191,7 @@ export class WorkflowCoordinator {
       relatedEntityType?: string;
       relatedEntityId?: string;
     };
-    const { type, title, message, userId, relatedEntityType, relatedEntityId } =
-      inputs;
+    const { type, title, message, relatedEntityType, relatedEntityId } = inputs;
 
     try {
       if (!type || !title || !message) {
@@ -3521,7 +3519,6 @@ export class WorkflowCoordinator {
       const {
         rfpId,
         companyProfileId,
-        outline,
         content,
         pricing,
         compliance,
@@ -3607,7 +3604,6 @@ export class WorkflowCoordinator {
       const inputs = workItem.inputs as ProposalGenerationInputs;
       const {
         rfpId,
-        companyProfileId,
         outline,
         content,
         pricing,

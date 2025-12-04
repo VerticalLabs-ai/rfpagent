@@ -1,6 +1,6 @@
-import { Agent } from '@mastra/core/agent';
+import type { Agent } from '@mastra/core/agent';
 import { AgentRegistry } from './AgentRegistry';
-import { ScrapingContext, RFPOpportunity, ScrapingError } from '../types';
+import type { ScrapingContext, RFPOpportunity } from '../types';
 import type { Portal } from '@shared/schema';
 
 /**

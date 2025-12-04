@@ -9,7 +9,6 @@ import {
   desc,
   count,
   eq,
-  sql,
   type SQL,
   type InferInsertModel,
   type InferSelectModel,

@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MetricsCard, LoadingCards } from '@/components/shared';
-import type { MonitoringStatus } from './types';
 
 interface PortalMonitoringStatus {
   portalId: string;

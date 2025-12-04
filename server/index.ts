@@ -11,7 +11,7 @@ dotenv.config({ path: envPath });
 import './instrument';
 
 import { setupExpressErrorHandler } from '@sentry/node';
-import express, { NextFunction, type Request, Response } from 'express';
+import express from 'express';
 import { createServer } from 'http';
 import { configureRoutes } from './routes';
 import { agentRegistryService } from './services/agents/agentRegistryService';
@@ -19,7 +19,6 @@ import { saflaSystemIntegration } from './services/learning/saflaSystemIntegrati
 import { websocketService } from './services/core/websocketService';
 import { log, serveStatic, setupVite } from './vite';
 import { correlationIdMiddleware } from './middleware/correlationId';
-import { logger } from './utils/logger';
 
 const app = express();
 

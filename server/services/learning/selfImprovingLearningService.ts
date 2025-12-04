@@ -1,7 +1,5 @@
 import { storage } from '../../storage';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import { workflowCoordinator } from '../workflows/workflowCoordinator';
-import { nanoid } from 'nanoid';
 
 /**
  * SAFLA (Self-Aware Feedback Loop Algorithm) Learning Service
@@ -446,7 +444,7 @@ export class SelfImprovingLearningService {
         errorAnalysis,
         originalStrategy: outcome.context.strategy,
         suggestedFixes: this.suggestNavigationFixes(errorAnalysis),
-        fallbackStrategies: this.generateFallbackStrategies(portal),
+        fallbackStrategies: this.generateFallbackStrategies(),
       },
       confidenceScore: 0.7,
       sourceType: 'experience',
@@ -1031,7 +1029,7 @@ export class SelfImprovingLearningService {
     return fixes;
   }
 
-  private generateFallbackStrategies(portal: any): any[] {
+  private generateFallbackStrategies(): any[] {
     return [
       {
         name: 'Increased Wait Times',

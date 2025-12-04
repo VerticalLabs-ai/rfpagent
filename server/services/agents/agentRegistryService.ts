@@ -1,11 +1,5 @@
 import { storage } from '../../storage';
-import type {
-  AgentRegistry,
-  InsertAgentRegistry,
-  WorkItem,
-  AgentSession,
-} from '@shared/schema';
-import { nanoid } from 'nanoid';
+import type { AgentRegistry, InsertAgentRegistry } from '@shared/schema';
 
 /**
  * AgentRegistryService - Core service for managing the 3-tier agentic system

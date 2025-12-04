@@ -1,4 +1,4 @@
-import { Portal, RFP, InsertRFP, InsertNotification } from '@shared/schema';
+import type { Portal, RFP, InsertRFP, InsertNotification } from '@shared/schema';
 import { IStorage } from '../../storage';
 import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import { scanManager } from '../portals/scan-manager';
@@ -308,7 +308,7 @@ export class PortalMonitoringService {
       }
 
       // Note: MastraScrapingService already handles RFP saving and deduplication
-      const savedRFPs = discoveredRFPs; // Already saved by MastraScrapingService
+      // discoveredRFPs are already saved by MastraScrapingService
 
       // Update portal status
       await this.storage.updatePortal(portalId, {
@@ -468,7 +468,7 @@ export class PortalMonitoringService {
 
       // Note: MastraScrapingService already handles RFP saving and deduplication
       // For interface consistency, we still return the discoveredRFPs count
-      const savedRFPs = discoveredRFPs; // Already saved by MastraScrapingService
+      // discoveredRFPs are already saved by MastraScrapingService
 
       // Update portal status
       await this.storage.updatePortal(portalId, {

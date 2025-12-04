@@ -1,5 +1,5 @@
 import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
-import { AuthContext, AuthResult } from '../../types';
+import type { AuthContext, AuthResult } from '../../types';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
@@ -12,7 +12,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
     super('generic');
   }
 
-  canHandle(portalType: string, url: string): boolean {
+  canHandle(): boolean {
     // This is the fallback strategy for any portal that's not specifically handled
     return true;
   }
@@ -88,7 +88,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const cookies = this.extractCookies(response);
 
       // Detect authentication method
-      const authMethod = this.detectAuthenticationMethod($, url);
+      const authMethod = this.detectAuthenticationMethod($);
 
       if (authMethod.type === 'none') {
         return {
@@ -139,10 +139,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Detect authentication method from page content
    */
-  private detectAuthenticationMethod(
-    $: cheerio.CheerioAPI,
-    portalUrl: string
-  ): {
+  private detectAuthenticationMethod($: cheerio.CheerioAPI): {
     type: string;
     details?: string;
     formData?: any;
@@ -173,7 +170,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
     if (loginForm.length > 0) {
       const $form = loginForm.first();
-      const formData = this.extractFormData($form, $);
+      const formData = this.extractFormData($form);
 
       if (formData) {
         return { type: 'form', formData };
@@ -209,8 +206,8 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
     // Check if any form looks like it could be a login form
     const potentialLoginForm = forms.first();
     if (potentialLoginForm.length > 0) {
-      const formData = this.extractFormData(potentialLoginForm, $);
-      if (formData && this.hasPasswordField(potentialLoginForm, $)) {
+      const formData = this.extractFormData(potentialLoginForm);
+      if (formData && this.hasPasswordField(potentialLoginForm)) {
         return { type: 'form', formData };
       }
     }
@@ -224,10 +221,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Extract form data from a form element
    */
-  private extractFormData(
-    $form: cheerio.Cheerio<cheerio.Element>,
-    $: cheerio.CheerioAPI
-  ): any {
+  private extractFormData($form: cheerio.Cheerio<cheerio.Element>): any {
     const action = $form.attr('action');
     const method = $form.attr('method') || 'POST';
 
@@ -239,16 +233,16 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
     const fields: Record<string, any> = {};
 
     inputs.each((_, input) => {
-      const $input = $(input);
-      const name = $input.attr('name');
-      const type = $input.attr('type') || 'text';
-      const value = $input.attr('value') || '';
+      const $input = cheerio.load(input);
+      const name = $input('input').attr('name');
+      const type = $input('input').attr('type') || 'text';
+      const value = $input('input').attr('value') || '';
 
       if (name) {
         fields[name] = {
           type,
           value,
-          required: $input.attr('required') !== undefined,
+          required: $input('input').attr('required') !== undefined,
         };
       }
     });
@@ -268,10 +262,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Check if form has a password field
    */
-  private hasPasswordField(
-    $form: cheerio.Cheerio<cheerio.Element>,
-    $: cheerio.CheerioAPI
-  ): boolean {
+  private hasPasswordField($form: cheerio.Cheerio<cheerio.Element>): boolean {
     return $form.find('input[type="password"]').length > 0;
   }
 
@@ -343,10 +334,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
       const allCookies = this.mergeCookies(cookies, sessionCookies);
 
       // Check if login was successful
-      const isSuccessful = await this.validateLoginSuccess(
-        loginResponse,
-        context.portalUrl
-      );
+      const isSuccessful = await this.validateLoginSuccess(loginResponse);
 
       if (isSuccessful) {
         console.log(`✅ Generic form authentication successful`);
@@ -374,10 +362,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Validate if login was successful
    */
-  private async validateLoginSuccess(
-    loginResponse: any,
-    originalUrl: string
-  ): Promise<boolean> {
+  private async validateLoginSuccess(loginResponse: any): Promise<boolean> {
     try {
       // Check for redirect (common for successful logins)
       if ([301, 302, 303, 307, 308].includes(loginResponse.statusCode)) {

@@ -13,7 +13,7 @@ async function validateUrl(url: string): Promise<void> {
   // Parse URL
   try {
     parsedUrl = new URL(url);
-  } catch (error) {
+  } catch {
     throw new Error(`Invalid URL: ${url}`);
   }
 
@@ -104,10 +104,14 @@ export async function downloadFile(
     if (!fs.existsSync(dir)) {
       try {
         fs.mkdirSync(dir, { recursive: true });
-      } catch (error: any) {
+      } catch (error) {
         // Log but don't throw - directory might already exist from race condition
-        if (error.code !== 'EEXIST') {
-          console.error('Failed to create directory:', dir, error.message);
+        if ((error as any).code !== 'EEXIST') {
+          console.error(
+            'Failed to create directory:',
+            dir,
+            (error as Error).message
+          );
           throw error; // Re-throw if it's not EEXIST
         }
       }

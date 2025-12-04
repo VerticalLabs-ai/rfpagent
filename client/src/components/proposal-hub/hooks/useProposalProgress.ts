@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GenerationProgress, ProgressStep, GENERATION_STEPS } from '../types';
+import { GenerationProgress, GENERATION_STEPS } from '../types';
 
 export function useProposalProgress(sessionId: string | null) {
   const [progress, setProgress] = useState<GenerationProgress | null>(null);

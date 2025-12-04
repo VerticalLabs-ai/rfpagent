@@ -1,17 +1,8 @@
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  CheckCircle,
-  Clock,
-  Loader2,
-  AlertCircle,
-  Pause,
-  Play,
-  X,
-} from 'lucide-react';
+import { CheckCircle, Clock, Loader2, AlertCircle, X } from 'lucide-react';
 import { GenerationProgress as GenerationProgressType } from '../types';
 
 interface GenerationProgressProps {
@@ -25,8 +16,6 @@ export function GenerationProgress({
   elapsedTime,
   onCancel,
 }: GenerationProgressProps) {
-  const [isPaused, setIsPaused] = useState(false);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;

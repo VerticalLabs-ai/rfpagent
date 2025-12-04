@@ -179,10 +179,11 @@ export default function Proposals() {
                   {proposalReadyRfps.map((item: any) => (
                     <div
                       key={item.rfp.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${selectedRfp === item.rfp.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'hover:bg-accent'
-                        }`}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedRfp === item.rfp.id
+                          ? 'bg-primary/10 border-primary'
+                          : 'hover:bg-accent'
+                      }`}
                       onClick={() => setSelectedRfp(item.rfp.id)}
                       data-testid={`rfp-item-${item.rfp.id}`}
                     >
@@ -320,7 +321,10 @@ export default function Proposals() {
                         <TabsTrigger value="pricing" data-testid="tab-pricing">
                           Pricing
                         </TabsTrigger>
-                        <TabsTrigger value="compliance" data-testid="tab-compliance">
+                        <TabsTrigger
+                          value="compliance"
+                          data-testid="tab-compliance"
+                        >
                           Compliance
                         </TabsTrigger>
                       </TabsList>
@@ -351,7 +355,10 @@ export default function Proposals() {
                         />
                       </TabsContent>
 
-                      <TabsContent value="compliance" className="space-y-4 mt-4">
+                      <TabsContent
+                        value="compliance"
+                        className="space-y-4 mt-4"
+                      >
                         <div className="text-center py-8">
                           <i className="fas fa-clipboard-check text-3xl text-muted-foreground mb-3"></i>
                           <p className="text-sm text-muted-foreground">
@@ -371,7 +378,8 @@ export default function Proposals() {
                       </p>
                       <Button
                         onClick={() =>
-                          selectedRfp && generateProposalMutation.mutate(selectedRfp)
+                          selectedRfp &&
+                          generateProposalMutation.mutate(selectedRfp)
                         }
                         disabled={generateProposalMutation.isPending}
                         data-testid="generate-proposal-empty-state"

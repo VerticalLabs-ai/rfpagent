@@ -1,6 +1,6 @@
-import { Agent } from '@mastra/core/agent';
+import type { Agent } from '@mastra/core/agent';
 import { AgentFactory } from './AgentFactory';
-import { AgentConfig } from '../types';
+import type { AgentConfig } from '../types';
 import type { Portal } from '@shared/schema';
 
 /**
@@ -414,7 +414,7 @@ export class AgentRegistry {
     let activeAgents = 0;
     let recentFailures = 0;
 
-    for (const [key, stats] of this.agentUsageStats.entries()) {
+    for (const stats of this.agentUsageStats.values()) {
       if (stats.lastUsed.getTime() > oneHourAgo) {
         activeAgents++;
       }

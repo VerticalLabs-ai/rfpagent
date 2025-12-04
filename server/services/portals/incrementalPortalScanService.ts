@@ -1,6 +1,6 @@
-import { eq, and, gte, desc, or, sql } from 'drizzle-orm';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { portals, rfps, scans, scanEvents } from '@shared/schema';
+import { portals, rfps, scans } from '@shared/schema';
 import { storage } from '../../storage';
 import { pageExtractTool } from '../../../src/mastra/tools';
 import { z } from 'zod';
@@ -171,11 +171,7 @@ export class IncrementalPortalScanService {
             `Processing ${i + 1}/${candidates.length}: ${candidate.title.substring(0, 50)}...`
           );
 
-          const result = await this.processRFPCandidate(
-            portalId,
-            candidate,
-            lastScanTime
-          );
+          const result = await this.processRFPCandidate(portalId, candidate);
 
           if (result === 'new') {
             newRfpsCount++;
@@ -333,7 +329,6 @@ export class IncrementalPortalScanService {
         return await this.extractWithAustinExtractor(
           targetUrl,
           sessionId,
-          lastScanTime,
           maxResults
         );
       } else {
@@ -359,13 +354,11 @@ export class IncrementalPortalScanService {
   private async extractWithAustinExtractor(
     url: string,
     sessionId: string,
-    lastScanTime: Date | null,
     maxResults: number
   ): Promise<RFPCandidate[]> {
     console.log(`🏛️ Using Austin Finance specialized extractor`);
 
-    // Get Stagehand page from session manager
-    const stagehand = await sessionManager.ensureStagehand(sessionId);
+    // Get page from session manager
     const page = await sessionManager.getPage(sessionId);
 
     // Navigate to the portal
@@ -510,8 +503,7 @@ export class IncrementalPortalScanService {
    */
   private async processRFPCandidate(
     portalId: string,
-    candidate: RFPCandidate,
-    lastScanTime: Date | null
+    candidate: RFPCandidate
   ): Promise<'new' | 'updated' | 'unchanged'> {
     // Find existing RFP by source URL or source identifier
     // Build conditions array to avoid passing undefined to or()

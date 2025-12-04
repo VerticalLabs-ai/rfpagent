@@ -1,5 +1,5 @@
 import { BaseContentExtractor } from '../ContentExtractor';
-import { RFPOpportunity } from '../../types';
+import type { RFPOpportunity } from '../../types';
 import * as cheerio from 'cheerio';
 
 /**
@@ -87,7 +87,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Log page structure for debugging
    */
-  private logPageStructure($: cheerio.CheerioAPI, url: string): void {
+  private logPageStructure($: cheerio.CheerioAPI): void {
     const pageTitle = $('title').text();
     const tables = $('table').length;
     const rows = $('tr').length;
@@ -260,7 +260,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for Bonfire portals
    */
-  private getMinimumConfidenceThreshold(portalContext: string): number {
+  private getMinimumConfidenceThreshold(): number {
     // Bonfire has complex authentication, so we can be more lenient
     return 0.5;
   }

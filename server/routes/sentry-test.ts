@@ -21,7 +21,7 @@ const router = Router();
  * Test error capture
  * GET /api/sentry/test-error
  */
-router.get('/test-error', (req: Request, res: Response) => {
+router.get('/test-error', () => {
   throw new Error('Test error from Sentry test route - this is expected!');
 });
 
@@ -29,7 +29,7 @@ router.get('/test-error', (req: Request, res: Response) => {
  * Test custom error capture with context
  * GET /api/sentry/test-custom-error
  */
-router.get('/test-custom-error', (req: Request, res: Response) => {
+router.get('/test-custom-error', (req: Request) => {
   try {
     // Simulate an error with context
     const userId = req.query.userId || 'test-user-123';
@@ -67,13 +67,13 @@ router.get('/test-custom-error', (req: Request, res: Response) => {
  * Test performance transaction
  * GET /api/sentry/test-performance
  */
-router.get('/test-performance', async (req: Request, res: Response) => {
+router.get('/test-performance', async (_req: Request, res: Response) => {
   await startSpan(
     {
       op: 'test.performance',
       name: 'Sentry Performance Test',
     },
-    async span => {
+    async () => {
       // Simulate some work with nested spans
       await startSpan(
         {
@@ -98,7 +98,6 @@ router.get('/test-performance', async (req: Request, res: Response) => {
       res.json({
         success: true,
         message: 'Performance test completed',
-        spanId: span?.spanContext().spanId,
       });
     }
   );
@@ -108,7 +107,7 @@ router.get('/test-performance', async (req: Request, res: Response) => {
  * Test message capture (info level)
  * GET /api/sentry/test-message
  */
-router.get('/test-message', (req: Request, res: Response) => {
+router.get('/test-message', (_req: Request, res: Response) => {
   captureMessage('Test message from Sentry test route', {
     level: 'info',
     tags: {
@@ -130,7 +129,7 @@ router.get('/test-message', (req: Request, res: Response) => {
  * Test successful operation (no error)
  * GET /api/sentry/test-success
  */
-router.get('/test-success', (req: Request, res: Response) => {
+router.get('/test-success', (_req: Request, res: Response) => {
   res.json({
     success: true,
     message: 'This route succeeds without errors',

@@ -39,32 +39,6 @@ interface ServiceControlResponse {
   message: string;
 }
 
-const serviceInfo = {
-  'portal-scheduler': {
-    name: 'Portal Scheduler',
-    description:
-      'Automatically scans government portals for new RFPs on a schedule',
-    icon: Activity,
-  },
-  'work-distribution': {
-    name: 'Work Distribution',
-    description:
-      'Distributes background tasks to available agents for processing',
-    icon: Settings,
-  },
-  'retry-scheduler': {
-    name: 'Retry Scheduler',
-    description:
-      'Retries failed tasks according to configured backoff policies',
-    icon: Activity,
-  },
-  'dlq-monitor': {
-    name: 'Dead Letter Queue Monitor',
-    description: 'Monitors and manages tasks that have permanently failed',
-    icon: AlertTriangle,
-  },
-};
-
 export default function SystemSettings() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState<string | null>(null);

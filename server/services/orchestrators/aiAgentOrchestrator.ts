@@ -2,14 +2,10 @@ import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
 import OpenAI from 'openai';
 import { storage } from '../../storage';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import { AIService } from '../core/aiService';
-import { documentIntelligenceService } from '../processing/documentIntelligenceService';
-import { EnhancedProposalService } from '../proposals/enhancedProposalService';
 import {
   federalRfpSearchService,
   type FederalSearchCriteria,
 } from '../portals/federalRfpSearchService';
-import { getMastraScrapingService } from '../scrapers/mastraScrapingService';
 import {
   mastraWorkflowEngine,
   type ActionSuggestion,
@@ -56,11 +52,6 @@ export interface AgentResponse {
 }
 
 export class AIAgentOrchestrator {
-  private aiService = new AIService();
-  private enhancedProposalService = new EnhancedProposalService();
-  private mastraScrapingService = getMastraScrapingService();
-  private documentIntelligenceService = documentIntelligenceService;
-
   private checkApiKeyAvailable(): boolean {
     return !!(process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR);
   }
@@ -158,23 +149,14 @@ export class AIAgentOrchestrator {
         case 'bid_crafting':
           response = await this.handleBidCraftingWithAgents(
             query,
-            conversation,
-            conversationIntent
+            conversation
           );
           break;
         case 'research':
-          response = await this.handleResearchWithAgents(
-            query,
-            conversation,
-            conversationIntent
-          );
+          response = await this.handleResearchWithAgents(query, conversation);
           break;
         default:
-          response = await this.handleGeneralQuery(
-            query,
-            conversation,
-            conversationIntent
-          );
+          response = await this.handleGeneralQuery(query, conversation);
       }
 
       // Store AI response
@@ -378,11 +360,7 @@ export class AIAgentOrchestrator {
   /**
    * Handle bid crafting assistance
    */
-  private async handleBidCrafting(
-    query: string,
-    conversation: AiConversation,
-    intent: any
-  ): Promise<AgentResponse> {
+  private async handleBidCrafting(query: string): Promise<AgentResponse> {
     console.log(`📝 Handling bid crafting assistance`);
 
     // Extract RFP references from query
@@ -404,10 +382,10 @@ export class AIAgentOrchestrator {
     const rfp = rfpReferences[0]; // Focus on first RFP for now
 
     // Analyze RFP for bid crafting insights
-    const bidAnalysis = await this.analyzeBidOpportunity(rfp, conversation);
+    const bidAnalysis = await this.analyzeBidOpportunity();
 
     // Research historical bids for similar RFPs
-    const historicalInsights = await this.researchSimilarBids(rfp);
+    const historicalInsights = await this.researchSimilarBids();
 
     let message = `I'm analyzing the "${rfp.title}" opportunity from ${rfp.agency} to help you craft a competitive bid.\n\n`;
 
@@ -460,8 +438,7 @@ export class AIAgentOrchestrator {
    */
   private async handleResearch(
     query: string,
-    conversation: AiConversation,
-    intent: any
+    conversation: AiConversation
   ): Promise<AgentResponse> {
     console.log(`🔬 Handling research query`);
 
@@ -473,22 +450,22 @@ export class AIAgentOrchestrator {
 
     switch (researchType) {
       case 'competitor_analysis':
-        researchResults = await this.performCompetitorAnalysis(query);
+        researchResults = await this.performCompetitorAnalysis();
         message = `I've analyzed competitor activity in your market. ${researchResults.summary}`;
         break;
 
       case 'pricing_research':
-        researchResults = await this.performPricingResearch(query);
+        researchResults = await this.performPricingResearch();
         message = `Based on historical bid data, here's what I found about pricing trends: ${researchResults.summary}`;
         break;
 
       case 'market_trends':
-        researchResults = await this.performMarketTrendAnalysis(query);
+        researchResults = await this.performMarketTrendAnalysis();
         message = `I've analyzed recent market trends and opportunities. ${researchResults.summary}`;
         break;
 
       default:
-        researchResults = await this.performGeneralResearch(query);
+        researchResults = await this.performGeneralResearch();
         message = `I've researched your query and found relevant insights. ${researchResults.summary}`;
     }
 
@@ -520,8 +497,7 @@ export class AIAgentOrchestrator {
    */
   private async handleGeneralQuery(
     query: string,
-    conversation: AiConversation,
-    intent: any
+    conversation: AiConversation
   ): Promise<AgentResponse> {
     console.log(`💬 Handling general query`);
 
@@ -1014,10 +990,7 @@ Return only the JSON object, no other text.
     return matchingRfps.slice(0, 5);
   }
 
-  private async analyzeBidOpportunity(
-    rfp: RFP,
-    conversation: AiConversation
-  ): Promise<any> {
+  private async analyzeBidOpportunity(): Promise<any> {
     // Analyze RFP for competitive advantages and risks
     return {
       competitiveAdvantage: 'Strong alignment with your water supply expertise',
@@ -1027,7 +1000,7 @@ Return only the JSON object, no other text.
     };
   }
 
-  private async researchSimilarBids(rfp: RFP): Promise<any> {
+  private async researchSimilarBids(): Promise<any> {
     // Research historical bids for similar RFPs
     return {
       insights:
@@ -1059,7 +1032,7 @@ Return only the JSON object, no other text.
     return 'general_research';
   }
 
-  private async performCompetitorAnalysis(query: string): Promise<any> {
+  private async performCompetitorAnalysis(): Promise<any> {
     return {
       summary:
         'Based on recent RFP activity, I see 3-5 regular competitors in the water supply sector in your region.',
@@ -1068,7 +1041,7 @@ Return only the JSON object, no other text.
     };
   }
 
-  private async performPricingResearch(query: string): Promise<any> {
+  private async performPricingResearch(): Promise<any> {
     return {
       summary:
         'Water supply contracts typically run $0.15-$0.25 per gallon with delivery, varying by volume and location.',
@@ -1077,7 +1050,7 @@ Return only the JSON object, no other text.
     };
   }
 
-  private async performMarketTrendAnalysis(query: string): Promise<any> {
+  private async performMarketTrendAnalysis(): Promise<any> {
     return {
       summary:
         'Government water supply procurement is increasing 15% year-over-year with emphasis on sustainability and local sourcing.',
@@ -1086,7 +1059,7 @@ Return only the JSON object, no other text.
     };
   }
 
-  private async performGeneralResearch(query: string): Promise<any> {
+  private async performGeneralResearch(): Promise<any> {
     return {
       summary:
         "I've gathered relevant information based on our RFP database and historical trends.",
@@ -1225,8 +1198,7 @@ Return only the JSON object, no other text.
    */
   private async handleBidCraftingWithAgents(
     query: string,
-    conversation: AiConversation,
-    intent: any
+    conversation: AiConversation
   ): Promise<AgentResponse> {
     console.log(`📝 Handling bid crafting with enhanced agent coordination`);
 
@@ -1266,10 +1238,10 @@ Return only the JSON object, no other text.
       });
 
       // Fallback to original method with enhanced context
-      return this.handleBidCrafting(query, conversation, intent);
+      return this.handleBidCrafting(query);
     } catch (error) {
       console.error('Enhanced bid crafting failed:', error);
-      return this.handleBidCrafting(query, conversation, intent);
+      return this.handleBidCrafting(query);
     }
   }
 
@@ -1278,8 +1250,7 @@ Return only the JSON object, no other text.
    */
   private async handleResearchWithAgents(
     query: string,
-    conversation: AiConversation,
-    intent: any
+    conversation: AiConversation
   ): Promise<AgentResponse> {
     console.log(`📊 Handling research with enhanced agent coordination`);
 
@@ -1319,10 +1290,10 @@ Return only the JSON object, no other text.
       });
 
       // Fallback to original method with enhanced context
-      return this.handleResearch(query, conversation, intent);
+      return this.handleResearch(query, conversation);
     } catch (error) {
       console.error('Enhanced research failed:', error);
-      return this.handleResearch(query, conversation, intent);
+      return this.handleResearch(query, conversation);
     }
   }
 

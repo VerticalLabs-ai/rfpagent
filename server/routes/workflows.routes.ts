@@ -1,11 +1,9 @@
 import { Router } from 'express';
 import { storage } from '../storage';
-import { aiAgentOrchestrator } from '../services/orchestrators/aiAgentOrchestrator';
 import { agentMonitoringService } from '../services/agents/agentMonitoringService';
 import { mastraWorkflowEngine } from '../services/workflows/mastraWorkflowEngine';
 import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
 import { workflowCoordinator } from '../services/workflows/workflowCoordinator';
-import { agentRegistryService } from '../services/agents/agentRegistryService';
 import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import {
   discoveryOrchestrator,
@@ -86,7 +84,6 @@ router.post('/document-processing/execute', async (req, res) => {
       analysisType = 'standard',
       priority = 5,
       deadline,
-      options = {},
     } = req.body;
 
     if (!rfpId) {

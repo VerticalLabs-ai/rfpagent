@@ -1,4 +1,3 @@
-import type { Portal } from '@shared/schema';
 import { ValidationResult, PortalConfiguration } from '../types';
 
 export class PortalDetectionService {
@@ -81,7 +80,7 @@ export class PortalDetectionService {
         isValid: true,
         portalType,
       };
-    } catch (error) {
+    } catch {
       return {
         isValid: false,
         error: 'Invalid URL format',

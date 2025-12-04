@@ -79,7 +79,10 @@ export function createGenericRFPAgent(
  * Create a Bonfire Hub specialist agent
  * Specialized for Bonfire procurement portals with ESN authentication
  */
-export function createBonfireAgent(memory: Memory | undefined, tools: AgentTools): Agent {
+export function createBonfireAgent(
+  memory: Memory | undefined,
+  tools: AgentTools
+): Agent {
   return new Agent({
     name: 'Bonfire Hub Specialist',
     instructions: `You are a specialized agent for Bonfire Hub procurement portals. You understand:
@@ -143,7 +146,10 @@ export function createBonfireAgent(memory: Memory | undefined, tools: AgentTools
  * Create a SAM.gov federal specialist agent
  * Specialized for federal procurement opportunities
  */
-export function createSAMGovAgent(memory: Memory | undefined, tools: AgentTools): Agent {
+export function createSAMGovAgent(
+  memory: Memory | undefined,
+  tools: AgentTools
+): Agent {
   return new Agent({
     name: 'SAM.gov Federal Specialist',
     instructions: `You are a specialized agent for SAM.gov federal procurement opportunities. You understand:
@@ -175,7 +181,10 @@ export function createSAMGovAgent(memory: Memory | undefined, tools: AgentTools)
  * Create a FindRFP aggregator specialist agent
  * Specialized for RFP aggregation platforms
  */
-export function createFindRFPAgent(memory: Memory | undefined, tools: AgentTools): Agent {
+export function createFindRFPAgent(
+  memory: Memory | undefined,
+  tools: AgentTools
+): Agent {
   return new Agent({
     name: 'FindRFP Aggregator Specialist',
     instructions: `You are specialized in FindRFP.com and similar RFP aggregation platforms. You understand:

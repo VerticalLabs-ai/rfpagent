@@ -36,11 +36,11 @@ export function validateAndFixSourceUrl(
   } else if (portal.url.includes('austintexas.gov')) {
     return validateAustinFinanceUrl(url, opportunity);
   } else if (portal.url.includes('bonfire')) {
-    return validateBonfireUrl(url, opportunity);
+    return validateBonfireUrl(url);
   } else if (portal.url.includes('sam.gov')) {
-    return validateSAMGovUrl(url, opportunity);
+    return validateSAMGovUrl(url);
   } else if (portal.url.includes('beaconbid.com')) {
-    return validateBeaconBidUrl(url, opportunity);
+    return validateBeaconBidUrl(url);
   }
 
   // List of generic/category URL patterns that should be rejected
@@ -70,7 +70,7 @@ export function validateAndFixSourceUrl(
   }
 
   // For other portals, basic validation
-  return validateGenericUrl(url, opportunity);
+  return validateGenericUrl(url);
 }
 
 /**
@@ -137,10 +137,7 @@ export function validateAustinFinanceUrl(
  * Validate Bonfire URLs
  * Must contain opportunity or bid IDs
  */
-export function validateBonfireUrl(
-  url: string,
-  opportunity: any
-): string | null {
+export function validateBonfireUrl(url: string): string | null {
   // Bonfire URLs typically contain opportunity or bid IDs
   if (
     url.includes('/opportunities/') ||
@@ -160,21 +157,17 @@ export function validateBonfireUrl(
  * Validate BeaconBid URLs
  * Must contain solicitations path and UUID
  */
-export function validateBeaconBidUrl(
-  url: string,
-  opportunity: any
-): string | null {
+export function validateBeaconBidUrl(url: string): string | null {
   // BeaconBid URLs typically contain /solicitations/ and a UUID
   // Format: /solicitations/[agency]/[uuid]/[slug]
-  if (
-    url.includes('/solicitations/') &&
-    /[a-f0-9-]{36}/i.test(url)
-  ) {
+  if (url.includes('/solicitations/') && /[a-f0-9-]{36}/i.test(url)) {
     logger.debug('Valid BeaconBid detail URL', { url });
     return url;
   }
 
-  logger.debug('Invalid BeaconBid URL (missing /solicitations/ path or UUID)', { url });
+  logger.debug('Invalid BeaconBid URL (missing /solicitations/ path or UUID)', {
+    url,
+  });
   return null;
 }
 
@@ -182,10 +175,7 @@ export function validateBeaconBidUrl(
  * Validate SAM.gov URLs
  * Must contain opportunity IDs
  */
-export function validateSAMGovUrl(
-  url: string,
-  opportunity: any
-): string | null {
+export function validateSAMGovUrl(url: string): string | null {
   // SAM.gov URLs typically contain opportunity IDs
   // Support both /opportunities/ (legacy/search) and /opp/ (direct link) formats
   if (
@@ -206,10 +196,7 @@ export function validateSAMGovUrl(
  * Validate generic portal URLs
  * Ensures URL contains some form of ID or specific identifier
  */
-export function validateGenericUrl(
-  url: string,
-  opportunity: any
-): string | null {
+export function validateGenericUrl(url: string): string | null {
   // For generic portals, ensure URL contains some form of ID or specific identifier
   const hasId =
     /[?&](id|rfp|bid|opp|solicitation)=/i.test(url) ||

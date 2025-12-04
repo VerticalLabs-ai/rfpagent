@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import {
   CheckCircle,
   XCircle,
-  Clock,
   Activity,
   FileText,
   AlertCircle,
@@ -15,7 +14,7 @@ import {
   WifiOff,
   RotateCcw,
 } from 'lucide-react';
-import { ScanState, ScanEvent } from '@/hooks/useScanStream';
+import { ScanState } from '@/hooks/useScanStream';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ScanProgressProps {

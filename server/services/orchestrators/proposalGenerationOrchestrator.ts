@@ -1,12 +1,7 @@
 import { storage } from '../../storage';
 import { workflowCoordinator } from '../workflows/workflowCoordinator';
-import { agentRegistryService } from '../agents/agentRegistryService';
-import { aiProposalService } from '../proposals/ai-proposal-service';
-import { enhancedProposalService } from '../proposals/enhancedProposalService';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import { progressTracker } from '../monitoring/progressTracker';
-import { logger } from '../../utils/logger';
-import type { RFP, Proposal, WorkItem, AgentSession } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
 export interface ProposalGenerationPipeline {

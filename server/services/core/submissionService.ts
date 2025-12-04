@@ -13,9 +13,7 @@ import type {
   PublicPortal,
   RFP,
   SubmissionPipelineRequest,
-  SubmissionPipelineResult,
 } from '@shared/schema';
-import { nanoid } from 'nanoid';
 
 export interface SubmissionOptions {
   sessionId?: string;
@@ -143,7 +141,7 @@ export class SubmissionService {
   private sanitizeOptionsForLogging(
     options: SubmissionOptions
   ): Omit<SubmissionOptions, 'portalCredentials'> {
-    const { portalCredentials: _portalCredentials, ...rest } = options;
+    const { ...rest } = options;
     const sanitized: Omit<SubmissionOptions, 'portalCredentials'> = {
       ...rest,
     };

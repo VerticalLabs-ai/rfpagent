@@ -23,26 +23,6 @@ const RFPSearchCriteriaSchema = z.object({
   category: z.string().optional(),
 });
 
-const WorkflowStateSchema = z.object({
-  id: z.string(),
-  status: z.enum(['pending', 'running', 'suspended', 'completed', 'failed']),
-  currentStep: z.string().optional(),
-  progress: z.number().min(0).max(1),
-  results: z.record(z.string(), z.any()).optional(),
-  context: z.record(z.string(), z.any()).optional(),
-});
-
-const ActionSuggestionSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  action: z.enum(['workflow', 'agent', 'tool', 'navigation']),
-  priority: z.enum(['high', 'medium', 'low']),
-  estimatedTime: z.string(),
-  description: z.string(),
-  icon: z.string(),
-  payload: z.record(z.string(), z.any()).optional(),
-});
-
 export interface WorkflowState {
   id: string;
   status: 'pending' | 'running' | 'suspended' | 'completed' | 'failed';
@@ -480,11 +460,7 @@ export class MastraWorkflowEngine {
 
     try {
       // Execute exit actions for current phase
-      await this.executePhaseExitActions(
-        workflowId,
-        currentPhase,
-        context || {}
-      );
+      await this.executePhaseExitActions(workflowId, currentPhase);
 
       // Update workflow state
       workflow.currentPhase = toPhase;
@@ -519,7 +495,7 @@ export class MastraWorkflowEngine {
       );
 
       // Execute entry actions for new phase
-      await this.executePhaseEntryActions(workflowId, toPhase, context || {});
+      await this.executePhaseEntryActions(workflowId, toPhase);
 
       console.log(
         `✅ Phase transition completed: ${workflowId} ${previousPhase} → ${toPhase} (${duration}s)`
@@ -701,8 +677,7 @@ export class MastraWorkflowEngine {
    */
   private async executePhaseEntryActions(
     workflowId: string,
-    phase: string,
-    context: Record<string, any>
+    phase: string
   ): Promise<void> {
     const phaseDefinition = this.phaseDefinitions.get(phase);
     if (!phaseDefinition?.entryActions) {
@@ -717,13 +692,7 @@ export class MastraWorkflowEngine {
 
     for (const action of phaseDefinition.entryActions) {
       try {
-        await this.executePhaseAction(
-          workflowId,
-          phase,
-          action,
-          'entry',
-          context
-        );
+        await this.executePhaseAction(workflowId, phase, action);
       } catch (error) {
         console.error(
           `❌ Entry action '${action}' failed for workflow ${workflowId} phase '${phase}':`,
@@ -739,8 +708,7 @@ export class MastraWorkflowEngine {
    */
   private async executePhaseExitActions(
     workflowId: string,
-    phase: string,
-    context: Record<string, any>
+    phase: string
   ): Promise<void> {
     const phaseDefinition = this.phaseDefinitions.get(phase);
     if (!phaseDefinition?.exitActions) {
@@ -755,13 +723,7 @@ export class MastraWorkflowEngine {
 
     for (const action of phaseDefinition.exitActions) {
       try {
-        await this.executePhaseAction(
-          workflowId,
-          phase,
-          action,
-          'exit',
-          context
-        );
+        await this.executePhaseAction(workflowId, phase, action);
       } catch (error) {
         console.error(
           `❌ Exit action '${action}' failed for workflow ${workflowId} phase '${phase}':`,
@@ -778,13 +740,8 @@ export class MastraWorkflowEngine {
   private async executePhaseAction(
     workflowId: string,
     phase: string,
-    action: string,
-    type: 'entry' | 'exit',
-    context: Record<string, any>
+    action: string
   ): Promise<void> {
-    // Import storage dynamically to avoid circular imports
-    const { storage } = await import('../../storage');
-
     switch (action) {
       case 'initialize_discovery':
         console.log(
@@ -1963,7 +1920,7 @@ export class MastraWorkflowEngine {
         );
 
       case 'tool':
-        return this.executeTool(suggestion.payload?.toolId, suggestion.payload);
+        return this.executeTool(suggestion.payload?.toolId);
 
       case 'navigation':
         return { action: 'navigate', route: suggestion.payload?.route };
@@ -2022,7 +1979,7 @@ export class MastraWorkflowEngine {
   /**
    * Execute a specific tool
    */
-  private async executeTool(toolId: string, params: any): Promise<any> {
+  private async executeTool(toolId: string): Promise<any> {
     // Tool execution logic will be implemented
     console.log(`🔧 Executing tool: ${toolId}`);
     return { status: 'executed', toolId };
@@ -2058,7 +2015,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         criteria: RFPSearchCriteriaSchema,
       }),
-      execute: async context => {
+      execute: async () => {
         // Use existing scraping service
         return { results: [], status: 'completed' };
       },
@@ -2072,7 +2029,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         opportunities: z.array(z.any()),
       }),
-      execute: async context => {
+      execute: async () => {
         // Classify opportunities using AI
         return {
           classified: [],
@@ -2089,7 +2046,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         rfpId: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Perform competitor analysis
         return {
           competitors: [],
@@ -2108,7 +2065,7 @@ export class MastraWorkflowEngine {
         category: z.string(),
         agency: z.string().optional(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Analyze historical bids
         return {
           averageBid: 0,
@@ -2126,7 +2083,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         documentText: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Use existing document intelligence service
         return await this.aiService.analyzeDocumentCompliance(
           'sample text',
@@ -2143,7 +2100,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         documentText: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Extract requirements using AI
         return {
           mandatory: [],
@@ -2162,7 +2119,7 @@ export class MastraWorkflowEngine {
         formFields: z.array(z.any()),
         companyData: z.any(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Use document intelligence service
         return {
           filledFields: [],
@@ -2179,7 +2136,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         documentUrl: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Parse document
         return {
           extractedData: {},
@@ -2197,7 +2154,7 @@ export class MastraWorkflowEngine {
         rfpId: z.string(),
         section: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Use existing proposal service
         return {
           content: 'Generated content',
@@ -2214,7 +2171,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         rfpId: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Pricing analysis logic
         return {
           suggestedPrice: 0,
@@ -2233,7 +2190,7 @@ export class MastraWorkflowEngine {
         proposalId: z.string(),
         portalId: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Submission logic
         return {
           status: 'submitted',
@@ -2250,7 +2207,7 @@ export class MastraWorkflowEngine {
       inputSchema: z.object({
         submissionId: z.string(),
       }),
-      execute: async context => {
+      execute: async () => {
         // Tracking logic
         return {
           status: 'pending',

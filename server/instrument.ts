@@ -54,7 +54,7 @@ init({
   },
 
   // Before send hook to filter out sensitive data
-  beforeSend(event, hint) {
+  beforeSend(event) {
     // Filter out database URLs and other sensitive data from breadcrumbs and context
     if (event.breadcrumbs) {
       event.breadcrumbs = event.breadcrumbs.map(breadcrumb => {

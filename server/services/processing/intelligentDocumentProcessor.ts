@@ -1,4 +1,3 @@
-import { storage } from '../../storage';
 import { selfImprovingLearningService } from '../learning/selfImprovingLearningService';
 import { agentMemoryService } from '../agents/agentMemoryService';
 
@@ -524,10 +523,7 @@ export class IntelligentDocumentProcessor {
 
     // Use heuristics if no strong pattern match
     if (identification.confidence < 0.7) {
-      const heuristicResult = this.applyIdentificationHeuristics(
-        content,
-        metadata
-      );
+      const heuristicResult = this.applyIdentificationHeuristics(content);
       if (heuristicResult.confidence > identification.confidence) {
         Object.assign(identification, heuristicResult);
       }
@@ -584,8 +580,7 @@ export class IntelligentDocumentProcessor {
    * Apply heuristic rules for document identification
    */
   private applyIdentificationHeuristics(
-    content: string,
-    _metadata: DocumentMetadata
+    content: string
   ): DocumentIdentificationResult {
     const heuristics: DocumentIdentificationResult = {
       type: 'unknown',
@@ -753,13 +748,13 @@ export class IntelligentDocumentProcessor {
       case 'regex':
         return this.applyRegexPattern(content, pattern);
       case 'xpath':
-        return this.applyXPathPattern(content, pattern);
+        return this.applyXPathPattern();
       case 'semantic':
         return this.applySemanticPattern(content, pattern);
       case 'contextual':
         return this.applyContextualPattern(content, pattern);
       case 'ml_model':
-        return this.applyMLModelPattern(content, pattern);
+        return this.applyMLModelPattern();
       default:
         throw new Error(`Unknown pattern type: ${pattern.type}`);
     }
@@ -857,10 +852,7 @@ export class IntelligentDocumentProcessor {
           );
 
           if (contextValid) {
-            const extractedValue = this.extractValueFromLine(
-              line,
-              pattern.pattern
-            );
+            const extractedValue = this.extractValueFromLine(line);
             return {
               value: extractedValue,
               confidence: pattern.confidence,
@@ -883,10 +875,7 @@ export class IntelligentDocumentProcessor {
    * Apply ML model pattern (placeholder for future ML integration)
    * TODO: Implement ML model-based field extraction
    */
-  private applyMLModelPattern(
-    content: string,
-    pattern: ExtractionPattern
-  ): ExtractedFieldResult {
+  private applyMLModelPattern(): ExtractedFieldResult {
     // Placeholder for ML model integration
     // This would use trained models for field extraction
     throw new Error('applyMLModelPattern not implemented');
@@ -896,10 +885,7 @@ export class IntelligentDocumentProcessor {
    * Apply XPath pattern (for structured documents)
    * TODO: Implement XPath-based field extraction for XML/HTML documents
    */
-  private applyXPathPattern(
-    content: string,
-    pattern: ExtractionPattern
-  ): ExtractedFieldResult {
+  private applyXPathPattern(): ExtractedFieldResult {
     // Placeholder for XPath implementation
     // This would parse XML/HTML and apply XPath queries
     throw new Error('applyXPathPattern not implemented');
@@ -1047,22 +1033,20 @@ export class IntelligentDocumentProcessor {
     for (const rule of postProcessingRules) {
       switch (rule.type) {
         case 'format':
-          processedData = this.formatFieldValue(processedData, rule);
+          processedData = this.formatFieldValue(processedData);
           break;
         case 'normalize':
-          processedData = this.normalizeFieldValue(processedData, rule);
+          processedData = this.normalizeFieldValue(processedData);
           break;
         case 'enrich':
-          processedData = await this.enrichFieldValue(processedData, rule);
+          processedData = await this.enrichFieldValue(processedData);
           break;
         case 'validate':
-          processedData = this.validateFieldValueInPostProcessing(
-            processedData,
-            rule
-          );
+          processedData =
+            this.validateFieldValueInPostProcessing(processedData);
           break;
         case 'correct':
-          processedData = this.correctFieldValue(processedData, rule);
+          processedData = this.correctFieldValue(processedData);
           break;
       }
     }
@@ -1276,7 +1260,7 @@ export class IntelligentDocumentProcessor {
     );
   }
 
-  private extractValueFromLine(line: string, pattern: string): string | null {
+  private extractValueFromLine(line: string): string | null {
     // Extract value from line containing pattern
     const parts = line.split(/[:\-\t]/);
     if (parts.length > 1) {
@@ -1362,6 +1346,12 @@ export class IntelligentDocumentProcessor {
     rule: ValidationRule
   ): ValidationRuleResult {
     // Semantic validation (placeholder for more sophisticated logic)
+    // TODO: Implement semantic validation using rule.rule pattern
+    if (!value) {
+      return { valid: false, issueType: 'missing_value' };
+    }
+    // Future implementation will use rule.rule for semantic pattern matching
+    console.debug('Semantic validation rule:', rule.rule);
     return { valid: true };
   }
 
@@ -1370,44 +1360,45 @@ export class IntelligentDocumentProcessor {
     rule: ValidationRule
   ): ValidationRuleResult {
     // Contextual validation (placeholder)
+    // TODO: Implement contextual validation using rule.rule pattern
+    if (!value) {
+      return { valid: false, issueType: 'missing_value' };
+    }
+    // Future implementation will use rule.rule for contextual pattern matching
+    console.debug('Contextual validation rule:', rule.rule);
     return { valid: true };
   }
 
   private formatFieldValue(
-    fieldData: ExtractedFieldResult,
-    rule: PostProcessingRule
+    fieldData: ExtractedFieldResult
   ): ExtractedFieldResult {
     // Apply formatting rules
     return fieldData;
   }
 
   private normalizeFieldValue(
-    fieldData: ExtractedFieldResult,
-    rule: PostProcessingRule
+    fieldData: ExtractedFieldResult
   ): ExtractedFieldResult {
     // Apply normalization rules
     return fieldData;
   }
 
   private async enrichFieldValue(
-    fieldData: ExtractedFieldResult,
-    rule: PostProcessingRule
+    fieldData: ExtractedFieldResult
   ): Promise<ExtractedFieldResult> {
     // Apply enrichment rules
     return fieldData;
   }
 
   private validateFieldValueInPostProcessing(
-    fieldData: ExtractedFieldResult,
-    rule: PostProcessingRule
+    fieldData: ExtractedFieldResult
   ): ExtractedFieldResult {
     // Apply validation in post-processing
     return fieldData;
   }
 
   private correctFieldValue(
-    fieldData: ExtractedFieldResult,
-    rule: PostProcessingRule
+    fieldData: ExtractedFieldResult
   ): ExtractedFieldResult {
     // Apply correction rules
     return fieldData;
@@ -1505,7 +1496,7 @@ export class IntelligentDocumentProcessor {
         structuralMarkers: this.getDefaultStructuralMarkers(documentType),
         confidenceThreshold: 0.7,
       },
-      extractionRules: this.getDefaultExtractionRules(documentType, domain),
+      extractionRules: this.getDefaultExtractionRules(documentType),
       learningData: {
         createdAt: new Date(),
         lastUpdated: new Date(),
@@ -1591,7 +1582,7 @@ export class IntelligentDocumentProcessor {
     return markers[documentType] || [];
   }
 
-  private getDefaultExtractionRules(documentType: string, domain: string): any {
+  private getDefaultExtractionRules(documentType: string): any {
     // Return default extraction rules based on document type and domain
     const rules: Record<string, Record<string, unknown>> = {
       rfp_document: {
@@ -2119,7 +2110,7 @@ export class IntelligentDocumentProcessor {
 
   private async applyParsingAdaptation(
     strategy: DocumentParsingStrategy,
-    adaptation: any
+    adaptation: Record<string, unknown>
   ): Promise<void> {
     switch (adaptation.type) {
       case 'confidence_adjustment':
@@ -2129,7 +2120,7 @@ export class IntelligentDocumentProcessor {
         this.updateValidationRules(strategy, adaptation);
         break;
       case 'pattern_addition':
-        this.addNewPatterns(strategy, adaptation);
+        this.addNewPatterns();
         break;
     }
   }
@@ -2160,10 +2151,7 @@ export class IntelligentDocumentProcessor {
     }
   }
 
-  private addNewPatterns(
-    strategy: DocumentParsingStrategy,
-    adaptation: any
-  ): void {
+  private addNewPatterns(): void {
     // Placeholder for adding new patterns based on adaptations
     console.log('Adding new patterns based on adaptation');
   }

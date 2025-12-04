@@ -6,10 +6,7 @@ import { enhancedProposalService } from '../services/proposals/enhancedProposalS
 import { proposalGenerationOrchestrator } from '../services/orchestrators/proposalGenerationOrchestrator';
 import { submissionMaterialsService } from '../services/processing/submissionMaterialsService';
 import { progressTracker } from '../services/monitoring/progressTracker';
-import {
-  claudeProposalService,
-  type ProposalQualityLevel,
-} from '../services/proposals/claude-proposal-service';
+import { claudeProposalService } from '../services/proposals/claude-proposal-service';
 import { validateRequest } from '../middleware/validation';
 import { handleAsyncError } from '../middleware/errorHandling';
 import {
@@ -404,8 +401,7 @@ router.post(
   heavyOperationLimiter,
   validateSchema(pipelineProposalGenerationSchema),
   handleAsyncError(async (req, res) => {
-    const { rfpIds, companyProfileId, priority, parallelExecution, options } =
-      req.body;
+    const { rfpIds, companyProfileId, parallelExecution, options } = req.body;
 
     const pipelineResults = await Promise.all(
       rfpIds.map((rfpId: string) =>
@@ -627,8 +623,8 @@ router.post(
     const id = req.params.id;
     const {
       materialTypes = ['cover_letter', 'technical_proposal', 'cost_proposal'],
-      options = {},
     } = req.body;
+    const options = req.body.options || {};
 
     // Try to get proposal by ID first, then by RFP ID
     let proposal = await storage.getProposal(id);

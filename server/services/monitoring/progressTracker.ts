@@ -222,7 +222,7 @@ class ProgressTracker extends EventEmitter {
         res.write(
           `data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`
         );
-      } catch (error) {
+      } catch {
         console.log(
           `📡 Heartbeat failed for session ${sessionId}, client will be removed on close`
         );
@@ -305,7 +305,7 @@ class ProgressTracker extends EventEmitter {
               `data: ${JSON.stringify({ type: 'complete', rfpId })}\n\n`
             );
             client.end();
-          } catch (error) {
+          } catch {
             // Client may already be disconnected
           }
         });
@@ -335,7 +335,7 @@ class ProgressTracker extends EventEmitter {
                 `data: ${JSON.stringify({ type: 'error', error })}\n\n`
               );
               client.end();
-            } catch (error) {
+            } catch {
               // Client may already be disconnected
             }
           });
@@ -353,14 +353,14 @@ class ProgressTracker extends EventEmitter {
     console.log('🛑 ProgressTracker shutdown initiated...');
 
     // Close all SSE clients
-    for (const [sessionId, clients] of this.sseClients) {
+    for (const [, clients] of this.sseClients) {
       clients.forEach(client => {
         try {
           client.write(
             `data: ${JSON.stringify({ type: 'shutdown', message: 'Server shutting down' })}\n\n`
           );
           client.end();
-        } catch (error) {
+        } catch {
           // Client may already be disconnected
         }
       });

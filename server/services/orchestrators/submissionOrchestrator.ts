@@ -2,13 +2,7 @@ import { storage } from '../../storage';
 import { workflowCoordinator } from '../workflows/workflowCoordinator';
 import { agentRegistryService } from '../agents/agentRegistryService';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import { stagehandTools } from '../core/stagehandTools';
 import type {
-  Submission,
-  Proposal,
-  Portal,
-  RFP,
-  SubmissionPipeline,
   SubmissionPipelineMetadata,
   SubmissionPipelinePhase,
   SubmissionPipelineStatus,
@@ -16,13 +10,11 @@ import type {
   SubmissionPipelineResult,
   SubmissionPipelineResults,
   SubmissionPipelineErrorData,
-  SubmissionPhase,
   SubmissionPhaseResult,
   SubmissionVerificationResult,
   SubmissionLifecycleData,
   SubmissionReceiptData,
   WorkItem,
-  AgentSession,
 } from '@shared/schema';
 import { nanoid } from 'nanoid';
 import {
@@ -57,8 +49,6 @@ export interface SubmissionPipelineInstance {
   createdAt: Date;
   updatedAt: Date;
 }
-
-const SUBMISSION_PHASE_LIST = SUBMISSION_PHASES;
 
 const toErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
@@ -1316,7 +1306,7 @@ export class SubmissionOrchestrator {
   private calculateEstimatedCompletion(
     pipeline: SubmissionPipelineInstance
   ): Date {
-    const phases = SUBMISSION_PHASE_LIST;
+    const phases = SUBMISSION_PHASES;
     const currentIndex = isSubmissionPhase(pipeline.currentPhase)
       ? phases.indexOf(pipeline.currentPhase)
       : 0;

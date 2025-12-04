@@ -1,12 +1,12 @@
 import * as cron from 'node-cron';
 import cronParser from 'cron-parser';
-import { captureException, addBreadcrumb, withScope } from '@sentry/node';
+import { captureException, withScope } from '@sentry/node';
 import {
   PortalMonitoringService,
   PortalScanResult,
 } from '../monitoring/portal-monitoring-service';
 import { IStorage } from '../../storage';
-import { Portal, PublicPortal } from '@shared/schema';
+import { PublicPortal } from '@shared/schema';
 
 export interface ScheduledJob {
   portalId: string;

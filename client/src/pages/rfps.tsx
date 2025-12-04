@@ -85,7 +85,10 @@ export default function RFPsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" data-testid="rfps-page">
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      data-testid="rfps-page"
+    >
       <div className="p-6 pb-0 shrink-0">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">RFPs</h1>
@@ -101,8 +104,8 @@ export default function RFPsPage() {
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-muted-foreground">
-                  No RFPs found. Check your portal configurations and try scanning
-                  again.
+                  No RFPs found. Check your portal configurations and try
+                  scanning again.
                 </p>
               </CardContent>
             </Card>
@@ -177,7 +180,8 @@ export default function RFPsPage() {
                           className="text-xs font-medium px-3 py-1 min-w-[80px] justify-center"
                           data-testid={`rfp-status-${rfp.id}`}
                         >
-                          {rfp.status.charAt(0).toUpperCase() + rfp.status.slice(1)}
+                          {rfp.status.charAt(0).toUpperCase() +
+                            rfp.status.slice(1)}
                         </Badge>
                       </div>
                       <div>

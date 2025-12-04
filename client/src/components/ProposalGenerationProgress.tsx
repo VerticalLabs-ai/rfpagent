@@ -65,7 +65,6 @@ export function ProposalGenerationProgress({
   onError,
 }: ProposalGenerationProgressProps) {
   const [steps, setSteps] = useState<ProgressStep[]>(GENERATION_STEPS);
-  const [currentStep, setCurrentStep] = useState<string>('init');
   const [overallProgress, setOverallProgress] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
@@ -142,11 +141,6 @@ export function ProposalGenerationProgress({
               return step;
             })
           );
-
-          // Update current step
-          if (progressData.currentStep) {
-            setCurrentStep(progressData.currentStep);
-          }
 
           // Handle completion
           if (progressData.status === 'completed') {
@@ -233,7 +227,7 @@ export function ProposalGenerationProgress({
 
         {/* Steps */}
         <div className="space-y-3">
-          {steps.map((step, index) => (
+          {steps.map(step => (
             <div
               key={step.id}
               className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${

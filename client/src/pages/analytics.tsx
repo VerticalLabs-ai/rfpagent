@@ -15,7 +15,7 @@ export default function Analytics() {
     queryKey: ['/api/rfps', 'detailed'],
   });
 
-  const { data: portalActivity, isLoading: portalLoading } = useQuery({
+  const { isLoading: portalLoading } = useQuery({
     queryKey: ['/api/portals/activity'],
   });
 
@@ -83,7 +83,7 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="portals" className="space-y-6">
-          <PortalAnalytics portalActivity={portalActivity} />
+          <PortalAnalytics />
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
@@ -248,7 +248,6 @@ function OverviewAnalytics({
 }
 
 function PerformanceAnalytics({
-  metrics,
   rfps,
 }: {
   metrics?: DashboardMetrics;
@@ -338,7 +337,11 @@ function PerformanceAnalytics({
   );
 }
 
-function PortalAnalytics({ portalActivity }: any) {
+function PortalAnalytics() {
+  const { data: portalActivity } = useQuery({
+    queryKey: ['/api/portals/activity'],
+  });
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

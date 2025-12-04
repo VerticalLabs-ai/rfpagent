@@ -1,10 +1,5 @@
 import { IStorage, storage } from '../../storage';
-import type {
-  Scan,
-  ScanEvent,
-  InsertScan,
-  InsertScanEvent,
-} from '@shared/schema';
+import type { Scan, InsertScan, InsertScanEvent } from '@shared/schema';
 
 export interface ScanHistoryItem {
   id: string;
@@ -120,7 +115,6 @@ export class ScanHistoryService {
     }>;
   }> {
     try {
-      const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - days);
 

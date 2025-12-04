@@ -1,5 +1,3 @@
-import type { Portal } from '@shared/schema';
-
 // Core types for the scraping service architecture
 export interface ScrapingContext {
   url: string;

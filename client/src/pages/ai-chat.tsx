@@ -52,11 +52,11 @@ interface ChatResponse {
   conversationId: string;
   message: string;
   messageType:
-  | 'text'
-  | 'rfp_results'
-  | 'search_results'
-  | 'analysis'
-  | 'follow_up';
+    | 'text'
+    | 'rfp_results'
+    | 'search_results'
+    | 'analysis'
+    | 'follow_up';
   data?: any;
   followUpQuestions?: string[];
   actionSuggestions?: ActionSuggestion[];
@@ -378,12 +378,13 @@ export default function AIChat() {
                         </Badge>
                         <Badge
                           variant="secondary"
-                          className={`text-xs px-1.5 py-0.5 ${suggestion.priority === 'high'
-                            ? 'bg-red-100 text-red-800'
-                            : suggestion.priority === 'medium'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-blue-100 text-blue-800'
-                            }`}
+                          className={`text-xs px-1.5 py-0.5 ${
+                            suggestion.priority === 'high'
+                              ? 'bg-red-100 text-red-800'
+                              : suggestion.priority === 'medium'
+                                ? 'bg-orange-100 text-orange-800'
+                                : 'bg-blue-100 text-blue-800'
+                          }`}
                         >
                           {suggestion.priority}
                         </Badge>
@@ -443,10 +444,11 @@ export default function AIChat() {
               (conversation: Conversation) => (
                 <Card
                   key={conversation.id}
-                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${currentConversationId === conversation.id
-                    ? 'ring-2 ring-primary'
-                    : ''
-                    }`}
+                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                    currentConversationId === conversation.id
+                      ? 'ring-2 ring-primary'
+                      : ''
+                  }`}
                   onClick={() => selectConversation(conversation.id)}
                   data-testid={`conversation-card-${conversation.id}`}
                 >
@@ -471,11 +473,16 @@ export default function AIChat() {
                         </Button>
                       </div>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <Badge variant="secondary" className="text-[10px] px-1.5 h-5 font-normal">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] px-1.5 h-5 font-normal"
+                        >
                           {conversation.type}
                         </Badge>
                         <span>
-                          {new Date(conversation.updatedAt).toLocaleDateString()}
+                          {new Date(
+                            conversation.updatedAt
+                          ).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -486,12 +493,12 @@ export default function AIChat() {
 
             {(!conversations ||
               (conversations as Conversation[])?.length === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No conversations yet</p>
-                  <p className="text-xs">Start chatting with the AI agent</p>
-                </div>
-              )}
+              <div className="text-center py-8 text-muted-foreground">
+                <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No conversations yet</p>
+                <p className="text-xs">Start chatting with the AI agent</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
@@ -522,8 +529,9 @@ export default function AIChat() {
               (message: ChatMessage) => (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'
-                    }`}
+                  className={`flex gap-3 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
                   {message.role !== 'user' && (
                     <Avatar className="h-8 w-8">
@@ -534,10 +542,11 @@ export default function AIChat() {
                   )}
 
                   <div
-                    className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                      }`}
+                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                      message.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}
                     data-testid={`message-${message.role}-${message.id}`}
                   >
                     {message.role === 'user' ? (

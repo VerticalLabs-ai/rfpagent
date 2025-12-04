@@ -50,7 +50,7 @@ export class HTMLContentExtractor extends BaseContentExtractor {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
-      const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+      const minConfidence = this.getMinimumConfidenceThreshold();
       const filteredOpportunities = opportunities.filter(
         opp => (opp.confidence || 0) >= minConfidence
       );
@@ -594,7 +594,7 @@ export class HTMLContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for HTML extraction
    */
-  private getMinimumConfidenceThreshold(portalContext: string): number {
+  private getMinimumConfidenceThreshold(): number {
     // HTML extraction is less specific, so use lower threshold
     return 0.3;
   }

@@ -147,7 +147,7 @@ export class ScrapingOrchestrator {
         await sessionManager.getSession(context.sessionId);
         console.log(`🔄 Reusing existing session: ${context.sessionId}`);
         return context.sessionId;
-      } catch (error) {
+      } catch {
         console.warn(
           `⚠️ Session ${context.sessionId} not found, creating new session`
         );
@@ -324,14 +324,14 @@ export class ScrapingOrchestrator {
 
       // Get page content using browser session
       const sessionManager = this.services.getBrowserSessionManager();
-      const session = await sessionManager.getSession(sessionId);
+      await sessionManager.getSession(sessionId);
 
       // For now, we need to get the page content somehow
       // This would typically come from the browser session or a separate content fetching step
       // For this implementation, we'll use a placeholder and let the content processor
       // work with what it can extract from the URL and context
 
-      const mockContent = await this.fetchPageContent(context.url, session);
+      const mockContent = await this.fetchPageContent(context.url);
 
       if (!mockContent) {
         console.log(`⚠️ No content available for processing`);
@@ -373,10 +373,7 @@ export class ScrapingOrchestrator {
    * Fetch page content (placeholder implementation)
    * In a real implementation, this would get content from the browser session
    */
-  private async fetchPageContent(
-    url: string,
-    session: any
-  ): Promise<string | null> {
+  private async fetchPageContent(url: string): Promise<string | null> {
     // This is a placeholder - in the real implementation, this would:
     // 1. Use the browser session to navigate to the URL
     // 2. Extract the page content (HTML)
@@ -427,30 +424,32 @@ export class ScrapingOrchestrator {
     }
 
     // Handle union type for data - could be object or string
-    const dataObj = typeof extractionResult.data === 'object' && extractionResult.data !== null
-      ? extractionResult.data
-      : undefined;
+    const dataObj =
+      typeof extractionResult.data === 'object' &&
+      extractionResult.data !== null
+        ? extractionResult.data
+        : undefined;
     const rawOpportunities =
-      extractionResult.opportunities ??
-      dataObj?.opportunities ??
-      [];
+      extractionResult.opportunities ?? dataObj?.opportunities ?? [];
 
-    const opportunities: RFPOpportunity[] = rawOpportunities.map((raw: z.infer<typeof StagehandOpportunitySchema>) => {
-      const parsed = StagehandOpportunitySchema.parse(raw);
-      return {
-        title: parsed.title ?? 'Untitled opportunity',
-        description:
-          parsed.description ??
-          'Description not provided by automated extraction.',
-        agency: parsed.agency ?? undefined,
-        deadline: parsed.deadline ?? undefined,
-        estimatedValue: parsed.estimatedValue ?? undefined,
-        url: parsed.url ?? parsed.link ?? undefined,
-        link: parsed.link ?? parsed.url ?? undefined,
-        category: parsed.category ?? undefined,
-        confidence: parsed.confidence ?? undefined,
-      };
-    });
+    const opportunities: RFPOpportunity[] = rawOpportunities.map(
+      (raw: z.infer<typeof StagehandOpportunitySchema>) => {
+        const parsed = StagehandOpportunitySchema.parse(raw);
+        return {
+          title: parsed.title ?? 'Untitled opportunity',
+          description:
+            parsed.description ??
+            'Description not provided by automated extraction.',
+          agency: parsed.agency ?? undefined,
+          deadline: parsed.deadline ?? undefined,
+          estimatedValue: parsed.estimatedValue ?? undefined,
+          url: parsed.url ?? parsed.link ?? undefined,
+          link: parsed.link ?? parsed.url ?? undefined,
+          category: parsed.category ?? undefined,
+          confidence: parsed.confidence ?? undefined,
+        };
+      }
+    );
     console.log(
       `📄 Fallback extraction yielded ${opportunities.length} opportunities`
     );

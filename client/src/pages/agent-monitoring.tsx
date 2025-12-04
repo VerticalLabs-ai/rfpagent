@@ -233,8 +233,8 @@ export default function AgentMonitoring() {
             Agent Performance Monitoring
           </h1>
           <p className="text-muted-foreground">
-            Real-time insights into AI agent performance, coordination, and system
-            health
+            Real-time insights into AI agent performance, coordination, and
+            system health
           </p>
         </div>
 
@@ -242,17 +242,20 @@ export default function AgentMonitoring() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <Card data-testid="card-system-health">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">System Health</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                System Health
+              </CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div
-                className={`text-2xl font-bold capitalize ${safeSystemHealth.systemStatus === 'healthy'
+                className={`text-2xl font-bold capitalize ${
+                  safeSystemHealth.systemStatus === 'healthy'
                     ? 'text-green-600'
                     : safeSystemHealth.systemStatus === 'degraded'
                       ? 'text-yellow-600'
                       : 'text-red-600'
-                  }`}
+                }`}
                 data-testid="text-system-status"
               >
                 {safeSystemHealth.systemStatus.replace(/_/g, ' ').toLowerCase()}
@@ -301,11 +304,16 @@ export default function AgentMonitoring() {
 
           <Card data-testid="card-workflow-success">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Success Rate
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-success-rate">
+              <div
+                className="text-2xl font-bold"
+                data-testid="text-success-rate"
+              >
                 {safeSystemHealth.successRate.toFixed(1)}%
               </div>
               <Progress
@@ -318,7 +326,9 @@ export default function AgentMonitoring() {
 
           <Card data-testid="card-avg-execution">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Execution</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Avg Execution
+              </CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -334,7 +344,10 @@ export default function AgentMonitoring() {
         </div>
       </div>
 
-      <Tabs defaultValue="configuration" className="flex flex-col flex-1 overflow-hidden mt-6">
+      <Tabs
+        defaultValue="configuration"
+        className="flex flex-col flex-1 overflow-hidden mt-6"
+      >
         <div className="px-6 pb-4 shrink-0">
           <TabsList>
             <TabsTrigger value="configuration" data-testid="tab-configuration">
@@ -372,8 +385,8 @@ export default function AgentMonitoring() {
                     Mastra Agent Registry
                   </CardTitle>
                   <p className="text-sm text-muted-foreground">
-                    View and configure the 3-tier agent system: 1 Orchestrator, 3
-                    Managers, 7 Specialists
+                    View and configure the 3-tier agent system: 1 Orchestrator,
+                    3 Managers, 7 Specialists
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -584,7 +597,9 @@ export default function AgentMonitoring() {
                     </div>
                     <div className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
-                        <div className="font-medium">Bonfire Authentication</div>
+                        <div className="font-medium">
+                          Bonfire Authentication
+                        </div>
                         <div className="text-sm text-muted-foreground">
                           Handle 2FA for Bonfire portals
                         </div>
@@ -612,110 +627,117 @@ export default function AgentMonitoring() {
                     {safeAgentActivities.length === 0 ? (
                       <div className="text-center py-12 text-muted-foreground">
                         <Activity className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                        <p className="text-lg font-medium mb-2">No Activity Yet</p>
+                        <p className="text-lg font-medium mb-2">
+                          No Activity Yet
+                        </p>
                         <p className="text-sm">
                           Agent activities will appear here when RFPs are being
                           processed
                         </p>
                       </div>
                     ) : (
-                      safeAgentActivities.slice(0, 20).map((activity, index) => {
-                        const status = activity.status ?? 'pending';
-                        const timestamp = activity.updatedAt
-                          ? new Date(activity.updatedAt).toLocaleString()
-                          : 'N/A';
-                        const statusStyles =
-                          status === 'completed'
-                            ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
-                            : status === 'failed'
-                              ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
-                              : status === 'in_progress'
-                                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-                                : 'bg-muted/50 text-muted-foreground border-border';
-                        const statusIcon =
-                          status === 'completed' ? (
-                            <CheckCircle className="h-4 w-4" />
-                          ) : status === 'failed' ? (
-                            <XCircle className="h-4 w-4" />
-                          ) : status === 'in_progress' ? (
-                            <RotateCcw className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <PauseCircle className="h-4 w-4" />
-                          );
+                      safeAgentActivities
+                        .slice(0, 20)
+                        .map((activity, index) => {
+                          const status = activity.status ?? 'pending';
+                          const timestamp = activity.updatedAt
+                            ? new Date(activity.updatedAt).toLocaleString()
+                            : 'N/A';
+                          const statusStyles =
+                            status === 'completed'
+                              ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20'
+                              : status === 'failed'
+                                ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20'
+                                : status === 'in_progress'
+                                  ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
+                                  : 'bg-muted/50 text-muted-foreground border-border';
+                          const statusIcon =
+                            status === 'completed' ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : status === 'failed' ? (
+                              <XCircle className="h-4 w-4" />
+                            ) : status === 'in_progress' ? (
+                              <RotateCcw className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <PauseCircle className="h-4 w-4" />
+                            );
 
-                        const agentDisplayName =
-                          activity.agentId?.replace(/-/g, ' ').replace(/_/g, ' ') ||
-                          'System';
-                        const taskDisplayName = activity.taskType
-                          .replace(/_/g, ' ')
-                          .replace(/-/g, ' ');
+                          const agentDisplayName =
+                            activity.agentId
+                              ?.replace(/-/g, ' ')
+                              .replace(/_/g, ' ') || 'System';
+                          const taskDisplayName = activity.taskType
+                            .replace(/_/g, ' ')
+                            .replace(/-/g, ' ');
 
-                        return (
-                          <div
-                            key={activity.id}
-                            className={`flex items-start gap-3 p-4 rounded-lg border ${statusStyles} hover:shadow-sm transition-all`}
-                            data-testid={`activity-item-${index}`}
-                          >
-                            <div className="flex-shrink-0 mt-0.5">{statusIcon}</div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-semibold capitalize text-sm">
-                                      {taskDisplayName}
-                                    </span>
-                                    {activity.workflowId && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-xs px-1.5 py-0"
-                                      >
-                                        Workflow
-                                      </Badge>
+                          return (
+                            <div
+                              key={activity.id}
+                              className={`flex items-start gap-3 p-4 rounded-lg border ${statusStyles} hover:shadow-sm transition-all`}
+                              data-testid={`activity-item-${index}`}
+                            >
+                              <div className="flex-shrink-0 mt-0.5">
+                                {statusIcon}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-semibold capitalize text-sm">
+                                        {taskDisplayName}
+                                      </span>
+                                      {activity.workflowId && (
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs px-1.5 py-0"
+                                        >
+                                          Workflow
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                                      <Bot className="h-3 w-3" />
+                                      <span className="capitalize">
+                                        {agentDisplayName}
+                                      </span>
+                                      <span>•</span>
+                                      <Clock className="h-3 w-3" />
+                                      <span>{timestamp}</span>
+                                      {activity.priority > 0 && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="font-medium">
+                                            P{activity.priority}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {activity.description && (
+                                      <p className="text-sm text-foreground/80 mt-1">
+                                        {activity.description}
+                                      </p>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                                    <Bot className="h-3 w-3" />
-                                    <span className="capitalize">
-                                      {agentDisplayName}
-                                    </span>
-                                    <span>•</span>
-                                    <Clock className="h-3 w-3" />
-                                    <span>{timestamp}</span>
-                                    {activity.priority > 0 && (
-                                      <>
-                                        <span>•</span>
-                                        <span className="font-medium">
-                                          P{activity.priority}
-                                        </span>
-                                      </>
+                                  <Badge
+                                    variant={
+                                      status === 'failed'
+                                        ? 'destructive'
+                                        : status === 'completed'
+                                          ? 'default'
+                                          : 'secondary'
+                                    }
+                                    className="ml-2"
+                                  >
+                                    {status === 'in_progress' && (
+                                      <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
                                     )}
-                                  </div>
-                                  {activity.description && (
-                                    <p className="text-sm text-foreground/80 mt-1">
-                                      {activity.description}
-                                    </p>
-                                  )}
+                                    {status.replace('_', ' ')}
+                                  </Badge>
                                 </div>
-                                <Badge
-                                  variant={
-                                    status === 'failed'
-                                      ? 'destructive'
-                                      : status === 'completed'
-                                        ? 'default'
-                                        : 'secondary'
-                                  }
-                                  className="ml-2"
-                                >
-                                  {status === 'in_progress' && (
-                                    <RotateCcw className="h-3 w-3 mr-1 animate-spin" />
-                                  )}
-                                  {status.replace('_', ' ')}
-                                </Badge>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })
                     )}
                   </div>
                 </CardContent>
@@ -732,35 +754,37 @@ export default function AgentMonitoring() {
                     <div className="space-y-4">
                       {agentPerformance
                         ?.slice(0, 5)
-                        .map((metric: AgentPerformanceMetric, index: number) => {
-                          const metricLabel = metric.metricType ?? 'metric';
-                          const metricValue = metric.metricValue ?? 0;
-                          const recordedDate = metric.recordedAt
-                            ? new Date(metric.recordedAt).toLocaleDateString()
-                            : 'N/A';
+                        .map(
+                          (metric: AgentPerformanceMetric, index: number) => {
+                            const metricLabel = metric.metricType ?? 'metric';
+                            const metricValue = metric.metricValue ?? 0;
+                            const recordedDate = metric.recordedAt
+                              ? new Date(metric.recordedAt).toLocaleDateString()
+                              : 'N/A';
 
-                          return (
-                            <div
-                              key={metric.id ?? index}
-                              className="flex items-center justify-between"
-                            >
-                              <div>
-                                <div className="font-medium">
-                                  {metric.agentId ?? 'Unknown Agent'}
+                            return (
+                              <div
+                                key={metric.id ?? index}
+                                className="flex items-center justify-between"
+                              >
+                                <div>
+                                  <div className="font-medium">
+                                    {metric.agentId ?? 'Unknown Agent'}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {metricLabel}
+                                  </div>
                                 </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {metricLabel}
+                                <div className="text-right">
+                                  <div className="font-bold">{metricValue}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {recordedDate}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <div className="font-bold">{metricValue}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {recordedDate}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          }
+                        )}
                     </div>
                   </CardContent>
                 </Card>
@@ -952,7 +976,9 @@ export default function AgentMonitoring() {
                     >
                       {Math.round(safeSystemHealth.avgExecutionTimeSeconds)}s
                     </div>
-                    <p className="text-sm text-muted-foreground">per workflow</p>
+                    <p className="text-sm text-muted-foreground">
+                      per workflow
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -989,7 +1015,9 @@ export default function AgentMonitoring() {
               <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                 <Card data-testid="card-discovery-phase">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Discovery</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Discovery
+                    </CardTitle>
                     <PlayCircle className="h-4 w-4 text-blue-500" />
                   </CardHeader>
                   <CardContent>
@@ -1007,7 +1035,9 @@ export default function AgentMonitoring() {
 
                 <Card data-testid="card-analysis-phase">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Analysis</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Analysis
+                    </CardTitle>
                     <Bot className="h-4 w-4 text-amber-500" />
                   </CardHeader>
                   <CardContent>
@@ -1065,7 +1095,9 @@ export default function AgentMonitoring() {
 
                 <Card data-testid="card-completed-phase">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                    <CardTitle className="text-sm font-medium">
+                      Completed
+                    </CardTitle>
                     <CheckCircle className="h-4 w-4 text-green-500" />
                   </CardHeader>
                   <CardContent>
@@ -1102,8 +1134,8 @@ export default function AgentMonitoring() {
                       value={
                         transitionMetrics.totalTransitions > 0
                           ? (transitionMetrics.successfulTransitions /
-                            transitionMetrics.totalTransitions) *
-                          100
+                              transitionMetrics.totalTransitions) *
+                            100
                           : 0
                       }
                       className="mt-2"
@@ -1243,17 +1275,17 @@ export default function AgentMonitoring() {
                     {(safeWorkflowStates.workflows.length === 0 ||
                       safeWorkflowStates.workflows.filter(hasActiveProgress)
                         .length === 0) && (
-                        <div className="text-center py-12 text-muted-foreground">
-                          <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                          <p className="text-lg font-medium mb-2">
-                            No Active Workflows
-                          </p>
-                          <p className="text-sm">
-                            Workflows will appear here once you start scanning portals
-                            or generating proposals
-                          </p>
-                        </div>
-                      )}
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Workflow className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                        <p className="text-lg font-medium mb-2">
+                          No Active Workflows
+                        </p>
+                        <p className="text-sm">
+                          Workflows will appear here once you start scanning
+                          portals or generating proposals
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

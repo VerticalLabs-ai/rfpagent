@@ -1,5 +1,4 @@
 import { storage } from '../../storage';
-import { enhancedSaflaLearningEngine } from '../learning/saflaLearningEngine.enhanced';
 
 /**
  * Prediction Log for tracking AI predictions and outcomes
@@ -241,6 +240,10 @@ export class IntelligenceBenchmarks {
    */
   private async measureLearningMetrics(): Promise<LearningMetrics> {
     try {
+      // Import dynamically to avoid circular dependencies
+      const { enhancedSaflaLearningEngine } = await import(
+        '../learning/saflaLearningEngine.enhanced'
+      );
       const enhancedMetrics =
         await enhancedSaflaLearningEngine.getEnhancedMetrics();
 
@@ -346,6 +349,9 @@ export class IntelligenceBenchmarks {
         await this.calculateTransferLearningSuccess();
 
       // Calculate exploration balance
+      const { enhancedSaflaLearningEngine } = await import(
+        '../learning/saflaLearningEngine.enhanced'
+      );
       const enhancedMetrics =
         await enhancedSaflaLearningEngine.getEnhancedMetrics();
       const explorationBalance =
@@ -484,7 +490,7 @@ export class IntelligenceBenchmarks {
     const trends = this.analyzeTrends(metrics);
 
     // Generate recommendations
-    const recommendations = this.generateRecommendations(metrics, trends);
+    const recommendations = this.generateRecommendations(metrics);
 
     // Generate alerts
     const alerts = this.generateAlerts(metrics, trends);
@@ -573,11 +579,7 @@ export class IntelligenceBenchmarks {
 
     const previousMetrics =
       this.benchmarkHistory[this.benchmarkHistory.length - 2];
-    const trends: Array<{
-      metric: string;
-      direction: 'improving' | 'stable' | 'declining';
-      change: number;
-    }> = [];
+    const trends: ReturnType<typeof this.analyzeTrends> = [];
 
     // Learning trends
     const successRateChange =
@@ -630,10 +632,7 @@ export class IntelligenceBenchmarks {
   /**
    * Generate actionable recommendations
    */
-  private generateRecommendations(
-    metrics: BenchmarkMetrics,
-    trends: any[]
-  ): string[] {
+  private generateRecommendations(metrics: BenchmarkMetrics): string[] {
     const recommendations: string[] = [];
 
     // Learning recommendations
@@ -699,15 +698,12 @@ export class IntelligenceBenchmarks {
    */
   private generateAlerts(
     metrics: BenchmarkMetrics,
-    trends: any[]
+    trends: ReturnType<typeof this.analyzeTrends>
   ): Array<{
     severity: 'info' | 'warning' | 'critical';
     message: string;
   }> {
-    const alerts: Array<{
-      severity: 'info' | 'warning' | 'critical';
-      message: string;
-    }> = [];
+    const alerts: ReturnType<typeof this.generateAlerts> = [];
 
     // Critical alerts
     if (metrics.operational.uptime < 0.95) {
@@ -758,7 +754,7 @@ export class IntelligenceBenchmarks {
   private generateSummary(
     metrics: BenchmarkMetrics,
     overallScore: number,
-    trends: any[]
+    trends: ReturnType<typeof this.analyzeTrends>
   ): string {
     const grade =
       overallScore >= 90
@@ -822,6 +818,9 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
     // TODO: Track number of iterations for strategies to converge
     // For now, analyze from learning events
     try {
+      const { enhancedSaflaLearningEngine } = await import(
+        '../learning/saflaLearningEngine.enhanced'
+      );
       const enhancedMetrics =
         await enhancedSaflaLearningEngine.getEnhancedMetrics();
       // Use inverse of learning rate as proxy for adaptation speed
@@ -861,6 +860,9 @@ Trends: ${improvingCount} improving, ${decliningCount} declining
     // TODO: Implement knowledge retention tracking over time
     // For now, use learning metrics as proxy
     try {
+      const { enhancedSaflaLearningEngine } = await import(
+        '../learning/saflaLearningEngine.enhanced'
+      );
       const enhancedMetrics =
         await enhancedSaflaLearningEngine.getEnhancedMetrics();
       return enhancedMetrics.learning.averageConfidence;

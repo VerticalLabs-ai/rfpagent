@@ -37,9 +37,7 @@ export type FilterValueMap = {
 };
 
 // Generic filter option type that enforces correct value types
-export type FilterOption<
-  T extends keyof FilterValueMap = keyof FilterValueMap,
-> = {
+export type FilterOption = {
   id: string;
   label: string;
   placeholder?: string;

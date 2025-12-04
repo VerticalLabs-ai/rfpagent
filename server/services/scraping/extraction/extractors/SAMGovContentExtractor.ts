@@ -1,5 +1,5 @@
 import { BaseContentExtractor } from '../ContentExtractor';
-import { RFPOpportunity } from '../../types';
+import type { RFPOpportunity } from '../../types';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { logger } from '../../../../utils/logger';
@@ -27,20 +27,15 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
    * Intelligently chooses between API extraction and HTML scraping
    * based on content type and availability
    */
-  async extract(
-    content: string,
-    url: string,
-    portalContext: string
-  ): Promise<RFPOpportunity[]> {
+  async extract(content: string, url: string): Promise<RFPOpportunity[]> {
     try {
       logger.info('Starting SAM.gov content extraction', {
         url,
-        portalContext,
       });
 
       // Strategy 1: Try API-based extraction first if we have API key
       if (this.hasApiKey()) {
-        const apiOpportunities = await this.extractFromAPI(url, portalContext);
+        const apiOpportunities = await this.extractFromAPI(url);
         if (apiOpportunities.length > 0) {
           logger.info('SAM.gov API extraction successful', {
             url,
@@ -59,11 +54,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
         return [];
       }
 
-      const htmlOpportunities = await this.extractFromHTML(
-        content,
-        url,
-        portalContext
-      );
+      const htmlOpportunities = await this.extractFromHTML(content, url);
 
       logger.info('SAM.gov extraction completed', {
         url,
@@ -72,7 +63,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       });
 
       return htmlOpportunities;
-    } catch (error: any) {
+    } catch (error) {
       logger.error('SAM.gov content extraction failed', error, { url });
       return [];
     }
@@ -92,10 +83,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
    * Extract opportunities using SAM.gov API
    * Primary extraction method - more reliable and structured
    */
-  private async extractFromAPI(
-    url: string,
-    portalContext: string
-  ): Promise<RFPOpportunity[]> {
+  private async extractFromAPI(url: string): Promise<RFPOpportunity[]> {
     try {
       const apiKey = process.env.SAM_GOV_API_KEY;
       if (!apiKey) {
@@ -148,13 +136,13 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
-      const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+      const minConfidence = this.getMinimumConfidenceThreshold();
       const filtered = opportunities.filter(
         (opp: RFPOpportunity) => (opp.confidence || 0) >= minConfidence
       );
 
       return this.removeDuplicates(filtered);
-    } catch (error: any) {
+    } catch (error) {
       logger.error('SAM.gov API extraction failed', error, {
         endpoint: `${this.SAM_BASE_URL}/search`,
       });
@@ -218,7 +206,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
           state: params.get('state') || undefined,
         },
       };
-    } catch (error) {
+    } catch {
       // If URL parsing fails, return defaults
       const today = new Date();
       const currentYear = today.getFullYear();
@@ -236,8 +224,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
    */
   private async extractFromHTML(
     content: string,
-    url: string,
-    portalContext: string
+    url: string
   ): Promise<RFPOpportunity[]> {
     const $ = cheerio.load(content);
     const opportunities: RFPOpportunity[] = [];
@@ -254,7 +241,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       opp.confidence = this.getConfidenceScore(opp);
     });
 
-    const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+    const minConfidence = this.getMinimumConfidenceThreshold();
     const filteredOpportunities = opportunities.filter(
       opp => (opp.confidence || 0) >= minConfidence
     );
@@ -309,8 +296,6 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       const deadline = this.extractDeadline($row);
       const link = this.extractLink($row, baseUrl);
       const solicitationNumber = this.extractSolicitationNumber($row);
-      const setAside = this.extractSetAside($row);
-      const naicsCode = this.extractNAICSCode($row);
 
       if (title && (link || solicitationNumber)) {
         opportunities.push({
@@ -358,7 +343,6 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       const agency = this.extractDetailAgency($);
       const deadline = this.extractDetailDeadline($);
       const solicitationNumber = this.extractDetailSolicitationNumber($);
-      const pointOfContact = this.extractPointOfContact($);
 
       if (title) {
         opportunities.push({
@@ -542,43 +526,6 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   }
 
   /**
-   * Extract set-aside information
-   */
-  private extractSetAside(
-    $row: cheerio.Cheerio<cheerio.Element>
-  ): string | undefined {
-    const text = $row.text().toLowerCase();
-    const setAsideTypes = [
-      'small business',
-      'woman-owned',
-      'veteran-owned',
-      'hubzone',
-      'sdvosb',
-      '8(a)',
-      'unrestricted',
-    ];
-
-    for (const type of setAsideTypes) {
-      if (text.includes(type)) {
-        return type;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Extract NAICS code
-   */
-  private extractNAICSCode(
-    $row: cheerio.Cheerio<cheerio.Element>
-  ): string | undefined {
-    const text = $row.text();
-    const naicsMatch = text.match(/NAICS[:\s]*(\d{6})/i);
-    return naicsMatch ? naicsMatch[1] : undefined;
-  }
-
-  /**
    * Extract estimated value
    */
   private extractEstimatedValue(
@@ -684,27 +631,6 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   }
 
   /**
-   * Extract point of contact
-   */
-  private extractPointOfContact($: cheerio.CheerioAPI): string | undefined {
-    const selectors = [
-      '.point-of-contact',
-      '.contact',
-      '.contracting-officer',
-      '[class*="contact"]',
-    ];
-
-    for (const selector of selectors) {
-      const contact = $(selector).first().text().trim();
-      if (contact && contact.length > 5) {
-        return contact;
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
    * Extract generic title
    */
   private extractGenericTitle($item: cheerio.Cheerio<cheerio.Element>): string {
@@ -763,7 +689,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for SAM.gov
    */
-  private getMinimumConfidenceThreshold(portalContext: string): number {
+  private getMinimumConfidenceThreshold(): number {
     // SAM.gov is highly structured, so we can use higher confidence thresholds
     return 0.7;
   }

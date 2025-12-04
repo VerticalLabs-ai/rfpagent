@@ -206,13 +206,13 @@ export class ProposalQualityEvaluator {
       }
 
       // Get or create evaluation model for this domain/type
-      const model = await this.getEvaluationModel(rfp, proposal);
+      const model = await this.getEvaluationModel(rfp);
 
       // Extract features from proposal
       const features = await this.extractProposalFeatures(proposal, rfp);
 
       // Perform component evaluations
-      const componentScores = await this.evaluateComponents(features, model);
+      const componentScores = await this.evaluateComponents(features);
 
       // Calculate overall score
       const overallScore = this.calculateOverallScore(
@@ -221,31 +221,23 @@ export class ProposalQualityEvaluator {
       );
 
       // Generate feedback and recommendations
-      const feedback = this.generateFeedback(componentScores, features);
-      const recommendations = await this.generateRecommendations(
-        componentScores,
-        features,
-        model
-      );
+      const feedback = this.generateFeedback(componentScores);
+      const recommendations =
+        await this.generateRecommendations(componentScores);
 
       // Assess risks
-      const riskAssessment = this.assessRisks(componentScores, features);
+      const riskAssessment = this.assessRisks(componentScores);
 
       // Perform comparative analysis
-      const benchmarkComparison = await this.performBenchmarkComparison(
-        overallScore,
-        rfp
-      );
-      const historicalComparison = await this.performHistoricalComparison(
-        overallScore,
-        rfp
-      );
+      const benchmarkComparison =
+        await this.performBenchmarkComparison(overallScore);
+      const historicalComparison =
+        await this.performHistoricalComparison(overallScore);
 
       // Predict success rate
       const predictedSuccessRate = this.predictSuccessRate(
         overallScore,
-        componentScores,
-        features
+        componentScores
       );
 
       const evaluation: QualityEvaluation = {
@@ -397,27 +389,21 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate all proposal components
    */
-  private async evaluateComponents(
-    features: any,
-    model: EvaluationModel
-  ): Promise<any> {
+  private async evaluateComponents(features: any): Promise<any> {
     return {
-      contentQuality: await this.evaluateContentQuality(features, model),
-      complianceScore: await this.evaluateCompliance(features, model),
-      technicalScore: await this.evaluateTechnicalQuality(features, model),
-      presentationScore: await this.evaluatePresentation(features, model),
-      competitivenessScore: await this.evaluateCompetitiveness(features, model),
-      strategicScore: await this.evaluateStrategicValue(features, model),
+      contentQuality: await this.evaluateContentQuality(features),
+      complianceScore: await this.evaluateCompliance(features),
+      technicalScore: await this.evaluateTechnicalQuality(features),
+      presentationScore: await this.evaluatePresentation(features),
+      competitivenessScore: await this.evaluateCompetitiveness(features),
+      strategicScore: await this.evaluateStrategicValue(features),
     };
   }
 
   /**
    * Evaluate content quality
    */
-  private async evaluateContentQuality(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluateContentQuality(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 70; // Base score
 
@@ -463,10 +449,7 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate compliance score
    */
-  private async evaluateCompliance(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluateCompliance(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 60; // Base score (compliance is critical)
 
@@ -509,10 +492,7 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate technical quality
    */
-  private async evaluateTechnicalQuality(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluateTechnicalQuality(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 65; // Base score
 
@@ -551,10 +531,7 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate presentation quality
    */
-  private async evaluatePresentation(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluatePresentation(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 75; // Base score
 
@@ -588,10 +565,7 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate competitiveness
    */
-  private async evaluateCompetitiveness(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluateCompetitiveness(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 70; // Base score
 
@@ -630,10 +604,7 @@ export class ProposalQualityEvaluator {
   /**
    * Evaluate strategic value
    */
-  private async evaluateStrategicValue(
-    features: any,
-    model: EvaluationModel
-  ): Promise<QualityScore> {
+  private async evaluateStrategicValue(features: any): Promise<QualityScore> {
     const factors: QualityFactor[] = [];
     let score = 65; // Base score
 
@@ -671,13 +642,13 @@ export class ProposalQualityEvaluator {
     const features = {
       // Content features
       narrativeQuality: this.extractNarrativeQuality(proposal),
-      completeness: this.extractCompleteness(proposal, rfp),
+      completeness: this.extractCompleteness(proposal),
       readability: this.extractReadability(proposal),
       relevance: this.extractRelevance(proposal, rfp),
 
       // Compliance features
       requirementsCoverage: this.extractRequirementsCoverage(proposal, rfp),
-      formatCompliance: this.extractFormatCompliance(proposal, rfp),
+      formatCompliance: this.extractFormatCompliance(proposal),
       deadlineCompliance: this.extractDeadlineCompliance(proposal, rfp),
 
       // Technical features
@@ -687,7 +658,7 @@ export class ProposalQualityEvaluator {
 
       // Presentation features
       visualOrganization: this.extractVisualOrganization(proposal),
-      professionalism: this.extractProfessionalism(proposal),
+      professionalism: this.extractProfessionalism(),
 
       // Competitive features
       pricingCompetitiveness: await this.extractPricingCompetitiveness(
@@ -695,10 +666,10 @@ export class ProposalQualityEvaluator {
         rfp
       ),
       uniqueValue: this.extractUniqueValue(proposal),
-      marketPosition: await this.extractMarketPosition(proposal, rfp),
+      marketPosition: await this.extractMarketPosition(),
 
       // Strategic features
-      strategicAlignment: this.extractStrategicAlignment(proposal, rfp),
+      strategicAlignment: this.extractStrategicAlignment(proposal),
       longTermValue: this.extractLongTermValue(proposal),
     };
 
@@ -707,10 +678,7 @@ export class ProposalQualityEvaluator {
 
   // ============ PRIVATE HELPER METHODS ============
 
-  private async getEvaluationModel(
-    rfp: any,
-    proposal: any
-  ): Promise<EvaluationModel> {
+  private async getEvaluationModel(rfp: any): Promise<EvaluationModel> {
     const domain = rfp.agency || 'general';
     const documentType = this.categorizeRFP(rfp);
     const modelKey = `${domain}_${documentType}`;
@@ -820,8 +788,7 @@ export class ProposalQualityEvaluator {
 
   private predictSuccessRate(
     overallScore: number,
-    componentScores: any,
-    features: any
+    componentScores: any
   ): number {
     // Simple prediction model based on historical data
     let baseRate = Math.max(0, Math.min(1, overallScore / 100));
@@ -838,10 +805,7 @@ export class ProposalQualityEvaluator {
     return Math.max(0, Math.min(1, baseRate));
   }
 
-  private generateFeedback(
-    componentScores: any,
-    features: any
-  ): QualityFeedback {
+  private generateFeedback(componentScores: any): QualityFeedback {
     const strengths: string[] = [];
     const weaknesses: string[] = [];
     const criticalIssues: string[] = [];
@@ -886,9 +850,7 @@ export class ProposalQualityEvaluator {
   }
 
   private async generateRecommendations(
-    componentScores: any,
-    features: any,
-    model: EvaluationModel
+    componentScores: any
   ): Promise<QualityRecommendation[]> {
     const recommendations: QualityRecommendation[] = [];
 
@@ -896,11 +858,7 @@ export class ProposalQualityEvaluator {
     for (const [component, score] of Object.entries(componentScores)) {
       const componentScore = score as QualityScore;
       const componentRecommendations =
-        await this.generateComponentRecommendations(
-          component,
-          componentScore,
-          features
-        );
+        await this.generateComponentRecommendations(component, componentScore);
       recommendations.push(...componentRecommendations);
     }
 
@@ -920,8 +878,7 @@ export class ProposalQualityEvaluator {
 
   private async generateComponentRecommendations(
     component: string,
-    componentScore: QualityScore,
-    features: any
+    componentScore: QualityScore
   ): Promise<QualityRecommendation[]> {
     const recommendations: QualityRecommendation[] = [];
 
@@ -961,7 +918,7 @@ export class ProposalQualityEvaluator {
     return recommendations;
   }
 
-  private assessRisks(componentScores: any, features: any): RiskAssessment {
+  private assessRisks(componentScores: any): RiskAssessment {
     const riskFactors: RiskFactor[] = [];
     let overallRisk: 'low' | 'medium' | 'high' | 'critical' = 'low';
 
@@ -1015,8 +972,7 @@ export class ProposalQualityEvaluator {
   }
 
   private async performBenchmarkComparison(
-    score: number,
-    rfp: any
+    score: number
   ): Promise<BenchmarkComparison> {
     // Get benchmark data (placeholder implementation)
     return {
@@ -1029,11 +985,10 @@ export class ProposalQualityEvaluator {
   }
 
   private async performHistoricalComparison(
-    score: number,
-    rfp: any
+    score: number
   ): Promise<HistoricalComparison> {
     // Get historical data for this agent/domain
-    const historicalScores = await this.getHistoricalScores(rfp.agency);
+    const historicalScores = await this.getHistoricalScores();
 
     return {
       personalBest: Math.max(...historicalScores, score),
@@ -1051,9 +1006,9 @@ export class ProposalQualityEvaluator {
     return Math.max(0, Math.min(100, 50 + zScore * 20));
   }
 
-  private async getHistoricalScores(agency: string): Promise<number[]> {
+  private async getHistoricalScores(): Promise<number[]> {
     // Get historical evaluation scores for this agency
-    const evaluations = await this.getHistoricalEvaluations(agency);
+    const evaluations = await this.getHistoricalEvaluations();
     return evaluations.map(e => e.overallScore);
   }
 
@@ -1123,7 +1078,7 @@ export class ProposalQualityEvaluator {
     };
   }
 
-  private extractCompleteness(proposal: any, rfp: any): any {
+  private extractCompleteness(proposal: any): any {
     const requiredSections = [
       'technical_approach',
       'team_qualifications',
@@ -1187,7 +1142,7 @@ export class ProposalQualityEvaluator {
     };
   }
 
-  private extractFormatCompliance(proposal: any, rfp: any): any {
+  private extractFormatCompliance(proposal: any): any {
     return {
       hasExecutiveSummary: !!proposal.content?.executive_summary,
       hasTechnicalApproach: !!proposal.content?.technical_approach,
@@ -1396,9 +1351,7 @@ export class ProposalQualityEvaluator {
     return memory ? memory.content : null;
   }
 
-  private async getHistoricalEvaluations(
-    agency: string
-  ): Promise<QualityEvaluation[]> {
+  private async getHistoricalEvaluations(): Promise<QualityEvaluation[]> {
     const memories = await agentMemoryService.getAgentMemories(
       'proposal-quality-evaluator',
       'episodic',
@@ -1536,7 +1489,7 @@ export class ProposalQualityEvaluator {
       depth: this.assessTechnicalDepth(
         proposal.content?.technical_approach || ''
       ),
-      innovation: this.assessInnovationLevel(proposal.content || {}),
+      innovation: this.assessInnovationLevel(),
     };
   }
 
@@ -1576,10 +1529,10 @@ export class ProposalQualityEvaluator {
     };
   }
 
-  private extractProfessionalism(proposal: any): any {
+  private extractProfessionalism(): any {
     return {
-      formalTone: this.assessFormalTone(proposal),
-      consistency: this.assessConsistency(proposal),
+      formalTone: this.assessFormalTone(),
+      consistency: this.assessConsistency(),
       professionalismScore: 0.8, // Placeholder
     };
   }
@@ -1612,23 +1565,23 @@ export class ProposalQualityEvaluator {
 
     return {
       uniquenessScore: matches.length / valueKeywords.length,
-      valuePropositions: this.extractValuePropositions(proposal),
+      valuePropositions: this.extractValuePropositions(),
     };
   }
 
-  private async extractMarketPosition(proposal: any, rfp: any): Promise<any> {
+  private async extractMarketPosition(): Promise<any> {
     return {
-      competitorCount: await this.estimateCompetitorCount(rfp),
-      marketShare: this.estimateMarketShare(proposal, rfp),
+      competitorCount: await this.estimateCompetitorCount(),
+      marketShare: this.estimateMarketShare(),
       positioningStrength: 0.6, // Placeholder
     };
   }
 
-  private extractStrategicAlignment(proposal: any, rfp: any): any {
+  private extractStrategicAlignment(proposal: any): any {
     return {
-      alignmentScore: this.calculateStrategicAlignment(proposal, rfp),
+      alignmentScore: this.calculateStrategicAlignment(),
       strategicKeywords: this.extractStrategicKeywords(proposal),
-      longTermFocus: this.assessLongTermFocus(proposal),
+      longTermFocus: this.assessLongTermFocus(),
     };
   }
 
@@ -1667,7 +1620,7 @@ export class ProposalQualityEvaluator {
     return matches.length / technicalKeywords.length;
   }
 
-  private assessInnovationLevel(content: any): number {
+  private assessInnovationLevel(): number {
     // Simple innovation assessment
     return 0.5; // Placeholder
   }
@@ -1691,12 +1644,12 @@ export class ProposalQualityEvaluator {
     return requiredSections.every(section => proposal.content?.[section]);
   }
 
-  private assessFormalTone(proposal: any): number {
+  private assessFormalTone(): number {
     // Simple tone assessment
     return 0.8; // Placeholder
   }
 
-  private assessConsistency(proposal: any): number {
+  private assessConsistency(): number {
     // Simple consistency assessment
     return 0.7; // Placeholder
   }
@@ -1719,22 +1672,22 @@ export class ProposalQualityEvaluator {
     return rfp.estimatedValue || 100000; // Placeholder
   }
 
-  private extractValuePropositions(proposal: any): string[] {
+  private extractValuePropositions(): string[] {
     // Extract value propositions from content
     return ['competitive pricing', 'proven experience']; // Placeholder
   }
 
-  private async estimateCompetitorCount(rfp: any): Promise<number> {
+  private async estimateCompetitorCount(): Promise<number> {
     // Estimate number of competitors for this RFP
     return 5; // Placeholder
   }
 
-  private estimateMarketShare(proposal: any, rfp: any): number {
+  private estimateMarketShare(): number {
     // Estimate market share in this domain
     return 0.15; // 15% placeholder
   }
 
-  private calculateStrategicAlignment(proposal: any, rfp: any): number {
+  private calculateStrategicAlignment(): number {
     // Calculate alignment between proposal and strategic objectives
     return 0.7; // Placeholder
   }
@@ -1752,7 +1705,7 @@ export class ProposalQualityEvaluator {
     return strategicKeywords.filter(keyword => content.includes(keyword));
   }
 
-  private assessLongTermFocus(proposal: any): number {
+  private assessLongTermFocus(): number {
     // Assess long-term focus of the proposal
     return 0.6; // Placeholder
   }
@@ -1950,7 +1903,6 @@ export class ProposalQualityEvaluator {
     );
     const highItems = recommendations.filter(r => r.priority === 'high');
     const mediumItems = recommendations.filter(r => r.priority === 'medium');
-    const lowItems = recommendations.filter(r => r.priority === 'low');
 
     if (criticalItems.length > 0) {
       phases.push({

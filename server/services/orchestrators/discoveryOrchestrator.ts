@@ -3,13 +3,7 @@ import { agentRegistryService } from '../agents/agentRegistryService';
 import { workflowCoordinator } from '../workflows/workflowCoordinator';
 import { scanManager } from '../portals/scan-manager';
 import { agentMemoryService } from '../agents/agentMemoryService';
-import type {
-  Portal,
-  AgentRegistry,
-  WorkItem,
-  InsertWorkItem,
-  AgentSession,
-} from '@shared/schema';
+import type { AgentRegistry, WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
 
 export interface DiscoveryWorkflowRequest {

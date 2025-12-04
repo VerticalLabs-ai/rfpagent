@@ -61,9 +61,15 @@ export interface ExtendedProposalContent extends GeneratedProposalContent {
 
 // Zod schema for comprehensive proposal validation
 const ExtendedProposalContentSchema = z.object({
-  executiveSummary: z.string().min(500, 'Executive summary must be at least 500 characters'),
-  companyOverview: z.string().min(300, 'Company overview must be at least 300 characters'),
-  qualifications: z.string().min(400, 'Qualifications must be at least 400 characters'),
+  executiveSummary: z
+    .string()
+    .min(500, 'Executive summary must be at least 500 characters'),
+  companyOverview: z
+    .string()
+    .min(300, 'Company overview must be at least 300 characters'),
+  qualifications: z
+    .string()
+    .min(400, 'Qualifications must be at least 400 characters'),
   approach: z.string().min(500, 'Approach must be at least 500 characters'),
   timeline: z.string().min(200, 'Timeline must be at least 200 characters'),
   certificationNarratives: z.array(z.string()),
@@ -134,7 +140,8 @@ export class ClaudeProposalService {
   ): Promise<ExtendedProposalContent> {
     const startTime = Date.now();
     const config = this.getThinkingConfig(options.qualityLevel);
-    const enableThinking = options.enableThinking ?? (config.thinking !== undefined);
+    const enableThinking =
+      options.enableThinking ?? config.thinking !== undefined;
 
     const companyInfo = this.formatCompanyInformation(companyMapping);
     const companyName = companyMapping.profile.companyName;
@@ -166,16 +173,20 @@ export class ClaudeProposalService {
       if (enableThinking && config.thinking) {
         (requestParams as any).thinking = {
           type: config.thinking.type,
-          budget_tokens: options.customBudgetTokens ?? config.thinking.budget_tokens,
+          budget_tokens:
+            options.customBudgetTokens ?? config.thinking.budget_tokens,
         };
       }
 
       // Add system prompt for JSON response
       requestParams.system = this.getSystemPrompt(options.qualityLevel);
 
-      console.log(`[ClaudeProposalService] Generating proposal with ${config.model}, thinking: ${enableThinking}`);
+      console.log(
+        `[ClaudeProposalService] Generating proposal with ${config.model}, thinking: ${enableThinking}`
+      );
 
-      const response = await this.anthropicClient.messages.create(requestParams);
+      const response =
+        await this.anthropicClient.messages.create(requestParams);
 
       // Extract the text content from response
       let contentText = '';
@@ -187,7 +198,9 @@ export class ClaudeProposalService {
         } else if (block.type === 'thinking') {
           // Track thinking usage
           thinkingTokensUsed = (block as any).thinking_tokens || 0;
-          console.log(`[ClaudeProposalService] Thinking used ${thinkingTokensUsed} tokens`);
+          console.log(
+            `[ClaudeProposalService] Thinking used ${thinkingTokensUsed} tokens`
+          );
         }
       }
 
@@ -200,7 +213,8 @@ export class ClaudeProposalService {
       const rawContent = JSON.parse(jsonContent);
 
       // Validate with Zod (lenient validation for optional fields)
-      const validatedContent = ExtendedProposalContentSchema.safeParse(rawContent);
+      const validatedContent =
+        ExtendedProposalContentSchema.safeParse(rawContent);
 
       if (!validatedContent.success) {
         console.error(
@@ -224,12 +238,16 @@ export class ClaudeProposalService {
           qualityLevel: options.qualityLevel,
           thinkingEnabled: enableThinking,
           thinkingTokensUsed,
-          totalTokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+          totalTokensUsed:
+            response.usage.input_tokens + response.usage.output_tokens,
           generationTimeMs,
         },
       };
     } catch (error) {
-      console.error('[ClaudeProposalService] Error generating proposal:', error);
+      console.error(
+        '[ClaudeProposalService] Error generating proposal:',
+        error
+      );
       throw new Error(
         `Failed to generate proposal with Claude: ${
           error instanceof Error ? error.message : 'Unknown error'
@@ -399,7 +417,9 @@ STANDARD QUALITY REQUIREMENTS:
 - Evaluation criteria and how proposals are scored
 - Government contracting terminology and expectations
 
-${isPremium ? `
+${
+  isPremium
+    ? `
 For this PREMIUM quality proposal:
 - Apply advanced proposal strategy techniques
 - Incorporate win themes throughout all sections
@@ -407,13 +427,15 @@ For this PREMIUM quality proposal:
 - Ensure every paragraph advances a win strategy
 - Create compelling discriminators that are memorable
 - Write to maximize evaluation scores on every criteria
-` : `
+`
+    : `
 For this STANDARD quality proposal:
 - Write clear, compliant, and professional content
 - Address all requirements directly
 - Highlight key strengths and qualifications
 - Maintain consistency across all sections
-`}
+`
+}
 
 IMPORTANT:
 - Return ONLY valid JSON matching the requested schema
@@ -511,7 +533,9 @@ ${mapping.applicableInsurance
     }
 
     if (mapping.profile.primaryBusinessCategory) {
-      facts.push(`- Primary Expertise: ${mapping.profile.primaryBusinessCategory}`);
+      facts.push(
+        `- Primary Expertise: ${mapping.profile.primaryBusinessCategory}`
+      );
     }
 
     const owner = mapping.assignedContacts.find(
@@ -567,7 +591,8 @@ ${mapping.applicableInsurance
       {
         level: 'fast',
         name: 'Quick Draft',
-        description: 'Fast generation for initial drafts and previews. No extended thinking.',
+        description:
+          'Fast generation for initial drafts and previews. No extended thinking.',
         model: 'Claude Sonnet 4.5',
         thinkingBudget: null,
         estimatedCost: '$0.10-0.30',
@@ -576,7 +601,8 @@ ${mapping.applicableInsurance
       {
         level: 'standard',
         name: 'Standard',
-        description: 'Balanced quality for routine proposals. Uses extended thinking for better reasoning.',
+        description:
+          'Balanced quality for routine proposals. Uses extended thinking for better reasoning.',
         model: 'Claude Sonnet 4.5',
         thinkingBudget: 10000,
         estimatedCost: '$0.50-1.00',
@@ -585,7 +611,8 @@ ${mapping.applicableInsurance
       {
         level: 'enhanced',
         name: 'Enhanced',
-        description: 'Higher quality for important RFPs. Extended thinking with larger budget.',
+        description:
+          'Higher quality for important RFPs. Extended thinking with larger budget.',
         model: 'Claude Sonnet 4.5',
         thinkingBudget: 16000,
         estimatedCost: '$1.00-2.00',
@@ -594,7 +621,8 @@ ${mapping.applicableInsurance
       {
         level: 'premium',
         name: 'Premium',
-        description: 'Premium quality using Opus 4.5 for high-value contracts. Comprehensive analysis.',
+        description:
+          'Premium quality using Opus 4.5 for high-value contracts. Comprehensive analysis.',
         model: 'Claude Opus 4.5',
         thinkingBudget: 24000,
         estimatedCost: '$5.00-10.00',
@@ -603,7 +631,8 @@ ${mapping.applicableInsurance
       {
         level: 'maximum',
         name: 'Maximum',
-        description: 'Maximum quality for critical, high-stakes RFPs. Opus 4.5 with full thinking capability.',
+        description:
+          'Maximum quality for critical, high-stakes RFPs. Opus 4.5 with full thinking capability.',
         model: 'Claude Opus 4.5',
         thinkingBudget: 32000,
         estimatedCost: '$10.00-20.00',

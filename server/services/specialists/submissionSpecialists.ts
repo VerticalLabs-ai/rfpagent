@@ -35,13 +35,7 @@ export class PortalAuthenticationSpecialist {
     );
 
     try {
-      const {
-        submissionId,
-        portalId,
-        preflightResults,
-        browserOptions,
-        pipelineId,
-      } = inputs;
+      const { submissionId, portalId, pipelineId } = inputs;
 
       // Get portal and submission data
       const [portal, submission] = await Promise.all([
@@ -82,14 +76,12 @@ export class PortalAuthenticationSpecialist {
 
         // Wait for page to load and take screenshot
         await stagehand.context.pages()[0].waitForLoadState('networkidle');
-        const loginPageScreenshot = await stagehand.context
-          .pages()[0]
-          .screenshot({
-            fullPage: true,
-          });
+        await stagehand.context.pages()[0].screenshot({
+          fullPage: true,
+        });
 
         // Check if already logged in
-        const isLoggedIn = await this.checkIfLoggedIn(stagehand, portal);
+        const isLoggedIn = await this.checkIfLoggedIn(stagehand);
         if (isLoggedIn) {
           console.log('✅ Already authenticated with portal');
 
@@ -98,7 +90,7 @@ export class PortalAuthenticationSpecialist {
             submission,
             portal,
             pipelineId,
-            { method: 'existing_session', screenshot: loginPageScreenshot }
+            { method: 'existing_session' }
           );
         }
 
@@ -112,13 +104,10 @@ export class PortalAuthenticationSpecialist {
         await this.performLogin(stagehand, portal, loginElements);
 
         // Handle potential MFA
-        const mfaResult = await this.handleMFA(stagehand, portal);
+        const mfaResult = await this.handleMFA(stagehand);
 
         // Verify successful login
-        const authVerification = await this.verifyAuthentication(
-          stagehand,
-          portal
-        );
+        const authVerification = await this.verifyAuthentication(stagehand);
         if (!authVerification.success) {
           throw new Error(
             `Authentication verification failed: ${authVerification.error}`
@@ -181,10 +170,7 @@ export class PortalAuthenticationSpecialist {
     }
   }
 
-  private async checkIfLoggedIn(
-    stagehand: any,
-    portal: Partial<Portal>
-  ): Promise<boolean> {
+  private async checkIfLoggedIn(stagehand: any): Promise<boolean> {
     try {
       // Common indicators of being logged in
       const loggedInSelectors = [
@@ -209,7 +195,7 @@ export class PortalAuthenticationSpecialist {
           if (await element.isVisible()) {
             return true;
           }
-        } catch (e) {
+        } catch {
           // Continue checking other selectors
         }
       }
@@ -230,7 +216,7 @@ export class PortalAuthenticationSpecialist {
           if (await element.isVisible()) {
             return false; // Login form present, not logged in
           }
-        } catch (e) {
+        } catch {
           // Continue checking
         }
       }
@@ -334,7 +320,7 @@ export class PortalAuthenticationSpecialist {
           usernameField = element;
           break;
         }
-      } catch (_e) {
+      } catch {
         // Ignore if element not found, try next selector
       }
     }
@@ -347,7 +333,7 @@ export class PortalAuthenticationSpecialist {
           passwordField = element;
           break;
         }
-      } catch (_e) {
+      } catch {
         // Ignore if element not found, try next selector
       }
     }
@@ -360,7 +346,7 @@ export class PortalAuthenticationSpecialist {
           loginButton = element;
           break;
         }
-      } catch (_e) {
+      } catch {
         // Ignore if element not found, try next selector
       }
     }
@@ -384,7 +370,7 @@ export class PortalAuthenticationSpecialist {
       });
 
       return { usernameField, passwordField, loginButton };
-    } catch (error) {
+    } catch {
       throw new Error('AI-based element detection failed');
     }
   }
@@ -424,7 +410,6 @@ export class PortalAuthenticationSpecialist {
 
   private async handleMFA(
     stagehand: any,
-    portal: Partial<Portal>,
     options: {
       mfaTimeoutMs?: number;
       mfaCallback?: () => Promise<void>;
@@ -455,7 +440,7 @@ export class PortalAuthenticationSpecialist {
             console.log(`🔐 MFA detected via selector: ${selector}`);
             break;
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -535,7 +520,7 @@ export class PortalAuthenticationSpecialist {
               console.log(`✅ MFA completion detected via: ${firstVisible}`);
               mfaCompleted = true;
             }
-          } catch (_e) {
+          } catch {
             // All checks failed or timed out - continue polling
           }
 
@@ -565,10 +550,7 @@ export class PortalAuthenticationSpecialist {
     }
   }
 
-  private async verifyAuthentication(
-    stagehand: any,
-    portal: Portal
-  ): Promise<any> {
+  private async verifyAuthentication(stagehand: any): Promise<any> {
     try {
       // Wait for potential redirects
       await stagehand.context.pages()[0].waitForTimeout(3000);
@@ -590,7 +572,7 @@ export class PortalAuthenticationSpecialist {
           if (await element.isVisible({ timeout: 5000 })) {
             return { success: true, indicator };
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -615,7 +597,7 @@ export class PortalAuthenticationSpecialist {
             const errorText = await element.textContent();
             return { success: false, error: errorText };
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -745,7 +727,6 @@ export class FormSubmissionSpecialist {
         proposalId,
         browserSessionId,
         formMapping,
-        authenticationData,
         pipelineId,
       } = inputs;
 
@@ -793,19 +774,16 @@ export class FormSubmissionSpecialist {
       // Populate forms step by step
       const populationResults = await this.populateFormsStepByStep(
         stagehand,
-        formData,
-        formMapping
+        formData
       );
 
       // Validate populated forms
       const validationResults = await this.validatePopulatedForms(stagehand);
 
       // Take screenshot of completed forms
-      const completedFormsScreenshot = await stagehand.context
-        .pages()[0]
-        .screenshot({
-          fullPage: true,
-        });
+      await stagehand.context.pages()[0].screenshot({
+        fullPage: true,
+      });
 
       // Store form data in agent memory
       await agentMemoryService.storeMemory({
@@ -919,7 +897,7 @@ export class FormSubmissionSpecialist {
               return new URL(href, stagehand.context.pages()[0].url()).href;
             }
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -983,8 +961,7 @@ export class FormSubmissionSpecialist {
 
   private async populateFormsStepByStep(
     stagehand: any,
-    formData: any,
-    formMapping: any
+    formData: any
   ): Promise<any> {
     const populatedFields = [];
     const errors = [];
@@ -1053,7 +1030,7 @@ export class FormSubmissionSpecialist {
             elements.push(element);
           }
         }
-      } catch (_e) {
+      } catch {
         // Ignore - element not found, continue checking
       }
     }
@@ -1071,7 +1048,7 @@ export class FormSubmissionSpecialist {
 
       const type = await element.getAttribute('type');
       return type || 'text';
-    } catch (error) {
+    } catch {
       return 'text';
     }
   }
@@ -1099,7 +1076,7 @@ export class FormSubmissionSpecialist {
       });
 
       return label || 'unknown_field';
-    } catch (error) {
+    } catch {
       return 'unknown_field';
     }
   }
@@ -1189,7 +1166,7 @@ export class FormSubmissionSpecialist {
               errors.push(errorText);
             }
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -1247,7 +1224,6 @@ export class DocumentUploadSpecialist {
         proposalId,
         browserSessionId,
         documentChecklist,
-        formData,
         pipelineId,
       } = inputs;
 
@@ -1278,7 +1254,6 @@ export class DocumentUploadSpecialist {
 
       // Get documents to upload
       const documentsToUpload = await this.getDocumentsToUpload(
-        submission,
         proposal,
         documentChecklist
       );
@@ -1320,7 +1295,7 @@ export class DocumentUploadSpecialist {
       );
 
       // Take screenshot of completed uploads
-      const uploadsScreenshot = await stagehand.context.pages()[0].screenshot({
+      await stagehand.context.pages()[0].screenshot({
         fullPage: true,
       });
 
@@ -1402,7 +1377,6 @@ export class DocumentUploadSpecialist {
   }
 
   private async getDocumentsToUpload(
-    submission: Submission,
     proposal: Proposal,
     documentChecklist: any
   ): Promise<any[]> {
@@ -1496,7 +1470,7 @@ export class DocumentUploadSpecialist {
             uploadAreas.push(element);
           }
         }
-      } catch (_e) {
+      } catch {
         // Ignore - element not found, continue checking
       }
     }
@@ -1618,7 +1592,7 @@ export class DocumentUploadSpecialist {
           if (await element.isVisible({ timeout: 3000 })) {
             return true;
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
@@ -1640,14 +1614,14 @@ export class DocumentUploadSpecialist {
           if (await element.isVisible({ timeout: 1000 })) {
             return false;
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }
 
       // If no clear indicators, assume success
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -1683,7 +1657,7 @@ export class DocumentUploadSpecialist {
             foundUploadList = true;
             break;
           }
-        } catch (_e) {
+        } catch {
           // Ignore - element not found, continue checking
         }
       }

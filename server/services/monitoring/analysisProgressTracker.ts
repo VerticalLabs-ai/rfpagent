@@ -1,5 +1,4 @@
 import { storage } from '../../storage';
-import type { WorkItem, RFP } from '@shared/schema';
 
 export interface AnalysisProgress {
   rfpId: string;
@@ -286,24 +285,11 @@ export class AnalysisProgressTracker {
   private async persistProgress(progress: AnalysisProgress): Promise<void> {
     // Store in agent memory for persistence
     try {
-      const memoryData = {
-        workflowId: progress.workflowId,
-        rfpId: progress.rfpId,
-        phase: progress.phase,
-        progress: progress.progress,
-        status: progress.status,
-        currentStep: progress.currentStep,
-        metadata: progress.metadata,
-        errors: progress.errors,
-        timestamp: new Date(),
-      };
-
       // This would ideally be stored in a more permanent store
       // For now, we can use work item updates to track progress
-    } catch (error) {
+    } catch {
       console.warn(
-        `❌ Failed to persist progress for ${progress.workflowId}:`,
-        error
+        `❌ Failed to persist progress for ${progress.workflowId}`
       );
     }
   }

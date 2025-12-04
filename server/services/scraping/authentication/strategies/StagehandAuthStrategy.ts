@@ -15,7 +15,7 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
     super('stagehand');
   }
 
-  canHandle(portalType: string, url: string): boolean {
+  canHandle(): boolean {
     // This strategy can handle any portal but is typically used as a fallback
     // or for complex authentication flows that require browser automation
     return true;
@@ -179,11 +179,8 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
     if (context.portalUrl.includes('network.euna.com')) {
       console.log('🔄 Detected ESN redirect for Bonfire Hub');
 
-      // Use extended timeout for ESN authentication
-      const config = this.getPortalConfig('bonfire_hub');
-      config.timeout = 120000; // 2 minutes for ESN
-
-      return await this.authenticateWithConfig(context, config);
+      // Note: Extended timeout for ESN authentication would be 120000ms (2 minutes)
+      return await this.authenticateWithConfig(context);
     }
 
     return null;
@@ -216,8 +213,7 @@ export class StagehandAuthStrategy extends BaseAuthenticationStrategy {
    * Authenticate with specific configuration
    */
   private async authenticateWithConfig(
-    context: AuthContext,
-    config: any
+    context: AuthContext
   ): Promise<AuthResult> {
     try {
       if (!context.username || !context.password) {

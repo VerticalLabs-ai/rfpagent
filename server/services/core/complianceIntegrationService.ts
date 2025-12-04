@@ -1,4 +1,4 @@
-import type { Document, RFP } from '@shared/schema';
+import type { RFP } from '@shared/schema';
 import { storage } from '../../storage';
 import { agentMemoryService } from '../agents/agentMemoryService';
 import { aiService } from './aiService';
@@ -300,7 +300,7 @@ export class ComplianceIntegrationService {
       let complianceData;
       try {
         complianceData = JSON.parse(basicAnalysis as string);
-      } catch (parseError) {
+      } catch {
         // Fallback to structured defaults if AI response can't be parsed
         complianceData = this.generateDefaultComplianceData(rfp);
       }
@@ -363,7 +363,7 @@ export class ComplianceIntegrationService {
    */
   private async performDirectComplianceAnalysis(
     rfp: RFP,
-    documents: Document[]
+    documents: any[]
   ): Promise<ComplianceAnalysisResult> {
     try {
       console.log(

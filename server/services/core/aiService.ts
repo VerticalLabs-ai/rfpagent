@@ -1,5 +1,6 @@
 import { captureException, withScope } from '@sentry/node';
-import type { AiConversation, ConversationMessage, RFP } from '@shared/schema';
+import type { AiConversation, ConversationMessage } from '@shared/schema';
+import type { RFP } from '@shared/schema';
 import OpenAI from 'openai';
 import { storage } from '../../storage';
 import { circuitBreakerManager } from './circuitBreaker';
@@ -621,7 +622,7 @@ Use professional language suitable for government procurement.
 
   private async generatePricingTables(
     rfp: RFP,
-    documentContext: string
+    _documentContext: string
   ): Promise<any> {
     const prompt = `
 Generate a detailed pricing breakdown for this water supply RFP targeting 40% margin.

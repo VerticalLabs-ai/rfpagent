@@ -2,7 +2,6 @@ import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 import { AuthContext, AuthResult } from '../../types';
 import { stagehandAuthTool } from '../../../../../src/mastra/tools';
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import {
   executeStagehandTool,
   StagehandAuthResultSchema,
@@ -17,12 +16,8 @@ export class BonfireHubAuthStrategy extends BaseAuthenticationStrategy {
     super('bonfire_hub');
   }
 
-  canHandle(portalType: string, url: string): boolean {
-    return (
-      portalType === 'bonfire_hub' ||
-      url.includes('bonfirehub.com') ||
-      url.includes('vendor.bonfirehub.com')
-    );
+  canHandle(portalType: string): boolean {
+    return portalType === 'bonfire_hub';
   }
 
   async authenticate(context: AuthContext): Promise<AuthResult> {

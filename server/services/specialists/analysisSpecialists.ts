@@ -180,7 +180,6 @@ export class DocumentProcessorSpecialist {
       const inputs = getWorkItemInputs(workItem);
       const documentId = asString(inputs.documentId);
       const extractionMethod = asString(inputs.extractionMethod) || 'auto';
-      const qualityLevel = asString(inputs.qualityLevel) || 'high';
       const rfpId = asString(inputs.rfpId);
 
       if (!documentId) {
@@ -212,7 +211,6 @@ export class DocumentProcessorSpecialist {
           filename: document.filename,
           fileType: document.fileType,
           extractionMethod,
-          qualityLevel,
           processedAt: new Date(),
         },
       };
@@ -421,9 +419,6 @@ export class RequirementsExtractorSpecialist {
       const inputs = getWorkItemInputs(workItem);
       const documentId = asString(inputs.documentId);
       const rfpId = asString(inputs.rfpId);
-      const extractionFocus = Array.isArray(inputs.extractionFocus)
-        ? (inputs.extractionFocus as string[])
-        : ['mandatory', 'optional', 'evaluation_criteria'];
 
       if (!documentId || !rfpId) {
         throw new Error('Work item missing documentId or rfpId');
@@ -445,8 +440,7 @@ export class RequirementsExtractorSpecialist {
       // Parse requirements using AI service
       const requirementResult = await this.extractRequirements(
         document.extractedText,
-        rfp,
-        extractionFocus
+        rfp
       );
 
       // Update document with parsed requirements
@@ -468,7 +462,6 @@ export class RequirementsExtractorSpecialist {
           filename: document.filename,
           rfpId,
           requirementResult,
-          extractionFocus,
         },
         importance: 8,
         metadata: {
@@ -504,8 +497,7 @@ export class RequirementsExtractorSpecialist {
    */
   private async extractRequirements(
     documentText: string,
-    rfp: RFP,
-    extractionFocus: string[]
+    rfp: RFP
   ): Promise<RequirementParsingResult> {
     // Use AI service to extract structured requirements
     const aiAnalysis = await this.aiService.analyzeDocumentCompliance(
@@ -572,12 +564,6 @@ export class ComplianceCheckerSpecialist {
     try {
       const inputs = getWorkItemInputs(workItem);
       const rfpId = asString(inputs.rfpId);
-      const documentIds = Array.isArray(inputs.documentIds)
-        ? (inputs.documentIds as string[])
-        : [];
-      const analysisScope = Array.isArray(inputs.analysisScope)
-        ? (inputs.analysisScope as string[])
-        : ['compliance_checklist', 'risk_flags'];
 
       if (!rfpId) {
         throw new Error('Work item missing rfpId');
@@ -594,11 +580,7 @@ export class ComplianceCheckerSpecialist {
       const documents = await storage.getDocumentsByRFP(rfpId);
 
       // Perform comprehensive compliance analysis
-      const complianceResult = await this.analyzeCompliance(
-        rfp,
-        documents,
-        analysisScope
-      );
+      const complianceResult = await this.analyzeCompliance(rfp, documents);
 
       // Update RFP with compliance analysis
       await storage.updateRFP(rfpId, {
@@ -617,7 +599,6 @@ export class ComplianceCheckerSpecialist {
           rfpId,
           rfpTitle: rfp.title,
           complianceResult,
-          analysisScope,
           documentCount: documents.length,
         },
         importance: 9, // High importance for compliance
@@ -663,8 +644,7 @@ export class ComplianceCheckerSpecialist {
    */
   private async analyzeCompliance(
     rfp: RFP,
-    documents: Document[],
-    analysisScope: string[]
+    documents: Document[]
   ): Promise<ComplianceAnalysisResult> {
     // Combine all extracted text
     const combinedText = documents

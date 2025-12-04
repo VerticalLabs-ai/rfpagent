@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ActivityFeed() {
@@ -74,12 +73,8 @@ export default function ActivityFeed() {
         </CardHeader>
         <CardContent className="p-6 space-y-4 max-h-96 overflow-y-auto">
           {recentNotifications.length > 0 ? (
-            recentNotifications.map((notification: any, index: number) => (
-              <ActivityItem
-                key={notification.id}
-                notification={notification}
-                index={index}
-              />
+            recentNotifications.map((notification: any) => (
+              <ActivityItem key={notification.id} notification={notification} />
             ))
           ) : (
             <div className="text-center py-8">
@@ -99,15 +94,14 @@ export default function ActivityFeed() {
         </CardHeader>
         <CardContent className="p-6 space-y-4 max-h-96 overflow-y-auto">
           {highRiskRfps.length > 0 ? (
-            highRiskRfps.map((item: any, index: number) => (
-              <ComplianceAlert key={item.rfp.id} rfp={item.rfp} index={index} />
+            highRiskRfps.map((item: any) => (
+              <ComplianceAlert key={item.rfp.id} rfp={item.rfp} />
             ))
           ) : complianceAlerts.length > 0 ? (
-            complianceAlerts.map((notification: any, index: number) => (
+            complianceAlerts.map((notification: any) => (
               <ComplianceNotificationAlert
                 key={notification.id}
                 notification={notification}
-                index={index}
               />
             ))
           ) : (
@@ -127,13 +121,7 @@ export default function ActivityFeed() {
   );
 }
 
-function ActivityItem({
-  notification,
-  index,
-}: {
-  notification: any;
-  index: number;
-}) {
+function ActivityItem({ notification }: { notification: any }) {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'discovery':
@@ -192,7 +180,7 @@ function ActivityItem({
   );
 }
 
-function ComplianceAlert({ rfp, index }: { rfp: any; index: number }) {
+function ComplianceAlert({ rfp }: { rfp: any }) {
   const highRiskFlags =
     rfp.riskFlags?.filter((flag: any) => flag.type === 'high') || [];
   const primaryFlag = highRiskFlags[0];
@@ -262,13 +250,7 @@ function ComplianceAlert({ rfp, index }: { rfp: any; index: number }) {
   );
 }
 
-function ComplianceNotificationAlert({
-  notification,
-  index,
-}: {
-  notification: any;
-  index: number;
-}) {
+function ComplianceNotificationAlert({ notification }: { notification: any }) {
   return (
     <div
       className={`flex items-start space-x-3 p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200 dark:border-orange-900`}

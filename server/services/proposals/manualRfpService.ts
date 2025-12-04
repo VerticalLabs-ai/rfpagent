@@ -43,19 +43,9 @@ export class ManualRfpService {
   async processManualRfp(input: ManualRfpInput): Promise<ManualRfpResult> {
     const sessionId = input.sessionId || randomUUID();
 
-    // TC002 Timeout Fix: Add overall timeout limit of 12 minutes (720 seconds)
-    const OVERALL_TIMEOUT_MS = 12 * 60 * 1000; // 12 minutes (leave 3 min buffer for 15 min test)
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
-        () =>
-          reject(new Error('Manual RFP processing timed out after 12 minutes')),
-        OVERALL_TIMEOUT_MS
-      );
-    });
-
     try {
       console.log(
-        `[ManualRfpService] Processing manual RFP from URL: ${input.url} (timeout: ${OVERALL_TIMEOUT_MS / 1000}s)`
+        `[ManualRfpService] Processing manual RFP from URL: ${input.url}`
       );
 
       // Start progress tracking
@@ -97,9 +87,11 @@ export class ManualRfpService {
         scrapeRFPFromUrl(input.url, 'manual'),
         scrapingTimeoutPromise,
       ]).catch(error => {
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
         console.warn(
           `[ManualRfpService] Primary scraping failed or timed out:`,
-          error.message
+          errorMessage
         );
         return null; // Return null to trigger fallback
       });
@@ -328,9 +320,7 @@ Respond with JSON only:
         deadline: rfpDetails.deadline
           ? new Date(rfpDetails.deadline)
           : undefined,
-        estimatedValue: rfpDetails.estimatedValue
-          ? parseFloat(rfpDetails.estimatedValue)
-          : undefined,
+        estimatedValue: undefined,
         requirements: rfpDetails.requirements || {},
         complianceItems: rfpDetails.complianceItems || [],
         riskFlags: rfpDetails.riskFlags || [],
@@ -389,9 +379,7 @@ Respond with JSON only:
         deadline: rfpDetails.deadline
           ? new Date(rfpDetails.deadline)
           : undefined,
-        estimatedValue: rfpDetails.estimatedValue
-          ? parseFloat(rfpDetails.estimatedValue)
-          : undefined,
+        estimatedValue: undefined,
         requirements: rfpDetails.requirements || {},
         complianceItems: rfpDetails.complianceItems || [],
         riskFlags: rfpDetails.riskFlags || [],
@@ -408,11 +396,9 @@ Respond with JSON only:
     }
   }
 
-  private async extractGenericRfp(url: string, portalAnalysis: any) {
+  private async extractGenericRfp(url: string) {
     try {
-      console.log(
-        `[ManualRfpService] Extracting generic RFP from: ${portalAnalysis.portalType}`
-      );
+      console.log(`[ManualRfpService] Extracting generic RFP from URL`);
 
       // Use Mastra to scrape the page content
       const pageContent = await this.scrapePageContent(url);
@@ -428,7 +414,7 @@ Respond with JSON only:
         ...rfpData,
         hasDocuments: false, // Generic RFPs may not have downloadable documents
         documents: [],
-        portalName: portalAnalysis.portalType,
+        portalName: 'Unknown',
       };
     } catch (error) {
       console.error('[ManualRfpService] Error extracting generic RFP:', error);

@@ -1,5 +1,5 @@
 import { ScrapingOrchestrator } from './ScrapingOrchestrator';
-import { ScrapingContext, RFPOpportunity, ScrapingResult } from './types';
+import { ScrapingContext, RFPOpportunity } from './types';
 
 /**
  * Migration adapter to provide backward compatibility
@@ -118,7 +118,7 @@ export class MigrationAdapter {
           message: 'Agent management system not yet initialized',
         };
       }
-    } catch (error) {
+    } catch {
       return {
         id: `agent_${portalType}_${agentType}_${Date.now()}`,
         type: agentType,
@@ -143,7 +143,7 @@ export class MigrationAdapter {
       return {
         name: `Agent for ${portal.name || 'unknown portal'}`,
         type: 'specialized',
-        generate: async (prompt: string, options?: any) => {
+        generate: async (prompt: string) => {
           console.log(
             `🤖 Mock agent execution for prompt: ${prompt.substring(0, 100)}...`
           );
@@ -153,12 +153,12 @@ export class MigrationAdapter {
           };
         },
       };
-    } catch (error) {
+    } catch {
       // Return generic agent
       return {
         name: 'Generic RFP Agent',
         type: 'generic',
-        generate: async (prompt: string, options?: any) => {
+        generate: async () => {
           return {
             text: JSON.stringify({ opportunities: [], status: 'fallback' }),
             usage: { tokens: 0 },
@@ -204,10 +204,7 @@ export class MigrationAdapter {
    * Legacy method: extractOpportunities
    * Now handled by the orchestrator's content extraction
    */
-  async extractOpportunities(
-    content: string,
-    portalType: string
-  ): Promise<RFPOpportunity[]> {
+  async extractOpportunities(): Promise<RFPOpportunity[]> {
     console.log(
       '🔄 Legacy extractOpportunities method called - using new content extraction'
     );

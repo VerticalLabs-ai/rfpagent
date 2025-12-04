@@ -165,7 +165,7 @@ export function useLongTask(threshold = 50) {
 
     try {
       observer.observe({ type: 'longtask', buffered: true });
-    } catch (e) {
+    } catch {
       console.warn('Long task observation not supported');
     }
 

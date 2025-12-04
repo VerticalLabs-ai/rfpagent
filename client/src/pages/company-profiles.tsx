@@ -184,7 +184,9 @@ export default function CompanyProfiles() {
                   Add a new company profile to manage RFP proposals
                 </DialogDescription>
               </DialogHeader>
-              <CompanyProfileForm onSuccess={() => setCreateDialogOpen(false)} />
+              <CompanyProfileForm
+                onSuccess={() => setCreateDialogOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -201,12 +203,14 @@ export default function CompanyProfiles() {
               <div className="space-y-2">
                 {expiringCertifications.length > 0 && (
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    {expiringCertifications.length} certification(s) expiring soon
+                    {expiringCertifications.length} certification(s) expiring
+                    soon
                   </p>
                 )}
                 {expiringInsurance.length > 0 && (
                   <p className="text-sm text-orange-700 dark:text-orange-300">
-                    {expiringInsurance.length} insurance policy(ies) expiring soon
+                    {expiringInsurance.length} insurance policy(ies) expiring
+                    soon
                   </p>
                 )}
                 <div className="flex gap-2 pt-2">
@@ -247,7 +251,10 @@ export default function CompanyProfiles() {
         )}
       </div>
 
-      <Tabs defaultValue="profiles" className="flex flex-col flex-1 overflow-hidden mt-6">
+      <Tabs
+        defaultValue="profiles"
+        className="flex flex-col flex-1 overflow-hidden mt-6"
+      >
         <div className="px-6 pb-4 shrink-0">
           <TabsList>
             <TabsTrigger value="profiles" data-testid="tab-profiles">
@@ -430,10 +437,12 @@ export default function CompanyProfiles() {
                               <div
                                 className="bg-primary h-2 rounded-full transition-all"
                                 style={{
-                                  width: `${decisionMakers.length > 0
-                                      ? (area.count / decisionMakers.length) * 100
+                                  width: `${
+                                    decisionMakers.length > 0
+                                      ? (area.count / decisionMakers.length) *
+                                        100
                                       : 0
-                                    }%`,
+                                  }%`,
                                 }}
                               />
                             </div>
@@ -480,10 +489,11 @@ export default function CompanyProfiles() {
                                   <div
                                     className="bg-primary h-2 rounded-full transition-all"
                                     style={{
-                                      width: `${profiles.length
+                                      width: `${
+                                        profiles.length
                                           ? (count / profiles.length) * 100
                                           : 0
-                                        }%`,
+                                      }%`,
                                     }}
                                   />
                                 </div>

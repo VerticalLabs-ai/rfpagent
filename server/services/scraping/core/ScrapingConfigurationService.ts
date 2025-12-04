@@ -1,4 +1,4 @@
-import { PortalConfiguration, ScrapingContext } from '../types';
+import { ScrapingContext } from '../types';
 
 /**
  * Configuration service for scraping operations
@@ -212,7 +212,7 @@ export class ScrapingConfigurationService {
   /**
    * Get error handling configuration
    */
-  getErrorHandlingConfig(portalType: string): {
+  getErrorHandlingConfig(): {
     retryableErrors: string[];
     fatalErrors: string[];
     customHandlers?: Record<string, any>;

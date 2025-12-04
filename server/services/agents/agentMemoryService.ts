@@ -103,7 +103,7 @@ export class AgentMemoryService {
 
   async getMemoryByContext(agentId: string, contextKey: string): Promise<any> {
     const memory = await storage.getAgentMemoryByContext(agentId, contextKey);
-    if (memory) {
+    if (memory?.id) {
       await storage.recordMemoryAccess(memory.id);
     }
     return memory;
@@ -607,10 +607,7 @@ export class AgentMemoryService {
     }
 
     // Get memories for the orchestrator agent in this session context
-    const memories = await this.getAgentMemories(
-      session.orchestratorAgentId,
-      memoryType
-    );
+    await this.getAgentMemories(session.orchestratorAgentId, memoryType);
 
     // Filter and score memories based on session context
     return this.getRelevantMemories(session.orchestratorAgentId, {
@@ -623,10 +620,10 @@ export class AgentMemoryService {
   }
 
   // Helper method to extract keywords from context
-  private extractKeywords(context: any): string[] {
-    if (!context) return [];
+  private extractKeywords(documentContext: any): string[] {
+    if (!documentContext) return [];
 
-    const text = JSON.stringify(context).toLowerCase();
+    const text = JSON.stringify(documentContext).toLowerCase();
     const words = text.match(/\b\w{3,}\b/g) || [];
 
     // Filter common words and return unique keywords

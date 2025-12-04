@@ -543,11 +543,8 @@ export class RetryBackoffDlqService {
     }
 
     try {
-      // Import storage and workflow engine
+      // Import storage
       const { storage } = await import('../../storage');
-      const { mastraWorkflowEngine } = await import(
-        '../workflows/mastraWorkflowEngine'
-      );
 
       // Create a new work item from the DLQ entry
       const reprocessedWorkItem = {

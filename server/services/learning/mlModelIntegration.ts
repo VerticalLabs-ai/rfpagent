@@ -243,7 +243,6 @@ export class MLModelIntegration {
 
     for (let i = 0; i < texts.length; i += batchSize) {
       const batch = texts.slice(i, i + batchSize);
-      const batchIndex = Math.floor(i / batchSize);
 
       try {
         const response = await openai.embeddings.create({
@@ -259,7 +258,7 @@ export class MLModelIntegration {
         );
       } catch (error) {
         console.error(
-          `❌ Error generating embeddings for batch ${batchIndex} (texts ${i}-${i + batch.length - 1}):`,
+          `❌ Error generating embeddings for batch (texts ${i}-${i + batch.length - 1}):`,
           error instanceof Error ? error.message : error
         );
         // Skip this batch and continue with remaining batches
@@ -513,9 +512,7 @@ Respond with JSON:
   }): Promise<RegressionPrediction> {
     try {
       // Get historical cost data
-      const historicalData = await this.getHistoricalCostData(
-        rfpFeatures.category
-      );
+      const historicalData = await this.getHistoricalCostData();
 
       if (historicalData.length < 5) {
         // Not enough data - use rule-based estimation
@@ -836,7 +833,7 @@ Respond with JSON:
     return features;
   }
 
-  private async getHistoricalCostData(category: string): Promise<any[]> {
+  private async getHistoricalCostData(): Promise<any[]> {
     // Mock implementation - would query database
     return [];
   }

@@ -146,7 +146,7 @@ router.get('/active', async (req, res) => {
  */
 router.get('/stream', async (req, res) => {
   try {
-    const { portalId, sessionId } = req.query;
+    const { portalId } = req.query;
 
     if (!portalId) {
       return res.status(400).json({

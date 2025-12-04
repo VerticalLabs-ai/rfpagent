@@ -299,7 +299,7 @@ export class SAFLALearningEngine {
   ): Promise<LearnedStrategy | null> {
     try {
       // Get the best strategy for this task type
-      const strategy = await this.getBestStrategy(taskType, context);
+      const strategy = await this.getBestStrategy(taskType);
 
       if (!strategy) {
         console.log(`📚 No learned strategy available for ${taskType}`);
@@ -461,8 +461,7 @@ Return your analysis as JSON:
    * Get the best learned strategy for a task
    */
   private async getBestStrategy(
-    taskType: string,
-    context: Record<string, any>
+    taskType: string
   ): Promise<LearnedStrategy | null> {
     try {
       const domain = this.inferDomainFromTaskType(taskType);
@@ -481,7 +480,7 @@ Return your analysis as JSON:
       // Score strategies based on relevance to current context
       const scoredStrategies = strategies.map(s => ({
         strategy: s,
-        score: this.scoreStrategyRelevance(s, context),
+        score: this.scoreStrategyRelevance(s),
       }));
 
       // Sort by score and return best
@@ -510,10 +509,7 @@ Return your analysis as JSON:
   /**
    * Score how relevant a strategy is to current context
    */
-  private scoreStrategyRelevance(
-    strategy: any,
-    context: Record<string, any>
-  ): number {
+  private scoreStrategyRelevance(strategy: any): number {
     let score = 0.5; // Base score
 
     // Higher confidence = higher relevance

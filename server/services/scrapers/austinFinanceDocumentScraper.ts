@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import type { z } from 'zod';
 import { storage } from '../../storage';
 import type { Document } from '@shared/schema';
 import { performWebExtraction } from '../core/stagehandTools';
@@ -145,11 +145,18 @@ export class AustinFinanceDocumentScraper {
           const tempDir = '/tmp/rfp_downloads';
           try {
             await fs.mkdir(tempDir, { recursive: true });
-          } catch (error: any) {
+          } catch (error) {
             // Directory might already exist or have permission issues
             // /tmp should be writable, but log if there's an issue
-            if (error.code !== 'EEXIST') {
-              console.warn('Failed to create temp directory:', error.message);
+            if (
+              error instanceof Error &&
+              'code' in error &&
+              error.code !== 'EEXIST'
+            ) {
+              console.warn(
+                'Failed to create temp directory:',
+                (error as any).message
+              );
             }
           }
           const tempFilePath = path.join(
@@ -173,10 +180,7 @@ export class AustinFinanceDocumentScraper {
           // Determine document properties using resolved URL
           const fileType = this.determineFileType(docInfo.name, resolvedUrl);
           const category = this.categorizeDocument(docInfo.name);
-          const needsFillOut = this.determineIfNeedsFillOut(
-            docInfo.name,
-            category
-          );
+          const needsFillOut = this.determineIfNeedsFillOut(docInfo.name);
 
           // Save document record to database
           const savedDoc = await storage.createDocument({
@@ -346,7 +350,7 @@ export class AustinFinanceDocumentScraper {
   /**
    * Determine if a document needs to be filled out
    */
-  private determineIfNeedsFillOut(filename: string, category: string): boolean {
+  private determineIfNeedsFillOut(filename: string): boolean {
     const lowerName = filename.toLowerCase();
 
     // Documents that typically need to be filled out

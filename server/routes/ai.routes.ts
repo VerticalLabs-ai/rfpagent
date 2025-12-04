@@ -1,20 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import {
-  insertAiConversationSchema,
-  insertConversationMessageSchema,
-  insertResearchFindingSchema,
-  type AiConversation,
-  type ConversationMessage,
-  type ResearchFinding,
-} from '@shared/schema';
 import { storage } from '../storage';
 import { aiProposalService } from '../services/proposals/ai-proposal-service';
-import { aiAgentOrchestrator } from '../services/orchestrators/aiAgentOrchestrator';
-import {
-  mastraWorkflowEngine,
-  type ActionSuggestion,
-} from '../services/workflows/mastraWorkflowEngine';
+import { type ActionSuggestion } from '../services/workflows/mastraWorkflowEngine';
 
 const router = Router();
 
@@ -422,7 +410,7 @@ router.post('/execute-action', async (req, res) => {
       icon: suggestion.icon,
       payload:
         suggestion.payload ??
-        (suggestion.parameters as Record<string, any> | undefined),
+        (suggestion.parameters as Record<string, unknown> | undefined),
     };
 
     const executionResult = await mastraWorkflowEngine.executeActionSuggestion(

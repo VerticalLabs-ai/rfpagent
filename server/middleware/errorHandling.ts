@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import { captureException, withScope } from '@sentry/node';
-import { ZodError } from 'zod';
 
 /**
  * Async error handler wrapper
@@ -17,12 +16,7 @@ export const handleAsyncError = (
 /**
  * Global error handling middleware
  */
-export const errorHandler = (
-  error: any,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const errorHandler = (error: any, req: Request, res: Response) => {
   // Log to console for development
   console.error('Error occurred:', {
     message: error.message,

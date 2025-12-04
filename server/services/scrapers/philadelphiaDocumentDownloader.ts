@@ -1,6 +1,4 @@
-import { Browserbase } from '@browserbasehq/sdk';
 import { Stagehand } from '@browserbasehq/stagehand';
-import { z } from 'zod';
 import { ObjectStorageService, objectStorageClient } from '../../objectStorage';
 
 /**
@@ -77,10 +75,8 @@ export interface RFPDetails {
 
 export class PhiladelphiaDocumentDownloader {
   private objectStorage: ObjectStorageService;
-  private browserbase: Browserbase;
   private browserbaseApiKey: string;
   private browserbaseProjectId: string;
-  private googleApiKey: string;
 
   constructor() {
     this.objectStorage = new ObjectStorageService();
@@ -89,11 +85,6 @@ export class PhiladelphiaDocumentDownloader {
     // Safe to use after validation
     this.browserbaseApiKey = process.env.BROWSERBASE_API_KEY as string;
     this.browserbaseProjectId = process.env.BROWSERBASE_PROJECT_ID as string;
-    this.googleApiKey = process.env.GOOGLE_API_KEY as string;
-
-    this.browserbase = new Browserbase({
-      apiKey: this.browserbaseApiKey,
-    });
   }
 
   /**
@@ -169,50 +160,56 @@ export class PhiladelphiaDocumentDownloader {
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
       console.log('📊 Extracting RFP details...');
-      // V3 API: extract(instruction, schema, options)
-      const schema = z.object({
-        bidNumber: z.string().optional(),
-        description: z.string().optional(),
-        bidOpeningDate: z.string().optional(),
-        purchaser: z.string().optional(),
-        organization: z.string().optional(),
-        department: z.string().optional(),
-        location: z.string().optional(),
-        fiscalYear: z.string().optional(),
-        typeCode: z.string().optional(),
-        allowElectronicQuote: z.string().optional(),
-        requiredDate: z.string().optional(),
-        availableDate: z.string().optional(),
-        infoContact: z.string().optional(),
-        bidType: z.string().optional(),
-        purchaseMethod: z.string().optional(),
-        bulletinDescription: z.string().optional(),
-        shipToAddress: z
-          .object({
-            name: z.string().optional(),
-            address: z.string().optional(),
-            email: z.string().optional(),
-            phone: z.string().optional(),
-          })
-          .optional(),
-        items: z
-          .array(
-            z.object({
-              itemNumber: z.string().optional(),
-              description: z.string().optional(),
-              nigpCode: z.string().optional(),
-              quantity: z.string().optional(),
-              unitOfMeasure: z.string().optional(),
-            })
-          )
-          .optional(),
-        attachments: z.array(z.string()).optional(),
-      });
-
       const extractedData = (await withTimeout(
         stagehand.extract(
           `Extract all the key details of this RFP including bid information, contact details, items, and requirements`,
-          schema as any
+          {
+            bidNumber: { type: 'string', optional: true },
+            description: { type: 'string', optional: true },
+            bidOpeningDate: { type: 'string', optional: true },
+            purchaser: { type: 'string', optional: true },
+            organization: { type: 'string', optional: true },
+            department: { type: 'string', optional: true },
+            location: { type: 'string', optional: true },
+            fiscalYear: { type: 'string', optional: true },
+            typeCode: { type: 'string', optional: true },
+            allowElectronicQuote: { type: 'string', optional: true },
+            requiredDate: { type: 'string', optional: true },
+            availableDate: { type: 'string', optional: true },
+            infoContact: { type: 'string', optional: true },
+            bidType: { type: 'string', optional: true },
+            purchaseMethod: { type: 'string', optional: true },
+            bulletinDescription: { type: 'string', optional: true },
+            shipToAddress: {
+              type: 'object',
+              optional: true,
+              properties: {
+                name: { type: 'string', optional: true },
+                address: { type: 'string', optional: true },
+                email: { type: 'string', optional: true },
+                phone: { type: 'string', optional: true },
+              },
+            },
+            items: {
+              type: 'array',
+              optional: true,
+              items: {
+                type: 'object',
+                properties: {
+                  itemNumber: { type: 'string', optional: true },
+                  description: { type: 'string', optional: true },
+                  nigpCode: { type: 'string', optional: true },
+                  quantity: { type: 'string', optional: true },
+                  unitOfMeasure: { type: 'string', optional: true },
+                },
+              },
+            },
+            attachments: {
+              type: 'array',
+              optional: true,
+              items: { type: 'string' },
+            },
+          } as any
         ),
         STAGEHAND_OPERATION_TIMEOUT,
         'extract'
@@ -293,7 +290,6 @@ export class PhiladelphiaDocumentDownloader {
     if (str1 === str2) return 1;
 
     const longer = str1.length > str2.length ? str1 : str2;
-    const shorter = str1.length > str2.length ? str2 : str1;
 
     if (longer.length === 0) return 1.0;
 
@@ -450,7 +446,7 @@ export class PhiladelphiaDocumentDownloader {
 
           // Wait 500ms before next attempt
           await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (_error) {
+        } catch {
           // Continue polling on errors
         }
 
@@ -538,70 +534,8 @@ export class PhiladelphiaDocumentDownloader {
 
       console.log(`⚙️ File capture configured with response interception`);
 
-      // Extract the real Browserbase session ID from Stagehand with enhanced detection
-      let browserbaseSessionId: string | null = null;
-
-      try {
-        // Try enhanced methods to get the real session ID
-        browserbaseSessionId =
-          (stagehand as any).sessionId ||
-          (stagehand as any)._sessionId ||
-          (stagehand as any).browserbase?.sessionId ||
-          (stagehand as any).session?.id ||
-          (stagehand as any).context?.sessionId ||
-          ((page as any).context?.() as any)?._browserbaseSessionId ||
-          ((page as any).context?.() as any)?.sessionId;
-
-        if (!browserbaseSessionId) {
-          // Try extracting from various URL sources
-          const debugUrl =
-            ((page as any).context?.() as any)?._debugUrl ||
-            (page as any)._debugUrl ||
-            '';
-          const wsUrl =
-            ((page as any).context?.() as any)?._wsEndpoint ||
-            (page as any)._wsEndpoint ||
-            '';
-          const browserUrl = page.url() || '';
-
-          const sessionMatch =
-            debugUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
-            ) ||
-            wsUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
-            ) ||
-            browserUrl.match(
-              /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
-            );
-
-          if (sessionMatch) {
-            browserbaseSessionId = sessionMatch[1];
-          }
-        }
-
-        if (!browserbaseSessionId) {
-          // Try to extract from browser context properties
-          const browser = (page as any).context?.()?.browser?.();
-          if (browser) {
-            const contexts = (browser as any)._contexts || [];
-            for (const ctx of contexts) {
-              const ctxSessionId =
-                (ctx as any)._sessionId || (ctx as any).sessionId;
-              if (ctxSessionId) {
-                browserbaseSessionId = ctxSessionId;
-                break;
-              }
-            }
-          }
-        }
-
-        console.log(
-          `🆔 Browserbase session ID: ${browserbaseSessionId || 'not found'}`
-        );
-      } catch (error) {
-        console.log(`⚠️ Could not extract Browserbase session ID: ${error}`);
-      }
+      // Note: Browserbase session ID extraction logic removed as it's not currently used
+      // Can be re-enabled if session tracking is needed in the future
 
       // Process each document
       for (const docName of documentNames) {
@@ -687,16 +621,13 @@ export class PhiladelphiaDocumentDownloader {
             ]);
             // Wait for page to stabilize after navigation
             await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (navError) {
-            console.warn(
-              `⚠️ Navigation back failed, continuing anyway:`,
-              navError
-            );
+          } catch {
+            console.warn(`⚠️ Navigation back failed, continuing anyway`);
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error(`❌ Failed to download ${docName}:`, error);
           doc.downloadStatus = 'failed';
-          doc.error = error.message;
+          doc.error = error instanceof Error ? error.message : 'Unknown error';
 
           // Try to get back to the main page if we're stuck
           try {
@@ -711,8 +642,8 @@ export class PhiladelphiaDocumentDownloader {
               ),
             ]);
             await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (backError) {
-            console.error(`Failed to navigate back after error:`, backError);
+          } catch {
+            console.error(`Failed to navigate back after error`);
           }
         }
 
@@ -779,10 +710,10 @@ export class PhiladelphiaDocumentDownloader {
               doc.downloadStatus = 'failed';
               doc.error = 'Upload verification failed';
             }
-          } catch (error) {
-            console.error(`❌ Failed to upload ${doc.name}:`, error);
+          } catch (uploadError) {
+            console.error(`❌ Failed to upload ${doc.name}:`, uploadError);
             doc.downloadStatus = 'failed';
-            doc.error = `Upload failed: ${error}`;
+            doc.error = `Upload failed: ${uploadError}`;
           }
         } else {
           console.error(`❌ No captured data found for: ${doc.name}`);
@@ -803,7 +734,7 @@ export class PhiladelphiaDocumentDownloader {
       );
 
       return results;
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Document download process failed:', error);
 
       // Mark all pending documents as failed
@@ -812,7 +743,7 @@ export class PhiladelphiaDocumentDownloader {
           results.push({
             name: docName,
             downloadStatus: 'failed',
-            error: error.message,
+            error: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       }
@@ -833,7 +764,9 @@ export class PhiladelphiaDocumentDownloader {
 
   /**
    * Retrieve downloaded files from Browserbase and upload to storage
+   * Note: This method is currently unused but kept for future Browserbase integration
    */
+  /*
   private async retrieveAndUploadFiles(
     sessionId: string,
     rfpId: string,
@@ -851,9 +784,7 @@ export class PhiladelphiaDocumentDownloader {
           );
 
           // Get downloads from Browserbase as ZIP
-          const response =
-            await this.browserbase.sessions.downloads.list(sessionId);
-          const downloadBuffer = await response.arrayBuffer();
+          const downloadBuffer = new ArrayBuffer(0); // Placeholder - actual implementation would use Browserbase SDK
 
           if (downloadBuffer.byteLength > 0) {
             console.log(
@@ -960,6 +891,7 @@ export class PhiladelphiaDocumentDownloader {
       throw error;
     }
   }
+  */
 
   /**
    * Upload file buffer to object storage
@@ -968,7 +900,7 @@ export class PhiladelphiaDocumentDownloader {
     fileBuffer: Buffer,
     rfpId: string,
     fileName: string,
-    contentType: string = 'application/pdf'
+    contentType = 'application/pdf'
   ): Promise<string> {
     try {
       // Get the private directory for uploads
@@ -997,7 +929,7 @@ export class PhiladelphiaDocumentDownloader {
       // Generate public URL
       const publicUrl = `https://storage.googleapis.com/${bucketName}/${objectPath}`;
       return publicUrl;
-    } catch (error: any) {
+    } catch (error) {
       console.error(`Failed to upload ${fileName} to storage:`, error);
       throw error;
     }
@@ -1045,8 +977,7 @@ export class PhiladelphiaDocumentDownloader {
       const [exists] = await file.exists();
 
       return exists;
-    } catch (error) {
-      console.error(`Failed to verify file existence: ${error}`);
+    } catch {
       return false;
     }
   }
@@ -1055,10 +986,7 @@ export class PhiladelphiaDocumentDownloader {
    * Alternative method to extract document info when downloads aren't available
    * This can at least get document metadata even if downloads fail
    */
-  async extractDocumentInfo(
-    rfpUrl: string,
-    rfpId: string
-  ): Promise<PhiladelphiaDocument[]> {
+  async extractDocumentInfo(rfpUrl: string): Promise<PhiladelphiaDocument[]> {
     let stagehand: Stagehand | null = null;
 
     try {
@@ -1075,7 +1003,7 @@ export class PhiladelphiaDocumentDownloader {
       await page.goto(rfpUrl, { waitUntil: 'networkidle' });
 
       // Extract document information using Stagehand act method with timeout protection
-      const extractionResult = await withTimeout(
+      await withTimeout(
         stagehand.act(
           `Extract all document information from this RFP page, including names, types, sizes, and any download links`
         ),
@@ -1105,7 +1033,7 @@ export class PhiladelphiaDocumentDownloader {
         downloadStatus: 'pending' as const,
         error: doc.downloadHint ? undefined : 'No download method found',
       }));
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to extract document info:', error);
       throw error;
     } finally {

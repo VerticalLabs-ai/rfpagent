@@ -295,16 +295,16 @@ export class E2ETestOrchestrator {
           await this.testDiscoveryPhase(testId, scenario);
           break;
         case 'analysis':
-          await this.testAnalysisPhase(testId, scenario);
+          await this.testAnalysisPhase(testId);
           break;
         case 'generation':
-          await this.testGenerationPhase(testId, scenario);
+          await this.testGenerationPhase(testId);
           break;
         case 'submission':
-          await this.testSubmissionPhase(testId, scenario);
+          await this.testSubmissionPhase(testId);
           break;
         case 'monitoring':
-          await this.testMonitoringPhase(testId, scenario);
+          await this.testMonitoringPhase(testId);
           break;
         default:
           throw new Error(`Unknown test phase: ${phase}`);
@@ -445,7 +445,7 @@ export class E2ETestOrchestrator {
     validations.push(persistenceValidation);
 
     // Test 5: Agent Coordination Check
-    const agentValidation = await this.validateAgentCoordination('discovery');
+    const agentValidation = await this.validateAgentCoordination();
     validations.push(agentValidation);
 
     const testResult = this.activeTests.get(testId)!;
@@ -457,10 +457,7 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testAnalysisPhase(
-    testId: string,
-    scenario: E2ETestScenario
-  ): Promise<void> {
+  async testAnalysisPhase(testId: string): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -550,7 +547,7 @@ export class E2ETestOrchestrator {
     validations.push(workItemValidation);
 
     // Test 4: Agent Specialist Coordination
-    const specialistValidation = await this.validate3TierAgentSystem(testId);
+    const specialistValidation = await this.validate3TierAgentSystem();
     validations.push(specialistValidation);
 
     const testResult = this.activeTests.get(testId)!;
@@ -561,10 +558,7 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testGenerationPhase(
-    testId: string,
-    scenario: E2ETestScenario
-  ): Promise<void> {
+  async testGenerationPhase(testId: string): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -678,10 +672,7 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testSubmissionPhase(
-    testId: string,
-    scenario: E2ETestScenario
-  ): Promise<void> {
+  async testSubmissionPhase(testId: string): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -809,10 +800,7 @@ export class E2ETestOrchestrator {
     this.updatePerformanceMetrics(testId, duration);
   }
 
-  async testMonitoringPhase(
-    testId: string,
-    scenario: E2ETestScenario
-  ): Promise<void> {
+  async testMonitoringPhase(testId: string): Promise<void> {
     const validations: PhaseValidation[] = [];
     const startTime = Date.now();
 
@@ -1166,9 +1154,9 @@ export class E2ETestOrchestrator {
       const sampleRFPIds = rfps.rfps.slice(0, 10).map(r => r.id);
       for (const rfpId of sampleRFPIds) {
         try {
-          const documents = await this.storage.getDocumentsByRFP(rfpId);
+          await this.storage.getDocumentsByRFP(rfpId);
           // This validates that the RFP reference exists
-        } catch (error) {
+        } catch {
           issues.push(`Document retrieval failed for RFP ${rfpId}`);
         }
       }
@@ -1176,9 +1164,9 @@ export class E2ETestOrchestrator {
       // Check proposals have valid RFP references
       for (const rfpId of sampleRFPIds) {
         try {
-          const proposal = await this.storage.getProposalByRFP(rfpId);
+          await this.storage.getProposalByRFP(rfpId);
           // This validates the RFP reference if proposal exists
-        } catch (error) {
+        } catch {
           issues.push(`Proposal retrieval failed for RFP ${rfpId}`);
         }
       }
@@ -1419,7 +1407,7 @@ export class E2ETestOrchestrator {
         this.storage.getActiveWorkflows(), // Using getActiveWorkflows instead of getWorkflowStatesOverview
       ];
 
-      const queryResults = await Promise.all(queryPromises);
+      await Promise.all(queryPromises);
       const queryDuration = Date.now() - queryStartTime;
 
       // Performance thresholds (in milliseconds)
@@ -1454,7 +1442,7 @@ export class E2ETestOrchestrator {
       try {
         const documents = await this.storage.getDocumentsByRFP(rfpId);
         totalCount += documents.length;
-      } catch (error) {
+      } catch {
         // Document retrieval failed, count as 0
       }
     }
@@ -1468,7 +1456,7 @@ export class E2ETestOrchestrator {
       try {
         const proposal = await this.storage.getProposalByRFP(rfp.id);
         if (proposal) totalCount++;
-      } catch (error) {
+      } catch {
         // Proposal retrieval failed, count as 0
       }
     }
@@ -1482,7 +1470,7 @@ export class E2ETestOrchestrator {
       try {
         const submissions = await this.storage.getSubmissionsByRFP(rfp.id);
         totalCount += submissions.length;
-      } catch (error) {
+      } catch {
         // Submission retrieval failed, count as 0
       }
     }
@@ -1507,18 +1495,18 @@ export class E2ETestOrchestrator {
             `rfp-workflow-${rfp.id}`
           );
           totalCount += workItems.length;
-        } catch (error) {
+        } catch {
           // Work items retrieval failed, count as 0
         }
       }
 
       return totalCount;
-    } catch (error) {
+    } catch {
       return 0;
     }
   }
 
-  async validateAgentCoordination(phase: string): Promise<PhaseValidation> {
+  async validateAgentCoordination(): Promise<PhaseValidation> {
     try {
       // Test agent registry
       const agents = await this.agentRegistry.getActiveAgents();
@@ -1577,7 +1565,7 @@ export class E2ETestOrchestrator {
     }
   }
 
-  async validate3TierAgentSystem(testId: string): Promise<PhaseValidation> {
+  async validate3TierAgentSystem(): Promise<PhaseValidation> {
     try {
       // Validate the complete 3-tier agent system
       const agents = await this.agentRegistry.getActiveAgents();
@@ -1870,20 +1858,14 @@ export class E2ETestOrchestrator {
 
       for (const rfp of testRFPs) {
         // Delete associated documents, proposals, submissions
-        const documents = await this.storage.getDocumentsByRFP(rfp.id);
-        for (const doc of documents) {
-          // Note: deleteDocument method doesn't exist in storage interface - skipping deletion
-        }
+        await this.storage.getDocumentsByRFP(rfp.id);
+        // Note: deleteDocument method doesn't exist in storage interface - skipping deletion
 
-        const proposal = await this.storage.getProposalByRFP(rfp.id);
-        if (proposal) {
-          // Note: deleteProposal method doesn't exist in storage interface - skipping deletion
-        }
+        await this.storage.getProposalByRFP(rfp.id);
+        // Note: deleteProposal method doesn't exist in storage interface - skipping deletion
 
-        const submissions = await this.storage.getSubmissionsByRFP(rfp.id);
-        for (const submission of submissions) {
-          // Note: deleteSubmission method doesn't exist in storage interface - skipping deletion
-        }
+        await this.storage.getSubmissionsByRFP(rfp.id);
+        // Note: deleteSubmission method doesn't exist in storage interface - skipping deletion
 
         // Delete workflow state
         // Note: deleteWorkflowState method doesn't exist in storage interface - skipping deletion
@@ -1893,10 +1875,8 @@ export class E2ETestOrchestrator {
 
       // Delete test portals
       const portals = await this.storage.getAllPortals();
-      const testPortals = portals.filter(p => p.name.includes(testId));
-      for (const portal of testPortals) {
-        // Note: deletePortal method doesn't exist in storage interface - skipping deletion
-      }
+      portals.filter(p => p.name.includes(testId));
+      // Note: deletePortal method doesn't exist in storage interface - skipping deletion
 
       console.log(`🧹 Cleaned up test data for test ID: ${testId}`);
     } catch (error) {

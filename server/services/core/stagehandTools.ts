@@ -307,11 +307,11 @@ async function performBonfireLoginOnly(
           console.log(`✅ Clicked cookie consent button: ${selector}`);
           await new Promise(resolve => setTimeout(resolve, 1000));
           break;
-        } catch (cookieError) {
+        } catch {
           // Continue to next selector
         }
       }
-    } catch (cookieError) {
+    } catch {
       console.log(
         '⚠️ No cookie banner detected or failed to handle, proceeding...'
       );
@@ -338,7 +338,7 @@ async function performBonfireLoginOnly(
         'act'
       );
       await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
+    } catch {
       console.log(
         '⚠️ No initial Log In button found, proceeding with form detection...'
       );
@@ -354,7 +354,7 @@ async function performBonfireLoginOnly(
         STAGEHAND_OPERATION_TIMEOUT,
         'act'
       );
-    } catch (emailError) {
+    } catch {
       console.log('⚠️ Email field entry failed, trying alternate approach...');
       await withTimeout(
         stagehand.act(
@@ -376,7 +376,7 @@ async function performBonfireLoginOnly(
         STAGEHAND_OPERATION_TIMEOUT,
         'act'
       );
-    } catch (continueError) {
+    } catch {
       console.log('⚠️ Continue button click failed, trying Enter key...');
       await page.keyboard.press('Enter');
     }
@@ -408,7 +408,7 @@ async function performBonfireLoginOnly(
               `✅ Password field detected with selector: ${selector} after ${attempt + 1} seconds`
             );
             break;
-          } catch (selectorError) {
+          } catch {
             // Continue to next selector
           }
         }
@@ -418,11 +418,9 @@ async function performBonfireLoginOnly(
           `⏳ Password field not yet visible, attempt ${attempt + 1}/10...`
         );
       } catch (checkError: unknown) {
-        const errorMessage =
-          checkError instanceof Error ? checkError.message : 'Unknown error';
         console.log(
           `⏳ Error checking for password field, attempt ${attempt + 1}/10:`,
-          errorMessage
+          checkError instanceof Error ? checkError.message : 'Unknown error'
         );
       }
     }
@@ -529,12 +527,17 @@ async function performBonfireLoginOnly(
         );
       }
     } catch (checkError: unknown) {
-      const errorMessage =
+      console.log(
+        '⚠️ Login verification error:',
         checkError instanceof Error
           ? checkError.message
-          : 'Login verification failed';
-      console.log('⚠️ Login verification error:', errorMessage);
-      throw new Error(errorMessage || 'Could not verify login success');
+          : 'Login verification failed'
+      );
+      throw new Error(
+        checkError instanceof Error
+          ? checkError.message
+          : 'Could not verify login success'
+      );
     }
   } catch (error: any) {
     console.error(`❌ Login phase error:`, error);
@@ -576,7 +579,7 @@ async function performPostLoginNavigation(
         );
         console.log(`✅ Cloudflare protection bypassed`);
         await new Promise(resolve => setTimeout(resolve, 3000));
-      } catch (cloudflareError) {
+      } catch {
         console.log(`⚠️ Cloudflare bypass timeout, proceeding anyway...`);
       }
     }
@@ -592,7 +595,7 @@ async function performPostLoginNavigation(
         page.waitForTimeout(15000),
       ]);
       console.log(`✅ Bonfire opportunities page content detected`);
-    } catch (contentError) {
+    } catch {
       console.log(
         `⚠️ Opportunities content not detected within timeout, proceeding...`
       );
@@ -790,7 +793,7 @@ export async function performBrowserAuthentication(
 
           // Give additional time for the real page to load
           await new Promise(resolve => setTimeout(resolve, 3000));
-        } catch (cloudflareError) {
+        } catch {
           console.log(
             `⚠️ Cloudflare bypass timeout on target page, proceeding anyway...`
           );
@@ -803,7 +806,7 @@ export async function performBrowserAuthentication(
         // Use simple timeout since waitForSelector and waitForTimeout don't exist
         await new Promise(resolve => setTimeout(resolve, 3000));
         console.log(`✅ Opportunities page content loaded`);
-      } catch (waitError) {
+      } catch {
         console.log(`⚠️ Opportunities content wait timeout, but proceeding...`);
       }
     } catch (navError: any) {
@@ -854,7 +857,7 @@ export async function performBrowserAuthentication(
               await new Promise(resolve => setTimeout(resolve, 5000));
               console.log(`✅ Cloudflare protection bypassed on bounce page`);
               await new Promise(resolve => setTimeout(resolve, 3000));
-            } catch (cloudflareError) {
+            } catch {
               console.log(
                 `⚠️ Cloudflare bypass timeout on bounce page, proceeding anyway...`
               );
@@ -867,7 +870,7 @@ export async function performBrowserAuthentication(
             // Use simple timeout since waitForSelector and waitForTimeout don't exist
             await new Promise(resolve => setTimeout(resolve, 3000));
             console.log(`✅ Opportunities content loaded on bounce page`);
-          } catch (waitError) {
+          } catch {
             console.log(
               `⚠️ Opportunities content wait timeout on bounce page, but proceeding...`
             );

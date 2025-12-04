@@ -48,7 +48,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
-      const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+      const minConfidence = this.getMinimumConfidenceThreshold();
       const filteredOpportunities = opportunities.filter(
         opp => (opp.confidence || 0) >= minConfidence
       );
@@ -467,7 +467,7 @@ export class AustinFinanceContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for Austin Finance
    */
-  private getMinimumConfidenceThreshold(portalContext: string): number {
+  private getMinimumConfidenceThreshold(): number {
     // Austin Finance has specific patterns, so we can be more selective
     return 0.6;
   }

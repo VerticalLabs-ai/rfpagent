@@ -141,9 +141,7 @@ export default function ScanHistoryPage() {
     } as const;
 
     return (
-      <Badge
-        variant={variants[status as keyof typeof variants] || 'outline'}
-      >
+      <Badge variant={variants[status as keyof typeof variants] || 'outline'}>
         {status.replace('_', ' ')}
       </Badge>
     );
@@ -229,7 +227,10 @@ export default function ScanHistoryPage() {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" data-testid="scan-history-page">
+    <div
+      className="flex flex-col h-full overflow-hidden"
+      data-testid="scan-history-page"
+    >
       <div className="p-6 pb-0 shrink-0 space-y-6">
         <div className="flex justify-between items-center">
           <div>
@@ -339,7 +340,9 @@ export default function ScanHistoryPage() {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Started</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Started
+                        </p>
                         <p
                           className="text-sm text-gray-600"
                           data-testid={`scan-start-${scan.id}`}
@@ -370,7 +373,9 @@ export default function ScanHistoryPage() {
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">Errors</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          Errors
+                        </p>
                         <p
                           className="text-sm text-gray-600"
                           data-testid={`scan-errors-${scan.id}`}
@@ -387,7 +392,10 @@ export default function ScanHistoryPage() {
                           Error Details
                         </h4>
                         {scan.errors.map(
-                          (error: ScanHistoryItem['errors'][0], index: number) => (
+                          (
+                            error: ScanHistoryItem['errors'][0],
+                            index: number
+                          ) => (
                             <div
                               key={index}
                               className="text-sm"
@@ -402,7 +410,9 @@ export default function ScanHistoryPage() {
                                 </Badge>
                                 <Badge
                                   variant={
-                                    error.recoverable ? 'secondary' : 'destructive'
+                                    error.recoverable
+                                      ? 'secondary'
+                                      : 'destructive'
                                   }
                                   data-testid={`error-recovery-${scan.id}-${index}`}
                                 >
@@ -442,13 +452,16 @@ export default function ScanHistoryPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                      onClick={() =>
+                        setCurrentPage(Math.max(0, currentPage - 1))
+                      }
                       disabled={currentPage === 0}
                     >
                       Previous
                     </Button>
                     <span className="text-sm px-3">
-                      Page {currentPage + 1} of {Math.ceil(totalScans / pageSize)}
+                      Page {currentPage + 1} of{' '}
+                      {Math.ceil(totalScans / pageSize)}
                     </span>
                     <Button
                       variant="outline"

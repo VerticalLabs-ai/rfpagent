@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { federalRfpSearchService } from './federalRfpSearchService';
 
 export interface PlatformSearchCriteria {
   category?: string;

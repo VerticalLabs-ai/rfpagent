@@ -277,7 +277,6 @@ interface SelectableItemProps {
 }
 
 export function SelectableItem({
-  id,
   selected,
   onSelectionChange,
   children,
@@ -302,9 +301,7 @@ export function SelectableItem({
   );
 }
 
-export function useBulkSelection<T extends { id: string }>(
-  initialItems: T[] = []
-) {
+export function useBulkSelection<T extends { id: string }>() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
 
   const toggleItem = useCallback((id: string) => {

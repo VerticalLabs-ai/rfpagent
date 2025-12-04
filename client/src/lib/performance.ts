@@ -75,7 +75,7 @@ export function trackWebVitals(onMetric: (metric: PerformanceMetric) => void) {
 
   try {
     observer.observe({ type: 'largest-contentful-paint', buffered: true });
-  } catch (e) {
+  } catch {
     console.warn('LCP observation not supported');
   }
 
@@ -97,7 +97,7 @@ export function trackWebVitals(onMetric: (metric: PerformanceMetric) => void) {
 
   try {
     clsObserver.observe({ type: 'layout-shift', buffered: true });
-  } catch (e) {
+  } catch {
     console.warn('CLS observation not supported');
   }
 
@@ -132,7 +132,7 @@ export function trackWebVitals(onMetric: (metric: PerformanceMetric) => void) {
 
   try {
     fidObserver.observe({ type: 'first-input', buffered: true });
-  } catch (e) {
+  } catch {
     console.warn('FID observation not supported');
   }
 }
@@ -259,8 +259,8 @@ export function measure(
       performance.measure(name, startMark, endMark);
       const measures = performance.getEntriesByName(name, 'measure');
       return measures[measures.length - 1]?.duration || null;
-    } catch (e) {
-      console.warn(`Failed to measure ${name}:`, e);
+    } catch {
+      console.warn(`Failed to measure ${name}`);
       return null;
     }
   }
@@ -312,7 +312,8 @@ export function usePerformanceTracking(componentName: string): void {
       }
       clearMarks(componentName);
     };
-  }, [componentName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }
 
 /**

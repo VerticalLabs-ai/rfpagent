@@ -1,4 +1,4 @@
-import type { Document, WorkItem } from '@shared/schema';
+import type { WorkItem } from '@shared/schema';
 import { nanoid } from 'nanoid';
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
@@ -579,10 +579,7 @@ export class AnalysisOrchestrator {
   /**
    * Handle work item completion and trigger dependent tasks
    */
-  async handleWorkItemCompletion(
-    workItemId: string,
-    result: any
-  ): Promise<void> {
+  async handleWorkItemCompletion(workItemId: string): Promise<void> {
     try {
       const workItem = await storage.getWorkItem(workItemId);
       if (!workItem || !workItem.workflowId) return;

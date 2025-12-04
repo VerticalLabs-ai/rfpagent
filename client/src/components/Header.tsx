@@ -38,7 +38,7 @@ export default function Header() {
         description: `Successfully cleared ${data.cleared} notifications`,
       });
     },
-    onError: (error: any) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to clear notifications',

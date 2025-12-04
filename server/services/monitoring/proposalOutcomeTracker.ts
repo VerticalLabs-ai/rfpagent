@@ -117,7 +117,7 @@ export class ProposalOutcomeTracker {
 
       // Generate follow-up actions if enabled
       if (this.followUpEnabled) {
-        await this.generateFollowUpActions(outcome, proposal, rfp);
+        await this.generateFollowUpActions(outcome, rfp);
       }
 
       // Update competitive intelligence if we have competitor data
@@ -157,7 +157,7 @@ export class ProposalOutcomeTracker {
       }
 
       // Poll for outcome updates (this would integrate with portal monitoring)
-      const outcomeData = await this.pollForOutcome(submission);
+      const outcomeData = await this.pollForOutcome();
 
       if (outcomeData) {
         const outcome: ProposalOutcome = {
@@ -192,7 +192,7 @@ export class ProposalOutcomeTracker {
    * Analyze proposal performance patterns
    */
   async analyzeProposalPerformance(
-    timeframe: 'week' | 'month' | 'quarter' | 'year' = 'month'
+    timeframe: 'week' | 'month' | 'quarter' | 'year'
   ): Promise<any> {
     try {
       const endDate = new Date();
@@ -220,7 +220,7 @@ export class ProposalOutcomeTracker {
         winRate: this.calculateWinRate(outcomes),
         averageScore: this.calculateAverageScore(outcomes),
         performanceByAgency: this.analyzePerformanceByAgency(outcomes),
-        performanceByCategory: this.analyzePerformanceByCategory(outcomes),
+        performanceByCategory: this.analyzePerformanceByCategory(),
         trendAnalysis: this.analyzeTrends(outcomes),
         improvementAreas: await this.identifyImprovementAreas(outcomes),
         recommendations: await this.generateRecommendations(outcomes),
@@ -309,10 +309,7 @@ export class ProposalOutcomeTracker {
   /**
    * Get competitive insights for bidding strategy
    */
-  async getCompetitiveInsights(
-    agency: string,
-    category?: string
-  ): Promise<any> {
+  async getCompetitiveInsights(agency: string): Promise<any> {
     try {
       // Get historical competitive data
       const insights = await agentMemoryService.getAgentKnowledge(
@@ -373,7 +370,6 @@ export class ProposalOutcomeTracker {
    */
   async generateFollowUpActions(
     outcome: ProposalOutcome,
-    proposal: any,
     rfp: any
   ): Promise<void> {
     const actions = [];
@@ -502,8 +498,8 @@ export class ProposalOutcomeTracker {
             : undefined,
         improvementAreas: this.identifyProposalImprovementAreas(outcome),
       },
-      learnedPatterns: this.extractLearnedPatterns(outcome, proposal, rfp),
-      adaptations: this.suggestAdaptations(outcome, proposal, rfp),
+      learnedPatterns: this.extractLearnedPatterns(outcome, rfp),
+      adaptations: this.suggestAdaptations(outcome),
       confidenceScore: this.calculateOutcomeConfidence(outcome),
       domain: rfp.agency,
       category: this.categorizeRFP(rfp),
@@ -522,7 +518,7 @@ export class ProposalOutcomeTracker {
       pricingStrategy: {
         margin: proposal.estimatedMargin || 0.15,
         approach: this.determinePricingApproach(proposal),
-        competitiveness: this.assessPricingCompetitiveness(proposal),
+        competitiveness: this.assessPricingCompetitiveness(),
       },
       complianceStrategy: {
         thoroughness: proposal.metadata?.complianceScore || 0.8,
@@ -555,8 +551,8 @@ export class ProposalOutcomeTracker {
   private analyzeInternalFactors(proposal: any): any {
     return {
       resourceUtilization: 'optimal', // Would be calculated from actual resource data
-      teamExperience: this.assessTeamExperience(proposal),
-      timeAllocation: this.calculateTimeAllocation(proposal),
+      teamExperience: this.assessTeamExperience(),
+      timeAllocation: this.calculateTimeAllocation(),
       qualityMetrics: {
         complianceScore: proposal.metadata?.complianceScore || 0.8,
         contentQuality: proposal.metadata?.qualityScore || 0.8,
@@ -564,7 +560,7 @@ export class ProposalOutcomeTracker {
     };
   }
 
-  private async pollForOutcome(submission: any): Promise<any | null> {
+  private async pollForOutcome(): Promise<any | null> {
     // This would integrate with portal monitoring to check for outcome updates
     // For now, return null to indicate no new outcome data
     // In a real implementation, this would:
@@ -666,7 +662,7 @@ export class ProposalOutcomeTracker {
     return analysis;
   }
 
-  private analyzePerformanceByCategory(outcomes: ProposalOutcome[]): any {
+  private analyzePerformanceByCategory(): any {
     // Similar to analyzePerformanceByAgency but group by RFP category
     return {};
   }
@@ -916,7 +912,6 @@ export class ProposalOutcomeTracker {
 
   private extractLearnedPatterns(
     outcome: ProposalOutcome,
-    proposal: any,
     rfp: any
   ): string[] {
     const patterns = [];
@@ -938,11 +933,7 @@ export class ProposalOutcomeTracker {
     return patterns;
   }
 
-  private suggestAdaptations(
-    outcome: ProposalOutcome,
-    proposal: any,
-    rfp: any
-  ): any[] {
+  private suggestAdaptations(outcome: ProposalOutcome): any[] {
     const adaptations = [];
 
     if (outcome.status !== 'awarded') {
@@ -1034,7 +1025,7 @@ export class ProposalOutcomeTracker {
     return 'competitive';
   }
 
-  private assessPricingCompetitiveness(proposal: any): string {
+  private assessPricingCompetitiveness(): string {
     // This would compare against market rates
     return 'moderate';
   }
@@ -1070,12 +1061,12 @@ export class ProposalOutcomeTracker {
     return 'regular';
   }
 
-  private assessTeamExperience(proposal: any): string {
+  private assessTeamExperience(): string {
     // Would assess based on team qualifications in proposal
     return 'experienced';
   }
 
-  private calculateTimeAllocation(proposal: any): any {
+  private calculateTimeAllocation(): any {
     return {
       preparationTime: 'adequate',
       resourcesAllocated: 'optimal',

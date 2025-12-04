@@ -1,7 +1,3 @@
-import { storage } from '../../storage';
-import { agentMemoryService } from '../agents/agentMemoryService';
-import OpenAI from 'openai';
-
 /**
  * Enhanced SAFLA (Self-Aware Feedback Loop Algorithm) Learning Engine
  *
@@ -32,12 +28,6 @@ import OpenAI from 'openai';
  *    - Automated hyperparameter tuning
  *    - Performance degradation detection
  */
-
-if (!process.env.OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY environment variable is required');
-}
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -160,7 +150,7 @@ export class EnhancedSAFLALearningEngine {
    * Q-Learning: Learn optimal strategies through reward-based feedback
    */
   async learnWithQLearning(event: LearningEvent): Promise<void> {
-    const { agentId, taskType, context, outcome } = event;
+    const { taskType, context, outcome } = event;
 
     // Calculate reward from outcome
     const reward = this.calculateReward(outcome);
@@ -169,11 +159,11 @@ export class EnhancedSAFLALearningEngine {
     const state = this.encodeState(taskType, context);
 
     // Get current Q-value for state-action pair
-    const currentStrategy = await this.getCurrentStrategy(state, taskType);
+    const currentStrategy = await this.getCurrentStrategy(state);
     const currentQ = currentStrategy?.qValue || 0;
 
     // Get max Q-value for next state (if task continues)
-    const maxNextQ = await this.getMaxQValue(state, taskType);
+    const maxNextQ = await this.getMaxQValue();
 
     // Q-Learning update: Q(s,a) = Q(s,a) + α[r + γ*max(Q(s',a')) - Q(s,a)]
     const newQ =
@@ -181,7 +171,7 @@ export class EnhancedSAFLALearningEngine {
       this.learningRate * (reward + this.discountFactor * maxNextQ - currentQ);
 
     // Update strategy with new Q-value
-    await this.updateStrategyQValue(state, taskType, newQ, reward);
+    await this.updateStrategyQValue(state, newQ, reward);
 
     console.log(
       `🧠 Q-Learning: Updated Q-value for ${taskType} from ${currentQ.toFixed(3)} to ${newQ.toFixed(3)}`
@@ -191,12 +181,8 @@ export class EnhancedSAFLALearningEngine {
   /**
    * Multi-Armed Bandit: Balance exploration vs exploitation
    */
-  async selectStrategyWithBandit(
-    agentId: string,
-    taskType: string,
-    context: Record<string, any>
-  ): Promise<LearnedStrategy | null> {
-    const availableStrategies = await this.getAvailableStrategies(taskType);
+  async selectStrategyWithBandit(): Promise<LearnedStrategy | null> {
+    const availableStrategies = await this.getAvailableStrategies();
 
     if (availableStrategies.length === 0) return null;
 
@@ -210,9 +196,7 @@ export class EnhancedSAFLALearningEngine {
 
       randomStrategy.explorationCount =
         (randomStrategy.explorationCount || 0) + 1;
-      await this.updateStrategyMetadata(randomStrategy.id, {
-        explorationCount: randomStrategy.explorationCount,
-      });
+      await this.updateStrategyMetadata();
 
       console.log(`🔍 EXPLORE: Trying strategy ${randomStrategy.id}`);
       return randomStrategy;
@@ -226,9 +210,7 @@ export class EnhancedSAFLALearningEngine {
 
       bestStrategy.exploitationCount =
         (bestStrategy.exploitationCount || 0) + 1;
-      await this.updateStrategyMetadata(bestStrategy.id, {
-        exploitationCount: bestStrategy.exploitationCount,
-      });
+      await this.updateStrategyMetadata();
 
       console.log(
         `🎯 EXPLOIT: Using best strategy ${bestStrategy.id} (Q=${bestStrategy.qValue?.toFixed(3)})`
@@ -279,10 +261,7 @@ export class EnhancedSAFLALearningEngine {
   }> {
     try {
       // Get historical bid data
-      const historicalBids = await this.getHistoricalBids({
-        agency: rfpFeatures.agency,
-        category: rfpFeatures.category,
-      });
+      const historicalBids = await this.getHistoricalBids();
 
       if (historicalBids.length < 5) {
         return {
@@ -394,9 +373,6 @@ export class EnhancedSAFLALearningEngine {
 
       // Adjust based on competitor pricing
       if (competitorPricing && competitorPricing.length > 0) {
-        const avgCompetitorPrice =
-          competitorPricing.reduce((a, b) => a + b, 0) /
-          competitorPricing.length;
         const marketMedian = this.calculateMedian(competitorPricing);
 
         if (basePrice > marketMedian * 1.2) {
@@ -787,8 +763,7 @@ export class EnhancedSAFLALearningEngine {
    * Achieve consensus among multiple agents
    */
   async achieveConsensus(
-    agentDecisions: Map<string, any>,
-    taskContext: Record<string, any>
+    agentDecisions: Map<string, any>
   ): Promise<AgentConsensus> {
     const votes = Array.from(agentDecisions.values());
 
@@ -926,21 +901,19 @@ export class EnhancedSAFLALearningEngine {
   }
 
   private async getCurrentStrategy(
-    state: string,
-    taskType: string
+    state: string
   ): Promise<LearnedStrategy | null> {
-    const strategies = await this.getAvailableStrategies(taskType);
+    const strategies = await this.getAvailableStrategies();
     return strategies.find(s => s.id === state) || null;
   }
 
-  private async getMaxQValue(state: string, taskType: string): Promise<number> {
-    const strategies = await this.getAvailableStrategies(taskType);
+  private async getMaxQValue(): Promise<number> {
+    const strategies = await this.getAvailableStrategies();
     return Math.max(...strategies.map(s => s.qValue || 0), 0);
   }
 
   private async updateStrategyQValue(
     state: string,
-    taskType: string,
     qValue: number,
     reward: number
   ): Promise<void> {
@@ -950,24 +923,16 @@ export class EnhancedSAFLALearningEngine {
     );
   }
 
-  private async getAvailableStrategies(
-    taskType: string
-  ): Promise<LearnedStrategy[]> {
+  private async getAvailableStrategies(): Promise<LearnedStrategy[]> {
     // Mock implementation - would query database
     return [];
   }
 
-  private async updateStrategyMetadata(
-    strategyId: string,
-    metadata: Record<string, any>
-  ): Promise<void> {
+  private async updateStrategyMetadata(): Promise<void> {
     // Implementation would update database
   }
 
-  private async getHistoricalBids(filters: {
-    agency?: string;
-    category?: string;
-  }): Promise<any[]> {
+  private async getHistoricalBids(): Promise<any[]> {
     // Mock implementation - would query database
     return [];
   }

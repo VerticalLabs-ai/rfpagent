@@ -9,37 +9,32 @@ import { z } from 'zod';
 import { storage } from '../../storage';
 import { AIService } from '../core/aiService';
 // Removed Puppeteer - now using unified Browserbase through Mastra
-import {
-    sessionManager,
-    sharedMemory
-} from '../../../src/mastra/tools';
+import { sessionManager, sharedMemory } from '../../../src/mastra/tools';
 import { performBrowserAuthentication } from '../core/stagehandTools'; // Add missing import
 import {
-    createBonfireAgent,
-    createFindRFPAgent,
-    createGenericRFPAgent,
-    createSAMGovAgent,
+  createBonfireAgent,
+  createFindRFPAgent,
+  createGenericRFPAgent,
+  createSAMGovAgent,
 } from '../mastra/agents/agentFactory';
 import {
-    handleBrowserbaseAuthentication,
-    scrapeBrowserbaseContent,
-    unifiedBrowserbaseWebScrape,
+  handleBrowserbaseAuthentication,
+  scrapeBrowserbaseContent,
+  unifiedBrowserbaseWebScrape,
 } from '../mastra/core/browserbaseOps';
 import {
-    createAuthenticationTool,
-    createRFPExtractionTool,
-    createWebScrapingTool,
-    type ToolExecutors,
+  createAuthenticationTool,
+  createRFPExtractionTool,
+  createWebScrapingTool,
+  type ToolExecutors,
 } from '../mastra/tools/toolFactory';
-import {
-    validateSAMGovUrl
-} from '../mastra/utils/urlValidation';
+import { validateSAMGovUrl } from '../mastra/utils/urlValidation';
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 import { SAMGovDocumentDownloader } from './samGovDocumentDownloader';
 import {
-    normalizePortalType,
-    shouldUseAustinPortalExtraction,
-    shouldUseSAMGovExtraction,
+  normalizePortalType,
+  shouldUseAustinPortalExtraction,
+  shouldUseSAMGovExtraction,
 } from './utils/portalTypeUtils';
 
 // Zod schema for agent response validation
@@ -1838,7 +1833,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private validateBonfireUrl(url: string, opportunity: any): string | null {
+  private validateBonfireUrl(url: string): string | null {
     // Bonfire URLs typically contain opportunity or bid IDs
     if (
       url.includes('/opportunities/') ||
@@ -1858,7 +1853,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return validateSAMGovUrl(url, opportunity);
   }
 
-  private validateGenericUrl(url: string, opportunity: any): string | null {
+  private validateGenericUrl(url: string): string | null {
     // For generic portals, ensure URL contains some form of ID or specific identifier
     const hasId =
       /[?&](id|rfp|bid|opp|solicitation)=/i.test(url) ||
@@ -2765,15 +2760,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private async handleFormAuthentication(context: any): Promise<any> {
-    const {
-      $,
-      portalUrl,
-      username,
-      password,
-      formData,
-      loginPageResponse,
-      cookieHeader,
-    } = context;
+    const { portalUrl } = context;
 
     try {
       // Let all portals go through standard browser automation detection
@@ -2792,7 +2779,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private async handleOryKratosAuthentication(context: any): Promise<any> {
-    const { portalUrl, username, password, cookieHeader } = context;
+    const { portalUrl, username, password } = context;
 
     try {
       console.log(
@@ -2804,11 +2791,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         'https://account-flows.bonfirehub.com/self-service/login/browser?return_to=https%3A%2F%2Fvendor.bonfirehub.com%2Fopportunities%2Fall';
       console.log(`🌐 Step 1: Getting login flow from ${loginFlowUrl}`);
 
-      const {
-        finalResponse: flowResponse,
-        finalUrl: flowFinalUrl,
-        cookieHeader: flowCookies,
-      } = await this.getWithRedirects(loginFlowUrl, 10);
+      const { finalUrl: flowFinalUrl, cookieHeader: flowCookies } =
+        await this.getWithRedirects(loginFlowUrl, 10);
 
       if (!flowFinalUrl.includes('/login?flow=')) {
         throw new Error(
@@ -3030,7 +3014,6 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private async handleGenericFormAuthentication(context: any): Promise<any> {
     const {
-      $,
       portalUrl,
       username,
       password,
@@ -3148,41 +3131,37 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       );
 
       // Get the existing authenticated session
-      const stagehand = await sessionManager.ensureStagehand(sessionId);
+      await sessionManager.ensureStagehand(sessionId);
       const page = await sessionManager.getPage(sessionId);
 
       console.log(`🎯 Navigating authenticated session to: ${url}`);
 
       // Adaptive navigation strategy for heavy JavaScript pages
       let html: string | null = null;
-      let navigationSuccess = false;
 
       // Strategy 1: Try domcontentloaded first (faster)
       try {
         console.log(`📄 Trying 'domcontentloaded' navigation...`);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000); // Wait for initial JS execution
-        navigationSuccess = true;
         console.log(`✅ 'domcontentloaded' navigation successful`);
-      } catch (error) {
+      } catch {
         console.log(`⚠️ 'domcontentloaded' failed, trying 'load' fallback...`);
 
         // Strategy 2: Fall back to 'load'
         try {
           await page.goto(url, { waitUntil: 'load', timeout: 60000 });
           await page.waitForTimeout(3000);
-          navigationSuccess = true;
           console.log(`✅ 'load' navigation successful`);
-        } catch (error2) {
+        } catch {
           console.log(`⚠️ 'load' failed, trying basic navigation...`);
 
           // Strategy 3: Basic navigation without wait conditions
           try {
             await page.goto(url, { timeout: 90000 });
             await page.waitForTimeout(5000); // Give more time for heavy JS
-            navigationSuccess = true;
             console.log(`✅ Basic navigation successful`);
-          } catch (error3) {
+          } catch {
             console.log(
               `⚠️ All navigation strategies failed, attempting content extraction anyway...`
             );
@@ -3219,7 +3198,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
             // Give additional time for the real page to load
             await page.waitForTimeout(3000);
-          } catch (cloudflareError) {
+          } catch {
             console.log(`⚠️ Cloudflare bypass timeout, proceeding anyway...`);
           }
         }
@@ -3233,7 +3212,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           page.waitForTimeout(15000), // Maximum wait
         ]);
         console.log(`✅ Portal content elements detected`);
-      } catch (waitError) {
+      } catch {
         console.log(
           `⚠️ Portal content wait timeout, proceeding with extraction...`
         );
@@ -3368,7 +3347,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
                           return true;
                         }
                       }
-                    } catch (e) {
+                    } catch {
                       continue;
                     }
                   }
@@ -3432,7 +3411,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               page.waitForTimeout(15000),
             ]);
             console.log(`✅ Content detected, proceeding with AI extraction`);
-          } catch (waitError) {
+          } catch {
             console.log(
               `⚠️ Content wait timeout, proceeding with extraction anyway...`
             );
@@ -3532,7 +3511,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             console.log(
               `✅ FindRFP content detected, proceeding with AI extraction`
             );
-          } catch (waitError) {
+          } catch {
             console.log(
               `⚠️ FindRFP content wait timeout, proceeding with extraction anyway...`
             );

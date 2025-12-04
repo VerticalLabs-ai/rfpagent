@@ -3379,10 +3379,7 @@ export class DatabaseStorage implements IStorage {
     return escalatedEntry;
   }
 
-  async reprocessDeadLetterQueueEntry(
-    entryId: string,
-    triggeredBy: string
-  ): Promise<any> {
+  async reprocessDeadLetterQueueEntry(entryId: string): Promise<any> {
     const [reprocessedEntry] = await db
       .update(deadLetterQueue)
       .set({

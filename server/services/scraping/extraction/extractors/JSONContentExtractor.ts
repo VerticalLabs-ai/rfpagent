@@ -55,7 +55,7 @@ export class JSONContentExtractor extends BaseContentExtractor {
         opp.confidence = this.getConfidenceScore(opp);
       });
 
-      const minConfidence = this.getMinimumConfidenceThreshold(portalContext);
+      const minConfidence = this.getMinimumConfidenceThreshold();
       const filteredOpportunities = opportunities.filter(
         opp => (opp.confidence || 0) >= minConfidence
       );
@@ -632,7 +632,7 @@ export class JSONContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for JSON extraction
    */
-  private getMinimumConfidenceThreshold(portalContext: string): number {
+  private getMinimumConfidenceThreshold(): number {
     // JSON is structured data, so we can use higher confidence thresholds
     return 0.5;
   }

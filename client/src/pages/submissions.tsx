@@ -163,7 +163,8 @@ export default function Submissions() {
                 key={item.rfp.id}
                 item={item}
                 onSubmit={() =>
-                  item.proposal && submitProposalMutation.mutate(item.proposal.id)
+                  item.proposal &&
+                  submitProposalMutation.mutate(item.proposal.id)
                 }
                 submitting={submitProposalMutation.isPending}
               />
@@ -203,8 +204,9 @@ function SubmissionCard({ item, onSubmit, submitting }: SubmissionCardProps) {
 
   return (
     <Card
-      className={`hover:shadow-md transition-shadow ${isSubmitted ? 'border-green-200 dark:border-green-900' : ''
-        }`}
+      className={`hover:shadow-md transition-shadow ${
+        isSubmitted ? 'border-green-200 dark:border-green-900' : ''
+      }`}
       data-testid={`submission-card-${item.rfp.id}`}
     >
       <CardHeader>
@@ -450,12 +452,13 @@ function SubmissionDetailsModal({ item }: SubmissionDetailsModalProps) {
             {riskFlags.slice(0, 3).map((flag, index) => (
               <div
                 key={index}
-                className={`p-2 rounded text-xs ${flag.type === 'high'
+                className={`p-2 rounded text-xs ${
+                  flag.type === 'high'
                     ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300'
                     : flag.type === 'medium'
                       ? 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
                       : 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-                  }`}
+                }`}
                 data-testid={`modal-risk-flag-${index}`}
               >
                 <strong>{flag.category}:</strong> {flag.description}
