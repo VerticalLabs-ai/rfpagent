@@ -67,7 +67,7 @@ const AgentResponseSchema = z
 
 export class MastraScrapingService {
   private aiService = new AIService();
-  private memory: Memory = sharedMemory; // Using centralized shared memory with credential security
+  private memory: Memory | undefined = sharedMemory; // Using centralized shared memory with credential security
   private agents: Map<string, Agent> = new Map();
   private requestLimiter = pLimit(3); // Limit concurrent requests
   private aiLimiter = pLimit(2); // Limit concurrent AI calls

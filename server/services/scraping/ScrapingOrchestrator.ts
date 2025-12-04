@@ -426,12 +426,16 @@ export class ScrapingOrchestrator {
       );
     }
 
+    // Handle union type for data - could be object or string
+    const dataObj = typeof extractionResult.data === 'object' && extractionResult.data !== null
+      ? extractionResult.data
+      : undefined;
     const rawOpportunities =
       extractionResult.opportunities ??
-      extractionResult.data?.opportunities ??
+      dataObj?.opportunities ??
       [];
 
-    const opportunities: RFPOpportunity[] = rawOpportunities.map(raw => {
+    const opportunities: RFPOpportunity[] = rawOpportunities.map((raw: z.infer<typeof StagehandOpportunitySchema>) => {
       const parsed = StagehandOpportunitySchema.parse(raw);
       return {
         title: parsed.title ?? 'Untitled opportunity',

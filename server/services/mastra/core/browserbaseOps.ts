@@ -154,18 +154,22 @@ export async function unifiedBrowserbaseWebScrape(
     );
 
     // Debug logging with bounded output - only logs when LOG_LEVEL=debug
+    // Type-safe extraction of data object
+    const dataObj = typeof extractionResult?.data === 'object' && extractionResult?.data !== null
+      ? extractionResult.data
+      : undefined;
     logger.debug('Extraction result structure', {
       hasResult: !!extractionResult,
       resultKeys: extractionResult ? Object.keys(extractionResult) : null,
       dataType: extractionResult?.data
         ? typeof extractionResult.data
         : 'undefined',
-      dataKeys: extractionResult?.data
-        ? Object.keys(extractionResult.data)
+      dataKeys: dataObj
+        ? Object.keys(dataObj)
         : null,
       opportunitiesCount:
         extractionResult?.opportunities?.length ??
-        extractionResult?.data?.opportunities?.length ??
+        dataObj?.opportunities?.length ??
         0,
       // Truncated preview of extraction result (first 500 chars)
       resultPreview:
@@ -348,14 +352,16 @@ export async function scrapeBrowserbaseContent(
       StagehandExtractionResultSchema
     );
 
-    const extractedData =
-      extractionResult.data ??
-      ({
-        opportunities: extractionResult.opportunities ?? [],
-        pageTitle: extractionResult.pageTitle,
-        fullContent: undefined,
-      } as z.infer<typeof StagehandExtractionResultSchema>['data']);
-    const opportunities = extractedData?.opportunities ?? [];
+    // Normalize extractedData - handle both object and string data types
+    const rawData = extractionResult.data;
+    const extractedDataObj = typeof rawData === 'object' && rawData !== null
+      ? rawData
+      : {
+          opportunities: extractionResult.opportunities ?? [],
+          pageTitle: extractionResult.pageTitle,
+          fullContent: typeof rawData === 'string' ? rawData : undefined,
+        };
+    const opportunities = extractedDataObj.opportunities ?? [];
 
     console.log(
       `✅ Successfully extracted content using Browserbase - Found ${
@@ -367,7 +373,7 @@ export async function scrapeBrowserbaseContent(
     if (opportunities.length > 0) {
       console.log(
         `🎯 Structured opportunities extracted:`,
-        opportunities.map(opp => ({
+        opportunities.map((opp: { title?: string; deadline?: string; agency?: string }) => ({
           title: opp.title,
           deadline: opp.deadline,
           agency: opp.agency,
@@ -376,9 +382,9 @@ export async function scrapeBrowserbaseContent(
     }
 
     return (
-      extractedData?.fullContent ||
+      extractedDataObj.fullContent ||
       JSON.stringify({
-        ...extractedData,
+        ...extractedDataObj,
         opportunities,
       })
     );

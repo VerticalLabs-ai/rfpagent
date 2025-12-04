@@ -9,10 +9,10 @@ import { AgentConfig } from '../types';
  * Factory for creating specialized agents for different portal types
  */
 export class AgentFactory {
-  private memory: Memory;
+  private memory: Memory | undefined;
   private toolFactory: any;
 
-  constructor(memory: Memory, toolFactory: any) {
+  constructor(memory: Memory | undefined, toolFactory: any) {
     this.memory = memory;
     this.toolFactory = toolFactory;
   }

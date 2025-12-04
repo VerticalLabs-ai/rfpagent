@@ -9,21 +9,21 @@ import { agentMemoryService } from '../../../server/services/agents/agentMemoryS
  * If you need Mastra Memory, configure storage in the Mastra instance.
  */
 export class SharedMemoryProvider {
-  private static instance: Memory | null = null;
+  private static instance: Memory | undefined = undefined;
 
   /**
    * Get or create the shared Memory instance
    *
-   * Returns null by default - agents should use agentMemoryService instead
+   * Returns undefined by default - agents should use agentMemoryService instead
    * To enable Memory, add storage config to your Mastra instance
    */
-  public static getSharedMemory(): Memory | null {
+  public static getSharedMemory(): Memory | undefined {
     // Memory disabled - use agentMemoryService instead
     // This avoids the "Memory requires a storage provider" error
     console.log(
       '💾 Memory provider disabled - agents use agentMemoryService for persistent storage'
     );
-    return null;
+    return undefined;
   }
 
   /**
