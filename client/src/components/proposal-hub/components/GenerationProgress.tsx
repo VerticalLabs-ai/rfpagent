@@ -36,7 +36,7 @@ export function GenerationProgress({
   };
 
   return (
-    <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20 dark:border-blue-900">
+    <Card className="border-blue-800/50 bg-blue-950/30">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">

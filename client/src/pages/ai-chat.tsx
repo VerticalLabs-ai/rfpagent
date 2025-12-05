@@ -380,10 +380,10 @@ export default function AIChat() {
                           variant="secondary"
                           className={`text-xs px-1.5 py-0.5 ${
                             suggestion.priority === 'high'
-                              ? 'bg-red-100 text-red-800'
+                              ? 'bg-red-950 text-red-200 border-red-800'
                               : suggestion.priority === 'medium'
-                                ? 'bg-orange-100 text-orange-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'bg-orange-950 text-orange-200 border-orange-800'
+                                : 'bg-blue-950 text-blue-200 border-blue-800'
                           }`}
                         >
                           {suggestion.priority}

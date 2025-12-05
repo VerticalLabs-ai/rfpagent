@@ -313,17 +313,17 @@ export function ProposalsSection({ rfpId }: ProposalsSectionProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'submitted':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-900/50 text-green-200';
       case 'review':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-900/50 text-blue-200';
       case 'draft':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-900/50 text-yellow-200';
       case 'won':
-        return 'bg-green-100 text-green-900';
+        return 'bg-green-900/50 text-green-100';
       case 'lost':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-900/50 text-red-200';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-800/50 text-gray-200';
     }
   };
 

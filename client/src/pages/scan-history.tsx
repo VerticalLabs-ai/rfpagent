@@ -387,8 +387,8 @@ export default function ScanHistoryPage() {
 
                     {/* Error Details */}
                     {scan.errors.length > 0 && (
-                      <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                        <h4 className="text-sm font-medium text-red-800 mb-2">
+                      <div className="mt-4 p-3 bg-red-950/50 border border-red-800/50 rounded-md">
+                        <h4 className="text-sm font-medium text-red-200 mb-2">
                           Error Details
                         </h4>
                         {scan.errors.map(
@@ -422,7 +422,7 @@ export default function ScanHistoryPage() {
                                 </Badge>
                               </div>
                               <p
-                                className="text-red-700"
+                                className="text-red-300"
                                 data-testid={`error-message-${scan.id}-${index}`}
                               >
                                 {error.message}

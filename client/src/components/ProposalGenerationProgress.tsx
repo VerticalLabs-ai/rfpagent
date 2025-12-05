@@ -232,11 +232,11 @@ export function ProposalGenerationProgress({
               key={step.id}
               className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                 step.status === 'in_progress'
-                  ? 'bg-blue-50 border-blue-200'
+                  ? 'bg-blue-950/50 border-blue-800/50'
                   : step.status === 'completed'
-                    ? 'bg-green-50 border-green-200'
+                    ? 'bg-green-950/50 border-green-800/50'
                     : step.status === 'error'
-                      ? 'bg-red-50 border-red-200'
+                      ? 'bg-red-950/50 border-red-800/50'
                       : 'bg-muted/30 border-border'
               }`}
             >
@@ -261,12 +261,12 @@ export function ProposalGenerationProgress({
                 <p
                   className={`font-medium ${
                     step.status === 'in_progress'
-                      ? 'text-blue-900'
+                      ? 'text-blue-200'
                       : step.status === 'completed'
-                        ? 'text-green-900'
+                        ? 'text-green-200'
                         : step.status === 'error'
-                          ? 'text-red-900'
-                          : 'text-gray-700'
+                          ? 'text-red-200'
+                          : 'text-foreground'
                   }`}
                 >
                   {step.name}
@@ -301,14 +301,14 @@ export function ProposalGenerationProgress({
         </div>
 
         {/* AI Agent Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
+        <div className="bg-blue-950/50 border border-blue-800/50 rounded-lg p-3 mt-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
-            <span className="text-sm font-medium text-blue-900">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium text-blue-100">
               3-Tier Mastra AI System Active
             </span>
           </div>
-          <p className="text-xs text-blue-700">
+          <p className="text-xs text-blue-300">
             Our specialized AI agents are analyzing your RFP requirements and
             generating a comprehensive proposal using the latest Mastra
             framework.
@@ -316,26 +316,26 @@ export function ProposalGenerationProgress({
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="bg-red-950/50 border border-red-800/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <span className="text-sm font-medium text-red-900">
+              <AlertCircle className="h-4 w-4 text-red-400" />
+              <span className="text-sm font-medium text-red-100">
                 Generation Failed
               </span>
             </div>
-            <p className="text-sm text-red-700">{error}</p>
+            <p className="text-sm text-red-300">{error}</p>
           </div>
         )}
 
         {isCompleted && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="bg-green-950/50 border border-green-800/50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-900">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              <span className="text-sm font-medium text-green-100">
                 Generation Complete!
               </span>
             </div>
-            <p className="text-sm text-green-700">
+            <p className="text-sm text-green-300">
               Your proposal has been generated successfully. It will appear in
               the proposals section below.
             </p>

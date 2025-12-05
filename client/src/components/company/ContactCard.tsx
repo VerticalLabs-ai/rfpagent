@@ -41,13 +41,13 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
     switch (type) {
       case 'owner':
         return (
-          <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+          <Badge variant="secondary" className="bg-purple-900/50 text-purple-300 border-purple-700">
             Owner
           </Badge>
         );
       case 'decision_maker':
         return (
-          <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+          <Badge variant="secondary" className="bg-blue-900/50 text-blue-300 border-blue-700">
             Decision Maker
           </Badge>
         );
