@@ -1,8 +1,8 @@
-import { BaseContentExtractor } from '../ContentExtractor';
-import type { RFPOpportunity } from '../../types';
-import * as cheerio from 'cheerio';
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { logger } from '../../../../utils/logger';
+import type { RFPOpportunity } from '../../types';
+import { BaseContentExtractor } from '../ContentExtractor';
 
 /**
  * Specialized content extractor for SAM.gov portal
@@ -66,7 +66,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     } catch (error) {
       logger.error(
         'SAM.gov content extraction failed',
-        error instanceof Error ? error : undefined,
+        error instanceof Error ? error : new Error(String(error)),
         { url }
       );
       return [];
@@ -149,7 +149,7 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
     } catch (error) {
       logger.error(
         'SAM.gov API extraction failed',
-        error instanceof Error ? error : undefined,
+        error instanceof Error ? error : new Error(String(error)),
         {
           endpoint: `${this.SAM_BASE_URL}/search`,
         }

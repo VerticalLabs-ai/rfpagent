@@ -1,6 +1,6 @@
-import { BaseContentExtractor } from '../ContentExtractor';
-import type { RFPOpportunity } from '../../types';
 import * as cheerio from 'cheerio';
+import type { RFPOpportunity } from '../../types';
+import { BaseContentExtractor } from '../ContentExtractor';
 
 /**
  * Specialized content extractor for Bonfire Hub portals
@@ -87,7 +87,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Log page structure for debugging
    */
-  private logPageStructure($: cheerio.CheerioAPI, _url?: string): void {
+  private logPageStructure($: cheerio.CheerioAPI, url?: string): void {
     const pageTitle = $('title').text();
     const tables = $('table').length;
     const rows = $('tr').length;
@@ -96,7 +96,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
     const divs = $('div').length;
 
     console.log(
-      `📄 Bonfire page "${pageTitle}" structure: ${tables} tables, ${rows} rows, ${lists} lists, ${listItems} list items, ${divs} divs`
+      `📄 Bonfire page "${pageTitle}"${url ? ` (${url})` : ''} structure: ${tables} tables, ${rows} rows, ${lists} lists, ${listItems} list items, ${divs} divs`
     );
   }
 
@@ -258,11 +258,57 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   }
 
   /**
-   * Get minimum confidence threshold for Bonfire portals
+   * Get minimum confidence threshold based on portal context
+   * Different portals warrant different thresholds based on:
+   * - Portal reliability and structure consistency
+   * - Authentication complexity
+   * - Known extraction success rates
+   *
+   * @param portalContext - Portal type identifier (e.g., 'bonfire', 'sam_gov', 'generic')
+   * @returns Minimum confidence threshold (0.0-1.0)
    */
-  private getMinimumConfidenceThreshold(_portalContext?: string): number {
-    // Bonfire has complex authentication, so we can be more lenient
-    return 0.5;
+  private getMinimumConfidenceThreshold(portalContext?: string): number {
+    if (!portalContext) {
+      // Default threshold when context is unknown
+      return 0.6;
+    }
+
+    const normalizedContext = portalContext.toLowerCase().trim();
+
+    // Well-known, reliable portals with consistent structure
+    // These portals have proven extraction patterns, so we can be more lenient
+    const reliablePortals = ['bonfire', 'bonfirehub', 'sam_gov', 'sam.gov'];
+    if (reliablePortals.some(portal => normalizedContext.includes(portal))) {
+      // Bonfire has complex authentication but consistent HTML structure
+      // SAM.gov has structured API responses
+      return 0.5;
+    }
+
+    // Government portals with standardized formats
+    // These tend to have consistent structure but may vary by agency
+    const governmentPortals = [
+      'gov',
+      'government',
+      'federal',
+      'state',
+      'municipal',
+    ];
+    if (governmentPortals.some(portal => normalizedContext.includes(portal))) {
+      return 0.55;
+    }
+
+    // Generic or unknown portals
+    // Require higher confidence to avoid false positives
+    const genericIndicators = ['generic', 'unknown', 'other', 'custom'];
+    if (
+      genericIndicators.some(indicator => normalizedContext.includes(indicator))
+    ) {
+      return 0.65;
+    }
+
+    // Default threshold for unclassified portals
+    // Slightly higher than reliable portals but lower than generic
+    return 0.6;
   }
 
   /**

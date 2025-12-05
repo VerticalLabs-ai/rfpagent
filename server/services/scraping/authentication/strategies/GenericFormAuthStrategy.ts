@@ -1,7 +1,7 @@
-import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
-import type { AuthContext, AuthResult } from '../../types';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+import type { AuthContext, AuthResult } from '../../types';
+import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 
 /**
  * Generic form-based authentication strategy
@@ -170,7 +170,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
     if (loginForm.length > 0) {
       const $form = loginForm.first();
-      const formData = this.extractFormData($form);
+      const formData = this.extractFormData($form, $);
 
       if (formData) {
         return { type: 'form', formData };
@@ -206,7 +206,7 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
     // Check if any form looks like it could be a login form
     const potentialLoginForm = forms.first();
     if (potentialLoginForm.length > 0) {
-      const formData = this.extractFormData(potentialLoginForm);
+      const formData = this.extractFormData(potentialLoginForm, $);
       if (formData && this.hasPasswordField(potentialLoginForm)) {
         return { type: 'form', formData };
       }
@@ -221,7 +221,10 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Extract form data from a form element
    */
-  private extractFormData($form: cheerio.Cheerio<cheerio.Element>): any {
+  private extractFormData(
+    $form: cheerio.Cheerio<cheerio.Element>,
+    $: cheerio.CheerioAPI
+  ): any {
     const action = $form.attr('action');
     const method = $form.attr('method') || 'POST';
 
@@ -231,7 +234,6 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
     const inputs = $form.find('input');
     const fields: Record<string, any> = {};
-    const $ = cheerio.load($form.toString());
 
     inputs.each((_, input) => {
       const $input = $(input);

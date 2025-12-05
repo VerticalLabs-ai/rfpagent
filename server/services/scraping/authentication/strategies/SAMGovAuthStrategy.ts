@@ -1,7 +1,7 @@
-import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
-import { AuthContext, AuthResult, Credentials } from '../../types';
 import axios from 'axios';
 import { logger } from '../../../../utils/logger';
+import { AuthContext, AuthResult, Credentials } from '../../types';
+import { BaseAuthenticationStrategy } from './AuthenticationStrategy';
 
 /**
  * SAM.gov API Key Authentication Strategy
@@ -25,7 +25,13 @@ export class SAMGovAuthStrategy extends BaseAuthenticationStrategy {
    */
   canHandle(portalType: string, url?: string): boolean {
     if (url) {
-      return url.includes('sam.gov');
+      try {
+        const hostname = new URL(url).hostname.toLowerCase();
+        return hostname === 'sam.gov' || hostname.endsWith('.sam.gov');
+      } catch {
+        // Invalid URL format
+        return false;
+      }
     }
     return portalType === 'sam_gov' || portalType === 'sam.gov';
   }
