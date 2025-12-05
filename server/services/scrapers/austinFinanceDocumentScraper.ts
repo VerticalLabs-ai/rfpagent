@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import { storage } from '../../storage';
 import type { Document } from '@shared/schema';
 import { performWebExtraction } from '../core/stagehandTools';

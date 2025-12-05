@@ -1,5 +1,5 @@
 import { IStorage, storage } from '../../storage';
-import type { Scan, InsertScan, InsertScanEvent } from '@shared/schema';
+import type { Scan, InsertScan, InsertScanEvent, ScanEvent } from '@shared/schema';
 
 export interface ScanHistoryItem {
   id: string;

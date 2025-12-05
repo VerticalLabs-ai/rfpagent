@@ -23,12 +23,11 @@ export class SAMGovAuthStrategy extends BaseAuthenticationStrategy {
   /**
    * Check if this strategy can handle the portal
    */
-  canHandle(portalType: string, url: string): boolean {
-    return (
-      portalType === 'sam_gov' ||
-      portalType === 'sam.gov' ||
-      url.includes('sam.gov')
-    );
+  canHandle(portalType: string, url?: string): boolean {
+    if (url) {
+      return url.includes('sam.gov');
+    }
+    return portalType === 'sam_gov' || portalType === 'sam.gov';
   }
 
   /**

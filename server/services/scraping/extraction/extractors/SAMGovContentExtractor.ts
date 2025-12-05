@@ -64,7 +64,11 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
 
       return htmlOpportunities;
     } catch (error) {
-      logger.error('SAM.gov content extraction failed', error, { url });
+      logger.error(
+        'SAM.gov content extraction failed',
+        error instanceof Error ? error : undefined,
+        { url }
+      );
       return [];
     }
   }
@@ -143,9 +147,13 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
 
       return this.removeDuplicates(filtered);
     } catch (error) {
-      logger.error('SAM.gov API extraction failed', error, {
-        endpoint: `${this.SAM_BASE_URL}/search`,
-      });
+      logger.error(
+        'SAM.gov API extraction failed',
+        error instanceof Error ? error : undefined,
+        {
+          endpoint: `${this.SAM_BASE_URL}/search`,
+        }
+      );
       return [];
     }
   }

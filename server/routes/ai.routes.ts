@@ -2,7 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { storage } from '../storage';
 import { aiProposalService } from '../services/proposals/ai-proposal-service';
-import { type ActionSuggestion } from '../services/workflows/mastraWorkflowEngine';
+import {
+  type ActionSuggestion,
+  mastraWorkflowEngine,
+} from '../services/workflows/mastraWorkflowEngine';
+import { aiAgentOrchestrator } from '../services/orchestrators/aiAgentOrchestrator';
 
 const router = Router();
 

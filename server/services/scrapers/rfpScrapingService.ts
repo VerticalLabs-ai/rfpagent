@@ -5,7 +5,7 @@ import * as fs from 'fs';
 import { createWriteStream } from 'fs';
 import * as path from 'path';
 import { pipeline } from 'stream/promises';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { db } from '../../db';
 import { storage } from '../../storage';
 import { performWebExtraction } from '../core/stagehandTools';

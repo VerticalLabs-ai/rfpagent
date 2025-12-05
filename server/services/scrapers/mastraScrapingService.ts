@@ -1833,7 +1833,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private validateBonfireUrl(url: string): string | null {
+  private validateBonfireUrl(url: string, _opportunity?: any): string | null {
     // Bonfire URLs typically contain opportunity or bid IDs
     if (
       url.includes('/opportunities/') ||
@@ -1849,11 +1849,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private validateSAMGovUrl(url: string, opportunity: any): string | null {
-    return validateSAMGovUrl(url, opportunity);
+  private validateSAMGovUrl(url: string, _opportunity?: any): string | null {
+    return validateSAMGovUrl(url);
   }
 
-  private validateGenericUrl(url: string): string | null {
+  private validateGenericUrl(url: string, _opportunity?: any): string | null {
     // For generic portals, ensure URL contains some form of ID or specific identifier
     const hasId =
       /[?&](id|rfp|bid|opp|solicitation)=/i.test(url) ||

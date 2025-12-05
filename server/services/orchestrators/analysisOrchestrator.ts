@@ -1,4 +1,4 @@
-import type { WorkItem } from '@shared/schema';
+import type { WorkItem, Document as RFPDocument } from '@shared/schema';
 import { nanoid } from 'nanoid';
 import { storage } from '../../storage';
 import { agentRegistryService } from '../agents/agentRegistryService';
@@ -387,7 +387,7 @@ export class AnalysisOrchestrator {
     workflowId: string,
     rfpId: string,
     sessionId: string,
-    documents: Document[],
+    documents: RFPDocument[],
     priority: number,
     deadline?: Date
   ): Promise<WorkItemSequence[]> {

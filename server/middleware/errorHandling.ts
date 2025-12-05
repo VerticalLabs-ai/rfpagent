@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { captureException, withScope } from '@sentry/node';
+import { ZodError } from 'zod';
 
 /**
  * Async error handler wrapper

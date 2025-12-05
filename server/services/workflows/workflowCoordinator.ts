@@ -2241,7 +2241,8 @@ export class WorkflowCoordinator {
    * Execute monitoring phase with optional human input
    */
   private async executeMonitoringPhase(
-    context: WorkflowExecutionContext
+    context: WorkflowExecutionContext,
+    _humanInput?: any
   ): Promise<WorkflowResult> {
     context.currentPhase = 'monitoring';
     context.progress = 1.0;

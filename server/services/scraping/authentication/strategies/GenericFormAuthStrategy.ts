@@ -231,18 +231,19 @@ export class GenericFormAuthStrategy extends BaseAuthenticationStrategy {
 
     const inputs = $form.find('input');
     const fields: Record<string, any> = {};
+    const $ = cheerio.load($form.toString());
 
     inputs.each((_, input) => {
-      const $input = cheerio.load(input);
-      const name = $input('input').attr('name');
-      const type = $input('input').attr('type') || 'text';
-      const value = $input('input').attr('value') || '';
+      const $input = $(input);
+      const name = $input.attr('name');
+      const type = $input.attr('type') || 'text';
+      const value = $input.attr('value') || '';
 
       if (name) {
         fields[name] = {
           type,
           value,
-          required: $input('input').attr('required') !== undefined,
+          required: $input.attr('required') !== undefined,
         };
       }
     });

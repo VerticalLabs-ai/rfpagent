@@ -87,7 +87,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Log page structure for debugging
    */
-  private logPageStructure($: cheerio.CheerioAPI): void {
+  private logPageStructure($: cheerio.CheerioAPI, _url?: string): void {
     const pageTitle = $('title').text();
     const tables = $('table').length;
     const rows = $('tr').length;
@@ -260,7 +260,7 @@ export class BonfireContentExtractor extends BaseContentExtractor {
   /**
    * Get minimum confidence threshold for Bonfire portals
    */
-  private getMinimumConfidenceThreshold(): number {
+  private getMinimumConfidenceThreshold(_portalContext?: string): number {
     // Bonfire has complex authentication, so we can be more lenient
     return 0.5;
   }
