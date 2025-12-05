@@ -16,8 +16,14 @@ export const handleAsyncError = (
 
 /**
  * Global error handling middleware
+ * NOTE: Must have 4 parameters for Express to recognize it as an error handler
  */
-export const errorHandler = (error: any, req: Request, res: Response) => {
+export const errorHandler = (
+  error: any,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+) => {
   // Log to console for development
   console.error('Error occurred:', {
     message: error.message,
