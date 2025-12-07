@@ -8,6 +8,7 @@ import { rateLimiter } from '../middleware/rateLimiting';
 // Import all route modules
 import agentRoutes from './agents.routes';
 import agentSettingsRoutes from './agentSettings.routes';
+import agentTrackingRoutes from './agentTracking.routes';
 import aiRoutes from './ai.routes';
 import analysisRoutes from './analysis'; // Existing analysis routes
 import auditLogRoutes from './audit-logs.routes';
@@ -67,6 +68,17 @@ export function configureRoutes(app: Express): void {
   // - PUT /api/company/:id/agent-settings/:agentId (update agent settings)
   // - DELETE /api/company/:id/agent-settings/:agentId (reset settings to defaults)
   apiRouter.use('/', agentSettingsRoutes);
+
+  // Mount agent tracking routes - Real-time agent work visibility
+  // - GET /api/agent-work/active (all active work sessions)
+  // - GET /api/rfps/:rfpId/agent-work (agent work for specific RFP)
+  // - POST /api/agent-work/summaries (summaries for multiple RFPs)
+  // - GET /api/agent-queues (all agent queues)
+  // - GET /api/agent-queues/:agentId (queue for specific agent)
+  // - PUT /api/agent-queues/:queueItemId/priority (update queue priority)
+  // - GET /api/agent-resources (resource allocation overview)
+  // - GET /api/agent-work/stream (SSE for real-time updates)
+  apiRouter.use('/', agentTrackingRoutes);
 
   // Mount E2E routes
   apiRouter.use('/e2e', e2eRoutes);
