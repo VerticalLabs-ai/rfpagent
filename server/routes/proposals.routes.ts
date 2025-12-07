@@ -804,7 +804,9 @@ router.post(
     let documentText = '';
     if (documentIds && documentIds.length > 0) {
       const documents = await storage.getDocumentsByRFP(rfpId);
-      const selectedDocs = documents.filter(doc => documentIds.includes(doc.id));
+      const selectedDocs = documents.filter(doc =>
+        documentIds.includes(doc.id)
+      );
       documentText = selectedDocs
         .map(doc => doc.extractedText || '')
         .filter(text => text.length > 0)
@@ -839,7 +841,13 @@ router.post(
 
     // Add extracted requirements from the requirements object
     if (analysis.requirements) {
-      const additionalReqs: Array<{ id: string; text: string; category: string; section: string; description: string }> = [];
+      const additionalReqs: Array<{
+        id: string;
+        text: string;
+        category: string;
+        section: string;
+        description: string;
+      }> = [];
 
       if (analysis.requirements.certifications) {
         analysis.requirements.certifications.forEach((cert, i) => {
@@ -913,7 +921,13 @@ router.post(
   heavyOperationLimiter,
   validateSchema(wizardGenerateSchema),
   handleAsyncError(async (req, res) => {
-    const { rfpId, companyProfileId, selectedRequirements, sectionNotes, qualityLevel } = req.body;
+    const {
+      rfpId,
+      companyProfileId,
+      selectedRequirements,
+      sectionNotes,
+      qualityLevel,
+    } = req.body;
 
     const sessionId = `wizard_${rfpId}_${Date.now()}`;
 
@@ -927,7 +941,12 @@ router.post(
       qualityLevel,
     }).catch(error => {
       console.error('Wizard proposal generation failed:', error);
-      progressTracker.updateStep(sessionId, 'completion', 'failed', error.message);
+      progressTracker.updateStep(
+        sessionId,
+        'completion',
+        'failed',
+        error.message
+      );
     });
 
     res.json({
@@ -1015,24 +1034,45 @@ async function generateWizardProposal(params: {
   sessionId: string;
   rfpId: string;
   companyProfileId?: string;
-  selectedRequirements: Array<{ id: string; text: string; category: string; section: string }>;
+  selectedRequirements: Array<{
+    id: string;
+    text: string;
+    category: string;
+    section: string;
+  }>;
   sectionNotes: Record<string, string>;
   qualityLevel: string;
 }) {
-  const { sessionId, rfpId, companyProfileId, selectedRequirements, sectionNotes, qualityLevel } =
-    params;
+  const {
+    sessionId,
+    rfpId,
+    companyProfileId,
+    selectedRequirements,
+    sectionNotes,
+    qualityLevel,
+  } = params;
 
-  progressTracker.startTracking(sessionId, `Wizard Proposal for RFP`, 'submission_materials');
+  progressTracker.startTracking(
+    sessionId,
+    `Wizard Proposal for RFP`,
+    'submission_materials'
+  );
 
   try {
     // Get RFP and company data
-    progressTracker.updateStep(sessionId, 'initialization', 'in_progress', 'Loading RFP data...');
+    progressTracker.updateStep(
+      sessionId,
+      'initialization',
+      'in_progress',
+      'Loading RFP data...'
+    );
     const rfp = await storage.getRFP(rfpId);
     if (!rfp) throw new Error('RFP not found');
 
     let companyProfile;
     if (companyProfileId) {
-      companyProfile = await storage.getCompanyProfileWithDetails(companyProfileId);
+      companyProfile =
+        await storage.getCompanyProfileWithDetails(companyProfileId);
     } else {
       const profiles = await storage.getAllCompanyProfiles();
       companyProfile = profiles[0]
@@ -1040,7 +1080,12 @@ async function generateWizardProposal(params: {
         : null;
     }
 
-    progressTracker.updateStep(sessionId, 'initialization', 'completed', 'Data loaded');
+    progressTracker.updateStep(
+      sessionId,
+      'initialization',
+      'completed',
+      'Data loaded'
+    );
 
     // Generate sections
     const sections = [
@@ -1076,7 +1121,9 @@ async function generateWizardProposal(params: {
       // Filter requirements relevant to this section
       const relevantReqs = selectedRequirements
         .filter(
-          r => r.section.toLowerCase().includes(sectionId.toLowerCase()) || r.category === 'mandatory'
+          r =>
+            r.section.toLowerCase().includes(sectionId.toLowerCase()) ||
+            r.category === 'mandatory'
         )
         .map(r => r.text)
         .join('\n');
@@ -1093,10 +1140,20 @@ async function generateWizardProposal(params: {
       generatedContent[sectionId] = sectionContent;
     }
 
-    progressTracker.updateStep(sessionId, 'content_generation', 'completed', 'All sections generated');
+    progressTracker.updateStep(
+      sessionId,
+      'content_generation',
+      'completed',
+      'All sections generated'
+    );
 
     // Save proposal
-    progressTracker.updateStep(sessionId, 'document_assembly', 'in_progress', 'Saving proposal...');
+    progressTracker.updateStep(
+      sessionId,
+      'document_assembly',
+      'in_progress',
+      'Saving proposal...'
+    );
 
     const existingProposal = await storage.getProposalByRFP(rfpId);
     let proposalId: string;
@@ -1109,7 +1166,9 @@ async function generateWizardProposal(params: {
         generatedWith: 'wizard',
         qualityLevel,
         selectedRequirementsCount: selectedRequirements.length,
-        sectionsWithNotes: Object.keys(sectionNotes).filter(k => sectionNotes[k]),
+        sectionsWithNotes: Object.keys(sectionNotes).filter(
+          k => sectionNotes[k]
+        ),
       }),
     };
 
@@ -1121,8 +1180,18 @@ async function generateWizardProposal(params: {
       proposalId = newProposal.id;
     }
 
-    progressTracker.updateStep(sessionId, 'document_assembly', 'completed', 'Proposal saved');
-    progressTracker.updateStep(sessionId, 'completion', 'completed', `Proposal generated: ${proposalId}`);
+    progressTracker.updateStep(
+      sessionId,
+      'document_assembly',
+      'completed',
+      'Proposal saved'
+    );
+    progressTracker.updateStep(
+      sessionId,
+      'completion',
+      'completed',
+      `Proposal generated: ${proposalId}`
+    );
   } catch (error) {
     console.error('Wizard generation error:', error);
     progressTracker.updateStep(

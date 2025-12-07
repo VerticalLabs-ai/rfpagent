@@ -18,7 +18,12 @@ export function useWizardGeneration() {
     mutationFn: async () => {
       const selectedReqs = state.requirements
         .filter(r => r.selected)
-        .map(r => ({ id: r.id, text: r.text, category: r.category, section: r.section }));
+        .map(r => ({
+          id: r.id,
+          text: r.text,
+          category: r.category,
+          section: r.section,
+        }));
 
       const sectionNotes: Record<string, string> = {};
       state.sections.forEach(s => {
@@ -44,7 +49,9 @@ export function useWizardGeneration() {
   useEffect(() => {
     if (!state.sessionId) return;
 
-    const eventSource = new EventSource(`/api/proposals/wizard/stream/${state.sessionId}`);
+    const eventSource = new EventSource(
+      `/api/proposals/wizard/stream/${state.sessionId}`
+    );
 
     eventSource.onmessage = event => {
       try {
@@ -73,7 +80,10 @@ export function useWizardGeneration() {
         // Move to next step on completion
         if (data.step === 'completion' && data.status === 'completed') {
           state.sections.forEach(s => {
-            dispatch({ type: 'SET_SECTION_STATUS', payload: { sectionId: s.id, status: 'completed' } });
+            dispatch({
+              type: 'SET_SECTION_STATUS',
+              payload: { sectionId: s.id, status: 'completed' },
+            });
           });
           setTimeout(() => {
             dispatch({ type: 'NEXT_STEP' });

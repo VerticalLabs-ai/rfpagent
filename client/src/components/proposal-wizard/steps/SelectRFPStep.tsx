@@ -36,7 +36,10 @@ export function SelectRFPStep() {
     ) || [];
 
   const handleSelectRfp = (rfp: RFPWithDocuments) => {
-    dispatch({ type: 'SET_RFP', payload: { rfpId: rfp.id, rfpTitle: rfp.title } });
+    dispatch({
+      type: 'SET_RFP',
+      payload: { rfpId: rfp.id, rfpTitle: rfp.title },
+    });
 
     // Set attachments from documents
     const attachments = (rfp.documents || []).map(doc => ({
@@ -104,7 +107,9 @@ export function SelectRFPStep() {
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="font-medium text-sm line-clamp-2">{rfp.title}</h4>
+                        <h4 className="font-medium text-sm line-clamp-2">
+                          {rfp.title}
+                        </h4>
                         <Badge variant="secondary" className="shrink-0">
                           {rfp.status}
                         </Badge>
@@ -135,8 +140,8 @@ export function SelectRFPStep() {
             Attachments to Analyze
             {state.attachments.length > 0 && (
               <span className="text-muted-foreground font-normal ml-2">
-                ({state.attachments.filter(a => a.selected).length} of {state.attachments.length}{' '}
-                selected)
+                ({state.attachments.filter(a => a.selected).length} of{' '}
+                {state.attachments.length} selected)
               </span>
             )}
           </h3>
@@ -151,7 +156,9 @@ export function SelectRFPStep() {
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No attachments available</p>
-                  <p className="text-xs mt-1">The RFP description will be analyzed instead</p>
+                  <p className="text-xs mt-1">
+                    The RFP description will be analyzed instead
+                  </p>
                 </div>
               ) : (
                 state.attachments.map(attachment => (
@@ -159,17 +166,25 @@ export function SelectRFPStep() {
                     key={attachment.id}
                     className={cn(
                       'flex items-center gap-3 p-3 border rounded-lg transition-colors',
-                      attachment.selected ? 'bg-primary/5 border-primary/30' : 'hover:bg-accent'
+                      attachment.selected
+                        ? 'bg-primary/5 border-primary/30'
+                        : 'hover:bg-accent'
                     )}
                   >
                     <Checkbox
                       checked={attachment.selected}
-                      onCheckedChange={() => handleToggleAttachment(attachment.id)}
+                      onCheckedChange={() =>
+                        handleToggleAttachment(attachment.id)
+                      }
                     />
                     <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{attachment.filename}</p>
-                      <p className="text-xs text-muted-foreground uppercase">{attachment.fileType}</p>
+                      <p className="text-sm font-medium truncate">
+                        {attachment.filename}
+                      </p>
+                      <p className="text-xs text-muted-foreground uppercase">
+                        {attachment.fileType}
+                      </p>
                     </div>
                   </div>
                 ))

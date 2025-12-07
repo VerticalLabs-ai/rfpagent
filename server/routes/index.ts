@@ -25,6 +25,7 @@ import rfpRoutes from './rfps.routes';
 import saflaRoutes from './safla-monitoring';
 import scanRoutes from './scans.routes';
 import sentryTestRoutes from './sentry-test';
+import stallDetectionRoutes from './stall-detection.routes';
 import submissionRoutes from './submissions.routes';
 import systemRoutes from './system.routes';
 import workflowRoutes from './workflows.routes';
@@ -57,6 +58,7 @@ export function configureRoutes(app: Express): void {
   apiRouter.use('/discovery', discoveryRoutes);
   apiRouter.use('/notifications', notificationRoutes);
   apiRouter.use('/audit-logs', auditLogRoutes);
+  apiRouter.use('/stall-detection', stallDetectionRoutes);
 
   // Mount E2E routes
   apiRouter.use('/e2e', e2eRoutes);
@@ -198,6 +200,12 @@ export const routeModules = {
   sentry: {
     prefix: '/api/sentry',
     description: 'Sentry error tracking test routes (dev/test only)',
+    version: '1.0.0',
+  },
+  stallDetection: {
+    prefix: '/api/stall-detection',
+    description:
+      'Stall detection and recovery for proposal generation workflows',
     version: '1.0.0',
   },
 } as const;

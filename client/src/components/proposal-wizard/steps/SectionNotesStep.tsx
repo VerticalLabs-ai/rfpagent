@@ -43,8 +43,8 @@ export function SectionNotesStep() {
       <div>
         <h2 className="text-xl font-semibold">Add Section Notes</h2>
         <p className="text-muted-foreground">
-          Provide custom input for each proposal section. The AI will incorporate your notes during
-          generation.
+          Provide custom input for each proposal section. The AI will
+          incorporate your notes during generation.
         </p>
       </div>
 
@@ -78,7 +78,9 @@ export function SectionNotesStep() {
                     {SECTION_TIPS[section.id] && (
                       <div className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-sm">
                         <Lightbulb className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                        <p className="text-muted-foreground">{SECTION_TIPS[section.id]}</p>
+                        <p className="text-muted-foreground">
+                          {SECTION_TIPS[section.id]}
+                        </p>
                       </div>
                     )}
                     <div>
@@ -92,7 +94,9 @@ export function SectionNotesStep() {
                         id={`notes-${section.id}`}
                         placeholder={`Add any specific points, key messages, or custom content you want included in the ${section.displayName}...`}
                         value={section.userNotes}
-                        onChange={e => handleNotesChange(section.id, e.target.value)}
+                        onChange={e =>
+                          handleNotesChange(section.id, e.target.value)
+                        }
                         className="mt-1 min-h-[100px]"
                       />
                     </div>
@@ -120,7 +124,10 @@ export function SectionNotesStep() {
                     </p>
                   ) : (
                     selectedRequirements.map(req => (
-                      <div key={req.id} className="p-2 text-xs border rounded bg-muted/30">
+                      <div
+                        key={req.id}
+                        className="p-2 text-xs border rounded bg-muted/30"
+                      >
                         <p className="line-clamp-2">{req.text}</p>
                         <Badge variant="outline" className="mt-1 text-[10px]">
                           {req.section}

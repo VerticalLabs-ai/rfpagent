@@ -53,7 +53,10 @@ export function ExportStep() {
     state.sections.forEach(section => {
       lines.push(`## ${section.displayName}`);
       lines.push('');
-      lines.push(proposalContent[section.id] || '*No content generated for this section.*');
+      lines.push(
+        proposalContent[section.id] ||
+          '*No content generated for this section.*'
+      );
       lines.push('');
     });
 
@@ -76,7 +79,9 @@ export function ExportStep() {
       lines.push(section.displayName.toUpperCase());
       lines.push('-'.repeat(section.displayName.length));
       lines.push('');
-      lines.push(proposalContent[section.id] || 'No content generated for this section.');
+      lines.push(
+        proposalContent[section.id] || 'No content generated for this section.'
+      );
       lines.push('');
       lines.push('');
     });
@@ -158,7 +163,8 @@ export function ExportStep() {
       y -= 5;
 
       // Section content
-      const content = proposalContent[section.id] || 'No content generated for this section.';
+      const content =
+        proposalContent[section.id] || 'No content generated for this section.';
       const paragraphs = content.split('\n');
 
       for (const paragraph of paragraphs) {
@@ -217,7 +223,8 @@ export function ExportStep() {
   };
 
   const handleCopyToClipboard = async () => {
-    const content = exportFormat === 'markdown' ? generateMarkdown() : generatePlainText();
+    const content =
+      exportFormat === 'markdown' ? generateMarkdown() : generatePlainText();
     await navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -295,7 +302,11 @@ export function ExportStep() {
             </RadioGroup>
 
             <div className="flex gap-2 pt-4">
-              <Button onClick={handleExport} disabled={isExporting} className="flex-1">
+              <Button
+                onClick={handleExport}
+                disabled={isExporting}
+                className="flex-1"
+              >
                 {isExporting ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : (
@@ -329,16 +340,22 @@ export function ExportStep() {
             <ScrollArea className="h-[300px] border rounded-lg p-4 bg-muted/30">
               <div className="space-y-4 text-sm">
                 <div>
-                  <h3 className="font-bold text-lg">{rfp?.title || 'Proposal'}</h3>
+                  <h3 className="font-bold text-lg">
+                    {rfp?.title || 'Proposal'}
+                  </h3>
                   <p className="text-muted-foreground text-xs">
                     {rfp?.agency} | {rfp?.solicitationNumber}
                   </p>
                 </div>
                 {state.sections.map(section => (
                   <div key={section.id}>
-                    <h4 className="font-semibold text-sm">{section.displayName}</h4>
+                    <h4 className="font-semibold text-sm">
+                      {section.displayName}
+                    </h4>
                     <p className="text-xs text-muted-foreground line-clamp-3">
-                      {proposalContent[section.id]?.substring(0, 200) || 'No content'}...
+                      {proposalContent[section.id]?.substring(0, 200) ||
+                        'No content'}
+                      ...
                     </p>
                   </div>
                 ))}
@@ -360,12 +377,18 @@ export function ExportStep() {
               <p className="text-2xl font-bold">
                 {state.requirements.filter(r => r.selected).length}
               </p>
-              <p className="text-xs text-muted-foreground">Requirements Addressed</p>
+              <p className="text-xs text-muted-foreground">
+                Requirements Addressed
+              </p>
             </div>
             <div>
               <p className="text-2xl font-bold">
                 {Object.values(proposalContent).reduce(
-                  (acc, content) => acc + (typeof content === 'string' ? content.split(' ').length : 0),
+                  (acc, content) =>
+                    acc +
+                    (typeof content === 'string'
+                      ? content.split(' ').length
+                      : 0),
                   0
                 )}
               </p>

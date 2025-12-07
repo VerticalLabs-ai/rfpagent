@@ -3,7 +3,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, Loader2, Circle, AlertCircle, Sparkles } from 'lucide-react';
+import {
+  CheckCircle,
+  Loader2,
+  Circle,
+  AlertCircle,
+  Sparkles,
+} from 'lucide-react';
 import { useWizard } from '../context';
 import { useWizardGeneration } from '../hooks/useWizardGeneration';
 import { cn } from '@/lib/utils';
@@ -50,11 +56,15 @@ export function GenerateStep() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Overall Progress</span>
-            <span className="text-sm text-muted-foreground">{state.generationProgress}%</span>
+            <span className="text-sm text-muted-foreground">
+              {state.generationProgress}%
+            </span>
           </div>
           <Progress value={state.generationProgress} className="h-2" />
           {progress?.message && (
-            <p className="text-xs text-muted-foreground mt-2">{progress.message}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              {progress.message}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -93,10 +103,18 @@ export function GenerateStep() {
           <CardContent className="p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <div className="flex-1">
-              <p className="font-medium text-red-700 dark:text-red-400">Generation Error</p>
-              <p className="text-sm text-red-600 dark:text-red-300">{state.error}</p>
+              <p className="font-medium text-red-700 dark:text-red-400">
+                Generation Error
+              </p>
+              <p className="text-sm text-red-600 dark:text-red-300">
+                {state.error}
+              </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => startGeneration()}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => startGeneration()}
+            >
               Retry
             </Button>
           </CardContent>

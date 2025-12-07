@@ -44,13 +44,21 @@ export function PreviewEditStep() {
         type: 'UPDATE_SECTION_CONTENT',
         payload: { sectionId, content: data.content },
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', state.rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', state.rfpId],
+      });
     },
   });
 
   // Save edit mutation
   const saveEditMutation = useMutation({
-    mutationFn: async ({ sectionId, content }: { sectionId: string; content: string }) => {
+    mutationFn: async ({
+      sectionId,
+      content,
+    }: {
+      sectionId: string;
+      content: string;
+    }) => {
       const updatedContent = { ...proposalContent, [sectionId]: content };
       return apiRequest('PUT', `/api/proposals/${proposal?.id}`, {
         content: JSON.stringify(updatedContent),
@@ -58,7 +66,9 @@ export function PreviewEditStep() {
     },
     onSuccess: () => {
       setEditingSection(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/proposals/rfp', state.rfpId] });
+      queryClient.invalidateQueries({
+        queryKey: ['/api/proposals/rfp', state.rfpId],
+      });
     },
   });
 
@@ -69,7 +79,10 @@ export function PreviewEditStep() {
 
   const handleSaveEdit = () => {
     if (editingSection) {
-      saveEditMutation.mutate({ sectionId: editingSection, content: editContent });
+      saveEditMutation.mutate({
+        sectionId: editingSection,
+        content: editContent,
+      });
     }
   };
 
@@ -103,7 +116,11 @@ export function PreviewEditStep() {
       <Tabs defaultValue={state.sections[0]?.id} className="w-full">
         <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
           {state.sections.map(section => (
-            <TabsTrigger key={section.id} value={section.id} className="text-xs">
+            <TabsTrigger
+              key={section.id}
+              value={section.id}
+              className="text-xs"
+            >
               {section.displayName}
             </TabsTrigger>
           ))}
@@ -114,11 +131,17 @@ export function PreviewEditStep() {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{section.displayName}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {section.displayName}
+                  </CardTitle>
                   <div className="flex gap-2">
                     {editingSection === section.id ? (
                       <>
-                        <Button size="sm" variant="ghost" onClick={handleCancelEdit}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelEdit}
+                        >
                           Cancel
                         </Button>
                         <Button
@@ -174,7 +197,8 @@ export function PreviewEditStep() {
                   <ScrollArea className="h-[400px]">
                     <div className="prose prose-sm dark:prose-invert max-w-none">
                       <pre className="whitespace-pre-wrap font-sans text-sm">
-                        {proposalContent[section.id] || 'No content generated for this section.'}
+                        {proposalContent[section.id] ||
+                          'No content generated for this section.'}
                       </pre>
                     </div>
                   </ScrollArea>

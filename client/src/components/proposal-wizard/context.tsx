@@ -24,7 +24,11 @@ const initialState: WizardState = {
 function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'SET_RFP':
-      return { ...state, rfpId: action.payload.rfpId, rfpTitle: action.payload.rfpTitle };
+      return {
+        ...state,
+        rfpId: action.payload.rfpId,
+        rfpTitle: action.payload.rfpTitle,
+      };
     case 'SET_ATTACHMENTS':
       return { ...state, attachments: action.payload };
     case 'TOGGLE_ATTACHMENT':
@@ -46,27 +50,36 @@ function wizardReducer(state: WizardState, action: WizardAction): WizardState {
     case 'TOGGLE_ALL_REQUIREMENTS':
       return {
         ...state,
-        requirements: state.requirements.map(r => ({ ...r, selected: action.payload })),
+        requirements: state.requirements.map(r => ({
+          ...r,
+          selected: action.payload,
+        })),
       };
     case 'UPDATE_SECTION_NOTES':
       return {
         ...state,
         sections: state.sections.map(s =>
-          s.id === action.payload.sectionId ? { ...s, userNotes: action.payload.notes } : s
+          s.id === action.payload.sectionId
+            ? { ...s, userNotes: action.payload.notes }
+            : s
         ),
       };
     case 'UPDATE_SECTION_CONTENT':
       return {
         ...state,
         sections: state.sections.map(s =>
-          s.id === action.payload.sectionId ? { ...s, content: action.payload.content } : s
+          s.id === action.payload.sectionId
+            ? { ...s, content: action.payload.content }
+            : s
         ),
       };
     case 'SET_SECTION_STATUS':
       return {
         ...state,
         sections: state.sections.map(s =>
-          s.id === action.payload.sectionId ? { ...s, status: action.payload.status } : s
+          s.id === action.payload.sectionId
+            ? { ...s, status: action.payload.status }
+            : s
         ),
       };
     case 'SET_GENERATION_PROGRESS':
@@ -109,8 +122,16 @@ interface WizardContextValue {
 
 const WizardContext = createContext<WizardContextValue | null>(null);
 
-export function WizardProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(wizardReducer, initialState);
+interface WizardProviderProps {
+  children: ReactNode;
+  initialRfpId?: string;
+}
+
+export function WizardProvider({ children, initialRfpId }: WizardProviderProps) {
+  const [state, dispatch] = useReducer(wizardReducer, {
+    ...initialState,
+    rfpId: initialRfpId || null,
+  });
   return (
     <WizardContext.Provider value={{ state, dispatch }}>
       {children}

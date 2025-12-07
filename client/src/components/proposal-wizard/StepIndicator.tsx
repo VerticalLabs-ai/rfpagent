@@ -1,4 +1,4 @@
-import { Check, Circle } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { WIZARD_STEPS, type WizardStep } from './types';
 
@@ -7,9 +7,9 @@ const STEP_LABELS: Record<WizardStep, string> = {
   'analyze-requirements': 'Analyze',
   'select-requirements': 'Requirements',
   'section-notes': 'Notes',
-  'generate': 'Generate',
+  generate: 'Generate',
   'preview-edit': 'Preview',
-  'export': 'Export',
+  export: 'Export',
 };
 
 interface StepIndicatorProps {
@@ -17,7 +17,10 @@ interface StepIndicatorProps {
   onStepClick?: (step: WizardStep) => void;
 }
 
-export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) {
+export function StepIndicator({
+  currentStep,
+  onStepClick,
+}: StepIndicatorProps) {
   const currentIndex = WIZARD_STEPS.indexOf(currentStep);
 
   return (

@@ -74,9 +74,14 @@ export class EnhancedProposalService {
     }
 
     // Update RFP status to indicate generation in progress
+    // Track generation start time and increment attempt counter for stall detection
+    const currentAttempts = rfp.generationAttempts ?? 0;
     await storage.updateRFP(request.rfpId, {
       status: 'drafting',
       progress: 20,
+      generationStartedAt: new Date(),
+      generationAttempts: currentAttempts + 1,
+      lastGenerationError: null,
     });
 
     console.log(`📊 Analyzing RFP documents for intelligent processing...`);
@@ -172,9 +177,11 @@ export class EnhancedProposalService {
     );
 
     // Update RFP status with appropriate progress
+    // Clear generationStartedAt to indicate successful completion (not stalled)
     await storage.updateRFP(request.rfpId, {
       status: readyForSubmission ? 'review' : 'drafting',
       progress: readyForSubmission ? 75 : 60, // Proposal generated but not submitted
+      generationStartedAt: null, // Clear to indicate generation completed successfully
     });
 
     console.log(`✅ Proposal generation completed for RFP: ${rfp.title}`);
@@ -364,9 +371,14 @@ export class EnhancedProposalService {
       }
 
       // Update RFP status to indicate generation in progress
+      // Track generation start time and increment attempt counter for stall detection
+      const currentAttempts = rfp.generationAttempts ?? 0;
       await storage.updateRFP(params.rfpId, {
         status: 'drafting',
         progress: 10,
+        generationStartedAt: new Date(),
+        generationAttempts: currentAttempts + 1,
+        lastGenerationError: null,
       });
 
       console.log(
@@ -411,9 +423,11 @@ export class EnhancedProposalService {
         const proposal = await storage.getProposalByRFP(params.rfpId);
 
         // Update RFP progress to completed
+        // Clear generationStartedAt to indicate successful completion
         await storage.updateRFP(params.rfpId, {
           status: 'review',
           progress: 85,
+          generationStartedAt: null,
         });
 
         return {
@@ -427,9 +441,12 @@ export class EnhancedProposalService {
         console.error(`❌ Mastra proposal generation failed:`, result.error);
 
         // Update RFP status to indicate failure
+        // Record the error for stall detection and clear generationStartedAt
         await storage.updateRFP(params.rfpId, {
           status: 'draft',
           progress: 0,
+          generationStartedAt: null,
+          lastGenerationError: result.error ?? 'Unknown error',
         });
 
         return {
@@ -459,9 +476,14 @@ export class EnhancedProposalService {
       });
 
       // Update RFP status to indicate failure
+      // Record the error for stall detection and clear generationStartedAt
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       await storage.updateRFP(params.rfpId, {
         status: 'draft',
         progress: 0,
+        generationStartedAt: null, // Clear to indicate generation is no longer active
+        lastGenerationError: errorMessage,
       });
 
       return {

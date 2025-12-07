@@ -55,10 +55,22 @@ export type WizardAction =
   | { type: 'SET_REQUIREMENTS'; payload: ExtractedRequirement[] }
   | { type: 'TOGGLE_REQUIREMENT'; payload: string }
   | { type: 'TOGGLE_ALL_REQUIREMENTS'; payload: boolean }
-  | { type: 'UPDATE_SECTION_NOTES'; payload: { sectionId: string; notes: string } }
-  | { type: 'UPDATE_SECTION_CONTENT'; payload: { sectionId: string; content: string } }
-  | { type: 'SET_SECTION_STATUS'; payload: { sectionId: string; status: ProposalSection['status'] } }
-  | { type: 'SET_GENERATION_PROGRESS'; payload: { progress: number; section: string | null } }
+  | {
+      type: 'UPDATE_SECTION_NOTES';
+      payload: { sectionId: string; notes: string };
+    }
+  | {
+      type: 'UPDATE_SECTION_CONTENT';
+      payload: { sectionId: string; content: string };
+    }
+  | {
+      type: 'SET_SECTION_STATUS';
+      payload: { sectionId: string; status: ProposalSection['status'] };
+    }
+  | {
+      type: 'SET_GENERATION_PROGRESS';
+      payload: { progress: number; section: string | null };
+    }
   | { type: 'SET_SESSION_ID'; payload: string }
   | { type: 'GO_TO_STEP'; payload: WizardStep }
   | { type: 'NEXT_STEP' }
@@ -76,12 +88,57 @@ export const WIZARD_STEPS: WizardStep[] = [
   'export',
 ];
 
-export const DEFAULT_SECTIONS: Omit<ProposalSection, 'content' | 'userNotes'>[] = [
-  { id: 'executiveSummary', name: 'executiveSummary', displayName: 'Executive Summary', status: 'pending', canRegenerate: true },
-  { id: 'companyOverview', name: 'companyOverview', displayName: 'Company Overview', status: 'pending', canRegenerate: true },
-  { id: 'technicalApproach', name: 'technicalApproach', displayName: 'Technical Approach', status: 'pending', canRegenerate: true },
-  { id: 'qualifications', name: 'qualifications', displayName: 'Qualifications', status: 'pending', canRegenerate: true },
-  { id: 'timeline', name: 'timeline', displayName: 'Project Timeline', status: 'pending', canRegenerate: true },
-  { id: 'pricing', name: 'pricing', displayName: 'Pricing', status: 'pending', canRegenerate: true },
-  { id: 'compliance', name: 'compliance', displayName: 'Compliance Matrix', status: 'pending', canRegenerate: true },
+export const DEFAULT_SECTIONS: Omit<
+  ProposalSection,
+  'content' | 'userNotes'
+>[] = [
+  {
+    id: 'executiveSummary',
+    name: 'executiveSummary',
+    displayName: 'Executive Summary',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'companyOverview',
+    name: 'companyOverview',
+    displayName: 'Company Overview',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'technicalApproach',
+    name: 'technicalApproach',
+    displayName: 'Technical Approach',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'qualifications',
+    name: 'qualifications',
+    displayName: 'Qualifications',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'timeline',
+    name: 'timeline',
+    displayName: 'Project Timeline',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'pricing',
+    name: 'pricing',
+    displayName: 'Pricing',
+    status: 'pending',
+    canRegenerate: true,
+  },
+  {
+    id: 'compliance',
+    name: 'compliance',
+    displayName: 'Compliance Matrix',
+    status: 'pending',
+    canRegenerate: true,
+  },
 ];

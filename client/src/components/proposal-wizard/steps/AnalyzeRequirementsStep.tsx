@@ -34,7 +34,9 @@ export function AnalyzeRequirementsStep() {
 
   const extractMutation = useMutation({
     mutationFn: async () => {
-      const selectedDocIds = state.attachments.filter(a => a.selected).map(a => a.id);
+      const selectedDocIds = state.attachments
+        .filter(a => a.selected)
+        .map(a => a.id);
 
       return apiRequest('POST', '/api/proposals/wizard/extract-requirements', {
         rfpId: state.rfpId,
@@ -42,24 +44,33 @@ export function AnalyzeRequirementsStep() {
       }) as Promise<ExtractionResponse>;
     },
     onSuccess: data => {
-      const requirements: ExtractedRequirement[] = data.requirements.map(req => ({
-        id: req.id,
-        text: req.text,
-        category: req.category as 'mandatory' | 'preferred' | 'optional',
-        section: req.section,
-        selected: req.category === 'mandatory', // Auto-select mandatory requirements
-      }));
+      const requirements: ExtractedRequirement[] = data.requirements.map(
+        req => ({
+          id: req.id,
+          text: req.text,
+          category: req.category as 'mandatory' | 'preferred' | 'optional',
+          section: req.section,
+          selected: req.category === 'mandatory', // Auto-select mandatory requirements
+        })
+      );
       dispatch({ type: 'SET_REQUIREMENTS', payload: requirements });
       dispatch({ type: 'SET_ERROR', payload: null });
     },
     onError: (error: Error) => {
-      dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to analyze requirements' });
+      dispatch({
+        type: 'SET_ERROR',
+        payload: error.message || 'Failed to analyze requirements',
+      });
     },
   });
 
   // Auto-start analysis when step is reached
   useEffect(() => {
-    if (state.rfpId && state.requirements.length === 0 && !extractMutation.isPending) {
+    if (
+      state.rfpId &&
+      state.requirements.length === 0 &&
+      !extractMutation.isPending
+    ) {
       extractMutation.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -81,15 +92,25 @@ export function AnalyzeRequirementsStep() {
     }
   }, [extractMutation.isPending, extractMutation.isSuccess]);
 
-  const mandatoryCount = state.requirements.filter(r => r.category === 'mandatory').length;
-  const preferredCount = state.requirements.filter(r => r.category === 'preferred').length;
-  const optionalCount = state.requirements.filter(r => r.category === 'optional').length;
+  const mandatoryCount = state.requirements.filter(
+    r => r.category === 'mandatory'
+  ).length;
+  const preferredCount = state.requirements.filter(
+    r => r.category === 'preferred'
+  ).length;
+  const optionalCount = state.requirements.filter(
+    r => r.category === 'optional'
+  ).length;
 
   return (
     <div className="p-6 space-y-6">
       <div className="text-center">
-        <h2 className="text-xl font-semibold mb-2">Analyzing RFP Requirements</h2>
-        <p className="text-muted-foreground">AI is extracting requirements from {state.rfpTitle}</p>
+        <h2 className="text-xl font-semibold mb-2">
+          Analyzing RFP Requirements
+        </h2>
+        <p className="text-muted-foreground">
+          AI is extracting requirements from {state.rfpTitle}
+        </p>
       </div>
 
       {extractMutation.isPending && (
@@ -132,7 +153,9 @@ export function AnalyzeRequirementsStep() {
 
             <div className="grid grid-cols-3 gap-4 mt-4">
               <div className="text-center p-3 rounded-lg bg-red-100 dark:bg-red-900/30">
-                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{mandatoryCount}</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                  {mandatoryCount}
+                </p>
                 <p className="text-xs text-muted-foreground">Mandatory</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-yellow-100 dark:bg-yellow-900/30">
@@ -142,7 +165,9 @@ export function AnalyzeRequirementsStep() {
                 <p className="text-xs text-muted-foreground">Preferred</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-gray-100 dark:bg-gray-800">
-                <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">{optionalCount}</p>
+                <p className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                  {optionalCount}
+                </p>
                 <p className="text-xs text-muted-foreground">Optional</p>
               </div>
             </div>
@@ -164,7 +189,8 @@ export function AnalyzeRequirementsStep() {
               <div className="flex-1">
                 <p className="font-medium">Analysis Failed</p>
                 <p className="text-sm text-muted-foreground">
-                  {extractMutation.error?.message || 'An error occurred during analysis'}
+                  {extractMutation.error?.message ||
+                    'An error occurred during analysis'}
                 </p>
               </div>
             </div>

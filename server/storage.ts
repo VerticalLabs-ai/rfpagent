@@ -1108,6 +1108,49 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(rfps).where(eq(rfps.portalId, portalId));
   }
 
+  /**
+   * Get RFPs that are stalled in "drafting" status beyond their timeout
+   * Used by the stall detection service to identify stuck proposal generations
+   */
+  async getStalledRFPs(): Promise<
+    {
+      id: string;
+      title: string;
+      status: string;
+      generationStartedAt: Date | null;
+      generationTimeoutMinutes: number;
+      generationAttempts: number;
+      maxGenerationAttempts: number;
+      lastGenerationError: string | null;
+      progress: number;
+    }[]
+  > {
+    const now = new Date();
+
+    const stalledRFPs = await db
+      .select({
+        id: rfps.id,
+        title: rfps.title,
+        status: rfps.status,
+        generationStartedAt: rfps.generationStartedAt,
+        generationTimeoutMinutes: rfps.generationTimeoutMinutes,
+        generationAttempts: rfps.generationAttempts,
+        maxGenerationAttempts: rfps.maxGenerationAttempts,
+        lastGenerationError: rfps.lastGenerationError,
+        progress: rfps.progress,
+      })
+      .from(rfps)
+      .where(
+        and(
+          eq(rfps.status, 'drafting'),
+          sql`${rfps.generationStartedAt} IS NOT NULL`,
+          sql`${rfps.generationStartedAt} + (${rfps.generationTimeoutMinutes} * interval '1 minute') < ${now}`
+        )
+      );
+
+    return stalledRFPs;
+  }
+
   // Proposals
   async getProposal(id: string): Promise<Proposal | undefined> {
     const [proposal] = await db
