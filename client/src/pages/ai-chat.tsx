@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
+  AlertCircle,
   BarChart3,
   Bot,
   Calendar,
@@ -20,6 +22,7 @@ import {
   FileText,
   Lightbulb,
   Loader2,
+  RefreshCcw,
   Search,
   Send,
   Trash2,
@@ -450,65 +453,105 @@ export default function AIChat() {
 
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-2">
-            {(conversations as Conversation[])?.map(
-              (conversation: Conversation) => (
-                <Card
-                  key={conversation.id}
-                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                    currentConversationId === conversation.id
-                      ? 'ring-2 ring-primary'
-                      : ''
-                  }`}
-                  onClick={() => selectConversation(conversation.id)}
-                  data-testid={`conversation-card-${conversation.id}`}
-                >
-                  <CardContent className="p-3">
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-tight">
-                          {conversation.title}
-                        </h3>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive -mt-1 -mr-1"
-                          onClick={e => {
-                            e.stopPropagation();
-                            handleDeleteConversation(conversation.id);
-                          }}
-                          title="Delete conversation"
-                          data-testid={`button-delete-conversation-${conversation.id}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 h-5 font-normal"
-                        >
-                          {conversation.type}
-                        </Badge>
-                        <span>
-                          {new Date(
-                            conversation.updatedAt
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            )}
-
-            {(!conversations ||
-              (conversations as Conversation[])?.length === 0) && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">No conversations yet</p>
-                <p className="text-xs">Start chatting with the AI agent</p>
+            {conversationsLoading && (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Loading conversations...
+                </p>
               </div>
             )}
+
+            {conversationsError && (
+              <div className="p-2">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Failed to load conversations</AlertTitle>
+                  <AlertDescription className="mt-2">
+                    <p className="text-sm mb-3">
+                      {(conversationsErrorDetails as Error)?.message ||
+                        'Unable to connect to AI service'}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        queryClient.invalidateQueries({
+                          queryKey: ['/api/ai/conversations'],
+                        })
+                      }
+                    >
+                      <RefreshCcw className="h-3 w-3 mr-2" />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {!conversationsLoading &&
+              !conversationsError &&
+              (conversations as Conversation[])?.map(
+                (conversation: Conversation) => (
+                  <Card
+                    key={conversation.id}
+                    className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                      currentConversationId === conversation.id
+                        ? 'ring-2 ring-primary'
+                        : ''
+                    }`}
+                    onClick={() => selectConversation(conversation.id)}
+                    data-testid={`conversation-card-${conversation.id}`}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-tight">
+                            {conversation.title}
+                          </h3>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive -mt-1 -mr-1"
+                            onClick={e => {
+                              e.stopPropagation();
+                              handleDeleteConversation(conversation.id);
+                            }}
+                            title="Delete conversation"
+                            data-testid={`button-delete-conversation-${conversation.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 h-5 font-normal"
+                          >
+                            {conversation.type}
+                          </Badge>
+                          <span>
+                            {new Date(
+                              conversation.updatedAt
+                            ).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              )}
+
+            {!conversationsLoading &&
+              !conversationsError &&
+              (!conversations ||
+                (conversations as Conversation[])?.length === 0) && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No conversations yet</p>
+                  <p className="text-xs">Start chatting with the AI agent</p>
+                </div>
+              )}
           </div>
         </ScrollArea>
       </div>
