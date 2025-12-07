@@ -338,4 +338,24 @@ router.get('/history', async (req, res) => {
   }
 });
 
+/**
+ * Get scan statistics for the last N days
+ * GET /api/scans/statistics?days=30
+ */
+router.get('/statistics', async (req, res) => {
+  try {
+    const { days = '30' } = req.query;
+    const daysNum = parseInt(days as string, 10);
+
+    const { scanHistoryService } = await import('../services/monitoring/scanHistoryService');
+
+    const stats = await scanHistoryService.getScanStatistics(daysNum);
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching scan statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch scan statistics' });
+  }
+});
+
 export default router;
