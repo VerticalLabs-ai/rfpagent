@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { cn } from '@/lib/utils';
+import { SearchExamples } from './SearchExamples';
 
 interface SearchFilters {
   keywords?: string[];
@@ -146,6 +147,12 @@ export function NaturalLanguageSearchBar({
     onClear();
     inputRef.current?.focus();
   }, [onClear]);
+
+  // Handle example selection
+  const handleExampleSelect = useCallback((exampleQuery: string) => {
+    setQuery(exampleQuery);
+    searchMutation.mutate(exampleQuery);
+  }, [searchMutation]);
 
   // Click outside to close preview
   useEffect(() => {
@@ -335,6 +342,14 @@ export function NaturalLanguageSearchBar({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Search Examples - Show when no query */}
+      {!query && (
+        <SearchExamples
+          onSelectExample={handleExampleSelect}
+          className="mt-2"
+        />
       )}
     </div>
   );
