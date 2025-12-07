@@ -234,4 +234,32 @@ router.post('/fix-rfp-progress', async (req, res) => {
   }
 });
 
+/**
+ * Get portal scheduler status and scheduled jobs
+ * GET /api/system/scheduler/status
+ */
+router.get('/scheduler/status', async (req, res) => {
+  try {
+    const jobs = portalSchedulerService.getActiveJobs();
+
+    res.json({
+      isRunning: serviceRuntimeState.portalScheduler,
+      jobCount: jobs.length,
+      jobs: jobs.map(job => ({
+        portalId: job.portalId,
+        portalName: job.portalName,
+        cronExpression: job.cronExpression,
+        lastRun: job.lastRun,
+        nextRun: job.nextRun,
+        isActive: job.isActive,
+      })),
+      globalScanSchedule: '0 */6 * * *',
+      timezone: 'America/Chicago',
+    });
+  } catch (error) {
+    console.error('Error fetching scheduler status:', error);
+    res.status(500).json({ error: 'Failed to fetch scheduler status' });
+  }
+});
+
 export default router;
