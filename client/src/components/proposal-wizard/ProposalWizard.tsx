@@ -6,6 +6,7 @@ import { StepIndicator } from './StepIndicator';
 import { SelectRFPStep } from './steps/SelectRFPStep';
 import { AnalyzeRequirementsStep } from './steps/AnalyzeRequirementsStep';
 import { SelectRequirementsStep } from './steps/SelectRequirementsStep';
+import { SectionNotesStep } from './steps/SectionNotesStep';
 import type { WizardStep } from './types';
 
 interface ProposalWizardProps {
@@ -30,7 +31,7 @@ function WizardContent({ onClose }: { onClose: () => void }) {
       case 'select-requirements':
         return <SelectRequirementsStep />;
       case 'section-notes':
-        return <div className="p-6 text-center text-muted-foreground">Step 4: Section Notes (placeholder)</div>;
+        return <SectionNotesStep />;
       case 'generate':
         return <div className="p-6 text-center text-muted-foreground">Step 5: Generate (placeholder)</div>;
       case 'preview-edit':
