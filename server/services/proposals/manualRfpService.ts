@@ -21,6 +21,7 @@ export interface ManualRfpResult {
   rfpId?: string;
   error?: string;
   message: string;
+  suggestedUrl?: string; // For SAM.gov workspace URL errors
 }
 
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-5';
@@ -47,6 +48,42 @@ export class ManualRfpService {
       console.log(
         `[ManualRfpService] Processing manual RFP from URL: ${input.url}`
       );
+
+      // Check for SAM.gov workspace URLs (require authentication)
+      // Pattern: https://sam.gov/workspace/contract/opp/{id}/view
+      const samGovWorkspaceMatch = input.url.match(
+        /sam\.gov\/workspace\/contract\/opp\/([a-zA-Z0-9]+)\/view/i
+      );
+      if (samGovWorkspaceMatch) {
+        const opportunityId = samGovWorkspaceMatch[1];
+        const suggestedUrl = `https://sam.gov/opp/${opportunityId}/view`;
+
+        console.log(
+          `[ManualRfpService] SAM.gov workspace URL detected - requires authentication`
+        );
+        console.log(`[ManualRfpService] Suggested public URL: ${suggestedUrl}`);
+
+        // Update progress tracker with helpful error
+        progressTracker.startTracking(sessionId, input.url);
+        progressTracker.updateStep(
+          sessionId,
+          'portal_detection',
+          'failed',
+          'SAM.gov workspace URLs require authentication'
+        );
+        progressTracker.failTracking(
+          sessionId,
+          `This is a SAM.gov workspace URL that requires you to be logged in. Please use the public URL instead: ${suggestedUrl}`
+        );
+
+        return {
+          success: false,
+          sessionId,
+          error: 'SAM.gov workspace URLs require authentication',
+          message: `This URL is from your SAM.gov workspace and requires authentication. Please use the public URL format instead: ${suggestedUrl}`,
+          suggestedUrl,
+        };
+      }
 
       // Start progress tracking
       progressTracker.startTracking(sessionId, input.url);
@@ -106,17 +143,24 @@ export class ManualRfpService {
           'Primary extraction failed - RFP URL may be incompatible'
         );
 
-        const errorMessage =
-          'Primary RFP extraction failed. This portal may not be supported yet.';
-        console.error(`[ManualRfpService] ${errorMessage}:`, input.url);
+        // Generate contextual error message based on URL pattern
+        const errorDetails = this.getContextualErrorMessage(input.url);
 
-        progressTracker.failTracking(sessionId, errorMessage);
+        console.error(
+          `[ManualRfpService] ${errorDetails.error}:`,
+          input.url,
+          errorDetails.guidance
+        );
+
+        progressTracker.failTracking(
+          sessionId,
+          `${errorDetails.error}. ${errorDetails.guidance}`
+        );
         return {
           success: false,
           sessionId,
-          error: errorMessage,
-          message:
-            'Unable to extract RFP information from this portal. Supported portals: BeaconBid, Austin Finance, SAM.gov. Please verify the URL or try a supported portal.',
+          error: errorDetails.error,
+          message: `${errorDetails.error}. ${errorDetails.guidance}`,
         };
       }
 
@@ -866,6 +910,107 @@ If any field cannot be determined, use null or empty values.`;
       console.error('[ManualRfpService] Error scraping page content:', error);
       return 'Unable to scrape page content';
     }
+  }
+
+  /**
+   * Generate contextual error messages based on URL patterns
+   * Provides portal-specific troubleshooting guidance
+   */
+  private getContextualErrorMessage(url: string): {
+    error: string;
+    guidance: string;
+  } {
+    const lowerUrl = url.toLowerCase();
+
+    // SAM.gov specific errors
+    if (lowerUrl.includes('sam.gov')) {
+      if (lowerUrl.includes('/search') || lowerUrl.includes('searchCriteria')) {
+        return {
+          error: 'SAM.gov search page URL detected',
+          guidance:
+            'Please navigate to a specific opportunity page and copy that URL instead. The URL should contain "/opp/" followed by the opportunity ID.',
+        };
+      }
+      if (lowerUrl.includes('/workspace')) {
+        return {
+          error: 'SAM.gov workspace URL requires authentication',
+          guidance:
+            'Workspace URLs are for logged-in users only. Please use the public URL format: sam.gov/opp/{opportunityId}/view',
+        };
+      }
+      return {
+        error: 'Could not extract RFP information from SAM.gov',
+        guidance:
+          'Verify the URL points to a specific opportunity page (format: sam.gov/opp/{id}/view). If the opportunity has been withdrawn or expired, it may no longer be accessible.',
+      };
+    }
+
+    // BeaconBid specific errors
+    if (lowerUrl.includes('beaconbid.com')) {
+      if (!lowerUrl.includes('/solicitations/')) {
+        return {
+          error: 'Invalid BeaconBid URL format',
+          guidance:
+            'Please use a direct solicitation URL (format: beaconbid.com/solicitations/{agency}/{id}/{title}). Search pages and dashboard URLs are not supported.',
+        };
+      }
+      return {
+        error: 'Could not extract RFP information from BeaconBid',
+        guidance:
+          'Verify the solicitation is still active. The URL should contain a UUID-style ID in the path. Some solicitations may require registration to access.',
+      };
+    }
+
+    // Austin Finance specific errors
+    if (
+      lowerUrl.includes('austintexas.gov') ||
+      lowerUrl.includes('austin.gov')
+    ) {
+      if (!lowerUrl.includes('solicitation_details.cfm')) {
+        return {
+          error: 'Invalid Austin Finance URL format',
+          guidance:
+            'Please use a direct solicitation details URL (format: financeonline.austintexas.gov/.../solicitation_details.cfm?sid={id}). List pages are not supported.',
+        };
+      }
+      return {
+        error: 'Could not extract RFP information from Austin Finance',
+        guidance:
+          'Verify the solicitation number (sid parameter) is correct and the opportunity is still active.',
+      };
+    }
+
+    // FindRFP specific errors
+    if (lowerUrl.includes('findrfp.com')) {
+      if (!lowerUrl.includes('rfpid=')) {
+        return {
+          error: 'Invalid FindRFP URL format',
+          guidance:
+            'Please use a direct RFP detail URL (format: findrfp.com/service/detail.aspx?rfpid={id}). Category and search pages are not supported.',
+        };
+      }
+      return {
+        error: 'Could not extract RFP information from FindRFP',
+        guidance:
+          'Verify the rfpid parameter is valid and the RFP has not been closed or removed.',
+      };
+    }
+
+    // Bonfire specific errors
+    if (lowerUrl.includes('gobonfire.com') || lowerUrl.includes('bonfire')) {
+      return {
+        error: 'Could not extract RFP information from Bonfire portal',
+        guidance:
+          'Bonfire portals often require registration. Please ensure you are using a public opportunity URL and the opportunity is open for submissions.',
+      };
+    }
+
+    // Generic portal error
+    return {
+      error: 'RFP extraction failed for this portal',
+      guidance:
+        'This portal may not be fully supported yet. Supported portals include: SAM.gov, BeaconBid, Austin Finance, and FindRFP. Please verify the URL points to a specific RFP/opportunity page, not a search or list page.',
+    };
   }
 
   private extractRfpIdFromUrl(url: string): string | null {

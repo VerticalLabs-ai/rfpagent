@@ -9,14 +9,25 @@ import { logger } from '../../../utils/logger';
 import { extractRFPId, extractSolicitationId } from './helpers';
 
 /**
+ * SAM.gov URL validation result type for workspace URL errors
+ */
+export interface SAMGovUrlValidationError {
+  error: 'WORKSPACE_URL_REQUIRES_AUTH';
+  message: string;
+  suggestedUrl: string;
+  originalUrl: string;
+}
+
+/**
  * Validate and fix source URL for a given portal and opportunity
  * Rejects generic category URLs and delegates to portal-specific validators
+ * Returns string URL, SAMGovUrlValidationError for workspace URLs, or null for invalid
  */
 export function validateAndFixSourceUrl(
   url: string,
   portal: Portal,
   opportunity: any
-): string | null {
+): string | SAMGovUrlValidationError | null {
   if (!url) {
     logger.debug('No URL provided for opportunity', {
       opportunityTitle: opportunity.title,
@@ -174,15 +185,39 @@ export function validateBeaconBidUrl(url: string): string | null {
 /**
  * Validate SAM.gov URLs
  * Must contain opportunity IDs
+ * Detects workspace URLs that require authentication and provides public URL alternative
  */
-export function validateSAMGovUrl(url: string): string | null {
+export function validateSAMGovUrl(
+  url: string
+): string | SAMGovUrlValidationError | null {
+  // Check for workspace URLs (authentication required)
+  // Pattern: https://sam.gov/workspace/contract/opp/{id}/view
+  const workspaceMatch = url.match(
+    /sam\.gov\/workspace\/contract\/opp\/([a-zA-Z0-9]+)\/view/i
+  );
+  if (workspaceMatch) {
+    const opportunityId = workspaceMatch[1];
+    logger.debug('Detected SAM.gov workspace URL (requires authentication)', {
+      url,
+      opportunityId,
+    });
+    return {
+      error: 'WORKSPACE_URL_REQUIRES_AUTH',
+      message:
+        'SAM.gov workspace URLs require authentication. Please use the public URL format instead.',
+      suggestedUrl: `https://sam.gov/opp/${opportunityId}/view`,
+      originalUrl: url,
+    };
+  }
+
   // SAM.gov URLs typically contain opportunity IDs
   // Support both /opportunities/ (legacy/search) and /opp/ (direct link) formats
   if (
     (url.includes('/opportunities/') || url.includes('/opp/')) &&
     (url.includes('opp-') ||
       url.includes('opportunity-') ||
-      /[a-f0-9]{32}/i.test(url))
+      /[a-f0-9]{32}/i.test(url) ||
+      /\/opp\/[a-zA-Z0-9]+\/view/i.test(url))
   ) {
     logger.debug('Valid SAM.gov detail URL', { url });
     return url;

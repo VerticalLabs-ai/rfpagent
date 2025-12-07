@@ -333,10 +333,47 @@ export function RFPProcessingProgressModal({
                       Error
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <p className="text-sm text-red-700 dark:text-red-300">
                       {progress.error}
                     </p>
+                    {/* SAM.gov workspace URL guidance */}
+                    {progress.error.toLowerCase().includes('workspace') &&
+                      progress.error.toLowerCase().includes('sam.gov') && (
+                        <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md">
+                          <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                            How to fix this:
+                          </p>
+                          <ol className="text-sm text-amber-700 dark:text-amber-300 list-decimal list-inside space-y-1">
+                            <li>
+                              Go to the SAM.gov opportunity page while logged in
+                            </li>
+                            <li>
+                              Copy the URL from the public view (format:
+                              sam.gov/opp/...)
+                            </li>
+                            <li>
+                              Paste the public URL in the form and try again
+                            </li>
+                          </ol>
+                          {/* Extract suggested URL from error message if present */}
+                          {progress.error.match(
+                            /sam\.gov\/opp\/[a-zA-Z0-9]+\/view/i
+                          ) && (
+                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded">
+                              <p className="text-xs font-medium text-green-800 dark:text-green-200">
+                                Suggested URL found in error:
+                              </p>
+                              <code className="text-xs text-green-700 dark:text-green-300 break-all">
+                                https://
+                                {progress.error.match(
+                                  /sam\.gov\/opp\/[a-zA-Z0-9]+\/view/i
+                                )?.[0] || ''}
+                              </code>
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </CardContent>
                 </Card>
               )}

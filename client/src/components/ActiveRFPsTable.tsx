@@ -37,6 +37,9 @@ export default function ActiveRFPsTable() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [manualRfpUrl, setManualRfpUrl] = useState('');
   const [manualRfpUrlError, setManualRfpUrlError] = useState('');
+  const [samGovSuggestedUrl, setSamGovSuggestedUrl] = useState<string | null>(
+    null
+  );
   const [manualRfpNotes, setManualRfpNotes] = useState('');
   const [manualRfpDialogOpen, setManualRfpDialogOpen] = useState(false);
   const [progressSessionId, setProgressSessionId] = useState<string | null>(
@@ -179,13 +182,26 @@ export default function ActiveRFPsTable() {
           success: data.success,
           sessionId: data.sessionId,
           message: data.message,
+          suggestedUrl: data.suggestedUrl,
         });
 
-        toast({
-          title: 'Manual RFP Failed',
-          description: data.message || 'Failed to process the RFP URL.',
-          variant: 'destructive',
-        });
+        // Check if there's a suggested URL (SAM.gov workspace URL case)
+        if (data.suggestedUrl) {
+          toast({
+            title: 'SAM.gov Workspace URL Detected',
+            description: `${data.message || 'This URL requires authentication.'} Try this URL instead: ${data.suggestedUrl}`,
+            variant: 'destructive',
+            duration: 15000, // Show longer for user to copy URL
+          });
+          // Pre-fill the form with suggested URL
+          setManualRfpUrl(data.suggestedUrl);
+        } else {
+          toast({
+            title: 'Manual RFP Failed',
+            description: data.message || 'Failed to process the RFP URL.',
+            variant: 'destructive',
+          });
+        }
       }
     },
     onError: (error: any) => {
@@ -394,13 +410,26 @@ export default function ActiveRFPsTable() {
                           placeholder="https://example.com/rfp/12345"
                           value={manualRfpUrl}
                           onChange={e => {
-                            setManualRfpUrl(e.target.value);
+                            const newUrl = e.target.value;
+                            setManualRfpUrl(newUrl);
                             // Clear error when user types
                             if (manualRfpUrlError) {
                               setManualRfpUrlError('');
                             }
+                            // Detect SAM.gov workspace URLs in real-time
+                            const workspaceMatch = newUrl.match(
+                              /sam\.gov\/workspace\/contract\/opp\/([a-zA-Z0-9]+)\/view/i
+                            );
+                            if (workspaceMatch) {
+                              const opportunityId = workspaceMatch[1];
+                              setSamGovSuggestedUrl(
+                                `https://sam.gov/opp/${opportunityId}/view`
+                              );
+                            } else {
+                              setSamGovSuggestedUrl(null);
+                            }
                           }}
-                          className={`mt-1 ${manualRfpUrlError ? 'border-red-500' : ''}`}
+                          className={`mt-1 ${manualRfpUrlError ? 'border-red-500' : samGovSuggestedUrl ? 'border-amber-500' : ''}`}
                           required
                           data-testid="manual-rfp-url-input"
                           aria-invalid={!!manualRfpUrlError}
@@ -416,6 +445,42 @@ export default function ActiveRFPsTable() {
                           >
                             {manualRfpUrlError}
                           </p>
+                        )}
+                        {/* SAM.gov workspace URL warning */}
+                        {samGovSuggestedUrl && (
+                          <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md">
+                            <div className="flex items-start gap-2">
+                              <i className="fas fa-exclamation-triangle text-amber-600 dark:text-amber-400 mt-0.5"></i>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                  SAM.gov Workspace URL Detected
+                                </p>
+                                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                  Workspace URLs require authentication and
+                                  won&apos;t work for automatic processing. Use
+                                  the public URL instead:
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <code className="flex-1 text-xs bg-white dark:bg-gray-900 text-amber-800 dark:text-amber-200 px-2 py-1 rounded border border-amber-300 dark:border-amber-700 break-all">
+                                    {samGovSuggestedUrl}
+                                  </code>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="shrink-0 text-xs border-green-500 text-green-700 hover:bg-green-50 dark:border-green-600 dark:text-green-400 dark:hover:bg-green-950"
+                                    onClick={() => {
+                                      setManualRfpUrl(samGovSuggestedUrl);
+                                      setSamGovSuggestedUrl(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-check mr-1"></i>
+                                    Use This URL
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         )}
                         <p className="text-xs text-muted-foreground mt-1">
                           Enter the URL of any RFP from any portal platform. Our
