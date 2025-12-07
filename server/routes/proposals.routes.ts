@@ -778,4 +778,115 @@ router.post(
   })
 );
 
+/**
+ * Extract requirements from RFP for wizard
+ * POST /api/proposals/wizard/extract-requirements
+ */
+const extractRequirementsSchema = z.object({
+  rfpId: z.string().uuid('RFP ID must be a valid UUID'),
+  documentIds: z.array(z.string()).optional(),
+});
+
+router.post(
+  '/wizard/extract-requirements',
+  aiOperationLimiter,
+  validateSchema(extractRequirementsSchema),
+  handleAsyncError(async (req, res) => {
+    const { rfpId, documentIds } = req.body;
+
+    // Get RFP
+    const rfp = await storage.getRFP(rfpId);
+    if (!rfp) {
+      return res.status(404).json({ error: 'RFP not found' });
+    }
+
+    // Get documents if IDs provided
+    let documentText = '';
+    if (documentIds && documentIds.length > 0) {
+      const documents = await storage.getDocumentsByRFP(rfpId);
+      const selectedDocs = documents.filter(doc => documentIds.includes(doc.id));
+      documentText = selectedDocs
+        .map(doc => doc.extractedText || '')
+        .filter(text => text.length > 0)
+        .join('\n\n');
+    }
+
+    // Combine RFP description with document text
+    const fullText = [
+      rfp.description || '',
+      rfp.analysis ? JSON.stringify(rfp.analysis) : '',
+      documentText,
+    ]
+      .filter(t => t.length > 0)
+      .join('\n\n')
+      .slice(0, 50000);
+
+    // Use AI service to analyze
+    const { aiProposalService } = await import(
+      '../services/proposals/ai-proposal-service'
+    );
+
+    const analysis = await aiProposalService.analyzeRFPDocument(fullText);
+
+    // Transform compliance items into requirements format
+    const requirements = analysis.complianceItems.map((item, index) => ({
+      id: `req-${index + 1}`,
+      text: item.item,
+      category: item.required ? 'mandatory' : 'preferred',
+      section: item.category,
+      description: item.description,
+    }));
+
+    // Add extracted requirements from the requirements object
+    if (analysis.requirements) {
+      const additionalReqs: Array<{ id: string; text: string; category: string; section: string; description: string }> = [];
+
+      if (analysis.requirements.certifications) {
+        analysis.requirements.certifications.forEach((cert, i) => {
+          additionalReqs.push({
+            id: `cert-${i + 1}`,
+            text: `Certification required: ${cert}`,
+            category: 'mandatory',
+            section: 'Certifications',
+            description: `Required certification: ${cert}`,
+          });
+        });
+      }
+
+      if (analysis.requirements.insurance?.types) {
+        analysis.requirements.insurance.types.forEach((ins, i) => {
+          additionalReqs.push({
+            id: `ins-${i + 1}`,
+            text: `Insurance required: ${ins}${analysis.requirements?.insurance?.minimumCoverage ? ` (min $${analysis.requirements.insurance.minimumCoverage.toLocaleString()})` : ''}`,
+            category: 'mandatory',
+            section: 'Insurance',
+            description: `Insurance coverage requirement: ${ins}`,
+          });
+        });
+      }
+
+      if (analysis.requirements.experienceRequirements) {
+        analysis.requirements.experienceRequirements.forEach((exp, i) => {
+          additionalReqs.push({
+            id: `exp-${i + 1}`,
+            text: exp,
+            category: 'preferred',
+            section: 'Experience',
+            description: exp,
+          });
+        });
+      }
+
+      requirements.push(...additionalReqs);
+    }
+
+    res.json({
+      success: true,
+      requirements,
+      keyDates: analysis.keyDates,
+      riskFlags: analysis.riskFlags,
+    });
+  })
+);
+
 export default router;
