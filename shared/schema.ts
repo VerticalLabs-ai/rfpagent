@@ -1273,6 +1273,7 @@ export const companyProfilesRelations = relations(
     identifiers: many(companyIdentifiers),
     certifications: many(companyCertifications),
     insurance: many(companyInsurance),
+    agentSettings: many(companyAgentSettings),
   })
 );
 
@@ -1321,6 +1322,46 @@ export const companyInsuranceRelations = relations(
   ({ one }) => ({
     companyProfile: one(companyProfiles, {
       fields: [companyInsurance.companyProfileId],
+      references: [companyProfiles.id],
+    }),
+  })
+);
+
+// Company-specific Agent Settings
+export const companyAgentSettings = pgTable(
+  'company_agent_settings',
+  {
+    id: varchar('id')
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    companyProfileId: varchar('company_profile_id')
+      .references(() => companyProfiles.id, { onDelete: 'cascade' })
+      .notNull(),
+    agentId: varchar('agent_id', { length: 100 }).notNull(), // e.g., 'content-generator', 'compliance-checker'
+    customPrompt: text('custom_prompt'), // Custom instructions for this agent
+    priority: integer('priority').default(5).notNull(), // 1-10, higher = more priority
+    isEnabled: boolean('is_enabled').default(true).notNull(),
+    settings: jsonb('settings'), // Additional agent-specific settings
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  table => ({
+    uniqueCompanyAgent: unique('unique_company_agent').on(
+      table.companyProfileId,
+      table.agentId
+    ),
+    companyProfileIdIdx: index('idx_company_agent_settings_company').on(
+      table.companyProfileId
+    ),
+    agentIdIdx: index('idx_company_agent_settings_agent').on(table.agentId),
+  })
+);
+
+export const companyAgentSettingsRelations = relations(
+  companyAgentSettings,
+  ({ one }) => ({
+    companyProfile: one(companyProfiles, {
+      fields: [companyAgentSettings.companyProfileId],
       references: [companyProfiles.id],
     }),
   })
@@ -1801,6 +1842,17 @@ export const insertCompanyInsuranceSchema = createInsertSchema(
   updatedAt: true,
 });
 
+export const insertCompanyAgentSettingsSchema = createInsertSchema(
+  companyAgentSettings,
+  {
+    priority: z.number().int().min(1).max(10).default(5),
+  }
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // AI Conversation Insert Schemas
 export const insertAiConversationSchema = createInsertSchema(
   aiConversations
@@ -2049,6 +2101,11 @@ export type InsertCompanyCertification = z.infer<
 export type CompanyInsurance = typeof companyInsurance.$inferSelect;
 export type InsertCompanyInsurance = z.infer<
   typeof insertCompanyInsuranceSchema & any
+>;
+
+export type CompanyAgentSettings = typeof companyAgentSettings.$inferSelect;
+export type InsertCompanyAgentSettings = z.infer<
+  typeof insertCompanyAgentSettingsSchema & any
 >;
 
 // AI Conversation Types
