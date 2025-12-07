@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { WizardProvider, useWizard } from './context';
 import { StepIndicator } from './StepIndicator';
 import { SelectRFPStep } from './steps/SelectRFPStep';
+import { AnalyzeRequirementsStep } from './steps/AnalyzeRequirementsStep';
 import type { WizardStep } from './types';
 
 interface ProposalWizardProps {
@@ -24,7 +25,7 @@ function WizardContent({ onClose }: { onClose: () => void }) {
       case 'select-rfp':
         return <SelectRFPStep />;
       case 'analyze-requirements':
-        return <div className="p-6 text-center text-muted-foreground">Step 2: Analyze Requirements (placeholder)</div>;
+        return <AnalyzeRequirementsStep />;
       case 'select-requirements':
         return <div className="p-6 text-center text-muted-foreground">Step 3: Select Requirements (placeholder)</div>;
       case 'section-notes':
