@@ -52,6 +52,21 @@ interface ScanStatistics {
   totalRfpsDiscovered: number;
 }
 
+interface SchedulerStatus {
+  isRunning: boolean;
+  jobCount: number;
+  jobs: Array<{
+    portalId: string;
+    portalName: string;
+    cronExpression: string;
+    lastRun: string | null;
+    nextRun: string | null;
+    isActive: boolean;
+  }>;
+  globalScanSchedule: string;
+  timezone: string;
+}
+
 type ScanStatus =
   | 'all'
   | 'completed'
@@ -103,6 +118,16 @@ export default function ScanHistoryPage() {
   // Also fetch scan statistics
   const { data: scanStats } = useQuery<ScanStatistics>({
     queryKey: ['/api/scans/statistics'],
+    queryFn: async ({ queryKey }) => {
+      const response = await apiRequest('GET', queryKey[0] as string);
+      return response.json();
+    },
+    refetchInterval: 60000, // Refresh every minute
+  });
+
+  // Fetch scheduler status
+  const { data: schedulerStatus } = useQuery<SchedulerStatus>({
+    queryKey: ['/api/system/scheduler/status'],
     queryFn: async ({ queryKey }) => {
       const response = await apiRequest('GET', queryKey[0] as string);
       return response.json();
@@ -247,6 +272,17 @@ export default function ScanHistoryPage() {
             <Badge variant="outline" data-testid="scan-count">
               {totalScans} Total Scans
             </Badge>
+            {schedulerStatus && (
+              <Badge
+                variant={schedulerStatus.isRunning ? 'default' : 'destructive'}
+                className="ml-2"
+                data-testid="scheduler-status"
+              >
+                {schedulerStatus.isRunning
+                  ? `Scheduler Active (${schedulerStatus.jobCount} jobs)`
+                  : 'Scheduler Inactive'}
+              </Badge>
+            )}
             <Button onClick={() => refetch()} variant="outline" size="sm">
               <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
