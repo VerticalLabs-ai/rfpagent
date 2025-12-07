@@ -578,7 +578,40 @@ export default function AIChat() {
         {/* Messages */}
         <ScrollArea className="flex-1 p-4" data-testid="chat-messages-area">
           <div className="space-y-4">
-            {(conversationHistory as any)?.messages?.map(
+            {historyError && currentConversationId && (
+              <div className="p-4">
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Failed to load conversation</AlertTitle>
+                  <AlertDescription>
+                    <p className="text-sm mb-3">
+                      Unable to load this conversation's history.
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchHistory()}
+                    >
+                      <RefreshCcw className="h-3 w-3 mr-2" />
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {historyLoading && currentConversationId && (
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Loading conversation...
+                </p>
+              </div>
+            )}
+
+            {!historyLoading &&
+              !historyError &&
+              (conversationHistory as any)?.messages?.map(
               (message: ChatMessage) => (
                 <div
                   key={message.id}
@@ -684,7 +717,9 @@ export default function AIChat() {
               </div>
             )}
 
-            {!(conversationHistory as any)?.messages &&
+            {!historyLoading &&
+              !historyError &&
+              !(conversationHistory as any)?.messages &&
               !sendMessageMutation.isPending && (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
