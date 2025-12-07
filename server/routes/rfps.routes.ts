@@ -2,11 +2,13 @@ import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { insertRfpSchema } from '@shared/schema';
+import { NaturalLanguageSearchRequestSchema } from '@shared/searchTypes';
 import { ObjectStorageService } from '../objectStorage';
 import { DocumentParsingService } from '../services/processing/documentParsingService';
 import { ManualRfpService } from '../services/proposals/manualRfpService';
 import { PhiladelphiaDocumentDownloader } from '../services/scrapers/philadelphiaDocumentDownloader';
 import { getMastraScrapingService } from '../services/scrapers/mastraScrapingService';
+import { getNaturalLanguageSearchService } from '../services/search/naturalLanguageSearchService';
 import { progressTracker } from '../services/monitoring/progressTracker';
 import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import { storage } from '../storage';
@@ -738,6 +740,74 @@ router.post('/:id/rescrape', async (req, res) => {
       error: 'Internal server error',
       message: 'Failed to re-scrape the RFP. Please try again.',
       documentsFound: 0,
+    });
+  }
+});
+
+/**
+ * Natural language search for RFPs
+ * POST /api/rfps/search/natural
+ */
+router.post('/search/natural', async (req, res) => {
+  try {
+    const validated = NaturalLanguageSearchRequestSchema.parse(req.body);
+
+    const searchService = getNaturalLanguageSearchService(storage);
+    const result = await searchService.search(validated.query, {
+      limit: validated.limit,
+      offset: validated.offset,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: error.issues,
+      });
+    }
+
+    console.error('Natural language search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Search failed',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
+ * Parse query without executing search (for preview)
+ * POST /api/rfps/search/parse
+ */
+router.post('/search/parse', async (req, res) => {
+  try {
+    const { query } = z.object({ query: z.string().min(3) }).parse(req.body);
+
+    const searchService = getNaturalLanguageSearchService(storage);
+    const parseResult = await searchService.parseQuery(query);
+
+    res.json({
+      success: true,
+      data: parseResult,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid request',
+        details: error.issues,
+      });
+    }
+
+    console.error('Query parse error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to parse query',
     });
   }
 });
