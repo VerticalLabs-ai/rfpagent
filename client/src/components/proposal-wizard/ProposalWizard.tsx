@@ -3,11 +3,8 @@ import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { WizardProvider, useWizard } from './context';
 import { StepIndicator } from './StepIndicator';
+import { SelectRFPStep } from './steps/SelectRFPStep';
 import type { WizardStep } from './types';
-
-// Step components will be imported here
-// import { SelectRFPStep } from './steps/SelectRFPStep';
-// etc.
 
 interface ProposalWizardProps {
   open: boolean;
@@ -25,7 +22,7 @@ function WizardContent({ onClose }: { onClose: () => void }) {
   const renderStep = () => {
     switch (state.currentStep) {
       case 'select-rfp':
-        return <div className="p-6 text-center text-muted-foreground">Step 1: Select RFP (placeholder)</div>;
+        return <SelectRFPStep />;
       case 'analyze-requirements':
         return <div className="p-6 text-center text-muted-foreground">Step 2: Analyze Requirements (placeholder)</div>;
       case 'select-requirements':
