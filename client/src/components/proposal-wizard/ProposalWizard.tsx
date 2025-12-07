@@ -9,6 +9,7 @@ import { SelectRequirementsStep } from './steps/SelectRequirementsStep';
 import { SectionNotesStep } from './steps/SectionNotesStep';
 import { GenerateStep } from './steps/GenerateStep';
 import { PreviewEditStep } from './steps/PreviewEditStep';
+import { ExportStep } from './steps/ExportStep';
 import type { WizardStep } from './types';
 
 interface ProposalWizardProps {
@@ -39,7 +40,7 @@ function WizardContent({ onClose }: { onClose: () => void }) {
       case 'preview-edit':
         return <PreviewEditStep />;
       case 'export':
-        return <div className="p-6 text-center text-muted-foreground">Step 7: Export (placeholder)</div>;
+        return <ExportStep />;
       default:
         return null;
     }
