@@ -78,12 +78,28 @@ export const rfps = pgTable(
     description: text('description'),
     agency: text('agency').notNull(),
     category: text('category'),
+    // Government contracting classification
+    naicsCode: varchar('naics_code', { length: 6 }), // 6-digit NAICS code
+    naicsDescription: text('naics_description'), // Human-readable NAICS description
+    pscCode: varchar('psc_code', { length: 8 }), // Product/Service Code
+    pscDescription: text('psc_description'), // Human-readable PSC description
+    setAsideType: text('set_aside_type'), // SDVOSB, 8(a), HUBZone, WOSB, etc.
+    placeOfPerformance: text('place_of_performance'), // City, State or region
+    state: varchar('state', { length: 2 }), // 2-letter state code
+    contractType: text('contract_type'), // FFP, T&M, IDIQ, BPA, etc.
+    solicitationNumber: varchar('solicitation_number', { length: 50 }), // Official solicitation ID
     portalId: varchar('portal_id').references(() => portals.id),
     sourceUrl: text('source_url').notNull(),
     deadline: timestamp('deadline'),
     estimatedValue: decimal('estimated_value', { precision: 12, scale: 2 }),
     status: text('status').notNull().default('discovered'), // discovered, parsing, drafting, review, approved, submitted, closed
     progress: integer('progress').default(0).notNull(),
+    // Stall detection fields for proposal generation monitoring
+    generationStartedAt: timestamp('generation_started_at'), // When generation was started (null when not generating)
+    generationAttempts: integer('generation_attempts').default(0).notNull(), // Number of generation attempts made
+    maxGenerationAttempts: integer('max_generation_attempts').default(3).notNull(), // Maximum allowed retry attempts
+    lastGenerationError: text('last_generation_error'), // Last error message from generation attempt
+    generationTimeoutMinutes: integer('generation_timeout_minutes').default(45).notNull(), // Timeout before considered stalled (45 min for premium Claude)
     requirements: jsonb('requirements'), // parsed requirements object
     complianceItems: jsonb('compliance_items'), // compliance checklist
     riskFlags: jsonb('risk_flags'), // high-risk items

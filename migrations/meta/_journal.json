@@ -15,6 +15,20 @@
       "when": 1763157939825,
       "tag": "0001_absurd_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765081063715,
+      "tag": "0002_natural_skreet",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765085974501,
+      "tag": "0003_mixed_ultimo",
+      "breakpoints": true
     }
   ]
 }
