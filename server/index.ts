@@ -195,6 +195,34 @@ app.use((req, res, next) => {
     }
   }
 
+  // Initialize portal scheduler for automated scanning
+  if (process.env.AUTO_PORTAL_SCHEDULER !== 'false') {
+    try {
+      log('📡 Initializing portal scheduler...');
+      const { PortalSchedulerService } = await import(
+        './services/portals/portal-scheduler-service'
+      );
+      const { PortalMonitoringService } = await import(
+        './services/monitoring/portal-monitoring-service'
+      );
+      const { storage } = await import('./storage');
+
+      const portalMonitoringService = new PortalMonitoringService(storage);
+      const portalSchedulerService = new PortalSchedulerService(
+        storage,
+        portalMonitoringService
+      );
+      await portalSchedulerService.initialize();
+      log('✅ Portal scheduler initialized with automated scanning');
+    } catch (error) {
+      log(
+        '⚠️ Failed to initialize portal scheduler (non-fatal):',
+        error instanceof Error ? error.message : String(error)
+      );
+      log('   Portal scanning will need to be started manually');
+    }
+  }
+
   // Configure modular routes
   log('📝 Configuring routes...');
   configureRoutes(app);
@@ -280,6 +308,15 @@ app.use((req, res, next) => {
   websocketService.initialize(server);
   log('🔌 WebSocket server initialized on /ws');
 
+  // Start stall detection monitoring in production
+  if (process.env.NODE_ENV === 'production') {
+    const { stallDetectionService } = await import(
+      './services/monitoring/stallDetectionService'
+    );
+    stallDetectionService.startMonitoring();
+    log('🔍 Stall detection monitoring started');
+  }
+
   // Graceful shutdown
   process.on('SIGTERM', async () => {
     log('🛑 SIGTERM received, shutting down gracefully...');
@@ -329,6 +366,16 @@ app.use((req, res, next) => {
           './services/learning/saflaLearningEngine'
         );
         saflaLearningEngine.shutdown();
+      } catch {
+        // Service may not be initialized
+      }
+
+      // Shutdown stall detection monitoring
+      try {
+        const { stallDetectionService } = await import(
+          './services/monitoring/stallDetectionService'
+        );
+        stallDetectionService.stopMonitoring();
       } catch {
         // Service may not be initialized
       }
