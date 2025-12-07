@@ -61,7 +61,11 @@ export function configureRoutes(app: Express): void {
   apiRouter.use('/audit-logs', auditLogRoutes);
   apiRouter.use('/stall-detection', stallDetectionRoutes);
 
-  // Mount agent settings routes (for company-specific agent customization)
+  // Mount agent settings routes - Company-specific agent customization
+  // - GET /api/agents/available (list customizable agents)
+  // - GET /api/company/:id/agent-settings (get company-specific agent settings)
+  // - PUT /api/company/:id/agent-settings/:agentId (update agent settings)
+  // - DELETE /api/company/:id/agent-settings/:agentId (reset settings to defaults)
   apiRouter.use('/', agentSettingsRoutes);
 
   // Mount E2E routes

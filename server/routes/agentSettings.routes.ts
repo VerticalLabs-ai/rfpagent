@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { z, ZodError } from 'zod';
 import { agentSettingsRepository } from '../repositories/AgentSettingsRepository';
 import { ApiResponse } from '../utils/apiResponse';
+import { handleAsyncError } from '../middleware/errorHandling';
+import { rateLimiter } from '../middleware/rateLimiting';
 
 const router = Router();
 
@@ -66,13 +68,19 @@ const updateSettingsSchema = z.object({
 });
 
 // Get all available agents that can be customized
-router.get('/agents/available', async (req, res) => {
-  return ApiResponse.success(res, { agents: CUSTOMIZABLE_AGENTS });
-});
+router.get(
+  '/agents/available',
+  rateLimiter,
+  handleAsyncError(async (req, res) => {
+    return ApiResponse.success(res, { agents: CUSTOMIZABLE_AGENTS });
+  })
+);
 
 // Get agent settings for a company
-router.get('/company/:companyId/agent-settings', async (req, res) => {
-  try {
+router.get(
+  '/company/:companyId/agent-settings',
+  rateLimiter,
+  handleAsyncError(async (req, res) => {
     const { companyId } = req.params;
     const settings =
       await agentSettingsRepository.getSettingsForCompany(companyId);
@@ -91,18 +99,14 @@ router.get('/company/:companyId/agent-settings', async (req, res) => {
     });
 
     return ApiResponse.success(res, { settings: mergedSettings });
-  } catch (error) {
-    return ApiResponse.internalError(
-      res,
-      'Failed to fetch agent settings',
-      error
-    );
-  }
-});
+  })
+);
 
 // Update/create agent settings for a company
-router.put('/company/:companyId/agent-settings/:agentId', async (req, res) => {
-  try {
+router.put(
+  '/company/:companyId/agent-settings/:agentId',
+  rateLimiter,
+  handleAsyncError(async (req, res) => {
     const { companyId, agentId } = req.params;
     const validatedData = updateSettingsSchema.parse(req.body);
 
@@ -136,51 +140,28 @@ router.put('/company/:companyId/agent-settings/:agentId', async (req, res) => {
     );
 
     return ApiResponse.success(res, { setting });
-  } catch (error) {
-    if (error instanceof ZodError) {
-      return ApiResponse.validationError(
-        res,
-        error.issues.map(e => ({
-          field: e.path.join('.'),
-          message: e.message,
-        }))
-      );
-    }
-    return ApiResponse.internalError(
-      res,
-      'Failed to update agent settings',
-      error
-    );
-  }
-});
+  })
+);
 
 // Delete agent customization (reset to defaults)
 router.delete(
   '/company/:companyId/agent-settings/:agentId',
-  async (req, res) => {
-    try {
-      const { companyId, agentId } = req.params;
-      const existing =
-        await agentSettingsRepository.getSettingsByAgentAndCompany(
-          companyId,
-          agentId
-        );
+  rateLimiter,
+  handleAsyncError(async (req, res) => {
+    const { companyId, agentId } = req.params;
+    const existing = await agentSettingsRepository.getSettingsByAgentAndCompany(
+      companyId,
+      agentId
+    );
 
-      if (existing) {
-        await agentSettingsRepository.deleteSettings(existing.id);
-      }
-
-      return ApiResponse.success(res, {
-        message: 'Settings reset to defaults',
-      });
-    } catch (error) {
-      return ApiResponse.internalError(
-        res,
-        'Failed to reset agent settings',
-        error
-      );
+    if (existing) {
+      await agentSettingsRepository.deleteSettings(existing.id);
     }
-  }
+
+    return ApiResponse.success(res, {
+      message: 'Settings reset to defaults',
+    });
+  })
 );
 
 export default router;
