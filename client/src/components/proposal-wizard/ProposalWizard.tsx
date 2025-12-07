@@ -5,6 +5,7 @@ import { WizardProvider, useWizard } from './context';
 import { StepIndicator } from './StepIndicator';
 import { SelectRFPStep } from './steps/SelectRFPStep';
 import { AnalyzeRequirementsStep } from './steps/AnalyzeRequirementsStep';
+import { SelectRequirementsStep } from './steps/SelectRequirementsStep';
 import type { WizardStep } from './types';
 
 interface ProposalWizardProps {
@@ -27,7 +28,7 @@ function WizardContent({ onClose }: { onClose: () => void }) {
       case 'analyze-requirements':
         return <AnalyzeRequirementsStep />;
       case 'select-requirements':
-        return <div className="p-6 text-center text-muted-foreground">Step 3: Select Requirements (placeholder)</div>;
+        return <SelectRequirementsStep />;
       case 'section-notes':
         return <div className="p-6 text-center text-muted-foreground">Step 4: Section Notes (placeholder)</div>;
       case 'generate':
