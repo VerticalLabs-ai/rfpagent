@@ -7,6 +7,7 @@ import {
 } from '../monitoring/portal-monitoring-service';
 import { IStorage } from '../../storage';
 import { PublicPortal } from '@shared/schema';
+import { scanAlertService } from '../monitoring/scanAlertService';
 
 export interface ScheduledJob {
   portalId: string;
@@ -132,6 +133,9 @@ export class PortalSchedulerService {
         duration: result.scanDuration,
       });
 
+      // Reset error count on success
+      await scanAlertService.recordScanSuccess(portalId);
+
       // Send notifications if there were errors or new discoveries
       if (result.errors.length > 0) {
         await this.handleScanErrors(portalId, portalName, result);
@@ -158,15 +162,12 @@ export class PortalSchedulerService {
         captureException(error);
       });
 
-      // Create error notification
-      await this.storage.createNotification({
-        type: 'discovery',
-        title: 'Portal Scan Failed',
-        message: `Scheduled scan failed for portal "${portalName}": ${error instanceof Error ? error.message : 'Unknown error'}`,
-        relatedEntityType: 'portal',
-        relatedEntityId: portalId,
-        isRead: false,
-      });
+      // Record failure and check for alerts
+      await scanAlertService.recordScanFailure(
+        portalId,
+        portalName,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
     }
   }
 
