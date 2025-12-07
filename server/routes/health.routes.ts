@@ -132,6 +132,83 @@ router.get('/live', (req, res) => {
 });
 
 /**
+ * Portal monitoring health status
+ * GET /api/health/portals
+ */
+router.get(
+  '/portals',
+  handleAsyncError(async (req, res) => {
+    const { storage } = await import('../storage');
+    const portals = await storage.getActivePortals();
+
+    const now = new Date();
+    const staleDays = 7; // Consider stale if not scanned in 7 days
+    const staleThreshold = new Date(
+      now.getTime() - staleDays * 24 * 60 * 60 * 1000
+    );
+
+    const portalHealth = await Promise.all(
+      portals.map(async portal => {
+        const lastScanned = portal.lastScanned
+          ? new Date(portal.lastScanned)
+          : null;
+        const isStale = !lastScanned || lastScanned < staleThreshold;
+        const daysSinceLastScan = lastScanned
+          ? Math.floor(
+              (now.getTime() - lastScanned.getTime()) / (24 * 60 * 60 * 1000)
+            )
+          : null;
+
+        return {
+          id: portal.id,
+          name: portal.name,
+          url: portal.url,
+          status: portal.status,
+          isActive: portal.isActive,
+          monitoringEnabled: portal.monitoringEnabled,
+          lastScanned: portal.lastScanned,
+          daysSinceLastScan,
+          isStale,
+          errorCount: portal.errorCount || 0,
+          lastError: portal.lastError,
+          scanFrequency: portal.scanFrequency,
+          health: isStale
+            ? 'unhealthy'
+            : portal.status === 'error'
+              ? 'degraded'
+              : 'healthy',
+        };
+      })
+    );
+
+    const healthyCount = portalHealth.filter(p => p.health === 'healthy')
+      .length;
+    const degradedCount = portalHealth.filter(p => p.health === 'degraded')
+      .length;
+    const unhealthyCount = portalHealth.filter(p => p.health === 'unhealthy')
+      .length;
+
+    res.json({
+      status:
+        unhealthyCount > 0
+          ? 'unhealthy'
+          : degradedCount > 0
+            ? 'degraded'
+            : 'healthy',
+      summary: {
+        total: portals.length,
+        healthy: healthyCount,
+        degraded: degradedCount,
+        unhealthy: unhealthyCount,
+        staleThresholdDays: staleDays,
+      },
+      portals: portalHealth,
+      timestamp: now.toISOString(),
+    });
+  })
+);
+
+/**
  * Clear health check cache
  * POST /api/health/cache/clear
  */
