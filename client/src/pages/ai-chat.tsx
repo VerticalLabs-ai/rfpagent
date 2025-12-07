@@ -434,10 +434,39 @@ export default function AIChat() {
     );
   };
 
+  // Check if AI service appears to be down (conversations query failed)
+  const aiServiceUnavailable = conversationsError && !conversationsLoading;
+
   return (
-    <div className="flex h-full">
-      {/* Conversations Sidebar */}
-      <div className="w-80 border-r bg-card flex flex-col h-full">
+    <div className="flex h-full flex-col">
+      {/* AI Service Status Banner */}
+      {aiServiceUnavailable && (
+        <div className="bg-destructive/10 border-b border-destructive/20 px-4 py-3 shrink-0">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              AI service is currently unavailable. Some features may not work.
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto text-destructive hover:text-destructive"
+              onClick={() =>
+                queryClient.invalidateQueries({
+                  queryKey: ['/api/ai/conversations'],
+                })
+              }
+            >
+              <RefreshCcw className="h-3 w-3 mr-2" />
+              Retry Connection
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Conversations Sidebar */}
+        <div className="w-80 border-r bg-card flex flex-col h-full">
         <div className="p-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-foreground">AI Conversations</h2>
@@ -801,6 +830,7 @@ export default function AIChat() {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
