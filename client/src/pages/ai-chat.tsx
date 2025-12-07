@@ -81,12 +81,22 @@ export default function AIChat() {
   const { toast } = useToast();
 
   // Fetch user conversations
-  const { data: conversations } = useQuery({
+  const {
+    data: conversations,
+    isLoading: conversationsLoading,
+    isError: conversationsError,
+    error: conversationsErrorDetails,
+  } = useQuery({
     queryKey: ['/api/ai/conversations'],
   });
 
   // Fetch current conversation history
-  const { data: conversationHistory, refetch: refetchHistory } = useQuery({
+  const {
+    data: conversationHistory,
+    refetch: refetchHistory,
+    isLoading: historyLoading,
+    isError: historyError,
+  } = useQuery({
     queryKey: ['/api/ai/conversations', currentConversationId],
     enabled: !!currentConversationId,
   });
