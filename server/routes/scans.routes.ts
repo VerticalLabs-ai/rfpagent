@@ -307,4 +307,35 @@ router.get('/:scanId/details', async (req, res) => {
   }
 });
 
+/**
+ * Get scan history with filtering and pagination
+ * GET /api/scans/history?portalName=X&status=completed&limit=20&offset=0
+ */
+router.get('/history', async (req, res) => {
+  try {
+    const { portalName, status, limit = '50', offset = '0' } = req.query;
+
+    const filter = {
+      portalName: portalName as string | undefined,
+      status: status as 'all' | 'completed' | 'failed' | 'completed_with_warnings' | 'running' | undefined,
+      limit: parseInt(limit as string, 10),
+      offset: parseInt(offset as string, 10),
+    };
+
+    const { scanHistoryService } = await import('../services/monitoring/scanHistoryService');
+
+    const scans = await scanHistoryService.getScanHistory(filter);
+    const total = await scanHistoryService.getScanHistoryCount(filter);
+
+    res.json({
+      scans,
+      total,
+      hasMore: filter.offset + scans.length < total,
+    });
+  } catch (error) {
+    console.error('Error fetching scan history:', error);
+    res.status(500).json({ error: 'Failed to fetch scan history' });
+  }
+});
+
 export default router;
