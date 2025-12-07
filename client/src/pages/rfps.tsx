@@ -14,9 +14,11 @@ import {
   MapPin,
   Building2,
   Sparkles,
+  FileText,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { NaturalLanguageSearchBar } from '@/components/search/NaturalLanguageSearchBar';
+import { ProposalWizard } from '@/components/proposal-wizard/ProposalWizard';
 
 interface RFP {
   id: string;
@@ -58,6 +60,13 @@ interface SearchResult {
 export default function RFPsPage() {
   const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [selectedRfpId, setSelectedRfpId] = useState<string | undefined>();
+
+  const handleOpenWizard = (rfpId?: string) => {
+    setSelectedRfpId(rfpId);
+    setWizardOpen(true);
+  };
 
   const {
     data: rfps = [],
@@ -268,6 +277,15 @@ export default function RFPsPage() {
                       </div>
                       <div className="flex gap-2 ml-4">
                         <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleOpenWizard(rfp.id)}
+                          data-testid={`rfp-generate-button-${rfp.id}`}
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Generate Proposal
+                        </Button>
+                        <Button
                           variant="outline"
                           size="sm"
                           asChild
@@ -363,6 +381,13 @@ export default function RFPsPage() {
           )}
         </div>
       </ScrollArea>
+
+      {/* Proposal Wizard Dialog */}
+      <ProposalWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        initialRfpId={selectedRfpId}
+      />
     </div>
   );
 }

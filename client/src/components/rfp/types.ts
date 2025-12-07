@@ -31,6 +31,7 @@ export interface RFPSidebarProps {
   onDeleteRFP?: () => void;
   onGenerateMaterials?: () => void;
   onGenerateProposal?: () => void;
+  onGenerateWithWizard?: () => void;
   onRescrape?: () => void;
   isDeletePending?: boolean;
   isGeneratingProposal?: boolean;

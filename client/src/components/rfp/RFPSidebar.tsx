@@ -5,6 +5,7 @@ import {
   Trash2,
   Loader2,
   FileText,
+  Wand2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ export function RFPSidebar({
   onDeleteRFP,
   onGenerateMaterials,
   onGenerateProposal,
+  onGenerateWithWizard,
   onRescrape,
   isDeletePending = false,
   isGeneratingProposal = false,
@@ -42,6 +44,20 @@ export function RFPSidebar({
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <Button
+              onClick={onGenerateWithWizard}
+              className="w-full bg-purple-600 hover:bg-purple-700"
+              data-testid="button-generate-wizard"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Generate with Wizard
+            </Button>
+            <p className="text-xs text-muted-foreground text-center">
+              Step-by-step wizard to customize requirements and sections
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Button
               onClick={onGenerateProposal}
               className="w-full bg-blue-600 hover:bg-blue-700"
               disabled={isGeneratingProposal}
@@ -52,11 +68,10 @@ export function RFPSidebar({
               ) : (
                 <FileText className="w-4 h-4 mr-2" />
               )}
-              Generate Proposal
+              Quick Generate
             </Button>
             <p className="text-xs text-muted-foreground text-center">
-              AI agents will process this RFP and create a complete proposal
-              with real-time progress tracking
+              Auto-generate using default settings
             </p>
           </div>
 

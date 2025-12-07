@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { SubmissionMaterialsDialog } from '@/components/SubmissionMaterialsDialog';
 import { ProposalGenerationProgress } from '@/components/ProposalGenerationProgress';
+import { ProposalWizard } from '@/components/proposal-wizard/ProposalWizard';
 import { LoadingCards } from '@/components/shared';
 import {
   RFPHeader,
@@ -28,6 +29,7 @@ export default function RFPDetails() {
   const [proposalGenerationActive, setProposalGenerationActive] =
     useState(false);
   const [proposalSessionId, setProposalSessionId] = useState<string>('');
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const {
     data: rfp,
@@ -319,6 +321,7 @@ export default function RFPDetails() {
           onDeleteRFP={handleDeleteRFP}
           onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
           onGenerateProposal={handleGenerateProposal}
+          onGenerateWithWizard={() => setWizardOpen(true)}
           onRescrape={handleRescrape}
           isDeletePending={deleteRFPMutation.isPending}
           isGeneratingProposal={generateProposalMutation.isPending}
@@ -342,6 +345,13 @@ export default function RFPDetails() {
           }}
         />
       )}
+
+      {/* Proposal Wizard Dialog */}
+      <ProposalWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+        initialRfpId={id}
+      />
     </div>
   );
 }
