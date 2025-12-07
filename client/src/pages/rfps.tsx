@@ -1,11 +1,22 @@
+import { useState, useCallback } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useQuery } from '@tanstack/react-query';
-import { Calendar, DollarSign, ExternalLink } from 'lucide-react';
+import {
+  Calendar,
+  DollarSign,
+  ExternalLink,
+  X,
+  Filter,
+  MapPin,
+  Building2,
+  Sparkles,
+} from 'lucide-react';
 import { Link } from 'wouter';
+import { NaturalLanguageSearchBar } from '@/components/search/NaturalLanguageSearchBar';
 
 interface RFP {
   id: string;
@@ -24,7 +35,30 @@ interface RFPWithDetails {
   rfp: RFP;
 }
 
+interface SearchFilters {
+  keywords?: string[];
+  naicsCodes?: string[];
+  setAsideTypes?: string[];
+  states?: string[];
+  agencies?: string[];
+  deadlineAfter?: string;
+  deadlineBefore?: string;
+  minValue?: number;
+  maxValue?: number;
+}
+
+interface SearchResult {
+  rfps: RFP[];
+  totalCount: number;
+  appliedFilters: SearchFilters;
+  explanation: string;
+  suggestions?: string[];
+}
+
 export default function RFPsPage() {
+  const [searchResults, setSearchResults] = useState<SearchResult | null>(null);
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
   const {
     data: rfps = [],
     isLoading,
@@ -32,6 +66,23 @@ export default function RFPsPage() {
   } = useQuery<RFPWithDetails[]>({
     queryKey: ['/api/rfps/detailed'],
   });
+
+  const handleSearchResults = useCallback((results: SearchResult | null) => {
+    if (results) {
+      setSearchResults(results);
+      setIsSearchMode(true);
+    }
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchResults(null);
+    setIsSearchMode(false);
+  }, []);
+
+  // Display RFPs - either from search results or from the standard query
+  const displayRfps: RFP[] = isSearchMode && searchResults
+    ? searchResults.rfps
+    : rfps.map(item => item.rfp);
 
   if (isLoading) {
     return (
@@ -90,28 +141,102 @@ export default function RFPsPage() {
       data-testid="rfps-page"
     >
       <div className="p-6 pb-0 shrink-0">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold">RFPs</h1>
           <Badge variant="secondary" data-testid="rfp-count">
-            {rfps.length} Total RFPs
+            {isSearchMode
+              ? `${searchResults?.totalCount ?? 0} Results`
+              : `${rfps.length} Total RFPs`}
           </Badge>
         </div>
+
+        {/* Natural Language Search Bar */}
+        <NaturalLanguageSearchBar
+          onSearchResults={handleSearchResults}
+          onClear={handleClearSearch}
+          className="mb-4"
+        />
+
+        {/* Search Mode - Show Applied Filters & Explanation */}
+        {isSearchMode && searchResults && (
+          <Card className="mb-4 border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+            <CardContent className="py-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium">AI Search Results</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {searchResults.explanation}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {searchResults.appliedFilters.keywords?.map(kw => (
+                      <Badge key={kw} variant="secondary" className="text-xs">
+                        {kw}
+                      </Badge>
+                    ))}
+                    {searchResults.appliedFilters.states?.map(state => (
+                      <Badge
+                        key={state}
+                        variant="outline"
+                        className="text-xs bg-blue-50 dark:bg-blue-950"
+                      >
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {state}
+                      </Badge>
+                    ))}
+                    {searchResults.appliedFilters.setAsideTypes?.map(type => (
+                      <Badge
+                        key={type}
+                        variant="outline"
+                        className="text-xs bg-green-50 dark:bg-green-950"
+                      >
+                        <Building2 className="h-3 w-3 mr-1" />
+                        {type}
+                      </Badge>
+                    ))}
+                    {searchResults.appliedFilters.naicsCodes?.map(code => (
+                      <Badge
+                        key={code}
+                        variant="outline"
+                        className="text-xs bg-purple-50 dark:bg-purple-950"
+                      >
+                        <Filter className="h-3 w-3 mr-1" />
+                        NAICS {code}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClearSearch}
+                  className="shrink-0 ml-4"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-6 pt-0">
-          {rfps.length === 0 ? (
+          {displayRfps.length === 0 ? (
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-muted-foreground">
-                  No RFPs found. Check your portal configurations and try
-                  scanning again.
+                  {isSearchMode
+                    ? 'No RFPs match your search criteria. Try adjusting your search terms.'
+                    : 'No RFPs found. Check your portal configurations and try scanning again.'}
                 </p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {rfps.map(({ rfp }) => (
+              {displayRfps.map(rfp => (
                 <Card
                   key={rfp.id}
                   className="hover:shadow-md transition-shadow"
