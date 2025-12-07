@@ -7,6 +7,7 @@ import { rateLimiter } from '../middleware/rateLimiting';
 
 // Import all route modules
 import agentRoutes from './agents.routes';
+import agentSettingsRoutes from './agentSettings.routes';
 import aiRoutes from './ai.routes';
 import analysisRoutes from './analysis'; // Existing analysis routes
 import auditLogRoutes from './audit-logs.routes';
@@ -59,6 +60,9 @@ export function configureRoutes(app: Express): void {
   apiRouter.use('/notifications', notificationRoutes);
   apiRouter.use('/audit-logs', auditLogRoutes);
   apiRouter.use('/stall-detection', stallDetectionRoutes);
+
+  // Mount agent settings routes (for company-specific agent customization)
+  apiRouter.use('/', agentSettingsRoutes);
 
   // Mount E2E routes
   apiRouter.use('/e2e', e2eRoutes);
