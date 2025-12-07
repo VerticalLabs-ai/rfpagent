@@ -576,6 +576,63 @@ ${mapping.applicableInsurance
   }
 
   /**
+   * Generate a single proposal section for the wizard
+   */
+  async generateSingleSection(params: {
+    rfpId: string;
+    sectionId: string;
+    rfpContext: string;
+    userNotes: string;
+    qualityLevel: string;
+    companyProfile?: DefaultCompanyMappingConfig | null;
+  }): Promise<string> {
+    const { sectionId, rfpContext, userNotes, qualityLevel, companyProfile } = params;
+
+    const sectionPrompts: Record<string, string> = {
+      executiveSummary:
+        'Write a compelling executive summary that highlights our unique value proposition and key qualifications.',
+      companyOverview:
+        'Provide a comprehensive company overview including history, capabilities, and relevant experience.',
+      technicalApproach:
+        'Describe our detailed technical approach, methodology, and implementation strategy.',
+      qualifications:
+        'Present our team qualifications, certifications, and relevant past performance.',
+      timeline: 'Create a realistic project timeline with milestones and deliverables.',
+      pricing: 'Outline our pricing strategy and cost breakdown.',
+      compliance: 'Generate a compliance matrix showing how we meet each requirement.',
+    };
+
+    const config = this.getThinkingConfig(qualityLevel as ProposalQualityLevel);
+
+    const response = await this.anthropicClient.messages.create({
+      model: config.model,
+      max_tokens: config.maxTokens,
+      thinking: config.thinking,
+      messages: [
+        {
+          role: 'user',
+          content: `Generate the ${sectionId} section for a government proposal.
+
+RFP Context:
+${rfpContext.slice(0, 8000)}
+
+${companyProfile ? `Company: ${(companyProfile as { companyName?: string }).companyName || 'Our Company'}` : ''}
+
+User Notes/Instructions:
+${userNotes || 'None provided'}
+
+Task: ${sectionPrompts[sectionId] || `Write the ${sectionId} section.`}
+
+Write professional, detailed content suitable for a government RFP response. Be specific and substantive.`,
+        },
+      ],
+    });
+
+    const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
+    return (textBlock as { type: 'text'; text: string })?.text || '';
+  }
+
+  /**
    * Get available quality levels with descriptions and pricing info
    */
   getQualityLevels(): Array<{

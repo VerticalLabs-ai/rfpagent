@@ -889,4 +889,250 @@ router.post(
   })
 );
 
+/**
+ * Generate proposal sections for wizard (with SSE progress)
+ * POST /api/proposals/wizard/generate
+ */
+const wizardGenerateSchema = z.object({
+  rfpId: z.string().uuid('RFP ID must be a valid UUID'),
+  companyProfileId: z.string().uuid().optional(),
+  selectedRequirements: z.array(
+    z.object({
+      id: z.string(),
+      text: z.string(),
+      category: z.string(),
+      section: z.string(),
+    })
+  ),
+  sectionNotes: z.record(z.string(), z.string()),
+  qualityLevel: proposalQualityLevelSchema.default('standard'),
+});
+
+router.post(
+  '/wizard/generate',
+  heavyOperationLimiter,
+  validateSchema(wizardGenerateSchema),
+  handleAsyncError(async (req, res) => {
+    const { rfpId, companyProfileId, selectedRequirements, sectionNotes, qualityLevel } = req.body;
+
+    const sessionId = `wizard_${rfpId}_${Date.now()}`;
+
+    // Start async generation
+    generateWizardProposal({
+      sessionId,
+      rfpId,
+      companyProfileId,
+      selectedRequirements,
+      sectionNotes,
+      qualityLevel,
+    }).catch(error => {
+      console.error('Wizard proposal generation failed:', error);
+      progressTracker.updateStep(sessionId, 'completion', 'failed', error.message);
+    });
+
+    res.json({
+      success: true,
+      sessionId,
+      message: 'Proposal generation started',
+    });
+  })
+);
+
+/**
+ * Stream wizard generation progress
+ * GET /api/proposals/wizard/stream/:sessionId
+ */
+router.get('/wizard/stream/:sessionId', async (req, res) => {
+  const { sessionId } = req.params;
+  console.log(`📡 SSE connection for wizard session: ${sessionId}`);
+  progressTracker.registerSSEClient(sessionId, res);
+
+  req.on('close', () => {
+    console.log(`📡 SSE closed for wizard session: ${sessionId}`);
+  });
+});
+
+/**
+ * Regenerate a single section
+ * POST /api/proposals/wizard/regenerate-section
+ */
+const regenerateSectionSchema = z.object({
+  proposalId: z.string().uuid(),
+  sectionId: z.string(),
+  userNotes: z.string().optional(),
+  qualityLevel: proposalQualityLevelSchema.default('standard'),
+});
+
+router.post(
+  '/wizard/regenerate-section',
+  aiOperationLimiter,
+  validateSchema(regenerateSectionSchema),
+  handleAsyncError(async (req, res) => {
+    const { proposalId, sectionId, userNotes, qualityLevel } = req.body;
+
+    const proposal = await storage.getProposal(proposalId);
+    if (!proposal) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const rfp = await storage.getRFP(proposal.rfpId);
+    if (!rfp) {
+      return res.status(404).json({ error: 'RFP not found' });
+    }
+
+    // Generate single section
+    const sectionContent = await claudeProposalService.generateSingleSection({
+      rfpId: proposal.rfpId,
+      sectionId,
+      rfpContext: rfp.description || '',
+      userNotes: userNotes || '',
+      qualityLevel,
+    });
+
+    // Update proposal with new section content
+    const existingContent =
+      typeof proposal.content === 'string'
+        ? JSON.parse(proposal.content)
+        : proposal.content || {};
+
+    existingContent[sectionId] = sectionContent;
+
+    await storage.updateProposal(proposalId, {
+      content: JSON.stringify(existingContent),
+      updatedAt: new Date(),
+    });
+
+    res.json({
+      success: true,
+      sectionId,
+      content: sectionContent,
+    });
+  })
+);
+
+// Helper function for wizard generation
+async function generateWizardProposal(params: {
+  sessionId: string;
+  rfpId: string;
+  companyProfileId?: string;
+  selectedRequirements: Array<{ id: string; text: string; category: string; section: string }>;
+  sectionNotes: Record<string, string>;
+  qualityLevel: string;
+}) {
+  const { sessionId, rfpId, companyProfileId, selectedRequirements, sectionNotes, qualityLevel } =
+    params;
+
+  progressTracker.startTracking(sessionId, `Wizard Proposal for RFP`, 'submission_materials');
+
+  try {
+    // Get RFP and company data
+    progressTracker.updateStep(sessionId, 'initialization', 'in_progress', 'Loading RFP data...');
+    const rfp = await storage.getRFP(rfpId);
+    if (!rfp) throw new Error('RFP not found');
+
+    let companyProfile;
+    if (companyProfileId) {
+      companyProfile = await storage.getCompanyProfileWithDetails(companyProfileId);
+    } else {
+      const profiles = await storage.getAllCompanyProfiles();
+      companyProfile = profiles[0]
+        ? await storage.getCompanyProfileWithDetails(profiles[0].id)
+        : null;
+    }
+
+    progressTracker.updateStep(sessionId, 'initialization', 'completed', 'Data loaded');
+
+    // Generate sections
+    const sections = [
+      'executiveSummary',
+      'companyOverview',
+      'technicalApproach',
+      'qualifications',
+      'timeline',
+      'pricing',
+      'compliance',
+    ];
+
+    const generatedContent: Record<string, string> = {};
+
+    progressTracker.updateStep(
+      sessionId,
+      'content_generation',
+      'in_progress',
+      'Starting content generation...'
+    );
+
+    for (let i = 0; i < sections.length; i++) {
+      const sectionId = sections[i];
+      const progress = Math.round(((i + 1) / sections.length) * 100);
+
+      progressTracker.updateStep(
+        sessionId,
+        'content_generation',
+        'in_progress',
+        `Generating ${sectionId}... (${progress}%)`
+      );
+
+      // Filter requirements relevant to this section
+      const relevantReqs = selectedRequirements
+        .filter(
+          r => r.section.toLowerCase().includes(sectionId.toLowerCase()) || r.category === 'mandatory'
+        )
+        .map(r => r.text)
+        .join('\n');
+
+      const sectionContent = await claudeProposalService.generateSingleSection({
+        rfpId,
+        sectionId,
+        rfpContext: `${rfp.description || ''}\n\nRelevant Requirements:\n${relevantReqs}`,
+        userNotes: sectionNotes[sectionId] || '',
+        qualityLevel,
+        companyProfile,
+      });
+
+      generatedContent[sectionId] = sectionContent;
+    }
+
+    progressTracker.updateStep(sessionId, 'content_generation', 'completed', 'All sections generated');
+
+    // Save proposal
+    progressTracker.updateStep(sessionId, 'document_assembly', 'in_progress', 'Saving proposal...');
+
+    const existingProposal = await storage.getProposalByRFP(rfpId);
+    let proposalId: string;
+
+    const proposalData = {
+      rfpId,
+      content: JSON.stringify(generatedContent),
+      status: 'review' as const,
+      proposalData: JSON.stringify({
+        generatedWith: 'wizard',
+        qualityLevel,
+        selectedRequirementsCount: selectedRequirements.length,
+        sectionsWithNotes: Object.keys(sectionNotes).filter(k => sectionNotes[k]),
+      }),
+    };
+
+    if (existingProposal) {
+      await storage.updateProposal(existingProposal.id, proposalData);
+      proposalId = existingProposal.id;
+    } else {
+      const newProposal = await storage.createProposal(proposalData);
+      proposalId = newProposal.id;
+    }
+
+    progressTracker.updateStep(sessionId, 'document_assembly', 'completed', 'Proposal saved');
+    progressTracker.updateStep(sessionId, 'completion', 'completed', `Proposal generated: ${proposalId}`);
+  } catch (error) {
+    console.error('Wizard generation error:', error);
+    progressTracker.updateStep(
+      sessionId,
+      'completion',
+      'failed',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+    throw error;
+  }
+}
+
 export default router;
