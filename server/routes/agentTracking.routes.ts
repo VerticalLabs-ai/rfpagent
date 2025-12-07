@@ -4,6 +4,7 @@ import { agentTrackingService } from '../services/agents/agentTrackingService';
 import { ApiResponse } from '../utils/apiResponse';
 import { handleAsyncError } from '../middleware/errorHandling';
 import { rateLimiter } from '../middleware/rateLimiting';
+import type { AgentQueueItem } from '@shared/api/agentTracking';
 
 const router = Router();
 
@@ -65,7 +66,7 @@ router.get(
   '/agent-queues',
   rateLimiter,
   handleAsyncError(async (req: Request, res: Response) => {
-    const queues: Record<string, unknown> = {};
+    const queues: Record<string, AgentQueueItem[]> = {};
     for (const [agentId, queue] of agentTrackingService.getAllQueues()) {
       queues[agentId] = queue;
     }
@@ -109,38 +110,53 @@ router.get(
 
 // GET /api/agent-work/stream - SSE endpoint for real-time updates
 router.get('/agent-work/stream', (req: Request, res: Response) => {
-  // Set SSE headers
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
+  try {
+    // Set SSE headers
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
 
-  // Send initial state
-  const initialData = {
-    activeSessions: agentTrackingService.getAllActiveSessions(),
-    allocations: agentTrackingService.getResourceAllocation(),
-  };
-  res.write(`data: ${JSON.stringify({ type: 'init', payload: initialData })}\n\n`);
+    // Send initial state
+    const initialData = {
+      activeSessions: agentTrackingService.getAllActiveSessions(),
+      allocations: agentTrackingService.getResourceAllocation(),
+    };
+    res.write(`data: ${JSON.stringify({ type: 'init', payload: initialData })}\n\n`);
 
-  // Listen for updates from the tracking service
-  const onMessage = (message: unknown) => {
-    res.write(`data: ${JSON.stringify(message)}\n\n`);
-  };
+    // Listen for updates from the tracking service
+    const onMessage = (message: unknown) => {
+      try {
+        res.write(`data: ${JSON.stringify(message)}\n\n`);
+      } catch {
+        // Client disconnected, will be cleaned up
+      }
+    };
 
-  agentTrackingService.on('message', onMessage);
+    agentTrackingService.on('message', onMessage);
 
-  // Send heartbeat every 30 seconds to keep connection alive
-  const heartbeat = setInterval(() => {
-    res.write(': heartbeat\n\n');
-  }, 30000);
+    // Send heartbeat every 30 seconds to keep connection alive
+    const heartbeat = setInterval(() => {
+      if (!res.writable) {
+        clearInterval(heartbeat);
+        return;
+      }
+      res.write(': heartbeat\n\n');
+    }, 30000);
 
-  // Cleanup on client disconnect
-  req.on('close', () => {
-    agentTrackingService.off('message', onMessage);
-    clearInterval(heartbeat);
-  });
+    // Cleanup on client disconnect
+    req.on('close', () => {
+      agentTrackingService.off('message', onMessage);
+      clearInterval(heartbeat);
+    });
+  } catch (error) {
+    console.error('SSE initialization error:', error);
+    if (!res.headersSent) {
+      res.status(500).end();
+    }
+  }
 });
 
 export default router;
