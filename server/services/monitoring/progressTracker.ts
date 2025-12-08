@@ -27,6 +27,9 @@ class ProgressTracker extends EventEmitter {
     string,
     'rfp_processing' | 'submission_materials'
   > = new Map();
+  private clientInfo: Map<string, { lastActivity: Date; heartbeatInterval: NodeJS.Timeout }> = new Map();
+  private readonly HEARTBEAT_INTERVAL_MS = 15000; // 15 seconds for better proxy compatibility
+  private readonly CONNECTION_TIMEOUT_MS = 120000; // 2 minutes inactivity timeout
 
   // Memory leak protection - limit map sizes
   private readonly MAX_PROGRESS_ENTRIES = 1000;
@@ -182,13 +185,14 @@ class ProgressTracker extends EventEmitter {
   registerSSEClient(sessionId: string, res: Response): void {
     console.log(`📡 Registering SSE client for session: ${sessionId}`);
 
-    // Set up SSE headers
+    // Set up SSE headers with proxy-friendly options
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
+      'Cache-Control': 'no-cache, no-transform',
+      'Connection': 'keep-alive',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Headers': 'Cache-Control',
+      'X-Accel-Buffering': 'no', // Disable nginx buffering
     });
 
     // Send initial connection message
@@ -216,25 +220,39 @@ class ProgressTracker extends EventEmitter {
       console.log(`📡 No existing progress found for session: ${sessionId}`);
     }
 
-    // Keep connection alive with periodic heartbeat
+    // Keep connection alive with more frequent heartbeat for proxy compatibility
     const heartbeat = setInterval(() => {
       try {
+        // Use both comment-style (for proxies) and data-style (for EventSource)
+        res.write(`: heartbeat ${Date.now()}\n`);
         res.write(
           `data: ${JSON.stringify({ type: 'heartbeat', timestamp: Date.now() })}\n\n`
         );
+        // Update last activity
+        const info = this.clientInfo.get(`${sessionId}:${res}`);
+        if (info) {
+          info.lastActivity = new Date();
+        }
       } catch {
         console.log(
           `📡 Heartbeat failed for session ${sessionId}, client will be removed on close`
         );
-        // Don't remove here - let the 'close' handler do it
         clearInterval(heartbeat);
       }
-    }, 30000); // Send heartbeat every 30 seconds
+    }, this.HEARTBEAT_INTERVAL_MS);
+
+    // Track client info
+    const clientKey = `${sessionId}:${this.sseClients.get(sessionId)!.length - 1}`;
+    this.clientInfo.set(clientKey, {
+      lastActivity: new Date(),
+      heartbeatInterval: heartbeat,
+    });
 
     // Handle client disconnect - single consolidated handler
     res.on('close', () => {
       console.log(`📡 SSE client disconnected for session: ${sessionId}`);
       clearInterval(heartbeat);
+      this.clientInfo.delete(clientKey);
       this.removeSSEClient(sessionId, res);
     });
   }
@@ -346,6 +364,18 @@ class ProgressTracker extends EventEmitter {
   }
 
   /**
+   * Get client info for debugging/monitoring
+   */
+  getClientInfo(sessionId: string): { lastActivity: Date } | undefined {
+    for (const [key, info] of this.clientInfo.entries()) {
+      if (key.startsWith(sessionId)) {
+        return { lastActivity: info.lastActivity };
+      }
+    }
+    return undefined;
+  }
+
+  /**
    * Shutdown and cleanup all resources
    * Should be called on application shutdown to prevent memory leaks
    */
@@ -366,10 +396,16 @@ class ProgressTracker extends EventEmitter {
       });
     }
 
+    // Clear all heartbeat intervals
+    for (const [, info] of this.clientInfo) {
+      clearInterval(info.heartbeatInterval);
+    }
+
     // Clear all data structures
     this.progressMap.clear();
     this.sseClients.clear();
     this.workflowTypes.clear();
+    this.clientInfo.clear();
 
     console.log('✅ ProgressTracker shutdown complete');
   }
