@@ -10,6 +10,7 @@ import { db } from '../../db';
 import { storage } from '../../storage';
 import { performWebExtraction } from '../core/stagehandTools';
 import { PhiladelphiaDocumentDownloader } from './philadelphiaDocumentDownloader';
+import { samGovApiClient } from '../scraping/utils/samGovApiClient';
 
 // Schema for extracted RFP data
 const rfpExtractionSchema = z.object({
@@ -417,6 +418,11 @@ export class RFPScrapingService {
   private async extractRFPData(url: string) {
     console.log(`📊 Extracting RFP data from: ${url}`);
 
+    // Special handling for SAM.gov RFPs - use API instead of scraping
+    if (url.includes('sam.gov')) {
+      return this.extractSAMGovRFPData(url);
+    }
+
     // Special handling for Philadelphia RFPs
     if (url.includes('phlcontracts.phila.gov')) {
       return this.extractPhiladelphiaRFPData(url);
@@ -530,6 +536,112 @@ export class RFPScrapingService {
       rfpExtractionSchema,
       this.sessionId
     );
+  }
+
+  /**
+   * Special extraction for SAM.gov RFPs using official API
+   */
+  private async extractSAMGovRFPData(url: string) {
+    console.log('🏛️ Using SAM.gov API-based extraction');
+
+    // Check if this is a search URL
+    if (url.includes('/search') || url.includes('searchCriteria')) {
+      throw new Error(
+        'SAM.gov search URLs are not supported. Please provide a direct link to an opportunity.'
+      );
+    }
+
+    // Extract noticeId from URL
+    const noticeId = samGovApiClient.extractNoticeIdFromUrl(url);
+    if (!noticeId) {
+      throw new Error(
+        'Could not extract noticeId from SAM.gov URL. Please provide a valid opportunity URL.'
+      );
+    }
+
+    console.log(`🔍 Extracted noticeId from URL: ${noticeId}`);
+
+    // Fetch opportunity data from SAM.gov API
+    const opportunity = await samGovApiClient.getOpportunityById(noticeId);
+
+    if (!opportunity) {
+      throw new Error(
+        `SAM.gov opportunity ${noticeId} not found. It may have been archived or withdrawn.`
+      );
+    }
+
+    console.log(`✅ Found SAM.gov opportunity: ${opportunity.title}`);
+
+    // Extract documents from resourceLinks
+    const documents = (opportunity.resourceLinks || []).map(link => ({
+      name: link.split('/').pop() || 'Document',
+      url: link,
+      type: this.inferDocumentType(link),
+    }));
+
+    // Build contact info (prefer 'primary' type)
+    const primaryContact = opportunity.pointOfContact?.find(
+      poc => poc.type === 'primary'
+    );
+    const anyContact = opportunity.pointOfContact?.[0];
+    const contact = primaryContact || anyContact;
+
+    // Build agency name from department/office hierarchy
+    const agencyParts = [
+      opportunity.department,
+      opportunity.subTier,
+      opportunity.office,
+    ].filter(Boolean);
+    const agency = agencyParts.join(' - ') || 'Federal Government';
+
+    // Format estimated value
+    let estimatedValue: string | null = null;
+    if (opportunity.awardCeiling || opportunity.awardFloor) {
+      const ceiling = opportunity.awardCeiling
+        ? `$${opportunity.awardCeiling.toLocaleString()}`
+        : '';
+      const floor = opportunity.awardFloor
+        ? `$${opportunity.awardFloor.toLocaleString()}`
+        : '';
+
+      if (ceiling && floor) {
+        estimatedValue = `${floor} - ${ceiling}`;
+      } else {
+        estimatedValue = ceiling || floor;
+      }
+    }
+
+    return {
+      data: {
+        title: opportunity.title,
+        agency,
+        description: opportunity.description || '',
+        deadline: opportunity.responseDeadLine || null,
+        estimatedValue,
+        contactName: contact?.fullName || null,
+        contactEmail: contact?.email || null,
+        contactPhone: contact?.phone || null,
+        solicitation_number: opportunity.solicitationNumber || noticeId,
+        questions_due_date: null,
+        conference_date: null,
+        pre_bid_meeting: null,
+        documents,
+      },
+      success: true,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Infer document type from URL
+   */
+  private inferDocumentType(url: string): string {
+    const lowerUrl = url.toLowerCase();
+    if (lowerUrl.endsWith('.pdf')) return 'pdf';
+    if (lowerUrl.endsWith('.doc') || lowerUrl.endsWith('.docx')) return 'docx';
+    if (lowerUrl.endsWith('.xls') || lowerUrl.endsWith('.xlsx')) return 'xlsx';
+    if (lowerUrl.endsWith('.zip')) return 'zip';
+    return 'pdf'; // Default assumption
   }
 
   /**
