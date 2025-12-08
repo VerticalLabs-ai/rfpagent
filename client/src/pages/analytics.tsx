@@ -4,6 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { DashboardMetrics } from '@/types/api';
+import { AgentPerformanceSection } from '@/components/analytics/AgentPerformanceSection';
 
 export default function Analytics() {
   const { data: metrics, isLoading: metricsLoading } =
@@ -72,6 +73,9 @@ export default function Analytics() {
           <TabsTrigger value="trends" data-testid="tab-trends">
             Trends
           </TabsTrigger>
+          <TabsTrigger value="agents" data-testid="tab-agents">
+            Agent Performance
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -88,6 +92,10 @@ export default function Analytics() {
 
         <TabsContent value="trends" className="space-y-6">
           <TrendsAnalytics rfps={rfps} />
+        </TabsContent>
+
+        <TabsContent value="agents" className="space-y-6">
+          <AgentPerformanceSection />
         </TabsContent>
       </Tabs>
     </div>
