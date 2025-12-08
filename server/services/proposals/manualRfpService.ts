@@ -922,26 +922,36 @@ If any field cannot be determined, use null or empty values.`;
   } {
     const lowerUrl = url.toLowerCase();
 
-    // SAM.gov specific errors
+    // SAM.gov specific errors with more actionable guidance
     if (lowerUrl.includes('sam.gov')) {
-      if (lowerUrl.includes('/search') || lowerUrl.includes('searchCriteria')) {
+      if (lowerUrl.includes('/search') || lowerUrl.includes('searchcriteria')) {
         return {
           error: 'SAM.gov search page URL detected',
           guidance:
-            'Please navigate to a specific opportunity page and copy that URL instead. The URL should contain "/opp/" followed by the opportunity ID.',
+            'Search URLs cannot be imported. Please: 1) Click on a specific opportunity from the search results, 2) Copy the URL which should look like "sam.gov/opp/{id}/view", 3) Paste that URL here.',
         };
       }
       if (lowerUrl.includes('/workspace')) {
         return {
           error: 'SAM.gov workspace URL requires authentication',
           guidance:
-            'Workspace URLs are for logged-in users only. Please use the public URL format: sam.gov/opp/{opportunityId}/view',
+            'Workspace URLs require you to be logged in to SAM.gov. Please use the public URL format: sam.gov/opp/{opportunityId}/view. You can find this by searching for the opportunity while not logged in.',
         };
       }
+
+      // Check if it looks like a valid opportunity URL but extraction failed
+      if (lowerUrl.includes('/opp/')) {
+        return {
+          error: 'Failed to extract SAM.gov opportunity',
+          guidance:
+            'The opportunity URL appears correct but extraction failed. Possible causes: 1) The opportunity has been archived or withdrawn, 2) The opportunity ID is invalid, 3) SAM.gov may be experiencing issues. Please verify the opportunity is still active on sam.gov.',
+        };
+      }
+
       return {
-        error: 'Could not extract RFP information from SAM.gov',
+        error: 'Invalid SAM.gov URL format',
         guidance:
-          'Verify the URL points to a specific opportunity page (format: sam.gov/opp/{id}/view). If the opportunity has been withdrawn or expired, it may no longer be accessible.',
+          'Please use a direct opportunity URL in format: sam.gov/opp/{opportunity-id}/view. You can find this URL by clicking on a specific opportunity in SAM.gov search results.',
       };
     }
 
