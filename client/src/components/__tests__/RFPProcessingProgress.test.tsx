@@ -30,7 +30,9 @@ describe('RFPProcessingProgress Reconnection Logic', () => {
     );
 
     // Should show connecting initially
-    expect(screen.getByText(/Connecting to progress stream/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Connecting to progress stream/i)
+    ).toBeInTheDocument();
   });
 
   it('should contain exponential backoff constants in implementation', () => {
@@ -45,7 +47,9 @@ describe('RFPProcessingProgress Reconnection Logic', () => {
     // Check for BASE_RECONNECT_DELAY_MS
     expect(componentSource).toContain('BASE_RECONNECT_DELAY_MS');
     // The value might be minified to "1e3" in the compiled output
-    expect(componentSource.includes('1000') || componentSource.includes('1e3')).toBe(true);
+    expect(
+      componentSource.includes('1000') || componentSource.includes('1e3')
+    ).toBe(true);
 
     // Check for getReconnectDelay function
     expect(componentSource).toContain('getReconnectDelay');
@@ -68,7 +72,8 @@ describe('RFPProcessingProgress Reconnection Logic', () => {
           <button onClick={() => setHasError(true)}>Trigger Error</button>
           {hasError && (
             <div role="alert">
-              Maximum reconnection attempts (5) reached. Please refresh the page.
+              Maximum reconnection attempts (5) reached. Please refresh the
+              page.
             </div>
           )}
         </>
@@ -76,10 +81,11 @@ describe('RFPProcessingProgress Reconnection Logic', () => {
     };
 
     // Verify the error message format matches what we implemented
-    const errorMessage = "Maximum reconnection attempts (5) reached. Please refresh the page.";
-    expect(errorMessage).toContain("Maximum reconnection attempts");
-    expect(errorMessage).toContain("5");
-    expect(errorMessage).toContain("refresh");
+    const errorMessage =
+      'Maximum reconnection attempts (5) reached. Please refresh the page.';
+    expect(errorMessage).toContain('Maximum reconnection attempts');
+    expect(errorMessage).toContain('5');
+    expect(errorMessage).toContain('refresh');
   });
 });
 

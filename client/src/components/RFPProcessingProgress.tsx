@@ -59,7 +59,10 @@ export function RFPProcessingProgressModal({
     const BASE_RECONNECT_DELAY_MS = 1000;
     const sseEndpoint = endpoint || `/api/rfps/manual/progress/${sessionId}`;
 
-    const getReconnectDelay = (attempt: number, serverSuggestedDelay?: number): number => {
+    const getReconnectDelay = (
+      attempt: number,
+      serverSuggestedDelay?: number
+    ): number => {
       if (serverSuggestedDelay) return serverSuggestedDelay;
       // Exponential backoff: 1s, 2s, 4s, 8s, 16s (capped)
       return Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt), 16000);
@@ -70,8 +73,12 @@ export function RFPProcessingProgressModal({
 
       setAttemptCount(currentAttempt => {
         if (currentAttempt >= MAX_RECONNECT_ATTEMPTS) {
-          console.log(`📡 Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
-          setConnectionError(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please refresh the page.`);
+          console.log(
+            `📡 Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`
+          );
+          setConnectionError(
+            `Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please refresh the page.`
+          );
           return currentAttempt;
         }
         return currentAttempt;
@@ -84,7 +91,9 @@ export function RFPProcessingProgressModal({
 
       try {
         setAttemptCount(currentAttempt => {
-          console.log(`📡 Connection attempt ${currentAttempt + 1}/${MAX_RECONNECT_ATTEMPTS}`);
+          console.log(
+            `📡 Connection attempt ${currentAttempt + 1}/${MAX_RECONNECT_ATTEMPTS}`
+          );
           return currentAttempt;
         });
         eventSource = new EventSource(sseEndpoint);
@@ -141,7 +150,9 @@ export function RFPProcessingProgressModal({
                 eventSource?.close();
                 // Use server-suggested delay or default
                 const delay = data.reconnectAfter || 5000;
-                console.log(`📡 Will reconnect after ${delay}ms (server maintenance)`);
+                console.log(
+                  `📡 Will reconnect after ${delay}ms (server maintenance)`
+                );
                 reconnectTimer = setTimeout(() => {
                   if (!isCleaningUp) {
                     setAttemptCount(0); // Reset attempts for planned shutdown
@@ -173,7 +184,9 @@ export function RFPProcessingProgressModal({
             setAttemptCount(currentAttempt => {
               const newAttempt = currentAttempt + 1;
               const delay = getReconnectDelay(currentAttempt);
-              console.log(`📡 Connection closed, retry ${newAttempt}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms...`);
+              console.log(
+                `📡 Connection closed, retry ${newAttempt}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms...`
+              );
               reconnectTimer = setTimeout(() => {
                 if (!isCleaningUp) {
                   connectToStream();
@@ -208,7 +221,15 @@ export function RFPProcessingProgressModal({
         setIsConnected(false);
       }
     };
-  }, [sessionId, open, onComplete, onError, endpoint, retryTrigger, MAX_RECONNECT_ATTEMPTS]);
+  }, [
+    sessionId,
+    open,
+    onComplete,
+    onError,
+    endpoint,
+    retryTrigger,
+    MAX_RECONNECT_ATTEMPTS,
+  ]);
 
   const getStepIcon = (status: ProgressStep['status']) => {
     switch (status) {
@@ -512,7 +533,8 @@ export function RFPProcessingProgressModal({
                 <div className="flex items-center justify-center gap-3">
                   <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
                   <span className="text-yellow-700 dark:text-yellow-300">
-                    Reconnecting... (attempt {attemptCount} of {MAX_RECONNECT_ATTEMPTS})
+                    Reconnecting... (attempt {attemptCount} of{' '}
+                    {MAX_RECONNECT_ATTEMPTS})
                   </span>
                 </div>
               </CardContent>
