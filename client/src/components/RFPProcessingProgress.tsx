@@ -43,6 +43,7 @@ export function RFPProcessingProgressModal({
 }: RFPProcessingProgressProps) {
   const [progress, setProgress] = useState<RFPProcessingProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !sessionId) return;
@@ -52,10 +53,25 @@ export function RFPProcessingProgressModal({
     let eventSource: EventSource | null = null;
     let isCleaningUp = false;
     let reconnectTimer: NodeJS.Timeout | null = null;
+    let attemptCount = 0;
+    const MAX_RECONNECT_ATTEMPTS = 5;
+    const BASE_RECONNECT_DELAY_MS = 1000;
     const sseEndpoint = endpoint || `/api/rfps/manual/progress/${sessionId}`;
+
+    const getReconnectDelay = (attempt: number, serverSuggestedDelay?: number): number => {
+      if (serverSuggestedDelay) return serverSuggestedDelay;
+      // Exponential backoff: 1s, 2s, 4s, 8s, 16s (capped)
+      return Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt), 16000);
+    };
 
     const connectToStream = () => {
       if (isCleaningUp || eventSource?.readyState === EventSource.OPEN) return;
+
+      if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
+        console.log(`📡 Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
+        setConnectionError(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please refresh the page.`);
+        return;
+      }
 
       // Close existing connection if any
       if (eventSource) {
@@ -63,12 +79,14 @@ export function RFPProcessingProgressModal({
       }
 
       try {
-        // Create EventSource for SSE connection
+        console.log(`📡 Connection attempt ${attemptCount + 1}/${MAX_RECONNECT_ATTEMPTS}`);
         eventSource = new EventSource(sseEndpoint);
 
         eventSource.onopen = () => {
           console.log('📡 SSE connection opened');
           setIsConnected(true);
+          setConnectionError(null);
+          attemptCount = 0; // Reset on successful connection
         };
 
         eventSource.onmessage = event => {
@@ -107,7 +125,22 @@ export function RFPProcessingProgressModal({
                 break;
 
               case 'heartbeat':
-                console.log('📡 Heartbeat received');
+                // Heartbeat received - connection is alive
+                break;
+
+              case 'shutdown':
+                console.log('📡 Server shutdown notification received');
+                setIsConnected(false);
+                eventSource?.close();
+                // Use server-suggested delay or default
+                const delay = data.reconnectAfter || 5000;
+                console.log(`📡 Will reconnect after ${delay}ms (server maintenance)`);
+                reconnectTimer = setTimeout(() => {
+                  if (!isCleaningUp) {
+                    attemptCount = 0; // Reset attempts for planned shutdown
+                    connectToStream();
+                  }
+                }, delay);
                 break;
 
               default:
@@ -122,27 +155,28 @@ export function RFPProcessingProgressModal({
           console.error('📡 SSE connection error:', error);
           setIsConnected(false);
 
-          // Clear any existing reconnect timer
           if (reconnectTimer) {
             clearTimeout(reconnectTimer);
           }
 
-          // Only attempt reconnection if not cleaning up and connection is closed
           if (
             !isCleaningUp &&
             (!eventSource || eventSource.readyState === EventSource.CLOSED)
           ) {
-            console.log('📡 Connection closed, will retry in 2 seconds...');
+            attemptCount++;
+            const delay = getReconnectDelay(attemptCount - 1);
+            console.log(`📡 Connection closed, retry ${attemptCount}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms...`);
             reconnectTimer = setTimeout(() => {
               if (!isCleaningUp) {
                 connectToStream();
               }
-            }, 2000);
+            }, delay);
           }
         };
       } catch (error) {
         console.error('📡 Failed to create EventSource:', error);
         setIsConnected(false);
+        attemptCount++;
       }
     };
 
@@ -430,8 +464,32 @@ export function RFPProcessingProgressModal({
             </Card>
           )}
 
-          {/* Connection Failed State */}
-          {!isConnected && (
+          {/* Connection Error State with Max Retries */}
+          {connectionError && (
+            <Card className="border-red-200 bg-red-50 dark:bg-red-950/50 dark:border-red-800">
+              <CardContent className="py-8">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">❌</div>
+                  <p className="text-red-700 dark:text-red-300 mb-2 font-medium">
+                    Connection Failed
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {connectionError}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenChange(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Connection Failed State (reconnecting) */}
+          {!isConnected && !connectionError && (
             <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/50 dark:border-yellow-800">
               <CardContent className="py-8">
                 <div className="text-center">
