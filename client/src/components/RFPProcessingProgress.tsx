@@ -44,6 +44,9 @@ export function RFPProcessingProgressModal({
   const [progress, setProgress] = useState<RFPProcessingProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [attemptCount, setAttemptCount] = useState(0);
+  const [retryTrigger, setRetryTrigger] = useState(0);
+  const MAX_RECONNECT_ATTEMPTS = 5;
 
   useEffect(() => {
     if (!open || !sessionId) return;
@@ -53,8 +56,6 @@ export function RFPProcessingProgressModal({
     let eventSource: EventSource | null = null;
     let isCleaningUp = false;
     let reconnectTimer: NodeJS.Timeout | null = null;
-    let attemptCount = 0;
-    const MAX_RECONNECT_ATTEMPTS = 5;
     const BASE_RECONNECT_DELAY_MS = 1000;
     const sseEndpoint = endpoint || `/api/rfps/manual/progress/${sessionId}`;
 
@@ -67,11 +68,14 @@ export function RFPProcessingProgressModal({
     const connectToStream = () => {
       if (isCleaningUp || eventSource?.readyState === EventSource.OPEN) return;
 
-      if (attemptCount >= MAX_RECONNECT_ATTEMPTS) {
-        console.log(`📡 Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
-        setConnectionError(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please refresh the page.`);
-        return;
-      }
+      setAttemptCount(currentAttempt => {
+        if (currentAttempt >= MAX_RECONNECT_ATTEMPTS) {
+          console.log(`📡 Max reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached`);
+          setConnectionError(`Maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please refresh the page.`);
+          return currentAttempt;
+        }
+        return currentAttempt;
+      });
 
       // Close existing connection if any
       if (eventSource) {
@@ -79,14 +83,17 @@ export function RFPProcessingProgressModal({
       }
 
       try {
-        console.log(`📡 Connection attempt ${attemptCount + 1}/${MAX_RECONNECT_ATTEMPTS}`);
+        setAttemptCount(currentAttempt => {
+          console.log(`📡 Connection attempt ${currentAttempt + 1}/${MAX_RECONNECT_ATTEMPTS}`);
+          return currentAttempt;
+        });
         eventSource = new EventSource(sseEndpoint);
 
         eventSource.onopen = () => {
           console.log('📡 SSE connection opened');
           setIsConnected(true);
           setConnectionError(null);
-          attemptCount = 0; // Reset on successful connection
+          setAttemptCount(0); // Reset on successful connection
         };
 
         eventSource.onmessage = event => {
@@ -137,7 +144,7 @@ export function RFPProcessingProgressModal({
                 console.log(`📡 Will reconnect after ${delay}ms (server maintenance)`);
                 reconnectTimer = setTimeout(() => {
                   if (!isCleaningUp) {
-                    attemptCount = 0; // Reset attempts for planned shutdown
+                    setAttemptCount(0); // Reset attempts for planned shutdown
                     connectToStream();
                   }
                 }, delay);
@@ -163,20 +170,23 @@ export function RFPProcessingProgressModal({
             !isCleaningUp &&
             (!eventSource || eventSource.readyState === EventSource.CLOSED)
           ) {
-            attemptCount++;
-            const delay = getReconnectDelay(attemptCount - 1);
-            console.log(`📡 Connection closed, retry ${attemptCount}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms...`);
-            reconnectTimer = setTimeout(() => {
-              if (!isCleaningUp) {
-                connectToStream();
-              }
-            }, delay);
+            setAttemptCount(currentAttempt => {
+              const newAttempt = currentAttempt + 1;
+              const delay = getReconnectDelay(currentAttempt);
+              console.log(`📡 Connection closed, retry ${newAttempt}/${MAX_RECONNECT_ATTEMPTS} in ${delay}ms...`);
+              reconnectTimer = setTimeout(() => {
+                if (!isCleaningUp) {
+                  connectToStream();
+                }
+              }, delay);
+              return newAttempt;
+            });
           }
         };
       } catch (error) {
         console.error('📡 Failed to create EventSource:', error);
         setIsConnected(false);
-        attemptCount++;
+        setAttemptCount(currentAttempt => currentAttempt + 1);
       }
     };
 
@@ -198,7 +208,7 @@ export function RFPProcessingProgressModal({
         setIsConnected(false);
       }
     };
-  }, [sessionId, open, onComplete, onError, endpoint]);
+  }, [sessionId, open, onComplete, onError, endpoint, retryTrigger, MAX_RECONNECT_ATTEMPTS]);
 
   const getStepIcon = (status: ProgressStep['status']) => {
     switch (status) {
@@ -227,28 +237,21 @@ export function RFPProcessingProgressModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Connection Status */}
-          <Card>
-            <CardContent className="py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-orange-500 animate-pulse'}`}
-                  ></div>
-                  <span className="text-sm text-muted-foreground">
-                    {isConnected
-                      ? 'Connected to progress stream'
-                      : 'Connecting to progress stream...'}
-                  </span>
+          {/* Connection Status - only show when connected and progress exists */}
+          {isConnected && progress && (
+            <Card>
+              <CardContent className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span className="text-sm text-muted-foreground">
+                      Connected to progress stream
+                    </span>
+                  </div>
                 </div>
-                {!isConnected && (
-                  <span className="text-xs text-muted-foreground">
-                    Reconnecting due to code updates...
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {progress && (
             <>
@@ -464,7 +467,7 @@ export function RFPProcessingProgressModal({
             </Card>
           )}
 
-          {/* Connection Error State with Max Retries */}
+          {/* Connection Error State with Retry */}
           {connectionError && (
             <Card className="border-red-200 bg-red-50 dark:bg-red-950/50 dark:border-red-800">
               <CardContent className="py-8">
@@ -476,34 +479,55 @@ export function RFPProcessingProgressModal({
                   <p className="text-sm text-muted-foreground mb-4">
                     {connectionError}
                   </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Close
-                  </Button>
+                  <div className="flex justify-center gap-3">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        setConnectionError(null);
+                        setAttemptCount(0);
+                        // Trigger reconnect by toggling a state
+                        setRetryTrigger(prev => prev + 1);
+                      }}
+                    >
+                      🔄 Retry Connection
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onOpenChange(false)}
+                    >
+                      Close
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Connection Failed State (reconnecting) */}
-          {!isConnected && !connectionError && (
+          {/* Reconnecting State */}
+          {!isConnected && !connectionError && attemptCount > 0 && (
             <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/50 dark:border-yellow-800">
-              <CardContent className="py-8">
-                <div className="text-center">
-                  <div className="text-4xl mb-4">⚠️</div>
-                  <p className="text-muted-foreground mb-4">
-                    Failed to connect to progress stream
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenChange(false)}
-                  >
-                    Close
-                  </Button>
+              <CardContent className="py-6">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-yellow-700 dark:text-yellow-300">
+                    Reconnecting... (attempt {attemptCount} of {MAX_RECONNECT_ATTEMPTS})
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Initial Connecting State */}
+          {!isConnected && !connectionError && attemptCount === 0 && (
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/50 dark:border-blue-800">
+              <CardContent className="py-6">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-blue-700 dark:text-blue-300">
+                    Connecting to progress stream...
+                  </span>
                 </div>
               </CardContent>
             </Card>
