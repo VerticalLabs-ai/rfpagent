@@ -136,8 +136,8 @@ export function AgentWorkPanel({
     if (data) {
       setSessions(prev => {
         const allSessions = [
-          ...data.activeSessions,
-          ...(showCompleted ? data.completedSessions : []),
+          ...(data.activeSessions ?? []),
+          ...(showCompleted ? (data.completedSessions ?? []) : []),
         ];
         // Merge with existing sessions, preferring realtime updates
         const merged = allSessions.map(apiSession => {
