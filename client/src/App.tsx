@@ -7,6 +7,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { DashboardSkeleton } from '@/components/shared/SkeletonLoaders';
+import { HelpWidget } from '@/components/support/HelpWidget';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 
@@ -93,6 +94,7 @@ function App() {
         <RealtimeProvider showConnectionStatus={true}>
           <Toaster />
           <Router />
+          <HelpWidget />
         </RealtimeProvider>
       </TooltipProvider>
     </QueryClientProvider>
