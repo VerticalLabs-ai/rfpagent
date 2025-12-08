@@ -410,9 +410,9 @@ export default function WorkflowManagement() {
                     className="text-center py-8"
                     data-testid="text-no-workflows"
                   >
-                    <Bot className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">No suspended workflows</p>
-                    <p className="text-sm text-gray-400">
+                    <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">No suspended workflows</p>
+                    <p className="text-sm text-muted-foreground/80">
                       All workflows are running smoothly!
                     </p>
                   </div>
@@ -446,7 +446,7 @@ export default function WorkflowManagement() {
                           <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                             {workflow.suspensionReason}
                           </p>
-                          <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Progress: {workflow.progress}%</span>
                             <span>
                               {new Date(
@@ -478,8 +478,8 @@ export default function WorkflowManagement() {
                     className="text-center py-8"
                     data-testid="text-select-workflow"
                   >
-                    <AlertCircle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                    <p className="text-gray-500">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
                       Select a workflow to view details
                     </p>
                   </div>

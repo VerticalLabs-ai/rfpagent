@@ -683,43 +683,46 @@ export default function SAFLADashboard() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Button
+                      variant="outline"
                       onClick={() =>
                         demonstrateMutation.mutate('portal_discovery')
                       }
                       disabled={demonstrateMutation.isPending}
-                      className="h-auto flex-col items-start p-4"
+                      className="h-auto flex-col items-start p-4 bg-card text-card-foreground border-border hover:bg-accent dark:bg-zinc-900 dark:border-zinc-700 dark:hover:bg-zinc-800"
                     >
                       <Activity className="h-6 w-6 mb-2" />
                       <h4 className="font-medium mb-1">Portal Discovery</h4>
-                      <p className="text-xs opacity-80 text-left">
+                      <p className="text-xs text-muted-foreground text-left">
                         Simulate portal interaction learning
                       </p>
                     </Button>
 
                     <Button
+                      variant="outline"
                       onClick={() =>
                         demonstrateMutation.mutate('document_processing')
                       }
                       disabled={demonstrateMutation.isPending}
-                      className="h-auto flex-col items-start p-4"
+                      className="h-auto flex-col items-start p-4 bg-card text-card-foreground border-border hover:bg-accent dark:bg-zinc-900 dark:border-zinc-700 dark:hover:bg-zinc-800"
                     >
                       <BarChart className="h-6 w-6 mb-2" />
                       <h4 className="font-medium mb-1">Document Processing</h4>
-                      <p className="text-xs opacity-80 text-left">
+                      <p className="text-xs text-muted-foreground text-left">
                         Simulate document parsing improvements
                       </p>
                     </Button>
 
                     <Button
+                      variant="outline"
                       onClick={() =>
                         demonstrateMutation.mutate('proposal_generation')
                       }
                       disabled={demonstrateMutation.isPending}
-                      className="h-auto flex-col items-start p-4"
+                      className="h-auto flex-col items-start p-4 bg-card text-card-foreground border-border hover:bg-accent dark:bg-zinc-900 dark:border-zinc-700 dark:hover:bg-zinc-800"
                     >
                       <Target className="h-6 w-6 mb-2" />
                       <h4 className="font-medium mb-1">Proposal Generation</h4>
-                      <p className="text-xs opacity-80 text-left">
+                      <p className="text-xs text-muted-foreground text-left">
                         Simulate proposal outcome learning
                       </p>
                     </Button>

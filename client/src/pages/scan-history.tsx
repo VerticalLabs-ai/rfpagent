@@ -154,7 +154,7 @@ export default function ScanHistoryPage() {
       case 'completed_with_warnings':
         return <AlertCircle className="h-4 w-4 text-yellow-500" />;
       default:
-        return <Clock className="h-4 w-4 text-gray-500" />;
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
@@ -336,8 +336,8 @@ export default function ScanHistoryPage() {
           {filteredScans.length === 0 ? (
             <Card>
               <CardContent className="pt-6 text-center">
-                <Activity className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-gray-600">
+                <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
                   {searchTerm || statusFilter !== 'all'
                     ? 'No scans match your filters'
                     : 'No scan history available'}
@@ -363,7 +363,7 @@ export default function ScanHistoryPage() {
                           >
                             {scan.portalName}
                           </CardTitle>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-muted-foreground">
                             {scan.scanType} Scan
                           </p>
                         </div>
@@ -376,44 +376,44 @@ export default function ScanHistoryPage() {
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-foreground">
                           Started
                         </p>
                         <p
-                          className="text-sm text-gray-600"
+                          className="text-sm text-muted-foreground"
                           data-testid={`scan-start-${scan.id}`}
                         >
                           {formatDateTime(scan.startTime)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-foreground">
                           Duration
                         </p>
                         <p
-                          className="text-sm text-gray-600"
+                          className="text-sm text-muted-foreground"
                           data-testid={`scan-duration-${scan.id}`}
                         >
                           {scan.duration}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-foreground">
                           RFPs Found
                         </p>
                         <p
-                          className="text-sm text-gray-600"
+                          className="text-sm text-muted-foreground"
                           data-testid={`scan-rfps-${scan.id}`}
                         >
                           {scan.rfpsFound}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-foreground">
                           Errors
                         </p>
                         <p
-                          className="text-sm text-gray-600"
+                          className="text-sm text-muted-foreground"
                           data-testid={`scan-errors-${scan.id}`}
                         >
                           {scan.errors.length}

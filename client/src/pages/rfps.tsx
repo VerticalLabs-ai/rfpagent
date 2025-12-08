@@ -102,12 +102,12 @@ export default function RFPsPage() {
           {[...Array(5)].map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-4 bg-gray-300 rounded w-3/4"></div>
-                <div className="h-3 bg-gray-300 rounded w-1/2 mt-2"></div>
+                <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-1/2 mt-2"></div>
               </CardHeader>
               <CardContent>
-                <div className="h-3 bg-gray-300 rounded w-full"></div>
-                <div className="h-3 bg-gray-300 rounded w-2/3 mt-2"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-full"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-2/3 mt-2"></div>
               </CardContent>
             </Card>
           ))}

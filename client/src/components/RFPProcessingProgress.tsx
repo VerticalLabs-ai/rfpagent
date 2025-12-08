@@ -285,7 +285,7 @@ export function RFPProcessingProgressModal({
                               ? 'bg-blue-500 text-white'
                               : step.status === 'failed'
                                 ? 'bg-red-500 text-white'
-                                : 'bg-gray-200 text-gray-500'
+                                : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                         }`}
                       >
                         {getStepIcon(step.status)}
