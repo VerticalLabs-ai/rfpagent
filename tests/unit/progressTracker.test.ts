@@ -73,3 +73,76 @@ describe('ProgressTracker SSE Connection', () => {
     expect(clientInfo.lastActivity).toBeDefined();
   });
 });
+
+describe('ProgressTracker Graceful Shutdown', () => {
+  let progressTracker: any;
+
+  beforeEach(async () => {
+    vi.useFakeTimers();
+    // Import fresh instance
+    const module = await import('../../server/services/monitoring/progressTracker');
+    progressTracker = module.progressTracker;
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should send shutdown event to all clients before closing', async () => {
+    const mockRes1 = createMockResponse();
+    const mockRes2 = createMockResponse();
+
+    progressTracker.registerSSEClient('session-1', mockRes1);
+    progressTracker.registerSSEClient('session-2', mockRes2);
+
+    progressTracker.shutdown();
+
+    // Both clients should receive shutdown message
+    expect(mockRes1.write).toHaveBeenCalledWith(
+      expect.stringContaining('"type":"shutdown"')
+    );
+    expect(mockRes2.write).toHaveBeenCalledWith(
+      expect.stringContaining('"type":"shutdown"')
+    );
+  });
+
+  it('should include reconnect hint in shutdown message', async () => {
+    const mockRes = createMockResponse();
+    progressTracker.registerSSEClient('test-session', mockRes);
+
+    progressTracker.shutdown();
+
+    const shutdownCall = mockRes.write.mock.calls.find((call: any[]) =>
+      call[0].includes('shutdown')
+    );
+    expect(shutdownCall).toBeDefined();
+    expect(shutdownCall[0]).toContain('reconnectAfter');
+    expect(shutdownCall[0]).toContain('5000');
+  });
+
+  it('should include timestamp in shutdown message', async () => {
+    const mockRes = createMockResponse();
+    progressTracker.registerSSEClient('test-session', mockRes);
+
+    progressTracker.shutdown();
+
+    const shutdownCall = mockRes.write.mock.calls.find((call: any[]) =>
+      call[0].includes('shutdown')
+    );
+    expect(shutdownCall).toBeDefined();
+    expect(shutdownCall[0]).toContain('timestamp');
+  });
+
+  it('should use correct shutdown message text', async () => {
+    const mockRes = createMockResponse();
+    progressTracker.registerSSEClient('test-session', mockRes);
+
+    progressTracker.shutdown();
+
+    const shutdownCall = mockRes.write.mock.calls.find((call: any[]) =>
+      call[0].includes('shutdown')
+    );
+    expect(shutdownCall).toBeDefined();
+    expect(shutdownCall[0]).toContain('Server shutting down for maintenance');
+  });
+});

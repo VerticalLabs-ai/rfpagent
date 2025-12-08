@@ -382,12 +382,17 @@ class ProgressTracker extends EventEmitter {
   shutdown(): void {
     console.log('🛑 ProgressTracker shutdown initiated...');
 
-    // Close all SSE clients
+    // Close all SSE clients with reconnect hint
     for (const [, clients] of this.sseClients) {
       clients.forEach(client => {
         try {
           client.write(
-            `data: ${JSON.stringify({ type: 'shutdown', message: 'Server shutting down' })}\n\n`
+            `data: ${JSON.stringify({
+              type: 'shutdown',
+              message: 'Server shutting down for maintenance',
+              reconnectAfter: 5000, // Suggest client wait 5s before reconnecting
+              timestamp: Date.now(),
+            })}\n\n`
           );
           client.end();
         } catch {
