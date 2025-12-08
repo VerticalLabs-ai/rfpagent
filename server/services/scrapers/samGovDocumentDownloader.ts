@@ -193,6 +193,8 @@ export class SAMGovDocumentDownloader {
     }>
   > {
     try {
+      logger.info('Fetching SAM.gov opportunity attachments', { noticeId });
+
       // Fetch opportunity details
       const response = await axios.get(`${this.SAM_BASE_URL}/search`, {
         params: {
@@ -201,7 +203,8 @@ export class SAMGovDocumentDownloader {
         },
         headers: {
           'X-Api-Key': apiKey,
-          'User-Agent': 'RFP-Agent/1.0',
+          'User-Agent':
+            'RFPAgent/2.0 (Government RFP Management System; Contact: support@rfpagent.com)',
           Accept: 'application/json',
         },
         timeout: 30000,
@@ -213,14 +216,35 @@ export class SAMGovDocumentDownloader {
         );
       }
 
+      logger.debug('SAM.gov attachments API response', {
+        noticeId,
+        status: response.status,
+        totalRecords: response.data?.totalRecords,
+        opportunitiesCount: response.data?.opportunitiesData?.length,
+      });
+
       const opportunities = response.data?.opportunitiesData || [];
 
       if (opportunities.length === 0) {
-        logger.warn('No opportunity found for notice ID', { noticeId });
+        logger.warn('No opportunity found for notice ID', {
+          noticeId,
+          apiResponse: response.data,
+        });
         return [];
       }
 
       const opportunity = opportunities[0];
+
+      logger.debug('SAM.gov opportunity structure', {
+        noticeId,
+        hasAttachments: !!opportunity.attachments,
+        hasLinks: !!opportunity.links,
+        hasResourceLinks: !!opportunity.resourceLinks,
+        attachmentsCount: opportunity.attachments?.length,
+        linksCount: opportunity.links?.length,
+        resourceLinksCount: opportunity.resourceLinks?.length,
+      });
+
       const attachments: Array<{
         name: string;
         url: string;
@@ -282,7 +306,8 @@ export class SAMGovDocumentDownloader {
       const response = await axios.get(url, {
         headers: {
           'X-Api-Key': apiKey,
-          'User-Agent': 'RFP-Agent/1.0',
+          'User-Agent':
+            'RFPAgent/2.0 (Government RFP Management System; Contact: support@rfpagent.com)',
         },
         responseType: 'arraybuffer',
         timeout: 60000, // 60 seconds for file download
