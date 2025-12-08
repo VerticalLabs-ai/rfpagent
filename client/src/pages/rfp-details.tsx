@@ -5,6 +5,8 @@ import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useApiPost, useApiDelete } from '@/hooks/useApiMutation';
+import { PageLoading, LoadingButton } from '@/components/ui/loading-states';
 import { SubmissionMaterialsDialog } from '@/components/SubmissionMaterialsDialog';
 import { ProposalGenerationProgress } from '@/components/ProposalGenerationProgress';
 import { ProposalWizard } from '@/components/proposal-wizard/ProposalWizard';
@@ -53,79 +55,51 @@ export default function RFPDetails() {
     enabled: !!id,
   });
 
-  const rescrapeMutation = useMutation({
-    mutationFn: async (data: { url?: string; userNotes?: string }) => {
-      return apiRequest('POST', `/api/rfps/${id}/rescrape`, data);
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: 'Re-scraping Complete',
-        description: `RFP re-scraped successfully! ${data.documentsFound || 0} documents were captured.`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/rfps', id] });
-      queryClient.invalidateQueries({
-        queryKey: ['/api/rfps', id, 'documents'],
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Re-scraping Failed',
-        description:
-          error?.message || 'Failed to re-scrape RFP. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+  const rescrapeMutation = useApiPost<any, { url?: string; userNotes?: string }>(
+    `/api/rfps/${id}/rescrape`,
+    {
+      invalidateQueries: ['/api/rfps', `/api/rfps/${id}`, `/api/rfps/${id}/documents`],
+      successMessage: 'RFP re-scraped successfully!',
+      errorTitle: 'Re-scraping Failed',
+      onSuccess: (data) => {
+        toast({
+          title: 'Re-scraping Complete',
+          description: `RFP re-scraped successfully! ${data?.documentsFound || 0} documents were captured.`,
+        });
+      },
+    }
+  );
 
-  const downloadDocumentsMutation = useMutation({
-    mutationFn: async (documentNames: string[]) => {
-      setIsDownloadingDocs(true);
-      return apiRequest('POST', `/api/rfps/${id}/download-documents`, {
-        documentNames,
-      });
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: 'Download Complete',
-        description: `Successfully downloaded ${data.documentsDownloaded || 0} documents.`,
-      });
-      queryClient.invalidateQueries({
-        queryKey: ['/api/rfps', id, 'documents'],
-      });
-      setIsDownloadingDocs(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Download Failed',
-        description:
-          error?.message || 'Failed to download documents. Please try again.',
-        variant: 'destructive',
-      });
-      setIsDownloadingDocs(false);
-    },
-  });
+  const downloadDocumentsMutation = useApiPost<any, { documentNames: string[] }>(
+    `/api/rfps/${id}/download-documents`,
+    {
+      invalidateQueries: [`/api/rfps/${id}/documents`],
+      successMessage: 'Documents downloaded successfully!',
+      errorTitle: 'Download Failed',
+      onSuccess: (data) => {
+        toast({
+          title: 'Download Complete',
+          description: `Successfully downloaded ${data?.documentsDownloaded || 0} documents.`,
+        });
+        setIsDownloadingDocs(false);
+      },
+      onError: () => {
+        setIsDownloadingDocs(false);
+      },
+    }
+  );
 
-  const deleteRFPMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('DELETE', `/api/rfps/${id}`);
-    },
-    onSuccess: () => {
-      toast({
-        title: 'RFP Deleted',
-        description: 'The RFP has been deleted successfully.',
-      });
-      // Navigate back to RFPs list
-      window.location.href = '/rfps';
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Delete Failed',
-        description:
-          error?.message || 'Failed to delete RFP. Please try again.',
-        variant: 'destructive',
-      });
-    },
-  });
+  const deleteRFPMutation = useApiDelete<void>(
+    `/api/rfps/${id}`,
+    {
+      successMessage: 'The RFP has been deleted successfully.',
+      errorTitle: 'Delete Failed',
+      onSuccess: () => {
+        // Navigate back to RFPs list
+        window.location.href = '/rfps';
+      },
+    }
+  );
 
   const generateProposalMutation = useMutation({
     mutationFn: async () => {
@@ -198,7 +172,7 @@ export default function RFPDetails() {
       `Are you sure you want to delete this RFP?\n\n"${rfp?.title}"\n\nThis action cannot be undone and will also delete:\n• All downloaded documents\n• Generated proposals\n• Submission history\n• All related data`
     );
     if (confirmed) {
-      deleteRFPMutation.mutate();
+      deleteRFPMutation.execute();
     }
   };
 
@@ -220,11 +194,12 @@ export default function RFPDetails() {
       }
       return [];
     })();
-    downloadDocumentsMutation.mutate(extractedDocNames);
+    setIsDownloadingDocs(true);
+    downloadDocumentsMutation.execute({ documentNames: extractedDocNames });
   };
 
   const handleRescrape = () => {
-    rescrapeMutation.mutate({
+    rescrapeMutation.execute({
       url: rfp?.sourceUrl,
       userNotes:
         'Re-scraping with enhanced Mastra/Browserbase system to capture documents',
@@ -256,11 +231,7 @@ export default function RFPDetails() {
   };
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-6 py-8">
-        <LoadingCards count={6} variant="grid" />
-      </div>
-    );
+    return <PageLoading message="Loading RFP details..." />;
   }
 
   if (error || !rfp) {
@@ -325,9 +296,9 @@ export default function RFPDetails() {
             onGenerateProposal={handleGenerateProposal}
             onGenerateWithWizard={() => setWizardOpen(true)}
             onRescrape={handleRescrape}
-            isDeletePending={deleteRFPMutation.isPending}
+            isDeletePending={deleteRFPMutation.isLoading}
             isGeneratingProposal={generateProposalMutation.isPending}
-            isRescrapePending={rescrapeMutation.isPending}
+            isRescrapePending={rescrapeMutation.isLoading}
           />
 
           {/* Agent Work Panel */}
