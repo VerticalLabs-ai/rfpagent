@@ -181,12 +181,15 @@ router.get(
       })
     );
 
-    const healthyCount = portalHealth.filter(p => p.health === 'healthy')
-      .length;
-    const degradedCount = portalHealth.filter(p => p.health === 'degraded')
-      .length;
-    const unhealthyCount = portalHealth.filter(p => p.health === 'unhealthy')
-      .length;
+    const healthyCount = portalHealth.filter(
+      p => p.health === 'healthy'
+    ).length;
+    const degradedCount = portalHealth.filter(
+      p => p.health === 'degraded'
+    ).length;
+    const unhealthyCount = portalHealth.filter(
+      p => p.health === 'unhealthy'
+    ).length;
 
     res.json({
       status:

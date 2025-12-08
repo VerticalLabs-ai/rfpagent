@@ -124,7 +124,9 @@ router.get('/agent-work/stream', (req: Request, res: Response) => {
       activeSessions: agentTrackingService.getAllActiveSessions(),
       allocations: agentTrackingService.getResourceAllocation(),
     };
-    res.write(`data: ${JSON.stringify({ type: 'init', payload: initialData })}\n\n`);
+    res.write(
+      `data: ${JSON.stringify({ type: 'init', payload: initialData })}\n\n`
+    );
 
     // Listen for updates from the tracking service
     const onMessage = (message: unknown) => {

@@ -98,7 +98,9 @@ export class AgentSettingsRepository {
    * Delete agent settings (reset to defaults)
    */
   async deleteSettings(id: string): Promise<void> {
-    await db.delete(companyAgentSettings).where(eq(companyAgentSettings.id, id));
+    await db
+      .delete(companyAgentSettings)
+      .where(eq(companyAgentSettings.id, id));
   }
 
   /**

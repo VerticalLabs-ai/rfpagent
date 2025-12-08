@@ -97,9 +97,13 @@ export const rfps = pgTable(
     // Stall detection fields for proposal generation monitoring
     generationStartedAt: timestamp('generation_started_at'), // When generation was started (null when not generating)
     generationAttempts: integer('generation_attempts').default(0).notNull(), // Number of generation attempts made
-    maxGenerationAttempts: integer('max_generation_attempts').default(3).notNull(), // Maximum allowed retry attempts
+    maxGenerationAttempts: integer('max_generation_attempts')
+      .default(3)
+      .notNull(), // Maximum allowed retry attempts
     lastGenerationError: text('last_generation_error'), // Last error message from generation attempt
-    generationTimeoutMinutes: integer('generation_timeout_minutes').default(45).notNull(), // Timeout before considered stalled (45 min for premium Claude)
+    generationTimeoutMinutes: integer('generation_timeout_minutes')
+      .default(45)
+      .notNull(), // Timeout before considered stalled (45 min for premium Claude)
     requirements: jsonb('requirements'), // parsed requirements object
     complianceItems: jsonb('compliance_items'), // compliance checklist
     riskFlags: jsonb('risk_flags'), // high-risk items

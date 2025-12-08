@@ -467,370 +467,378 @@ export default function AIChat() {
       <div className="flex flex-1 overflow-hidden">
         {/* Conversations Sidebar */}
         <div className="w-80 border-r bg-card flex flex-col h-full">
-        <div className="p-4 border-b shrink-0">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-foreground">AI Conversations</h2>
-            <Button
-              size="sm"
-              onClick={startNewConversation}
-              data-testid="button-new-conversation"
-            >
-              New Chat
-            </Button>
+          <div className="p-4 border-b shrink-0">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold text-foreground">
+                AI Conversations
+              </h2>
+              <Button
+                size="sm"
+                onClick={startNewConversation}
+                data-testid="button-new-conversation"
+              >
+                New Chat
+              </Button>
+            </div>
           </div>
-        </div>
 
-        <ScrollArea className="flex-1">
-          <div className="p-4 space-y-2">
-            {conversationsLoading && (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Loading conversations...
-                </p>
-              </div>
-            )}
-
-            {conversationsError && (
-              <div className="p-2">
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Failed to load conversations</AlertTitle>
-                  <AlertDescription className="mt-2">
-                    <p className="text-sm mb-3">
-                      {(conversationsErrorDetails as Error)?.message ||
-                        'Unable to connect to AI service'}
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        queryClient.invalidateQueries({
-                          queryKey: ['/api/ai/conversations'],
-                        })
-                      }
-                    >
-                      <RefreshCcw className="h-3 w-3 mr-2" />
-                      Retry
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
-
-            {!conversationsLoading &&
-              !conversationsError &&
-              (conversations as Conversation[])?.map(
-                (conversation: Conversation) => (
-                  <Card
-                    key={conversation.id}
-                    className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                      currentConversationId === conversation.id
-                        ? 'ring-2 ring-primary'
-                        : ''
-                    }`}
-                    onClick={() => selectConversation(conversation.id)}
-                    data-testid={`conversation-card-${conversation.id}`}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex flex-col gap-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-tight">
-                            {conversation.title}
-                          </h3>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive -mt-1 -mr-1"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleDeleteConversation(conversation.id);
-                            }}
-                            title="Delete conversation"
-                            data-testid={`button-delete-conversation-${conversation.id}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] px-1.5 h-5 font-normal"
-                          >
-                            {conversation.type}
-                          </Badge>
-                          <span>
-                            {new Date(
-                              conversation.updatedAt
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              )}
-
-            {!conversationsLoading &&
-              !conversationsError &&
-              (!conversations ||
-                (conversations as Conversation[])?.length === 0) && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No conversations yet</p>
-                  <p className="text-xs">Start chatting with the AI agent</p>
+          <ScrollArea className="flex-1">
+            <div className="p-4 space-y-2">
+              {conversationsLoading && (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Loading conversations...
+                  </p>
                 </div>
               )}
-          </div>
-        </ScrollArea>
-      </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        <div className="border-b bg-card p-4">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarFallback>
-                <Bot className="h-5 w-5" />
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="font-semibold text-foreground">RFP AI Agent</h1>
-              <p className="text-sm text-muted-foreground">
-                Ask me anything about RFPs, search for opportunities, or get
-                help with proposals
+              {conversationsError && (
+                <div className="p-2">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Failed to load conversations</AlertTitle>
+                    <AlertDescription className="mt-2">
+                      <p className="text-sm mb-3">
+                        {(conversationsErrorDetails as Error)?.message ||
+                          'Unable to connect to AI service'}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          queryClient.invalidateQueries({
+                            queryKey: ['/api/ai/conversations'],
+                          })
+                        }
+                      >
+                        <RefreshCcw className="h-3 w-3 mr-2" />
+                        Retry
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {!conversationsLoading &&
+                !conversationsError &&
+                (conversations as Conversation[])?.map(
+                  (conversation: Conversation) => (
+                    <Card
+                      key={conversation.id}
+                      className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                        currentConversationId === conversation.id
+                          ? 'ring-2 ring-primary'
+                          : ''
+                      }`}
+                      onClick={() => selectConversation(conversation.id)}
+                      data-testid={`conversation-card-${conversation.id}`}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-tight">
+                              {conversation.title}
+                            </h3>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive -mt-1 -mr-1"
+                              onClick={e => {
+                                e.stopPropagation();
+                                handleDeleteConversation(conversation.id);
+                              }}
+                              title="Delete conversation"
+                              data-testid={`button-delete-conversation-${conversation.id}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <Badge
+                              variant="secondary"
+                              className="text-[10px] px-1.5 h-5 font-normal"
+                            >
+                              {conversation.type}
+                            </Badge>
+                            <span>
+                              {new Date(
+                                conversation.updatedAt
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                )}
+
+              {!conversationsLoading &&
+                !conversationsError &&
+                (!conversations ||
+                  (conversations as Conversation[])?.length === 0) && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Bot className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No conversations yet</p>
+                    <p className="text-xs">Start chatting with the AI agent</p>
+                  </div>
+                )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Main Chat Area */}
+        <div className="flex-1 flex flex-col">
+          <div className="border-b bg-card p-4">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback>
+                  <Bot className="h-5 w-5" />
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="font-semibold text-foreground">RFP AI Agent</h1>
+                <p className="text-sm text-muted-foreground">
+                  Ask me anything about RFPs, search for opportunities, or get
+                  help with proposals
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4" data-testid="chat-messages-area">
+            <div className="space-y-4">
+              {historyError && currentConversationId && (
+                <div className="p-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Failed to load conversation</AlertTitle>
+                    <AlertDescription>
+                      <p className="text-sm mb-3">
+                        Unable to load this conversation's history.
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => refetchHistory()}
+                      >
+                        <RefreshCcw className="h-3 w-3 mr-2" />
+                        Retry
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                </div>
+              )}
+
+              {historyLoading && currentConversationId && (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Loading conversation...
+                  </p>
+                </div>
+              )}
+
+              {!historyLoading &&
+                !historyError &&
+                (conversationHistory as any)?.messages?.map(
+                  (message: ChatMessage) => (
+                    <div
+                      key={message.id}
+                      className={`flex gap-3 ${
+                        message.role === 'user'
+                          ? 'justify-end'
+                          : 'justify-start'
+                      }`}
+                    >
+                      {message.role !== 'user' && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            {getMessageIcon(message.messageType)}
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+
+                      <div
+                        className={`max-w-[70%] rounded-lg px-4 py-2 ${
+                          message.role === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted'
+                        }`}
+                        data-testid={`message-${message.role}-${message.id}`}
+                      >
+                        {message.role === 'user' ? (
+                          <p className="whitespace-pre-wrap">
+                            {message.content}
+                          </p>
+                        ) : (
+                          <div className="space-y-3 text-foreground">
+                            <ReactMarkdown
+                              components={{
+                                a: ({ href, children }) => (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
+                                  >
+                                    {children}
+                                  </a>
+                                ),
+                                p: ({ children }) => (
+                                  <p className="text-foreground leading-relaxed mb-2">
+                                    {children}
+                                  </p>
+                                ),
+                                ul: ({ children }) => (
+                                  <ul className="text-foreground space-y-1 ml-4 list-disc">
+                                    {children}
+                                  </ul>
+                                ),
+                                li: ({ children }) => (
+                                  <li className="text-foreground">
+                                    {children}
+                                  </li>
+                                ),
+                                h3: ({ children }) => (
+                                  <h3 className="text-foreground font-semibold text-sm mb-2">
+                                    {children}
+                                  </h3>
+                                ),
+                                h4: ({ children }) => (
+                                  <h4 className="text-foreground font-medium text-sm mb-1">
+                                    {children}
+                                  </h4>
+                                ),
+                                strong: ({ children }) => (
+                                  <strong className="text-foreground font-semibold">
+                                    {children}
+                                  </strong>
+                                ),
+                                em: ({ children }) => (
+                                  <em className="text-foreground italic">
+                                    {children}
+                                  </em>
+                                ),
+                              }}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                            {renderMessageContent(message)}
+                          </div>
+                        )}
+                      </div>
+
+                      {message.role === 'user' && (
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback>
+                            <User className="h-4 w-4" />
+                          </AvatarFallback>
+                        </Avatar>
+                      )}
+                    </div>
+                  )
+                )}
+
+              {sendMessageMutation.isPending && (
+                <div className="flex gap-3 justify-start">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="bg-muted rounded-lg px-4 py-2">
+                    <p className="text-muted-foreground">AI is thinking...</p>
+                  </div>
+                </div>
+              )}
+
+              {!historyLoading &&
+                !historyError &&
+                !(conversationHistory as any)?.messages &&
+                !sendMessageMutation.isPending && (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">
+                      Welcome to RFP AI Agent
+                    </h3>
+                    <p className="text-sm mb-4 max-w-md mx-auto">
+                      I can help you search for RFPs, analyze requirements,
+                      craft proposals, and research past bids. What would you
+                      like to know?
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setInputValue('Find construction RFPs in Austin')
+                        }
+                        data-testid="suggestion-search-rfps"
+                      >
+                        Search for RFPs
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setInputValue('How do I write a winning proposal?')
+                        }
+                        data-testid="suggestion-proposal-help"
+                      >
+                        Get proposal help
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          setInputValue('Show me recent bid analysis')
+                        }
+                        data-testid="suggestion-bid-analysis"
+                      >
+                        Analyze past bids
+                      </Button>
+                    </div>
+                  </div>
+                )}
+            </div>
+          </ScrollArea>
+
+          <Separator />
+
+          {/* Input Area */}
+          <div className="p-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ask me about RFPs, proposals, or get help with research..."
+                value={inputValue}
+                onChange={e => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={sendMessageMutation.isPending}
+                className="flex-1"
+                data-testid="input-chat-message"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim() || sendMessageMutation.isPending}
+                data-testid="button-send-message"
+              >
+                {sendMessageMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+
+            <div className="flex justify-center mt-2">
+              <p className="text-xs text-muted-foreground">
+                Press Enter to send • Shift+Enter for new line
               </p>
             </div>
           </div>
         </div>
-
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4" data-testid="chat-messages-area">
-          <div className="space-y-4">
-            {historyError && currentConversationId && (
-              <div className="p-4">
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Failed to load conversation</AlertTitle>
-                  <AlertDescription>
-                    <p className="text-sm mb-3">
-                      Unable to load this conversation's history.
-                    </p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => refetchHistory()}
-                    >
-                      <RefreshCcw className="h-3 w-3 mr-2" />
-                      Retry
-                    </Button>
-                  </AlertDescription>
-                </Alert>
-              </div>
-            )}
-
-            {historyLoading && currentConversationId && (
-              <div className="text-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Loading conversation...
-                </p>
-              </div>
-            )}
-
-            {!historyLoading &&
-              !historyError &&
-              (conversationHistory as any)?.messages?.map(
-              (message: ChatMessage) => (
-                <div
-                  key={message.id}
-                  className={`flex gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
-                >
-                  {message.role !== 'user' && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        {getMessageIcon(message.messageType)}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-
-                  <div
-                    className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
-                    data-testid={`message-${message.role}-${message.id}`}
-                  >
-                    {message.role === 'user' ? (
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                    ) : (
-                      <div className="space-y-3 text-foreground">
-                        <ReactMarkdown
-                          components={{
-                            a: ({ href, children }) => (
-                              <a
-                                href={href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium"
-                              >
-                                {children}
-                              </a>
-                            ),
-                            p: ({ children }) => (
-                              <p className="text-foreground leading-relaxed mb-2">
-                                {children}
-                              </p>
-                            ),
-                            ul: ({ children }) => (
-                              <ul className="text-foreground space-y-1 ml-4 list-disc">
-                                {children}
-                              </ul>
-                            ),
-                            li: ({ children }) => (
-                              <li className="text-foreground">{children}</li>
-                            ),
-                            h3: ({ children }) => (
-                              <h3 className="text-foreground font-semibold text-sm mb-2">
-                                {children}
-                              </h3>
-                            ),
-                            h4: ({ children }) => (
-                              <h4 className="text-foreground font-medium text-sm mb-1">
-                                {children}
-                              </h4>
-                            ),
-                            strong: ({ children }) => (
-                              <strong className="text-foreground font-semibold">
-                                {children}
-                              </strong>
-                            ),
-                            em: ({ children }) => (
-                              <em className="text-foreground italic">
-                                {children}
-                              </em>
-                            ),
-                          }}
-                        >
-                          {message.content}
-                        </ReactMarkdown>
-                        {renderMessageContent(message)}
-                      </div>
-                    )}
-                  </div>
-
-                  {message.role === 'user' && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>
-                        <User className="h-4 w-4" />
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-              )
-            )}
-
-            {sendMessageMutation.isPending && (
-              <div className="flex gap-3 justify-start">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="bg-muted rounded-lg px-4 py-2">
-                  <p className="text-muted-foreground">AI is thinking...</p>
-                </div>
-              </div>
-            )}
-
-            {!historyLoading &&
-              !historyError &&
-              !(conversationHistory as any)?.messages &&
-              !sendMessageMutation.isPending && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Bot className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-medium mb-2">
-                    Welcome to RFP AI Agent
-                  </h3>
-                  <p className="text-sm mb-4 max-w-md mx-auto">
-                    I can help you search for RFPs, analyze requirements, craft
-                    proposals, and research past bids. What would you like to
-                    know?
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setInputValue('Find construction RFPs in Austin')
-                      }
-                      data-testid="suggestion-search-rfps"
-                    >
-                      Search for RFPs
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setInputValue('How do I write a winning proposal?')
-                      }
-                      data-testid="suggestion-proposal-help"
-                    >
-                      Get proposal help
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        setInputValue('Show me recent bid analysis')
-                      }
-                      data-testid="suggestion-bid-analysis"
-                    >
-                      Analyze past bids
-                    </Button>
-                  </div>
-                </div>
-              )}
-          </div>
-        </ScrollArea>
-
-        <Separator />
-
-        {/* Input Area */}
-        <div className="p-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Ask me about RFPs, proposals, or get help with research..."
-              value={inputValue}
-              onChange={e => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={sendMessageMutation.isPending}
-              className="flex-1"
-              data-testid="input-chat-message"
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || sendMessageMutation.isPending}
-              data-testid="button-send-message"
-            >
-              {sendMessageMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-
-          <div className="flex justify-center mt-2">
-            <p className="text-xs text-muted-foreground">
-              Press Enter to send • Shift+Enter for new line
-            </p>
-          </div>
-        </div>
-      </div>
       </div>
     </div>
   );

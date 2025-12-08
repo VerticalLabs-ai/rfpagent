@@ -127,7 +127,10 @@ interface WizardProviderProps {
   initialRfpId?: string;
 }
 
-export function WizardProvider({ children, initialRfpId }: WizardProviderProps) {
+export function WizardProvider({
+  children,
+  initialRfpId,
+}: WizardProviderProps) {
   const [state, dispatch] = useReducer(wizardReducer, {
     ...initialState,
     rfpId: initialRfpId || null,

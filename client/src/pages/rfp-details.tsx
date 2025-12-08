@@ -319,16 +319,16 @@ export default function RFPDetails() {
         {/* Sidebar */}
         <div className="space-y-6">
           <RFPSidebar
-          rfp={rfp}
-          onDeleteRFP={handleDeleteRFP}
-          onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
-          onGenerateProposal={handleGenerateProposal}
-          onGenerateWithWizard={() => setWizardOpen(true)}
-          onRescrape={handleRescrape}
-          isDeletePending={deleteRFPMutation.isPending}
-          isGeneratingProposal={generateProposalMutation.isPending}
-          isRescrapePending={rescrapeMutation.isPending}
-        />
+            rfp={rfp}
+            onDeleteRFP={handleDeleteRFP}
+            onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
+            onGenerateProposal={handleGenerateProposal}
+            onGenerateWithWizard={() => setWizardOpen(true)}
+            onRescrape={handleRescrape}
+            isDeletePending={deleteRFPMutation.isPending}
+            isGeneratingProposal={generateProposalMutation.isPending}
+            isRescrapePending={rescrapeMutation.isPending}
+          />
 
           {/* Agent Work Panel */}
           {id && <AgentWorkPanel rfpId={id} showCompleted />}

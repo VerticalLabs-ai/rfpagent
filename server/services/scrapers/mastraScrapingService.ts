@@ -1853,9 +1853,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     const result = validateSAMGovUrl(url);
     // Handle workspace URL error - treat as invalid for automated scanning
     if (result && typeof result === 'object' && 'error' in result) {
-      console.log(
-        `🚫 SAM.gov workspace URL detected (requires auth): ${url}`
-      );
+      console.log(`🚫 SAM.gov workspace URL detected (requires auth): ${url}`);
       console.log(`💡 Suggested public URL: ${result.suggestedUrl}`);
       return null;
     }

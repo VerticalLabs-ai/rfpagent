@@ -317,12 +317,20 @@ router.get('/history', async (req, res) => {
 
     const filter = {
       portalName: portalName as string | undefined,
-      status: status as 'all' | 'completed' | 'failed' | 'completed_with_warnings' | 'running' | undefined,
+      status: status as
+        | 'all'
+        | 'completed'
+        | 'failed'
+        | 'completed_with_warnings'
+        | 'running'
+        | undefined,
       limit: parseInt(limit as string, 10),
       offset: parseInt(offset as string, 10),
     };
 
-    const { scanHistoryService } = await import('../services/monitoring/scanHistoryService');
+    const { scanHistoryService } = await import(
+      '../services/monitoring/scanHistoryService'
+    );
 
     const scans = await scanHistoryService.getScanHistory(filter);
     const total = await scanHistoryService.getScanHistoryCount(filter);
@@ -347,7 +355,9 @@ router.get('/statistics', async (req, res) => {
     const { days = '30' } = req.query;
     const daysNum = parseInt(days as string, 10);
 
-    const { scanHistoryService } = await import('../services/monitoring/scanHistoryService');
+    const { scanHistoryService } = await import(
+      '../services/monitoring/scanHistoryService'
+    );
 
     const stats = await scanHistoryService.getScanStatistics(daysNum);
 

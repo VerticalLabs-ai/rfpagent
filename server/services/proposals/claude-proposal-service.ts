@@ -586,7 +586,8 @@ ${mapping.applicableInsurance
     qualityLevel: string;
     companyProfile?: DefaultCompanyMappingConfig | null;
   }): Promise<string> {
-    const { sectionId, rfpContext, userNotes, qualityLevel, companyProfile } = params;
+    const { sectionId, rfpContext, userNotes, qualityLevel, companyProfile } =
+      params;
 
     const sectionPrompts: Record<string, string> = {
       executiveSummary:
@@ -597,9 +598,11 @@ ${mapping.applicableInsurance
         'Describe our detailed technical approach, methodology, and implementation strategy.',
       qualifications:
         'Present our team qualifications, certifications, and relevant past performance.',
-      timeline: 'Create a realistic project timeline with milestones and deliverables.',
+      timeline:
+        'Create a realistic project timeline with milestones and deliverables.',
       pricing: 'Outline our pricing strategy and cost breakdown.',
-      compliance: 'Generate a compliance matrix showing how we meet each requirement.',
+      compliance:
+        'Generate a compliance matrix showing how we meet each requirement.',
     };
 
     const config = this.getThinkingConfig(qualityLevel as ProposalQualityLevel);
@@ -628,7 +631,9 @@ Write professional, detailed content suitable for a government RFP response. Be 
       ],
     });
 
-    const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
+    const textBlock = response.content.find(
+      (block: { type: string }) => block.type === 'text'
+    );
     return (textBlock as { type: 'text'; text: string })?.text || '';
   }
 

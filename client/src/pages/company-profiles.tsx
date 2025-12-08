@@ -534,7 +534,8 @@ export default function CompanyProfiles() {
                       No Company Profiles
                     </h3>
                     <p className="text-muted-foreground mb-4">
-                      Create company profiles first to configure AI agent settings
+                      Create company profiles first to configure AI agent
+                      settings
                     </p>
                   </CardContent>
                 </Card>

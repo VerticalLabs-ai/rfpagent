@@ -42,7 +42,9 @@ export function AgentPerformanceSection() {
   } = useQuery<AgentPerformanceMetrics[]>({
     queryKey: ['/api/agent-performance', timeframe],
     queryFn: async () => {
-      const response = await fetch(`/api/agent-performance?timeframe=${timeframe}`);
+      const response = await fetch(
+        `/api/agent-performance?timeframe=${timeframe}`
+      );
       if (!response.ok) {
         throw new Error('Performance data not available');
       }
@@ -140,7 +142,12 @@ export function AgentPerformanceSection() {
                             : 'outline'
                       }
                     >
-                      Tier {agent.tier === 'orchestrator' ? '1' : agent.tier === 'manager' ? '2' : '3'}
+                      Tier{' '}
+                      {agent.tier === 'orchestrator'
+                        ? '1'
+                        : agent.tier === 'manager'
+                          ? '2'
+                          : '3'}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -256,8 +263,8 @@ export function AgentPerformanceSection() {
                     </div>
                     <div className="flex items-center gap-4 text-muted-foreground">
                       <span>
-                        {resource.activeTasks} active /{' '}
-                        {resource.queuedTasks} queued
+                        {resource.activeTasks} active / {resource.queuedTasks}{' '}
+                        queued
                       </span>
                       <span className="font-medium text-foreground">
                         {resource.currentLoad.toFixed(0)}%

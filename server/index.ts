@@ -228,26 +228,31 @@ app.use((req, res, next) => {
     const cron = await import('node-cron');
 
     // Run daily at 7 AM CT to check for stale portals and consecutive failures
-    cron.schedule('0 7 * * *', async () => {
-      try {
-        log('🔍 Running daily portal health check...');
-        const { scanAlertService } = await import(
-          './services/monitoring/scanAlertService'
-        );
-        const alerts = await scanAlertService.checkPortalHealth();
-        if (alerts.length > 0) {
-          log(`⚠️ Portal health check found ${alerts.length} issues`);
-        } else {
-          log('✅ Portal health check passed - all portals healthy');
+    cron.schedule(
+      '0 7 * * *',
+      async () => {
+        try {
+          log('🔍 Running daily portal health check...');
+          const { scanAlertService } = await import(
+            './services/monitoring/scanAlertService'
+          );
+          const alerts = await scanAlertService.checkPortalHealth();
+          if (alerts.length > 0) {
+            log(`⚠️ Portal health check found ${alerts.length} issues`);
+          } else {
+            log('✅ Portal health check passed - all portals healthy');
+          }
+        } catch (error) {
+          log(
+            '⚠️ Portal health check failed:',
+            error instanceof Error ? error.message : String(error)
+          );
         }
-      } catch (error) {
-        log('⚠️ Portal health check failed:',
-          error instanceof Error ? error.message : String(error)
-        );
+      },
+      {
+        timezone: 'America/Chicago',
       }
-    }, {
-      timezone: 'America/Chicago',
-    });
+    );
     log('📅 Daily portal health check scheduled (7 AM CT)');
   }
 

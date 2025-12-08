@@ -18,7 +18,10 @@ interface AgentWorkResponse {
   totalAgentsAssigned: number;
 }
 
-export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelProps) {
+export function AgentWorkPanel({
+  rfpId,
+  showCompleted = true,
+}: AgentWorkPanelProps) {
   const [sessions, setSessions] = useState<AgentWorkSession[]>([]);
 
   // Fetch initial agent work data
@@ -40,7 +43,7 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
 
     // The server sends generic data messages with a type property
     // We need to use onmessage to receive them
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       try {
         const message = JSON.parse(event.data);
         const { type, payload } = message;
@@ -60,8 +63,10 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
 
           case 'agent:work_started':
             if (payload?.rfpId === rfpId) {
-              setSessions((prev) => {
-                const exists = prev.some((s) => s.sessionId === payload.sessionId);
+              setSessions(prev => {
+                const exists = prev.some(
+                  s => s.sessionId === payload.sessionId
+                );
                 if (exists) return prev;
                 return [payload, ...prev];
               });
@@ -69,30 +74,43 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
             break;
 
           case 'agent:progress_update':
-            setSessions((prev) =>
-              prev.map((session) =>
+            setSessions(prev =>
+              prev.map(session =>
                 session.sessionId === payload.sessionId
-                  ? { ...session, progress: payload.progress, currentStep: payload.currentStep }
+                  ? {
+                      ...session,
+                      progress: payload.progress,
+                      currentStep: payload.currentStep,
+                    }
                   : session
               )
             );
             break;
 
           case 'agent:work_completed':
-            setSessions((prev) =>
-              prev.map((session) =>
+            setSessions(prev =>
+              prev.map(session =>
                 session.sessionId === payload.sessionId
-                  ? { ...session, status: 'completed' as const, progress: 100, completedAt: new Date().toISOString() }
+                  ? {
+                      ...session,
+                      status: 'completed' as const,
+                      progress: 100,
+                      completedAt: new Date().toISOString(),
+                    }
                   : session
               )
             );
             break;
 
           case 'agent:work_failed':
-            setSessions((prev) =>
-              prev.map((session) =>
+            setSessions(prev =>
+              prev.map(session =>
                 session.sessionId === payload.sessionId
-                  ? { ...session, status: 'failed' as const, error: payload.error }
+                  ? {
+                      ...session,
+                      status: 'failed' as const,
+                      error: payload.error,
+                    }
                   : session
               )
             );
@@ -116,15 +134,22 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
   // Merge API data with realtime updates
   useEffect(() => {
     if (data) {
-      setSessions((prev) => {
-        const allSessions = [...data.activeSessions, ...(showCompleted ? data.completedSessions : [])];
+      setSessions(prev => {
+        const allSessions = [
+          ...data.activeSessions,
+          ...(showCompleted ? data.completedSessions : []),
+        ];
         // Merge with existing sessions, preferring realtime updates
-        const merged = allSessions.map((apiSession) => {
-          const realtimeSession = prev.find((s) => s.sessionId === apiSession.sessionId);
+        const merged = allSessions.map(apiSession => {
+          const realtimeSession = prev.find(
+            s => s.sessionId === apiSession.sessionId
+          );
           return realtimeSession || apiSession;
         });
         // Add any sessions from realtime that aren't in API response yet
-        const newSessions = prev.filter((s) => !allSessions.some((api) => api.sessionId === s.sessionId));
+        const newSessions = prev.filter(
+          s => !allSessions.some(api => api.sessionId === s.sessionId)
+        );
         return [...merged, ...newSessions];
       });
     }
@@ -154,15 +179,21 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
           <CardTitle className="text-lg">Agent Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground text-center py-8">Failed to load agent activity</p>
+          <p className="text-sm text-muted-foreground text-center py-8">
+            Failed to load agent activity
+          </p>
         </CardContent>
       </Card>
     );
   }
 
   // Separate active and completed sessions
-  const activeSessions = sessions.filter((s) => s.status === 'in_progress' || s.status === 'queued');
-  const completedSessions = sessions.filter((s) => s.status === 'completed' || s.status === 'failed');
+  const activeSessions = sessions.filter(
+    s => s.status === 'in_progress' || s.status === 'queued'
+  );
+  const completedSessions = sessions.filter(
+    s => s.status === 'completed' || s.status === 'failed'
+  );
 
   return (
     <Card>
@@ -171,12 +202,17 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
           <CardTitle className="text-lg">Agent Activity</CardTitle>
           <div className="flex items-center gap-2">
             {activeSessions.length > 0 && (
-              <Badge variant="outline" className="bg-blue-500/10 text-blue-700 dark:text-blue-400">
+              <Badge
+                variant="outline"
+                className="bg-blue-500/10 text-blue-700 dark:text-blue-400"
+              >
                 {activeSessions.length} active
               </Badge>
             )}
             {data?.totalAgentsAssigned && data.totalAgentsAssigned > 0 && (
-              <Badge variant="outline">{data.totalAgentsAssigned} total agents</Badge>
+              <Badge variant="outline">
+                {data.totalAgentsAssigned} total agents
+              </Badge>
             )}
           </div>
         </div>
@@ -184,7 +220,9 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
       <CardContent>
         {sessions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">No agents have worked on this RFP yet</p>
+            <p className="text-sm text-muted-foreground">
+              No agents have worked on this RFP yet
+            </p>
           </div>
         ) : (
           <ScrollArea className="h-[400px] pr-4">
@@ -192,8 +230,11 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
               {/* Active Sessions */}
               {activeSessions.length > 0 && (
                 <div className="space-y-2">
-                  {activeSessions.map((session) => (
-                    <AgentSessionCard key={session.sessionId} session={session} />
+                  {activeSessions.map(session => (
+                    <AgentSessionCard
+                      key={session.sessionId}
+                      session={session}
+                    />
                   ))}
                 </div>
               )}
@@ -208,8 +249,12 @@ export function AgentWorkPanel({ rfpId, showCompleted = true }: AgentWorkPanelPr
                       </h4>
                     </div>
                   )}
-                  {completedSessions.map((session) => (
-                    <AgentSessionCard key={session.sessionId} session={session} compact />
+                  {completedSessions.map(session => (
+                    <AgentSessionCard
+                      key={session.sessionId}
+                      session={session}
+                      compact
+                    />
                   ))}
                 </div>
               )}

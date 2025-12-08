@@ -149,10 +149,13 @@ export function NaturalLanguageSearchBar({
   }, [onClear]);
 
   // Handle example selection
-  const handleExampleSelect = useCallback((exampleQuery: string) => {
-    setQuery(exampleQuery);
-    searchMutation.mutate(exampleQuery);
-  }, [searchMutation]);
+  const handleExampleSelect = useCallback(
+    (exampleQuery: string) => {
+      setQuery(exampleQuery);
+      searchMutation.mutate(exampleQuery);
+    },
+    [searchMutation]
+  );
 
   // Click outside to close preview
   useEffect(() => {

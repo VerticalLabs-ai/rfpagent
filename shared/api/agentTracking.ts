@@ -89,8 +89,14 @@ export interface CompanyAgentConfig {
 // WebSocket message types for real-time updates
 export type AgentTrackingMessage =
   | { type: 'agent:work_started'; payload: AgentWorkSession }
-  | { type: 'agent:progress_update'; payload: { sessionId: string; progress: number; currentStep: string } }
-  | { type: 'agent:work_completed'; payload: { sessionId: string; result: unknown } }
+  | {
+      type: 'agent:progress_update';
+      payload: { sessionId: string; progress: number; currentStep: string };
+    }
+  | {
+      type: 'agent:work_completed';
+      payload: { sessionId: string; result: unknown };
+    }
   | { type: 'agent:work_failed'; payload: { sessionId: string; error: string } }
   | { type: 'agent:queue_updated'; payload: AgentQueueItem[] }
   | { type: 'agent:resource_update'; payload: AgentResourceAllocation[] };

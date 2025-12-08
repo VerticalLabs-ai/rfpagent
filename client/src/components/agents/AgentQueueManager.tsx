@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ListOrdered, Settings, Gauge } from 'lucide-react';
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -229,8 +224,8 @@ export function AgentQueueManager() {
                 {Object.entries(queues).map(([agentId, items]) => (
                   <div key={agentId} className="space-y-2">
                     <h3 className="font-semibold text-sm text-muted-foreground">
-                      {items[0]?.agentDisplayName || agentId} (
-                      {items.length} tasks)
+                      {items[0]?.agentDisplayName || agentId} ({items.length}{' '}
+                      tasks)
                     </h3>
                     <div className="space-y-2">
                       {items.map(item => (
@@ -267,9 +262,7 @@ export function AgentQueueManager() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() =>
-                                    handleOpenPriorityDialog(item)
-                                  }
+                                  onClick={() => handleOpenPriorityDialog(item)}
                                 >
                                   <Settings className="h-4 w-4" />
                                 </Button>

@@ -30,7 +30,9 @@ const STALL_NOTIFICATION_PATTERNS = [
 /**
  * Check if a notification is related to proposal generation stalling
  */
-export function isStallRelatedNotification(notification: Notification): boolean {
+export function isStallRelatedNotification(
+  notification: Notification
+): boolean {
   const title = notification.title?.toLowerCase() || '';
   const message = notification.message?.toLowerCase() || '';
 
@@ -51,7 +53,9 @@ export function isStallRetryNotification(notification: Notification): boolean {
 /**
  * Check if a notification indicates a stall failure (manual intervention required)
  */
-export function isStallFailureNotification(notification: Notification): boolean {
+export function isStallFailureNotification(
+  notification: Notification
+): boolean {
   return notification.title === 'Proposal Generation Failed';
 }
 

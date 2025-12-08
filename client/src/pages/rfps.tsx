@@ -89,9 +89,10 @@ export default function RFPsPage() {
   }, []);
 
   // Display RFPs - either from search results or from the standard query
-  const displayRfps: RFP[] = isSearchMode && searchResults
-    ? searchResults.rfps
-    : rfps.map(item => item.rfp);
+  const displayRfps: RFP[] =
+    isSearchMode && searchResults
+      ? searchResults.rfps
+      : rfps.map(item => item.rfp);
 
   if (isLoading) {
     return (
@@ -174,7 +175,9 @@ export default function RFPsPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="h-4 w-4 text-purple-500" />
-                    <span className="text-sm font-medium">AI Search Results</span>
+                    <span className="text-sm font-medium">
+                      AI Search Results
+                    </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-2">
                     {searchResults.explanation}
