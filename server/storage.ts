@@ -864,6 +864,20 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Portal not found');
     }
 
+    // Get all scans associated with this portal
+    const relatedScans = await db
+      .select()
+      .from(scans)
+      .where(eq(scans.portalId, id));
+
+    // Delete scan events for each scan
+    for (const scan of relatedScans) {
+      await db.delete(scanEvents).where(eq(scanEvents.scanId, scan.id));
+    }
+
+    // Delete all scans for this portal
+    await db.delete(scans).where(eq(scans.portalId, id));
+
     // Get all RFPs associated with this portal
     const relatedRfps = await db
       .select()
