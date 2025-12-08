@@ -3,7 +3,10 @@ import * as cheerio from 'cheerio';
 import { logger } from '../../../../utils/logger';
 import type { RFPOpportunity } from '../../types';
 import { BaseContentExtractor } from '../ContentExtractor';
-import { samGovApiClient, SAMGovOpportunity } from '../../utils/samGovApiClient';
+import {
+  samGovApiClient,
+  SAMGovOpportunity,
+} from '../../utils/samGovApiClient';
 
 /**
  * Specialized content extractor for SAM.gov portal
@@ -102,7 +105,10 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       const noticeId = samGovApiClient.extractNoticeIdFromUrl(url);
 
       if (noticeId) {
-        logger.info('Extracted noticeId from URL, using direct lookup', { noticeId, url });
+        logger.info('Extracted noticeId from URL, using direct lookup', {
+          noticeId,
+          url,
+        });
 
         const opportunity = await samGovApiClient.getOpportunityById(noticeId);
 
@@ -127,10 +133,14 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
       }
 
       // Fallback: Extract search parameters from URL and do broader search
-      logger.info('No noticeId found in URL, using search-based extraction', { url });
+      logger.info('No noticeId found in URL, using search-based extraction', {
+        url,
+      });
       const searchParams = this.extractSearchParamsFromURL(url);
 
-      logger.info('Fetching opportunities from SAM.gov API via search', { searchParams });
+      logger.info('Fetching opportunities from SAM.gov API via search', {
+        searchParams,
+      });
 
       const response = await samGovApiClient.searchWithRetry({
         postedFrom: searchParams.postedFrom,
@@ -198,12 +208,13 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Convert SAM.gov API opportunity to RFPOpportunity format
    */
-  private convertAPIOpportunityToRFP(apiOpp: SAMGovOpportunity): RFPOpportunity {
+  private convertAPIOpportunityToRFP(
+    apiOpp: SAMGovOpportunity
+  ): RFPOpportunity {
     return {
       title: apiOpp.title || 'Untitled Opportunity',
       description: apiOpp.description || '',
-      agency:
-        apiOpp.department || apiOpp.subTier || apiOpp.office,
+      agency: apiOpp.department || apiOpp.subTier || apiOpp.office,
       deadline: apiOpp.responseDeadLine || apiOpp.archiveDate,
       estimatedValue: apiOpp.awardCeiling
         ? `$${apiOpp.awardCeiling}`
