@@ -55,51 +55,52 @@ export default function RFPDetails() {
     enabled: !!id,
   });
 
-  const rescrapeMutation = useApiPost<any, { url?: string; userNotes?: string }>(
-    `/api/rfps/${id}/rescrape`,
-    {
-      invalidateQueries: ['/api/rfps', `/api/rfps/${id}`, `/api/rfps/${id}/documents`],
-      successMessage: 'RFP re-scraped successfully!',
-      errorTitle: 'Re-scraping Failed',
-      onSuccess: (data) => {
-        toast({
-          title: 'Re-scraping Complete',
-          description: `RFP re-scraped successfully! ${data?.documentsFound || 0} documents were captured.`,
-        });
-      },
-    }
-  );
+  const rescrapeMutation = useApiPost<
+    any,
+    { url?: string; userNotes?: string }
+  >(`/api/rfps/${id}/rescrape`, {
+    invalidateQueries: [
+      '/api/rfps',
+      `/api/rfps/${id}`,
+      `/api/rfps/${id}/documents`,
+    ],
+    successMessage: 'RFP re-scraped successfully!',
+    errorTitle: 'Re-scraping Failed',
+    onSuccess: data => {
+      toast({
+        title: 'Re-scraping Complete',
+        description: `RFP re-scraped successfully! ${data?.documentsFound || 0} documents were captured.`,
+      });
+    },
+  });
 
-  const downloadDocumentsMutation = useApiPost<any, { documentNames: string[] }>(
-    `/api/rfps/${id}/download-documents`,
-    {
-      invalidateQueries: [`/api/rfps/${id}/documents`],
-      successMessage: 'Documents downloaded successfully!',
-      errorTitle: 'Download Failed',
-      onSuccess: (data) => {
-        toast({
-          title: 'Download Complete',
-          description: `Successfully downloaded ${data?.documentsDownloaded || 0} documents.`,
-        });
-        setIsDownloadingDocs(false);
-      },
-      onError: () => {
-        setIsDownloadingDocs(false);
-      },
-    }
-  );
+  const downloadDocumentsMutation = useApiPost<
+    any,
+    { documentNames: string[] }
+  >(`/api/rfps/${id}/download-documents`, {
+    invalidateQueries: [`/api/rfps/${id}/documents`],
+    successMessage: 'Documents downloaded successfully!',
+    errorTitle: 'Download Failed',
+    onSuccess: data => {
+      toast({
+        title: 'Download Complete',
+        description: `Successfully downloaded ${data?.documentsDownloaded || 0} documents.`,
+      });
+      setIsDownloadingDocs(false);
+    },
+    onError: () => {
+      setIsDownloadingDocs(false);
+    },
+  });
 
-  const deleteRFPMutation = useApiDelete<void>(
-    `/api/rfps/${id}`,
-    {
-      successMessage: 'The RFP has been deleted successfully.',
-      errorTitle: 'Delete Failed',
-      onSuccess: () => {
-        // Navigate back to RFPs list
-        window.location.href = '/rfps';
-      },
-    }
-  );
+  const deleteRFPMutation = useApiDelete<void>(`/api/rfps/${id}`, {
+    successMessage: 'The RFP has been deleted successfully.',
+    errorTitle: 'Delete Failed',
+    onSuccess: () => {
+      // Navigate back to RFPs list
+      window.location.href = '/rfps';
+    },
+  });
 
   const generateProposalMutation = useMutation({
     mutationFn: async () => {

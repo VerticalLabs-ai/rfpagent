@@ -28,7 +28,10 @@ export const helpTopics: HelpTopic[] = [
     icon: <Search className="h-4 w-4" />,
     content: (
       <div className="space-y-2 text-sm">
-        <p>The RFP Discovery feature automatically scans government portals for new opportunities.</p>
+        <p>
+          The RFP Discovery feature automatically scans government portals for
+          new opportunities.
+        </p>
         <ul className="list-disc pl-4 space-y-1">
           <li>Configure portal credentials in Settings → Portals</li>
           <li>Set up automated scan schedules</li>
@@ -92,23 +95,28 @@ export const helpTopics: HelpTopic[] = [
 export const faqItems: FAQItem[] = [
   {
     question: 'How long does proposal generation take?',
-    answer: 'Proposal generation typically takes 2-5 minutes depending on the complexity of the RFP and the number of sections requested.',
+    answer:
+      'Proposal generation typically takes 2-5 minutes depending on the complexity of the RFP and the number of sections requested.',
   },
   {
     question: 'Can I edit generated proposals?',
-    answer: 'Yes! All generated proposals can be edited before export. Use the Preview & Edit step in the proposal wizard to make changes.',
+    answer:
+      'Yes! All generated proposals can be edited before export. Use the Preview & Edit step in the proposal wizard to make changes.',
   },
   {
     question: 'What file formats are supported for RFP documents?',
-    answer: 'We support PDF and Microsoft Word (.docx) documents. The system automatically extracts text and requirements from these formats.',
+    answer:
+      'We support PDF and Microsoft Word (.docx) documents. The system automatically extracts text and requirements from these formats.',
   },
   {
     question: 'How do I set up portal credentials?',
-    answer: 'Go to Settings → Portals, select the portal you want to configure, and enter your login credentials. We support 2FA for secure portals.',
+    answer:
+      'Go to Settings → Portals, select the portal you want to configure, and enter your login credentials. We support 2FA for secure portals.',
   },
   {
     question: 'What happens if generation fails?',
-    answer: 'If generation fails, you can retry from where it stopped. The system automatically saves progress and can resume from the last successful step.',
+    answer:
+      'If generation fails, you can retry from where it stopped. The system automatically saves progress and can resume from the last successful step.',
   },
 ];
 

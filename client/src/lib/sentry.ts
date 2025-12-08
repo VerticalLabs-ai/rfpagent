@@ -13,7 +13,8 @@ export function initSentry() {
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
 
     // Only send errors in production, or when explicitly enabled
-    enabled: import.meta.env.PROD || import.meta.env.VITE_SENTRY_DEBUG === 'true',
+    enabled:
+      import.meta.env.PROD || import.meta.env.VITE_SENTRY_DEBUG === 'true',
 
     environment: import.meta.env.MODE,
 
@@ -27,7 +28,10 @@ export function initSentry() {
       }
 
       // Don't send network errors from ad blockers
-      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      if (
+        error instanceof TypeError &&
+        error.message.includes('Failed to fetch')
+      ) {
         // Check if it's a known API call failure vs blocked resource
         const breadcrumbs = event.breadcrumbs || [];
         const lastFetch = breadcrumbs.findLast(b => b.category === 'fetch');
@@ -57,7 +61,9 @@ export function captureError(error: Error, context?: Record<string, unknown>) {
   });
 }
 
-export function setUserContext(user: { id: string; email?: string; username?: string } | null) {
+export function setUserContext(
+  user: { id: string; email?: string; username?: string } | null
+) {
   if (user) {
     Sentry.setUser(user);
   } else {

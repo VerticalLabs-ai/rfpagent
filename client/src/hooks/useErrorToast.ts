@@ -18,7 +18,11 @@ export function useErrorToast() {
   const showError = useCallback(
     (error: unknown, options?: ErrorToastOptions) => {
       const parsed = parseApiError(error);
-      const message = getErrorMessage(parsed.code, parsed.message, parsed.field);
+      const message = getErrorMessage(
+        parsed.code,
+        parsed.message,
+        parsed.field
+      );
 
       let action: ToastActionElement | undefined;
       if (parsed.isRetryable && options?.onRetry) {

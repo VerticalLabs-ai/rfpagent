@@ -1,4 +1,3 @@
-
 export interface ParsedError {
   code: string;
   message: string;
@@ -22,8 +21,10 @@ const USER_FRIENDLY_MESSAGES: Record<string, string> = {
   FORBIDDEN: 'You do not have permission to perform this action.',
   VALIDATION_ERROR: 'Please check your input and try again.',
   RATE_LIMIT_EXCEEDED: 'Too many requests. Please wait a moment and try again.',
-  SERVICE_UNAVAILABLE: 'The service is temporarily unavailable. Please try again later.',
-  NETWORK_ERROR: 'Unable to connect to server. Please check your internet connection.',
+  SERVICE_UNAVAILABLE:
+    'The service is temporarily unavailable. Please try again later.',
+  NETWORK_ERROR:
+    'Unable to connect to server. Please check your internet connection.',
   TIMEOUT: 'The request timed out. Please try again.',
   CONFLICT: 'This resource already exists.',
   INTERNAL_ERROR: 'An unexpected error occurred. Please try again later.',
@@ -35,7 +36,10 @@ export function isRetryableError(code: string): boolean {
 
 export function parseApiError(errorOrText: unknown): ParsedError {
   // Handle network errors (TypeError: Failed to fetch)
-  if (errorOrText instanceof TypeError && errorOrText.message.includes('fetch')) {
+  if (
+    errorOrText instanceof TypeError &&
+    errorOrText.message.includes('fetch')
+  ) {
     return {
       code: 'NETWORK_ERROR',
       message: USER_FRIENDLY_MESSAGES.NETWORK_ERROR,
@@ -62,7 +66,9 @@ export function parseApiError(errorOrText: unknown): ParsedError {
             message: parsed.error.message || body,
             field: parsed.error.field,
             details: parsed.error.details,
-            isRetryable: isRetryableError(parsed.error.code || getCodeFromStatus(status)),
+            isRetryable: isRetryableError(
+              parsed.error.code || getCodeFromStatus(status)
+            ),
             retryAfter: parsed.error.details?.retryAfter,
           };
         }
@@ -122,7 +128,9 @@ export function parseApiError(errorOrText: unknown): ParsedError {
         field: error.field as string | undefined,
         details: error.details,
         isRetryable: isRetryableError(code),
-        retryAfter: (error.details as Record<string, unknown>)?.retryAfter as number | undefined,
+        retryAfter: (error.details as Record<string, unknown>)?.retryAfter as
+          | number
+          | undefined,
       };
     }
   }
@@ -134,7 +142,11 @@ export function parseApiError(errorOrText: unknown): ParsedError {
   };
 }
 
-export function getErrorMessage(code: string, originalMessage: string, field?: string): string {
+export function getErrorMessage(
+  code: string,
+  originalMessage: string,
+  field?: string
+): string {
   if (field && code === 'VALIDATION_ERROR') {
     // Capitalize first letter of field name
     const fieldName = field.charAt(0).toUpperCase() + field.slice(1);

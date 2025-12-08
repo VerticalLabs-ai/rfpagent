@@ -1,7 +1,19 @@
 import React from 'react';
 import { ErrorInfo } from 'react';
-import { AlertTriangle, RefreshCw, Home, Bug, WifiOff, Clock, Shield } from 'lucide-react';
-import { parseApiError, getErrorMessage, isRetryableError } from '@/lib/errorUtils';
+import {
+  AlertTriangle,
+  RefreshCw,
+  Home,
+  Bug,
+  WifiOff,
+  Clock,
+  Shield,
+} from 'lucide-react';
+import {
+  parseApiError,
+  getErrorMessage,
+  isRetryableError,
+} from '@/lib/errorUtils';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -86,9 +98,7 @@ export function ErrorFallback({
           <h1 className="text-xl font-semibold text-foreground mb-2">
             {getErrorTitle(parsed.code)}
           </h1>
-          <p className="text-muted-foreground mb-6">
-            {userMessage}
-          </p>
+          <p className="text-muted-foreground mb-6">{userMessage}</p>
 
           {parsed.code === 'NETWORK_ERROR' && (
             <p className="text-sm text-muted-foreground mb-4">

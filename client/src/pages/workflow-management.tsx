@@ -411,7 +411,9 @@ export default function WorkflowManagement() {
                     data-testid="text-no-workflows"
                   >
                     <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-muted-foreground">No suspended workflows</p>
+                    <p className="text-muted-foreground">
+                      No suspended workflows
+                    </p>
                     <p className="text-sm text-muted-foreground/80">
                       All workflows are running smoothly!
                     </p>

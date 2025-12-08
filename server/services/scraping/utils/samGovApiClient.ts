@@ -80,8 +80,9 @@ export class SAMGovApiClient {
       timeout: 30000,
       headers: {
         'X-Api-Key': apiKey || '',
-        'User-Agent': 'RFPAgent/2.0 (Government RFP Management System; Contact: support@rfpagent.com)',
-        'Accept': 'application/json',
+        'User-Agent':
+          'RFPAgent/2.0 (Government RFP Management System; Contact: support@rfpagent.com)',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
     });
@@ -119,7 +120,9 @@ export class SAMGovApiClient {
   /**
    * Get a single opportunity by noticeId
    */
-  async getOpportunityById(noticeId: string): Promise<SAMGovOpportunity | null> {
+  async getOpportunityById(
+    noticeId: string
+  ): Promise<SAMGovOpportunity | null> {
     logger.info('Fetching SAM.gov opportunity by ID', { noticeId });
 
     try {
@@ -132,7 +135,7 @@ export class SAMGovApiClient {
       if (response.opportunitiesData && response.opportunitiesData.length > 0) {
         logger.info('SAM.gov opportunity found', {
           noticeId,
-          title: response.opportunitiesData[0].title
+          title: response.opportunitiesData[0].title,
         });
         return response.opportunitiesData[0];
       }
@@ -140,7 +143,11 @@ export class SAMGovApiClient {
       logger.warn('SAM.gov opportunity not found', { noticeId });
       return null;
     } catch (error) {
-      logger.error('Failed to fetch SAM.gov opportunity', error instanceof Error ? error : new Error(String(error)), { noticeId });
+      logger.error(
+        'Failed to fetch SAM.gov opportunity',
+        error instanceof Error ? error : new Error(String(error)),
+        { noticeId }
+      );
       throw error;
     }
   }
@@ -186,7 +193,7 @@ export class SAMGovApiClient {
       if (rateLimitRemaining) {
         logger.debug('SAM.gov rate limit status', {
           remaining: rateLimitRemaining,
-          limit: rateLimitLimit
+          limit: rateLimitLimit,
         });
       }
 
@@ -209,7 +216,9 @@ export class SAMGovApiClient {
 
         // Check if error is retryable
         if (!this.isRetryableError(error)) {
-          logger.error('SAM.gov API non-retryable error', lastError, { attempt });
+          logger.error('SAM.gov API non-retryable error', lastError, {
+            attempt,
+          });
           throw lastError;
         }
 
@@ -222,7 +231,10 @@ export class SAMGovApiClient {
           });
 
           await this.sleep(delay);
-          delay = Math.min(delay * this.retryConfig.backoffMultiplier, this.retryConfig.maxDelayMs);
+          delay = Math.min(
+            delay * this.retryConfig.backoffMultiplier,
+            this.retryConfig.maxDelayMs
+          );
         }
       }
     }
