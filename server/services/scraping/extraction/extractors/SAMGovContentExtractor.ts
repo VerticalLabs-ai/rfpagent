@@ -3,6 +3,7 @@ import * as cheerio from 'cheerio';
 import { logger } from '../../../../utils/logger';
 import type { RFPOpportunity } from '../../types';
 import { BaseContentExtractor } from '../ContentExtractor';
+import { samGovApiClient, SAMGovOpportunity } from '../../utils/samGovApiClient';
 
 /**
  * Specialized content extractor for SAM.gov portal
@@ -86,52 +87,77 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Extract opportunities using SAM.gov API
    * Primary extraction method - more reliable and structured
+   *
+   * Now uses noticeId-based extraction for specific opportunity URLs
    */
   private async extractFromAPI(url: string): Promise<RFPOpportunity[]> {
     try {
       const apiKey = process.env.SAM_GOV_API_KEY;
       if (!apiKey) {
+        logger.warn('SAM_GOV_API_KEY not configured - API extraction disabled');
         return [];
       }
 
-      // Extract search parameters from URL or use defaults
+      // Try to extract noticeId from URL for direct lookup
+      const noticeId = samGovApiClient.extractNoticeIdFromUrl(url);
+
+      if (noticeId) {
+        logger.info('Extracted noticeId from URL, using direct lookup', { noticeId, url });
+
+        const opportunity = await samGovApiClient.getOpportunityById(noticeId);
+
+        if (opportunity) {
+          const rfpOpportunity = this.convertAPIOpportunityToRFP(opportunity);
+          rfpOpportunity.confidence = this.getConfidenceScore(rfpOpportunity);
+
+          logger.info('SAM.gov direct API extraction successful', {
+            noticeId,
+            title: rfpOpportunity.title,
+            confidence: rfpOpportunity.confidence,
+          });
+
+          return [rfpOpportunity];
+        } else {
+          logger.warn('SAM.gov opportunity not found via direct lookup', {
+            noticeId,
+            url,
+            suggestion: 'Opportunity may have been archived or withdrawn',
+          });
+        }
+      }
+
+      // Fallback: Extract search parameters from URL and do broader search
+      logger.info('No noticeId found in URL, using search-based extraction', { url });
       const searchParams = this.extractSearchParamsFromURL(url);
 
-      logger.info('Fetching opportunities from SAM.gov API', { searchParams });
+      logger.info('Fetching opportunities from SAM.gov API via search', { searchParams });
 
-      const response = await axios.get(`${this.SAM_BASE_URL}/search`, {
-        params: {
-          limit: searchParams.limit || 50,
-          offset: searchParams.offset || 0,
-          postedFrom: searchParams.postedFrom,
-          postedTo: searchParams.postedTo,
-          ...searchParams.filters,
-        },
-        headers: {
-          'X-Api-Key': apiKey,
-          'User-Agent': 'RFP-Agent/1.0',
-          Accept: 'application/json',
-        },
-        timeout: 30000,
+      const response = await samGovApiClient.searchWithRetry({
+        postedFrom: searchParams.postedFrom,
+        postedTo: searchParams.postedTo,
+        limit: searchParams.limit || 50,
+        offset: searchParams.offset || 0,
+        ...searchParams.filters,
       });
 
-      if (response.status !== 200) {
-        logger.warn('SAM.gov API returned non-200 status', {
-          status: response.status,
-          statusText: response.statusText,
+      const opportunitiesData = response.opportunitiesData || [];
+
+      if (opportunitiesData.length === 0) {
+        logger.warn('SAM.gov API search returned no results', {
+          url,
+          searchParams,
+          totalRecords: response.totalRecords,
         });
         return [];
       }
 
-      const data = response.data;
-      const opportunitiesData = data?.opportunitiesData || [];
-
-      logger.info('SAM.gov API response received', {
+      logger.info('SAM.gov API search response received', {
         total: opportunitiesData.length,
+        totalRecords: response.totalRecords,
       });
 
       // Convert API response to RFPOpportunity format
-      const opportunities = opportunitiesData.map((opp: any) =>
+      const opportunities = opportunitiesData.map((opp: SAMGovOpportunity) =>
         this.convertAPIOpportunityToRFP(opp)
       );
 
@@ -147,12 +173,23 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
 
       return this.removeDuplicates(filtered);
     } catch (error) {
+      // Enhanced error logging with API response details
+      const errorDetails: Record<string, unknown> = {
+        endpoint: `${this.SAM_BASE_URL}/search`,
+        url,
+      };
+
+      if (axios.isAxiosError(error)) {
+        errorDetails.status = error.response?.status;
+        errorDetails.statusText = error.response?.statusText;
+        errorDetails.responseData = error.response?.data;
+        errorDetails.headers = error.response?.headers;
+      }
+
       logger.error(
         'SAM.gov API extraction failed',
         error instanceof Error ? error : new Error(String(error)),
-        {
-          endpoint: `${this.SAM_BASE_URL}/search`,
-        }
+        errorDetails
       );
       return [];
     }
@@ -161,12 +198,12 @@ export class SAMGovContentExtractor extends BaseContentExtractor {
   /**
    * Convert SAM.gov API opportunity to RFPOpportunity format
    */
-  private convertAPIOpportunityToRFP(apiOpp: any): RFPOpportunity {
+  private convertAPIOpportunityToRFP(apiOpp: SAMGovOpportunity): RFPOpportunity {
     return {
       title: apiOpp.title || 'Untitled Opportunity',
-      description: apiOpp.description || apiOpp.synopsis || '',
+      description: apiOpp.description || '',
       agency:
-        apiOpp.organizationName || apiOpp.department || apiOpp.subtierName,
+        apiOpp.department || apiOpp.subTier || apiOpp.office,
       deadline: apiOpp.responseDeadLine || apiOpp.archiveDate,
       estimatedValue: apiOpp.awardCeiling
         ? `$${apiOpp.awardCeiling}`
