@@ -1,3 +1,4 @@
+import { AgentQueueManager } from '@/components/agents/AgentQueueManager';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -21,6 +22,7 @@ import {
   Bot,
   CheckCircle,
   Clock,
+  ListOrdered,
   PauseCircle,
   PlayCircle,
   RotateCcw,
@@ -353,6 +355,10 @@ export default function AgentMonitoring() {
             <TabsTrigger value="configuration" data-testid="tab-configuration">
               Agent Configuration
             </TabsTrigger>
+            <TabsTrigger value="queues" data-testid="tab-queues">
+              <ListOrdered className="w-4 h-4 mr-2" />
+              Queue Management
+            </TabsTrigger>
             <TabsTrigger value="activities" data-testid="tab-activities">
               Live Activities
             </TabsTrigger>
@@ -376,6 +382,11 @@ export default function AgentMonitoring() {
 
         <ScrollArea className="flex-1">
           <div className="p-6 pt-0 space-y-6">
+            <TabsContent value="queues" className="m-0 space-y-6">
+              {/* Agent Queue Management */}
+              <AgentQueueManager />
+            </TabsContent>
+
             <TabsContent value="configuration" className="m-0 space-y-6">
               {/* Agent Registry with Configuration */}
               <Card data-testid="card-agent-registry">

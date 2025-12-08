@@ -9,6 +9,7 @@ import { SubmissionMaterialsDialog } from '@/components/SubmissionMaterialsDialo
 import { ProposalGenerationProgress } from '@/components/ProposalGenerationProgress';
 import { ProposalWizard } from '@/components/proposal-wizard/ProposalWizard';
 import { LoadingCards } from '@/components/shared';
+import { AgentWorkPanel } from '@/components/agents/AgentWorkPanel';
 import {
   RFPHeader,
   RFPOverview,
@@ -316,7 +317,8 @@ export default function RFPDetails() {
         </div>
 
         {/* Sidebar */}
-        <RFPSidebar
+        <div className="space-y-6">
+          <RFPSidebar
           rfp={rfp}
           onDeleteRFP={handleDeleteRFP}
           onGenerateMaterials={() => setSubmissionMaterialsOpen(true)}
@@ -327,6 +329,10 @@ export default function RFPDetails() {
           isGeneratingProposal={generateProposalMutation.isPending}
           isRescrapePending={rescrapeMutation.isPending}
         />
+
+          {/* Agent Work Panel */}
+          {id && <AgentWorkPanel rfpId={id} showCompleted />}
+        </div>
       </div>
 
       {/* Submission Materials Dialog */}

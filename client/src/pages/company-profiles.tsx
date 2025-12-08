@@ -8,6 +8,7 @@ import {
   type CompanyProfile,
   type NormalizedCompanyContact,
 } from '@/components/company';
+import { AgentSettingsPanel } from '@/components/company/AgentSettingsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +38,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertTriangle,
+  Bot,
   Building2,
   FileText,
   MapPin,
@@ -268,6 +270,10 @@ export default function CompanyProfiles() {
             <TabsTrigger value="overview" data-testid="tab-overview">
               <FileText className="w-4 h-4 mr-2" />
               Overview
+            </TabsTrigger>
+            <TabsTrigger value="agents" data-testid="tab-agents">
+              <Bot className="w-4 h-4 mr-2" />
+              Agent Settings
             </TabsTrigger>
           </TabsList>
         </div>
@@ -508,6 +514,50 @@ export default function CompanyProfiles() {
                   </CardContent>
                 </Card>
               </div>
+            </TabsContent>
+
+            <TabsContent value="agents" className="m-0 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">AI Agent Settings</h2>
+                  <p className="text-muted-foreground">
+                    Customize agent behavior for each company profile
+                  </p>
+                </div>
+              </div>
+
+              {profiles.length === 0 ? (
+                <Card>
+                  <CardContent className="p-12 text-center">
+                    <Bot className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Company Profiles
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create company profiles first to configure AI agent settings
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-6">
+                  {profiles.map(profile => (
+                    <Card key={profile.id}>
+                      <CardHeader className="bg-muted/30">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-5 h-5" />
+                          <CardTitle>{profile.companyName}</CardTitle>
+                        </div>
+                        <CardDescription>
+                          Configure how AI agents work for this company
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <AgentSettingsPanel companyId={profile.id} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </TabsContent>
           </div>
         </ScrollArea>
