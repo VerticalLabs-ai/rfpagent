@@ -52,15 +52,13 @@ export class ErrorBoundary extends Component<Props, State> {
     // Call onError callback if provided
     this.props.onError?.(error, errorInfo);
 
-    // In production, you might want to log to an error reporting service
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Integrate with error reporting service (e.g., Sentry)
-      console.error('Production error caught by ErrorBoundary:', {
-        error: error.message,
-        stack: error.stack,
+    // Report to Sentry
+    import('@/lib/sentry').then(({ captureError }) => {
+      captureError(error, {
         componentStack: errorInfo.componentStack,
+        reactError: true,
       });
-    }
+    });
   }
 
   componentDidUpdate(prevProps: Props) {
