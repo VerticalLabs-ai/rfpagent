@@ -4,7 +4,9 @@ import { showErrorToast, showSuccessToast } from '../useErrorToast';
 describe('useErrorToast', () => {
   describe('showErrorToast', () => {
     it('parses API error and returns ParsedError', () => {
-      const error = new Error('404: {"error":{"code":"NOT_FOUND","message":"RFP not found"}}');
+      const error = new Error(
+        '404: {"error":{"code":"NOT_FOUND","message":"RFP not found"}}'
+      );
 
       const result = showErrorToast(error);
 
@@ -45,7 +47,9 @@ describe('useErrorToast', () => {
 
   describe('showSuccessToast', () => {
     it('can be called without errors', () => {
-      expect(() => showSuccessToast('Success', 'Operation completed')).not.toThrow();
+      expect(() =>
+        showSuccessToast('Success', 'Operation completed')
+      ).not.toThrow();
     });
   });
 });

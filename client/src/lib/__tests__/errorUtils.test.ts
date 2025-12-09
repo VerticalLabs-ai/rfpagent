@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { parseApiError, getErrorMessage, isRetryableError } from '../errorUtils';
+import {
+  parseApiError,
+  getErrorMessage,
+  isRetryableError,
+} from '../errorUtils';
 
 describe('errorUtils', () => {
   describe('parseApiError', () => {
@@ -41,7 +45,8 @@ describe('errorUtils', () => {
 
       expect(result).toEqual({
         code: 'NETWORK_ERROR',
-        message: 'Unable to connect to server. Please check your internet connection.',
+        message:
+          'Unable to connect to server. Please check your internet connection.',
         field: undefined,
         isRetryable: true,
       });
@@ -50,14 +55,24 @@ describe('errorUtils', () => {
 
   describe('getErrorMessage', () => {
     it('returns field-specific message for validation errors', () => {
-      const message = getErrorMessage('VALIDATION_ERROR', 'Invalid format', 'email');
+      const message = getErrorMessage(
+        'VALIDATION_ERROR',
+        'Invalid format',
+        'email'
+      );
       expect(message).toBe('Email: Invalid format');
     });
 
     it('returns user-friendly message for known error codes', () => {
-      expect(getErrorMessage('NOT_FOUND', 'Resource not found')).toBe('The requested item could not be found.');
-      expect(getErrorMessage('RATE_LIMIT_EXCEEDED', 'Too many requests')).toBe('Too many requests. Please wait a moment and try again.');
-      expect(getErrorMessage('SERVICE_UNAVAILABLE', 'Service down')).toBe('The service is temporarily unavailable. Please try again later.');
+      expect(getErrorMessage('NOT_FOUND', 'Resource not found')).toBe(
+        'The requested item could not be found.'
+      );
+      expect(getErrorMessage('RATE_LIMIT_EXCEEDED', 'Too many requests')).toBe(
+        'Too many requests. Please wait a moment and try again.'
+      );
+      expect(getErrorMessage('SERVICE_UNAVAILABLE', 'Service down')).toBe(
+        'The service is temporarily unavailable. Please try again later.'
+      );
     });
   });
 
