@@ -924,6 +924,7 @@ export class DatabaseStorage implements IStorage {
     portalId?: string;
     limit?: number;
     offset?: number;
+    excludeDemo?: boolean;
   }): Promise<{ rfps: RFP[]; total: number }> {
     const conditions = [];
     if (filters?.status) {
@@ -931,6 +932,9 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters?.portalId) {
       conditions.push(eq(rfps.portalId, filters.portalId));
+    }
+    if (filters?.excludeDemo) {
+      conditions.push(eq(rfps.isDemo, false));
     }
 
     // Build base queries

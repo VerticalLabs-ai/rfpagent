@@ -6,6 +6,7 @@ import { NaturalLanguageSearchRequestSchema } from '@shared/searchTypes';
 import { ObjectStorageService } from '../objectStorage';
 import { DocumentParsingService } from '../services/processing/documentParsingService';
 import { ManualRfpService } from '../services/proposals/manualRfpService';
+import { demoRfpService } from '../services/proposals/demoRfpService';
 import { PhiladelphiaDocumentDownloader } from '../services/scrapers/philadelphiaDocumentDownloader';
 import { getMastraScrapingService } from '../services/scrapers/mastraScrapingService';
 import { getNaturalLanguageSearchService } from '../services/search/naturalLanguageSearchService';
@@ -25,6 +26,10 @@ const getRfpsQuerySchema = z.object({
   portalId: z.string().uuid('Portal ID must be a valid UUID').optional(),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
+  excludeDemo: z
+    .string()
+    .optional()
+    .transform(val => val === 'true' || val === '1'),
 });
 
 // Manual RFP Input Schema
@@ -38,9 +43,8 @@ const ManualRfpInputSchema = z.object({
  */
 router.get('/', validateQuery(getRfpsQuerySchema), async (req, res) => {
   try {
-    const { status, portalId, page, limit } = req.query as unknown as z.infer<
-      typeof getRfpsQuerySchema
-    >;
+    const { status, portalId, page, limit, excludeDemo } =
+      req.query as unknown as z.infer<typeof getRfpsQuerySchema>;
     const offset = (page - 1) * limit;
 
     const result = await storage.getAllRFPs({
@@ -48,6 +52,7 @@ router.get('/', validateQuery(getRfpsQuerySchema), async (req, res) => {
       portalId,
       limit,
       offset,
+      excludeDemo,
     });
 
     // Return standardized paginated response
@@ -292,6 +297,59 @@ router.post('/manual', async (req, res) => {
       success: false,
       error: 'Internal server error',
       message: 'Failed to process the manual RFP. Please try again.',
+    });
+  }
+});
+
+/**
+ * Create a demo RFP with sample data for testing
+ * This bypasses scraping and uses pre-populated data
+ */
+router.post('/demo', async (req, res) => {
+  try {
+    console.log('📦 Creating demo RFP with sample data');
+
+    // Start processing asynchronously and return sessionId immediately
+    const sessionId = randomUUID();
+
+    // Return sessionId immediately so frontend can connect to progress stream
+    res.status(202).json({
+      success: true,
+      sessionId,
+      isDemo: true,
+      message: 'Demo RFP creation started. Connect to the progress stream for updates.',
+    });
+
+    // Process asynchronously in the background
+    demoRfpService
+      .createDemoRfp(sessionId)
+      .then(async (result) => {
+        if (result.success && result.rfpId) {
+          // Create audit log for demo RFP creation
+          await storage.createAuditLog({
+            entityType: 'rfp',
+            entityId: result.rfpId,
+            action: 'created_demo',
+            details: {
+              isDemo: true,
+              message: 'Demo RFP created for pipeline testing',
+            },
+          });
+          console.log(`✅ Demo RFP created successfully: ${result.rfpId}`);
+        } else {
+          console.error(`❌ Demo RFP creation failed: ${result.error}`);
+        }
+      })
+      .catch((error) => {
+        console.error('Error in background demo RFP creation:', error);
+      });
+
+  } catch (error) {
+    console.error('Error creating demo RFP:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: 'Failed to create the demo RFP. Please try again.',
     });
   }
 });

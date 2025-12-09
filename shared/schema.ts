@@ -110,6 +110,7 @@ export const rfps = pgTable(
     analysis: jsonb('analysis'),
     addedBy: text('added_by').notNull().default('automatic'), // "manual" or "automatic"
     manuallyAddedAt: timestamp('manually_added_at'), // Only set if manually added
+    isDemo: boolean('is_demo').default(false).notNull(), // Flag for demo/test data
     discoveredAt: timestamp('discovered_at').defaultNow().notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

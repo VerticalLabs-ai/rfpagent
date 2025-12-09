@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DemoBadge } from '@/components/ui/demo-badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -188,12 +189,15 @@ export default function Proposals() {
                       data-testid={`rfp-item-${item.rfp.id}`}
                     >
                       <div className="flex items-start justify-between mb-2">
-                        <h4
-                          className="font-medium text-sm leading-tight"
-                          data-testid={`rfp-item-title-${item.rfp.id}`}
-                        >
-                          {item.rfp.title}
-                        </h4>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <h4
+                            className="font-medium text-sm leading-tight"
+                            data-testid={`rfp-item-title-${item.rfp.id}`}
+                          >
+                            {item.rfp.title}
+                          </h4>
+                          {item.rfp.isDemo && <DemoBadge size="sm" />}
+                        </div>
                         <Badge
                           variant={getStatusBadgeVariant(item.rfp.status)}
                           className={`${getStatusBadgeClassName(item.rfp.status)} ml-2 shrink-0`}

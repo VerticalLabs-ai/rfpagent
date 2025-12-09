@@ -2,6 +2,7 @@ import { Link } from 'wouter';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { DemoBadge } from '@/components/ui/demo-badge';
 import type { RFPHeaderProps } from './types';
 
 const getStatusColor = (status: string) => {
@@ -66,6 +67,14 @@ export function RFPHeader({ rfp }: RFPHeaderProps) {
           <p className="text-muted-foreground" data-testid="text-rfp-agency">
             {rfp.agency}
           </p>
+          {rfp.isDemo && (
+            <div className="flex items-center gap-2 mt-2">
+              <DemoBadge size="md" />
+              <span className="text-sm text-muted-foreground">
+                This is demo data for testing purposes
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-3">

@@ -31,6 +31,7 @@ import {
   getStatusBadgeClassName,
   getStatusLabel,
 } from '@/lib/badge-utils';
+import { DemoBadge } from '@/components/ui/demo-badge';
 
 export default function ActiveRFPsTable() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,6 +212,61 @@ export default function ActiveRFPsTable() {
       toast({
         title: 'Manual RFP Failed',
         description: errorMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const demoRfpMutation = useMutation({
+    mutationFn: async () => {
+      console.log('🧪 Creating demo RFP');
+      const response = await apiRequest('POST', '/api/rfps/demo');
+      console.log('📡 Demo RFP response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          '❌ Demo RFP API response not ok:',
+          response.status,
+          errorText
+        );
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('✅ Demo RFP response:', JSON.stringify(result, null, 2));
+      return result;
+    },
+    onSuccess: data => {
+      console.log(
+        '🎉 Demo RFP mutation onSuccess:',
+        JSON.stringify(data, null, 2)
+      );
+
+      if (data.success && data.sessionId) {
+        // Show progress modal
+        setProgressSessionId(data.sessionId);
+        setProgressDialogOpen(true);
+        setManualRfpDialogOpen(false);
+
+        toast({
+          title: 'Demo RFP Creation Started',
+          description:
+            'Creating sample RFP with realistic test data. Track progress in real-time.',
+        });
+      } else {
+        toast({
+          title: 'Demo RFP Failed',
+          description: data.message || 'Failed to create demo RFP.',
+          variant: 'destructive',
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Demo RFP Failed',
+        description:
+          error?.message || 'Failed to create demo RFP. Please try again.',
         variant: 'destructive',
       });
     },
@@ -512,7 +568,7 @@ export default function ActiveRFPsTable() {
                       <div className="bg-blue-50 dark:bg-blue-950/50 p-4 rounded-lg border border-blue-200 dark:border-blue-800/50">
                         <div className="flex items-start space-x-3">
                           <i className="fas fa-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-                          <div>
+                          <div className="flex-1">
                             <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100">
                               How Manual RFP Processing Works
                             </h4>
@@ -537,6 +593,45 @@ export default function ActiveRFPsTable() {
                               </li>
                             </ul>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Demo Data Option */}
+                      <div className="bg-purple-50 dark:bg-purple-950/50 p-4 rounded-lg border border-purple-200 dark:border-purple-800/50">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <i className="fas fa-flask text-purple-600 dark:text-purple-400 mt-0.5"></i>
+                            <div>
+                              <h4 className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                                Test with Sample Data
+                              </h4>
+                              <p className="text-xs text-purple-800 dark:text-purple-200 mt-1">
+                                Skip URL entry and test the full pipeline with a
+                                realistic VA relocation services RFP.
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => demoRfpMutation.mutate()}
+                            disabled={demoRfpMutation.isPending}
+                            className="shrink-0 border-purple-400 text-purple-700 hover:bg-purple-100 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-950"
+                            data-testid="demo-rfp-button"
+                          >
+                            {demoRfpMutation.isPending ? (
+                              <>
+                                <i className="fas fa-spinner fa-spin mr-2"></i>
+                                Creating...
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-flask mr-2"></i>
+                                Use Sample Data
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -616,14 +711,17 @@ export default function ActiveRFPsTable() {
                     >
                       <td className="py-4 px-6">
                         <div>
-                          <Link href={`/rfps/${item.rfp.id}`}>
-                            <h4
-                              className="text-sm font-medium text-foreground hover:text-primary cursor-pointer transition-colors"
-                              data-testid={`rfp-title-${item.rfp.id}`}
-                            >
-                              {item.rfp.title}
-                            </h4>
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link href={`/rfps/${item.rfp.id}`}>
+                              <h4
+                                className="text-sm font-medium text-foreground hover:text-primary cursor-pointer transition-colors"
+                                data-testid={`rfp-title-${item.rfp.id}`}
+                              >
+                                {item.rfp.title}
+                              </h4>
+                            </Link>
+                            {item.rfp.isDemo && <DemoBadge size="sm" />}
+                          </div>
                           <p
                             className="text-xs text-muted-foreground"
                             data-testid={`rfp-agency-${item.rfp.id}`}
