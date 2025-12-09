@@ -616,7 +616,7 @@ export default function AIChat() {
                     <AlertTitle>Failed to load conversation</AlertTitle>
                     <AlertDescription>
                       <p className="text-sm mb-3">
-                        Unable to load this conversation's history.
+                        Unable to load this conversation&apos;s history.
                       </p>
                       <Button
                         size="sm"

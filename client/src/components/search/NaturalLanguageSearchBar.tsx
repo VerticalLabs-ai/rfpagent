@@ -101,29 +101,32 @@ export function NaturalLanguageSearchBar({
   });
 
   // Debounced parse on typing
-  const handleQueryChange = useCallback((value: string) => {
-    setQuery(value);
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value);
 
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
 
-    if (value.length >= 5) {
-      debounceRef.current = setTimeout(() => {
-        parseMutation.mutate(value);
-      }, 500);
-    } else {
-      setShowPreview(false);
-      setParseResult(null);
-    }
-  }, []);
+      if (value.length >= 5) {
+        debounceRef.current = setTimeout(() => {
+          parseMutation.mutate(value);
+        }, 500);
+      } else {
+        setShowPreview(false);
+        setParseResult(null);
+      }
+    },
+    [parseMutation]
+  );
 
   // Handle search submission
   const handleSearch = useCallback(() => {
     if (query.length >= 3) {
       searchMutation.mutate(query);
     }
-  }, [query]);
+  }, [query, searchMutation]);
 
   // Handle keyboard events
   const handleKeyDown = useCallback(

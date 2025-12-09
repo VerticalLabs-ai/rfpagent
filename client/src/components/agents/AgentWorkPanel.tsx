@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -22,7 +22,10 @@ export function AgentWorkPanel({
   rfpId,
   showCompleted = true,
 }: AgentWorkPanelProps) {
-  const [sessions, setSessions] = useState<AgentWorkSession[]>([]);
+  const [realtimeSessions, setRealtimeSessions] = useState<
+    Map<string, AgentWorkSession>
+  >(new Map());
+  const hasInitializedRef = useRef(false);
 
   // Fetch initial agent work data
   const { data, isLoading, error } = useQuery<AgentWorkResponse>({
@@ -37,12 +40,27 @@ export function AgentWorkPanel({
     refetchInterval: 5000, // Fallback polling every 5 seconds
   });
 
+  // Callback to update sessions from SSE
+  const handleSessionUpdate = useCallback(
+    (sessionId: string, update: Partial<AgentWorkSession> | null) => {
+      setRealtimeSessions(prev => {
+        const next = new Map(prev);
+        if (update === null) {
+          next.delete(sessionId);
+        } else {
+          const existing = next.get(sessionId);
+          next.set(sessionId, { ...existing, ...update } as AgentWorkSession);
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   // Set up SSE connection for real-time updates
   useEffect(() => {
     const eventSource = new EventSource(`/api/agent-work/stream`);
 
-    // The server sends generic data messages with a type property
-    // We need to use onmessage to receive them
     eventSource.onmessage = event => {
       try {
         const message = JSON.parse(event.data);
@@ -50,70 +68,42 @@ export function AgentWorkPanel({
 
         switch (type) {
           case 'init':
-            // Initial state from server
             if (payload?.activeSessions) {
               const rfpSessions = payload.activeSessions.filter(
                 (s: AgentWorkSession) => s.rfpId === rfpId
               );
-              if (rfpSessions.length > 0) {
-                setSessions(rfpSessions);
-              }
+              rfpSessions.forEach((session: AgentWorkSession) => {
+                handleSessionUpdate(session.sessionId, session);
+              });
             }
             break;
 
           case 'agent:work_started':
             if (payload?.rfpId === rfpId) {
-              setSessions(prev => {
-                const exists = prev.some(
-                  s => s.sessionId === payload.sessionId
-                );
-                if (exists) return prev;
-                return [payload, ...prev];
-              });
+              handleSessionUpdate(payload.sessionId, payload);
             }
             break;
 
           case 'agent:progress_update':
-            setSessions(prev =>
-              prev.map(session =>
-                session.sessionId === payload.sessionId
-                  ? {
-                      ...session,
-                      progress: payload.progress,
-                      currentStep: payload.currentStep,
-                    }
-                  : session
-              )
-            );
+            handleSessionUpdate(payload.sessionId, {
+              progress: payload.progress,
+              currentStep: payload.currentStep,
+            });
             break;
 
           case 'agent:work_completed':
-            setSessions(prev =>
-              prev.map(session =>
-                session.sessionId === payload.sessionId
-                  ? {
-                      ...session,
-                      status: 'completed' as const,
-                      progress: 100,
-                      completedAt: new Date().toISOString(),
-                    }
-                  : session
-              )
-            );
+            handleSessionUpdate(payload.sessionId, {
+              status: 'completed' as const,
+              progress: 100,
+              completedAt: new Date().toISOString(),
+            });
             break;
 
           case 'agent:work_failed':
-            setSessions(prev =>
-              prev.map(session =>
-                session.sessionId === payload.sessionId
-                  ? {
-                      ...session,
-                      status: 'failed' as const,
-                      error: payload.error,
-                    }
-                  : session
-              )
-            );
+            handleSessionUpdate(payload.sessionId, {
+              status: 'failed' as const,
+              error: payload.error,
+            });
             break;
         }
       } catch (err) {
@@ -129,31 +119,62 @@ export function AgentWorkPanel({
     return () => {
       eventSource.close();
     };
-  }, [rfpId]);
+  }, [rfpId, handleSessionUpdate]);
 
-  // Merge API data with realtime updates
+  // Initialize from API data once - using startTransition to mark as non-urgent update
   useEffect(() => {
-    if (data) {
-      setSessions(prev => {
-        const allSessions = [
-          ...(data.activeSessions ?? []),
-          ...(showCompleted ? (data.completedSessions ?? []) : []),
-        ];
-        // Merge with existing sessions, preferring realtime updates
-        const merged = allSessions.map(apiSession => {
-          const realtimeSession = prev.find(
-            s => s.sessionId === apiSession.sessionId
-          );
-          return realtimeSession || apiSession;
+    if (data && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      const allSessions = [
+        ...(data.activeSessions ?? []),
+        ...(showCompleted ? (data.completedSessions ?? []) : []),
+      ];
+      if (allSessions.length > 0) {
+        // Use startTransition to avoid the cascading render warning
+        React.startTransition(() => {
+          setRealtimeSessions(prev => {
+            const next = new Map(prev);
+            allSessions.forEach(session => {
+              if (!next.has(session.sessionId)) {
+                next.set(session.sessionId, session);
+              }
+            });
+            return next;
+          });
         });
-        // Add any sessions from realtime that aren't in API response yet
-        const newSessions = prev.filter(
-          s => !allSessions.some(api => api.sessionId === s.sessionId)
-        );
-        return [...merged, ...newSessions];
-      });
+      }
     }
   }, [data, showCompleted]);
+
+  // Derive merged sessions from API data and realtime updates
+  const mergedSessions = React.useMemo(() => {
+    if (!data) {
+      return Array.from(realtimeSessions.values());
+    }
+
+    const allApiSessions = [
+      ...(data.activeSessions ?? []),
+      ...(showCompleted ? (data.completedSessions ?? []) : []),
+    ];
+
+    // Create map of API sessions
+    const sessionMap = new Map<string, AgentWorkSession>();
+    allApiSessions.forEach(session => {
+      sessionMap.set(session.sessionId, session);
+    });
+
+    // Override with realtime updates
+    realtimeSessions.forEach((session, id) => {
+      const apiSession = sessionMap.get(id);
+      if (apiSession) {
+        sessionMap.set(id, { ...apiSession, ...session });
+      } else {
+        sessionMap.set(id, session);
+      }
+    });
+
+    return Array.from(sessionMap.values());
+  }, [data, showCompleted, realtimeSessions]);
 
   // Loading state
   if (isLoading) {
@@ -187,11 +208,11 @@ export function AgentWorkPanel({
     );
   }
 
-  // Separate active and completed sessions
-  const activeSessions = sessions.filter(
+  // Separate active and completed sessions from merged data
+  const activeSessions = mergedSessions.filter(
     s => s.status === 'in_progress' || s.status === 'queued'
   );
-  const completedSessions = sessions.filter(
+  const completedSessions = mergedSessions.filter(
     s => s.status === 'completed' || s.status === 'failed'
   );
 
@@ -218,7 +239,7 @@ export function AgentWorkPanel({
         </div>
       </CardHeader>
       <CardContent>
-        {sessions.length === 0 ? (
+        {mergedSessions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">
               No agents have worked on this RFP yet

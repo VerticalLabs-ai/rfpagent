@@ -63,24 +63,27 @@ interface LoadingSkeletonProps {
   className?: string;
 }
 
+// Skeleton element - defined outside to avoid creating components during render
+function SkeletonElement({ className: skeletonClass }: { className?: string }) {
+  return (
+    <div className={cn('animate-pulse rounded-md bg-muted', skeletonClass)} />
+  );
+}
+
 export function LoadingSkeleton({
   variant,
   rows = 3,
   className,
 }: LoadingSkeletonProps) {
-  const Skeleton = ({ className: skeletonClass }: { className?: string }) => (
-    <div className={cn('animate-pulse rounded-md bg-muted', skeletonClass)} />
-  );
-
   if (variant === 'card') {
     return (
       <div
         data-testid="skeleton-card"
         className={cn('space-y-3 p-4', className)}
       >
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-20 w-full" />
+        <SkeletonElement className="h-4 w-3/4" />
+        <SkeletonElement className="h-4 w-1/2" />
+        <SkeletonElement className="h-20 w-full" />
       </div>
     );
   }
@@ -90,10 +93,10 @@ export function LoadingSkeleton({
       <div className={cn('space-y-2', className)}>
         {Array.from({ length: rows }).map((_, i) => (
           <div key={i} data-testid="skeleton-row" className="flex gap-4 p-2">
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-4 w-1/3" />
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-4 w-1/6" />
+            <SkeletonElement className="h-4 w-1/4" />
+            <SkeletonElement className="h-4 w-1/3" />
+            <SkeletonElement className="h-4 w-1/4" />
+            <SkeletonElement className="h-4 w-1/6" />
           </div>
         ))}
       </div>
@@ -101,14 +104,16 @@ export function LoadingSkeleton({
   }
 
   if (variant === 'avatar') {
-    return <Skeleton className={cn('h-10 w-10 rounded-full', className)} />;
+    return (
+      <SkeletonElement className={cn('h-10 w-10 rounded-full', className)} />
+    );
   }
 
   // text variant
   return (
     <div className={cn('space-y-2', className)}>
       {Array.from({ length: rows }).map((_, i) => (
-        <Skeleton
+        <SkeletonElement
           key={i}
           className={cn('h-4', i === rows - 1 ? 'w-2/3' : 'w-full')}
         />

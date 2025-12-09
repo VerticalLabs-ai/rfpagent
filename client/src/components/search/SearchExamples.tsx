@@ -69,7 +69,7 @@ export function SearchExamples({
               className="text-left p-3 rounded-lg border border-border hover:border-primary/50 hover:bg-muted/50 transition-colors group"
             >
               <p className="text-sm font-medium text-foreground group-hover:text-primary mb-1">
-                "{example.query}"
+                &ldquo;{example.query}&rdquo;
               </p>
               <p className="text-xs text-muted-foreground">
                 {example.description}

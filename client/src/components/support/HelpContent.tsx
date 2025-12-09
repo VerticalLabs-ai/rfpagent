@@ -51,7 +51,7 @@ export const helpTopics: HelpTopic[] = [
         <ul className="list-disc pl-4 space-y-1">
           <li>Select an RFP from the list</li>
           <li>Choose a company profile</li>
-          <li>Click "Generate Proposal"</li>
+          <li>Click &ldquo;Generate Proposal&rdquo;</li>
           <li>Review and edit the generated content</li>
           <li>Export as PDF when ready</li>
         </ul>

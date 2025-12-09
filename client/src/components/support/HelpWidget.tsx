@@ -170,7 +170,7 @@ export function HelpWidget() {
             {view === 'contact' && (
               <div className="p-4 space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Need help? We're here for you.
+                  Need help? We&apos;re here for you.
                 </p>
 
                 <div className="space-y-2">
