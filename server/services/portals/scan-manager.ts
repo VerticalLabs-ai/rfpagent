@@ -284,6 +284,31 @@ export class ScanManager {
   }
 
   /**
+   * Mark scan as timed out with appropriate error messaging
+   */
+  timeoutScan(scanId: string, reason?: string): void {
+    const scan = this.activeScans.get(scanId);
+    if (!scan || scan.status !== 'running') {
+      return;
+    }
+
+    const timeoutMessage =
+      reason ||
+      'Scan timed out - the portal may be unresponsive or blocking automated access';
+
+    scan.errors.push(timeoutMessage);
+    this.log(scanId, 'error', timeoutMessage);
+
+    scan.currentStep = {
+      step: 'failed',
+      progress: scan.currentStep.progress, // Keep last known progress
+      message: timeoutMessage,
+    };
+
+    this.completeScan(scanId, false);
+  }
+
+  /**
    * Clean up a scan's resources
    */
   private cleanupScan(scanId: string): void {

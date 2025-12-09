@@ -87,8 +87,20 @@ export async function unifiedBrowserbaseWebScrape(
   try {
     console.log(`🌐 Starting unified Browserbase scrape of ${url}`);
 
-    // Handle authentication if required
-    if (loginRequired && credentials?.username && credentials?.password) {
+    // Check if this is a public portal that doesn't need authentication
+    const isPublicPortal =
+      !loginRequired ||
+      portalType?.toLowerCase().includes('sam.gov') ||
+      portalType?.toLowerCase().includes('sam_gov') ||
+      portalType?.toLowerCase() === 'sam.gov';
+
+    // Handle authentication if required (skip for public portals)
+    if (
+      !isPublicPortal &&
+      loginRequired &&
+      credentials?.username &&
+      credentials?.password
+    ) {
       console.log(`🔐 Authentication required for portal: ${portalType}`);
 
       const authResult = await executeStagehandTool(
@@ -111,6 +123,10 @@ export async function unifiedBrowserbaseWebScrape(
       }
 
       console.log(`✅ Authentication successful for ${portalType}`);
+    } else if (isPublicPortal) {
+      console.log(
+        `✅ Skipping authentication for public portal: ${portalType || 'unknown'}`
+      );
     }
 
     // Extract RFP opportunities using Browserbase

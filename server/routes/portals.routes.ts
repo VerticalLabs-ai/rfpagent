@@ -148,28 +148,43 @@ router.post('/:id/scan', async (req, res) => {
     const scanId = scanManager.startScan(id, portal.name);
 
     // Use new monitoring service for enhanced scanning with scan context
-    portalMonitoringService
-      .scanPortalWithEvents(portal.id, scanId)
-      .catch(error => {
-        console.error(
-          `Portal scan error for ${portal.name} (${portal.id}):`,
-          error
+    // Add a 5-minute timeout to prevent indefinite hanging
+    const SCAN_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+    const scanPromise = portalMonitoringService.scanPortalWithEvents(
+      portal.id,
+      scanId
+    );
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Portal scan timed out after 5 minutes')),
+        SCAN_TIMEOUT_MS
+      )
+    );
+
+    Promise.race([scanPromise, timeoutPromise]).catch(error => {
+      console.error(
+        `Portal scan error for ${portal.name} (${portal.id}):`,
+        error
+      );
+      // Ensure scan manager is notified of failure
+      try {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const isTimeout = errorMessage.includes('timed out');
+
+        scanManager.log(
+          scanId,
+          'error',
+          isTimeout
+            ? `Scan timed out - portal may be unresponsive or blocking automated access`
+            : `Fatal scan error: ${errorMessage}`
         );
-        // Ensure scan manager is notified of failure
-        try {
-          scanManager.log(
-            scanId,
-            'error',
-            `Fatal scan error: ${error instanceof Error ? error.message : String(error)}`
-          );
-          scanManager.completeScan(scanId, false);
-        } catch (managerError) {
-          console.error(
-            'Failed to update scan manager with error:',
-            managerError
-          );
-        }
-      });
+        scanManager.completeScan(scanId, false);
+      } catch (managerError) {
+        console.error('Failed to update scan manager with error:', managerError);
+      }
+    });
 
     res.status(202).json({
       scanId,

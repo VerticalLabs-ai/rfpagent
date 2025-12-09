@@ -101,33 +101,53 @@ export class PortalMonitoringService {
         lastError: null,
       });
 
-      scanManager.updateStep(
-        scanId,
-        'authenticating',
-        15,
-        `Starting Browserbase/Mastra intelligent scraping`
-      );
-      scanManager.log(
-        scanId,
-        'info',
-        `Using Browserbase/Mastra for intelligent scraping of: ${portal.name}`
-      );
+      // Check if this is a public portal that doesn't require authentication
+      const isPublicPortal =
+        !portal.loginRequired || this.isPublicApiPortal(portal);
+
+      if (isPublicPortal) {
+        scanManager.updateStep(
+          scanId,
+          'authenticated', // Skip authentication for public portals
+          25,
+          `Public portal detected - no authentication required`
+        );
+        scanManager.log(
+          scanId,
+          'info',
+          `Skipping authentication for public portal: ${portal.name}`
+        );
+      } else {
+        scanManager.updateStep(
+          scanId,
+          'authenticating',
+          15,
+          `Starting Browserbase/Mastra intelligent scraping`
+        );
+        scanManager.log(
+          scanId,
+          'info',
+          `Using Browserbase/Mastra for intelligent scraping of: ${portal.name}`
+        );
+      }
 
       const discoveredRFPs: DiscoveredRFP[] = [];
       const errors: string[] = [];
 
       try {
-        scanManager.updateStep(
-          scanId,
-          'authenticating',
-          20,
-          `Connecting to portal: ${portal.url}`
-        );
-        scanManager.log(
-          scanId,
-          'info',
-          `Starting Mastra/Browserbase scraping for: ${portal.url}`
-        );
+        if (!isPublicPortal) {
+          scanManager.updateStep(
+            scanId,
+            'authenticating',
+            20,
+            `Connecting to portal: ${portal.url}`
+          );
+          scanManager.log(
+            scanId,
+            'info',
+            `Starting Mastra/Browserbase scraping for: ${portal.url}`
+          );
+        }
 
         // The MastraScrapingService handles everything: authentication, navigation, extraction
         await this.mastraService.scrapePortal(portal);
@@ -848,6 +868,26 @@ export class PortalMonitoringService {
         );
       }
     }
+  }
+
+  /**
+   * Check if portal uses a public API (no browser auth needed)
+   */
+  private isPublicApiPortal(portal: Portal): boolean {
+    const url = portal.url.toLowerCase();
+    const name = portal.name.toLowerCase();
+
+    // SAM.gov uses public REST API
+    if (
+      url.includes('sam.gov') ||
+      name.includes('sam.gov') ||
+      name.includes('sam_gov')
+    ) {
+      return true;
+    }
+
+    // Add other public API portals here as needed
+    return false;
   }
 
   /**

@@ -73,13 +73,22 @@ function buildContext<TSchema extends z.ZodTypeAny>(
   } as ToolExecutionContext<TSchema>;
 }
 
+/**
+ * Default timeout for Stagehand tool execution (2 minutes)
+ */
+const DEFAULT_STAGEHAND_TIMEOUT = 120000;
+
+/**
+ * Execute a Stagehand tool with timeout protection
+ */
 export async function executeStagehandTool<
   TSchema extends z.ZodTypeAny,
   TResult,
 >(
   tool: StagehandTool<TSchema>,
   params: z.infer<TSchema>,
-  resultSchema?: z.ZodType<TResult>
+  resultSchema?: z.ZodType<TResult>,
+  timeoutMs: number = DEFAULT_STAGEHAND_TIMEOUT
 ): Promise<TResult> {
   const { inputSchema, execute } = tool;
   if (!inputSchema || typeof execute !== 'function') {
@@ -87,7 +96,18 @@ export async function executeStagehandTool<
   }
 
   const context = buildContext(inputSchema, params);
-  const rawResult = await execute(context);
+
+  // Execute with timeout protection
+  const rawResult = await Promise.race([
+    execute(context),
+    new Promise((_, reject) =>
+      setTimeout(
+        () =>
+          reject(new Error(`Stagehand tool timed out after ${timeoutMs}ms`)),
+        timeoutMs
+      )
+    ),
+  ]);
 
   return resultSchema ? resultSchema.parse(rawResult) : (rawResult as TResult);
 }
