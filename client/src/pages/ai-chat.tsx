@@ -125,11 +125,22 @@ export default function AIChat() {
       return response.json() as Promise<ChatResponse>;
     },
     onSuccess: response => {
+      // Set the conversation ID in state if this is a new conversation
       if (response.conversationId && !currentConversationId) {
         setCurrentConversationId(response.conversationId);
       }
-      // Refetch conversation history to show the new messages
-      refetchHistory();
+
+      // Use the response's conversationId directly for refetching
+      // This avoids the race condition where currentConversationId hasn't updated yet
+      const conversationIdToFetch = response.conversationId || currentConversationId;
+
+      if (conversationIdToFetch) {
+        // Invalidate the specific conversation query to trigger a refetch
+        queryClient.invalidateQueries({
+          queryKey: ['/api/ai/conversations', conversationIdToFetch]
+        });
+      }
+
       // Invalidate conversations list to update with new conversation
       queryClient.invalidateQueries({ queryKey: ['/api/ai/conversations'] });
     },
