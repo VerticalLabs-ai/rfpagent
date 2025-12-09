@@ -18,6 +18,14 @@ export interface DownloadResult {
   retrievedAt: string;
 }
 
+export interface FileSizeVerification {
+  valid: boolean;
+  actualSize: number;
+  expectedSize: number;
+  difference: number; // percentage difference (negative = smaller, positive = larger)
+  message: string;
+}
+
 /**
  * Service for retrieving files downloaded during Browserbase browser sessions
  *
@@ -212,6 +220,49 @@ export class BrowserbaseDownloadService {
       png: 'image/png',
     };
     return mimeTypes[extension] || 'application/octet-stream';
+  }
+
+  /**
+   * Verify that a downloaded file size matches the expected size
+   *
+   * @param actualSize - Actual file size in bytes
+   * @param expectedSize - Expected file size in bytes (from source metadata)
+   * @param tolerance - Acceptable percentage difference (default 5%)
+   * @returns FileSizeVerification result
+   */
+  verifyFileSize(
+    actualSize: number,
+    expectedSize: number,
+    tolerance: number = 0.05,
+  ): FileSizeVerification {
+    if (expectedSize <= 0) {
+      return {
+        valid: false,
+        actualSize,
+        expectedSize,
+        difference: actualSize > 0 ? 1 : 0,
+        message: 'Expected file size is invalid (zero or negative)',
+      };
+    }
+
+    const difference = (actualSize - expectedSize) / expectedSize;
+    const valid = Math.abs(difference) <= tolerance;
+
+    const formatSize = (bytes: number) => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+    };
+
+    return {
+      valid,
+      actualSize,
+      expectedSize,
+      difference,
+      message: valid
+        ? `File size verified: ${formatSize(actualSize)} (expected ${formatSize(expectedSize)}, diff: ${(difference * 100).toFixed(2)}%)`
+        : `File size mismatch: ${formatSize(actualSize)} vs expected ${formatSize(expectedSize)} (diff: ${(difference * 100).toFixed(2)}%, tolerance: ${(tolerance * 100).toFixed(0)}%)`,
+    };
   }
 }
 
