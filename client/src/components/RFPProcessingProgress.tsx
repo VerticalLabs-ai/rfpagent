@@ -144,7 +144,7 @@ export function RFPProcessingProgressModal({
                 // Heartbeat received - connection is alive
                 break;
 
-              case 'shutdown':
+              case 'shutdown': {
                 console.log('📡 Server shutdown notification received');
                 setIsConnected(false);
                 eventSource?.close();
@@ -160,6 +160,7 @@ export function RFPProcessingProgressModal({
                   }
                 }, delay);
                 break;
+              }
 
               default:
                 console.log('📡 Unknown message type:', data.type);
@@ -395,7 +396,118 @@ export function RFPProcessingProgressModal({
                     <p className="text-sm text-red-700 dark:text-red-300">
                       {progress.error}
                     </p>
-                    {/* SAM.gov workspace URL guidance */}
+
+                    {/* SAM.gov 503 error guidance */}
+                    {(progress.error.toLowerCase().includes('503') ||
+                      progress.error
+                        .toLowerCase()
+                        .includes('temporarily unavailable')) && (
+                      <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
+                          ⏳ SAM.gov is Temporarily Unavailable
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+                          This is a temporary issue with SAM.gov&apos;s servers.
+                          You can:
+                        </p>
+                        <ol className="text-sm text-amber-700 dark:text-amber-300 list-decimal list-inside space-y-1">
+                          <li>Wait 2-5 minutes and try again</li>
+                          <li>
+                            Check SAM.gov status at{' '}
+                            <a
+                              href="https://sam.gov/content/status"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-amber-900 dark:hover:text-amber-100"
+                            >
+                              sam.gov/content/status
+                            </a>
+                          </li>
+                          <li>
+                            Try during off-peak hours (early morning or late
+                            evening)
+                          </li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* SAM.gov API key not configured */}
+                    {(progress.error.toLowerCase().includes('api_key') ||
+                      progress.error
+                        .toLowerCase()
+                        .includes('not configured')) && (
+                      <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md">
+                        <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          🔑 API Key Configuration Required
+                        </p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                          To import SAM.gov opportunities, an API key is
+                          required:
+                        </p>
+                        <ol className="text-sm text-blue-700 dark:text-blue-300 list-decimal list-inside space-y-1">
+                          <li>
+                            Visit{' '}
+                            <a
+                              href="https://sam.gov/content/entity-registration"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:text-blue-900 dark:hover:text-blue-100"
+                            >
+                              sam.gov API registration
+                            </a>
+                          </li>
+                          <li>Register for API access (free)</li>
+                          <li>
+                            Add the key to your environment as SAM_GOV_API_KEY
+                          </li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* SAM.gov rate limit */}
+                    {(progress.error.toLowerCase().includes('rate limit') ||
+                      progress.error.toLowerCase().includes('429')) && (
+                      <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-950/50 border border-orange-200 dark:border-orange-800 rounded-md">
+                        <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                          ⏱️ Rate Limit Reached
+                        </p>
+                        <p className="text-sm text-orange-700 dark:text-orange-300">
+                          SAM.gov limits API requests. Please wait 5-10 minutes
+                          before trying again. The system will automatically
+                          retry with appropriate delays.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* SAM.gov opportunity not found */}
+                    {(progress.error.toLowerCase().includes('not found') ||
+                      progress.error.toLowerCase().includes('archived') ||
+                      progress.error.toLowerCase().includes('withdrawn')) && (
+                      <div className="mt-3 p-3 bg-gray-50 dark:bg-gray-950/50 border border-gray-200 dark:border-gray-800 rounded-md">
+                        <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
+                          📋 Opportunity Not Available
+                        </p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                          This opportunity may no longer be available. To
+                          verify:
+                        </p>
+                        <ol className="text-sm text-gray-700 dark:text-gray-300 list-decimal list-inside space-y-1">
+                          <li>
+                            Visit SAM.gov directly and search for this
+                            opportunity
+                          </li>
+                          <li>
+                            Check if the opportunity has been archived or
+                            withdrawn
+                          </li>
+                          <li>
+                            Ensure the URL is for a currently active opportunity
+                          </li>
+                        </ol>
+                      </div>
+                    )}
+
+                    {/* SAM.gov workspace URL guidance (existing) */}
                     {progress.error.toLowerCase().includes('workspace') &&
                       progress.error.toLowerCase().includes('sam.gov') && (
                         <div className="mt-3 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-md">

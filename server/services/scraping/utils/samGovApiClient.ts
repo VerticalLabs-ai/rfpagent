@@ -51,9 +51,9 @@ export interface RetryConfig {
 }
 
 const DEFAULT_RETRY_CONFIG: RetryConfig = {
-  maxRetries: 3,
-  initialDelayMs: 1000,
-  maxDelayMs: 10000,
+  maxRetries: 5, // Extended from 3 for SAM.gov's intermittent 503s
+  initialDelayMs: 2000, // Start with 2s delay
+  maxDelayMs: 30000, // Allow up to 30s between retries
   backoffMultiplier: 2,
 };
 
@@ -206,7 +206,9 @@ export class SAMGovApiClient {
    */
   private async executeWithRetry<T>(fn: () => Promise<T>): Promise<T> {
     let lastError: Error | null = null;
-    let delay = this.retryConfig.initialDelayMs;
+    let lastResponse:
+      | { headers?: Record<string, string>; status?: number }
+      | undefined;
 
     for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
       try {
@@ -214,35 +216,78 @@ export class SAMGovApiClient {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
+        // Extract response for retry calculation
+        if (axios.isAxiosError(error)) {
+          lastResponse = {
+            headers: error.response?.headers as
+              | Record<string, string>
+              | undefined,
+            status: error.response?.status,
+          };
+        }
+
         // Check if error is retryable
         if (!this.isRetryableError(error)) {
           logger.error('SAM.gov API non-retryable error', lastError, {
             attempt,
+            status: lastResponse?.status,
           });
           throw lastError;
         }
 
         if (attempt < this.retryConfig.maxRetries) {
+          const delay = this.getRetryDelay(lastResponse, attempt);
+
           logger.warn('SAM.gov API request failed, retrying', {
             attempt: attempt + 1,
             maxRetries: this.retryConfig.maxRetries,
             delayMs: delay,
+            status: lastResponse?.status,
             error: lastError.message,
           });
 
           await this.sleep(delay);
-          delay = Math.min(
-            delay * this.retryConfig.backoffMultiplier,
-            this.retryConfig.maxDelayMs
-          );
         }
       }
     }
 
     logger.error('SAM.gov API request failed after all retries', lastError!, {
       maxRetries: this.retryConfig.maxRetries,
+      lastStatus: lastResponse?.status,
     });
     throw lastError;
+  }
+
+  /**
+   * Get retry delay, respecting Retry-After header if present
+   */
+  private getRetryDelay(
+    response: { headers?: Record<string, string>; status?: number } | undefined,
+    attempt: number
+  ): number {
+    // Check for Retry-After header (seconds or date)
+    const retryAfter = response?.headers?.['retry-after'];
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      if (!isNaN(seconds)) {
+        // Add some jitter to avoid thundering herd
+        const jitter = Math.random() * 1000;
+        return Math.min(seconds * 1000 + jitter, this.retryConfig.maxDelayMs);
+      }
+      // Try parsing as date
+      const date = Date.parse(retryAfter);
+      if (!isNaN(date)) {
+        const delayMs = Math.max(0, date - Date.now());
+        return Math.min(delayMs, this.retryConfig.maxDelayMs);
+      }
+    }
+
+    // Use exponential backoff with jitter
+    const exponentialDelay =
+      this.retryConfig.initialDelayMs *
+      Math.pow(this.retryConfig.backoffMultiplier, attempt);
+    const jitter = Math.random() * this.retryConfig.initialDelayMs;
+    return Math.min(exponentialDelay + jitter, this.retryConfig.maxDelayMs);
   }
 
   /**

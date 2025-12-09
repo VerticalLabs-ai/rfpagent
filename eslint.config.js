@@ -21,6 +21,9 @@ export default [
       'k8s/',
       'monitoring/',
       'nginx/',
+      '**/__tests__/**/*.test.ts',
+      '**/__tests__/**/*.test.tsx',
+      'tests/**/*.test.ts',
     ],
   },
   {

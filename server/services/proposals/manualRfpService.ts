@@ -136,31 +136,42 @@ export class ManualRfpService {
       // TC002 Timeout Fix: Skip fallback methods to avoid timeout
       // Fallbacks can take minutes and cause 15-minute test timeout
       if (!scrapingResult || !scrapingResult.rfp) {
-        progressTracker.updateStep(
-          sessionId,
-          'page_navigation',
-          'failed',
-          'Primary extraction failed - RFP URL may be incompatible'
-        );
+        // Extract detailed error if available from scraping result
+        const errorFromScraping = scrapingResult?.errors?.[0];
 
         // Generate contextual error message based on URL pattern
         const errorDetails = this.getContextualErrorMessage(input.url);
 
+        // Combine error sources for maximum detail
+        const fullErrorMessage = errorFromScraping
+          ? `${errorDetails.error}: ${errorFromScraping}`
+          : errorDetails.error;
+
+        const fullGuidance = errorDetails.guidance;
+
         console.error(
-          `[ManualRfpService] ${errorDetails.error}:`,
+          `[ManualRfpService] ${fullErrorMessage}:`,
           input.url,
-          errorDetails.guidance
+          fullGuidance
+        );
+
+        progressTracker.updateStep(
+          sessionId,
+          'page_navigation',
+          'failed',
+          fullErrorMessage
         );
 
         progressTracker.failTracking(
           sessionId,
-          `${errorDetails.error}. ${errorDetails.guidance}`
+          `${fullErrorMessage}. ${fullGuidance}`
         );
+
         return {
           success: false,
           sessionId,
-          error: errorDetails.error,
-          message: `${errorDetails.error}. ${errorDetails.guidance}`,
+          error: fullErrorMessage,
+          message: `${fullErrorMessage}. ${fullGuidance}`,
         };
       }
 
@@ -248,18 +259,34 @@ export class ManualRfpService {
         } documents were downloaded.`,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
+
       console.error('[ManualRfpService] Error processing manual RFP:', error);
+
+      // Preserve detailed error message for SAM.gov and other specific errors
+      const isDetailedError =
+        errorMessage.includes('SAM.gov') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('API') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('authentication') ||
+        errorMessage.includes('timeout');
+
       progressTracker.failTracking(
         sessionId,
-        error instanceof Error ? error.message : 'Unknown error'
+        isDetailedError
+          ? errorMessage
+          : 'An unexpected error occurred during processing'
       );
 
       return {
         success: false,
         sessionId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        message:
-          'Failed to process the RFP URL. Please try again or contact support.',
+        error: errorMessage,
+        message: isDetailedError
+          ? errorMessage
+          : 'Failed to process the RFP URL. Please try again or contact support.',
       };
     }
   }

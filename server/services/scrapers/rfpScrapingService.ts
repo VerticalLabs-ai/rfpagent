@@ -544,10 +544,19 @@ export class RFPScrapingService {
   private async extractSAMGovRFPData(url: string) {
     console.log('🏛️ Using SAM.gov API-based extraction');
 
+    // Validate API key is configured
+    const apiKey = process.env.SAM_GOV_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'your-sam-gov-api-key') {
+      throw new Error(
+        'SAM_GOV_API_KEY is not configured. Please add a valid SAM.gov API key to your environment variables. ' +
+          'You can obtain one at https://sam.gov/content/entity-registration'
+      );
+    }
+
     // Check if this is a search URL
     if (url.includes('/search') || url.includes('searchCriteria')) {
       throw new Error(
-        'SAM.gov search URLs are not supported. Please provide a direct link to an opportunity.'
+        'SAM.gov search URLs are not supported. Please provide a direct link to an opportunity (format: sam.gov/opp/{id}/view).'
       );
     }
 
@@ -555,81 +564,146 @@ export class RFPScrapingService {
     const noticeId = samGovApiClient.extractNoticeIdFromUrl(url);
     if (!noticeId) {
       throw new Error(
-        'Could not extract noticeId from SAM.gov URL. Please provide a valid opportunity URL.'
+        'Could not extract noticeId from SAM.gov URL. Please ensure the URL is in format: sam.gov/opp/{id}/view'
       );
     }
 
     console.log(`🔍 Extracted noticeId from URL: ${noticeId}`);
 
-    // Fetch opportunity data from SAM.gov API
-    const opportunity = await samGovApiClient.getOpportunityById(noticeId);
+    try {
+      // Fetch opportunity data from SAM.gov API
+      const opportunity = await samGovApiClient.getOpportunityById(noticeId);
 
-    if (!opportunity) {
+      if (!opportunity) {
+        throw new Error(
+          `SAM.gov opportunity "${noticeId}" not found. Possible causes:\n` +
+            '1. The opportunity has been archived or withdrawn\n' +
+            '2. The opportunity ID is invalid\n' +
+            '3. Access may be restricted\n\n' +
+            'Please verify the opportunity is still active at sam.gov'
+        );
+      }
+
+      console.log(`✅ Found SAM.gov opportunity: ${opportunity.title}`);
+
+      // Extract documents from resourceLinks
+      const documents = (opportunity.resourceLinks || []).map(link => ({
+        name: link.split('/').pop() || 'Document',
+        url: link,
+        type: this.inferDocumentType(link),
+      }));
+
+      // Build contact info (prefer 'primary' type)
+      const primaryContact = opportunity.pointOfContact?.find(
+        poc => poc.type === 'primary'
+      );
+      const anyContact = opportunity.pointOfContact?.[0];
+      const contact = primaryContact || anyContact;
+
+      // Build agency name from department/office hierarchy
+      const agencyParts = [
+        opportunity.department,
+        opportunity.subTier,
+        opportunity.office,
+      ].filter(Boolean);
+      const agency = agencyParts.join(' - ') || 'Federal Government';
+
+      // Format estimated value
+      let estimatedValue: string | null = null;
+      if (opportunity.awardCeiling || opportunity.awardFloor) {
+        const ceiling = opportunity.awardCeiling
+          ? `$${opportunity.awardCeiling.toLocaleString()}`
+          : '';
+        const floor = opportunity.awardFloor
+          ? `$${opportunity.awardFloor.toLocaleString()}`
+          : '';
+
+        if (ceiling && floor) {
+          estimatedValue = `${floor} - ${ceiling}`;
+        } else {
+          estimatedValue = ceiling || floor;
+        }
+      }
+
+      return {
+        data: {
+          title: opportunity.title,
+          agency,
+          description: opportunity.description || '',
+          deadline: opportunity.responseDeadLine || null,
+          estimatedValue,
+          contactName: contact?.fullName || null,
+          contactEmail: contact?.email || null,
+          contactPhone: contact?.phone || null,
+          solicitation_number: opportunity.solicitationNumber || noticeId,
+          questions_due_date: null,
+          conference_date: null,
+          pre_bid_meeting: null,
+          documents,
+        },
+        success: true,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      // Enhanced error handling with actionable messages
+      if (error instanceof Error) {
+        const errorMessage = error.message.toLowerCase();
+
+        if (
+          errorMessage.includes('503') ||
+          errorMessage.includes('unavailable')
+        ) {
+          throw new Error(
+            'SAM.gov is temporarily unavailable (503 error). This typically resolves within a few minutes. ' +
+              'Please try again shortly. If the problem persists, check https://sam.gov/content/status for system status.'
+          );
+        }
+
+        if (
+          errorMessage.includes('429') ||
+          errorMessage.includes('rate limit')
+        ) {
+          throw new Error(
+            'SAM.gov API rate limit reached. Please wait a few minutes before trying again. ' +
+              'The system will automatically retry with appropriate delays.'
+          );
+        }
+
+        if (
+          errorMessage.includes('401') ||
+          errorMessage.includes('403') ||
+          errorMessage.includes('unauthorized')
+        ) {
+          throw new Error(
+            'SAM.gov API authentication failed. Please verify your SAM_GOV_API_KEY is valid and has not expired.'
+          );
+        }
+
+        if (
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('network')
+        ) {
+          throw new Error(
+            'Network timeout connecting to SAM.gov. Please check your internet connection and try again.'
+          );
+        }
+
+        // Re-throw with original message if it's already descriptive
+        if (
+          error.message.includes('SAM.gov') ||
+          error.message.includes('noticeId')
+        ) {
+          throw error;
+        }
+      }
+
+      // Generic fallback
+      console.error('❌ SAM.gov API extraction failed:', error);
       throw new Error(
-        `SAM.gov opportunity ${noticeId} not found. It may have been archived or withdrawn.`
+        `Failed to extract SAM.gov opportunity: ${error instanceof Error ? error.message : 'Unknown error'}. ` +
+          'Please verify the URL and try again.'
       );
     }
-
-    console.log(`✅ Found SAM.gov opportunity: ${opportunity.title}`);
-
-    // Extract documents from resourceLinks
-    const documents = (opportunity.resourceLinks || []).map(link => ({
-      name: link.split('/').pop() || 'Document',
-      url: link,
-      type: this.inferDocumentType(link),
-    }));
-
-    // Build contact info (prefer 'primary' type)
-    const primaryContact = opportunity.pointOfContact?.find(
-      poc => poc.type === 'primary'
-    );
-    const anyContact = opportunity.pointOfContact?.[0];
-    const contact = primaryContact || anyContact;
-
-    // Build agency name from department/office hierarchy
-    const agencyParts = [
-      opportunity.department,
-      opportunity.subTier,
-      opportunity.office,
-    ].filter(Boolean);
-    const agency = agencyParts.join(' - ') || 'Federal Government';
-
-    // Format estimated value
-    let estimatedValue: string | null = null;
-    if (opportunity.awardCeiling || opportunity.awardFloor) {
-      const ceiling = opportunity.awardCeiling
-        ? `$${opportunity.awardCeiling.toLocaleString()}`
-        : '';
-      const floor = opportunity.awardFloor
-        ? `$${opportunity.awardFloor.toLocaleString()}`
-        : '';
-
-      if (ceiling && floor) {
-        estimatedValue = `${floor} - ${ceiling}`;
-      } else {
-        estimatedValue = ceiling || floor;
-      }
-    }
-
-    return {
-      data: {
-        title: opportunity.title,
-        agency,
-        description: opportunity.description || '',
-        deadline: opportunity.responseDeadLine || null,
-        estimatedValue,
-        contactName: contact?.fullName || null,
-        contactEmail: contact?.email || null,
-        contactPhone: contact?.phone || null,
-        solicitation_number: opportunity.solicitationNumber || noticeId,
-        questions_due_date: null,
-        conference_date: null,
-        pre_bid_meeting: null,
-        documents,
-      },
-      success: true,
-      timestamp: new Date().toISOString(),
-    };
   }
 
   /**
