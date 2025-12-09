@@ -599,6 +599,35 @@ export class MastraScrapingService {
         status: 'active',
       });
 
+      // SAM.gov special handling - use REST API directly instead of browser automation
+      if (this.isSAMGovPortal(portal)) {
+        console.log(
+          `🏛️ SAM.gov detected: Using REST API for discovery (faster, more reliable)`
+        );
+        try {
+          const opportunities = await this.scrapeViaSAMGovApi(
+            portal,
+            searchFilter
+          );
+
+          // Process discovered opportunities
+          for (const opportunity of opportunities) {
+            await this.processOpportunity(opportunity, portal, null);
+          }
+
+          console.log(
+            `✅ SAM.gov API scrape completed: found ${opportunities.length} opportunities`
+          );
+          return;
+        } catch (apiError) {
+          console.error(
+            `⚠️ SAM.gov API failed, falling back to browser automation:`,
+            apiError
+          );
+          // Continue to browser automation as fallback
+        }
+      }
+
       // Select appropriate agent based on portal type
       const agent = this.selectAgent(portal);
 
@@ -3720,6 +3749,212 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     }
 
     return Array.from(new Set(jsonBlocks)); // Remove duplicates
+  }
+
+  /**
+   * Check if portal is SAM.gov
+   */
+  private isSAMGovPortal(portal: Portal): boolean {
+    const url = portal.url.toLowerCase();
+    const name = portal.name.toLowerCase();
+    return (
+      url.includes('sam.gov') ||
+      name.includes('sam.gov') ||
+      name.includes('sam_gov')
+    );
+  }
+
+  /**
+   * Scan portal and automatically download discovered documents
+   *
+   * This method combines portal scraping with document downloading:
+   * 1. Navigates to the RFP detail page
+   * 2. Discovers and clicks download links for attachments
+   * 3. Retrieves downloaded files from Browserbase cloud storage
+   * 4. Verifies file sizes and stores in database
+   */
+  async scanPortalWithDocuments(input: {
+    rfpId: string;
+    portalUrl: string;
+    sessionId?: string;
+    expectedDocuments?: Array<{
+      name: string;
+      expectedSize?: number;
+      sourceUrl?: string;
+    }>;
+  }): Promise<{
+    scrapedData: any;
+    documentsResult: any;
+  }> {
+    const { rfpId, portalUrl, sessionId = 'default', expectedDocuments = [] } = input;
+    const log = console;
+
+    log.log('🚀 Starting portal scan with document downloads', { rfpId, portalUrl });
+
+    try {
+      // Step 1: Navigate to RFP page and discover documents
+      const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+
+      await page.goto(portalUrl, { waitUntil: 'domcontentloaded' });
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for dynamic content
+
+      // Step 2: Discover document download links
+      log.log('🔍 Discovering document download links');
+      const documentLinks = await stagehand.extract(
+        'Find all document download links, attachment links, or file download buttons on this page',
+        {
+          documents: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string', description: 'Document filename or description' },
+                url: { type: 'string', optional: true, description: 'Download URL if visible' },
+                size: { type: 'string', optional: true, description: 'File size if shown' },
+              },
+            },
+          },
+        } as any
+      );
+
+      const documentsArray = (documentLinks as any).documents || [];
+      log.log('📋 Document links discovered', { count: documentsArray.length });
+
+      // Step 3: Click each download link to trigger downloads
+      for (const doc of documentsArray) {
+        try {
+          log.log('⬇️ Triggering download', { document: doc.name });
+          await stagehand.act(`Click the download link or button for "${doc.name}"`);
+          // Small delay between downloads to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (e) {
+          log.log('⚠️ Failed to click download for document', { document: doc.name, error: (e as Error).message });
+        }
+      }
+
+      // Step 4: Wait for downloads to complete in Browserbase cloud
+      log.log('⏳ Waiting for downloads to sync to Browserbase cloud storage');
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // Step 5: Retrieve and process downloads
+      const browserbaseSessionId = sessionManager.getBrowserbaseSessionId(sessionId);
+      if (!browserbaseSessionId) {
+        throw new Error('Browserbase session ID not found - cannot retrieve downloads');
+      }
+
+      // Import the orchestrator dynamically to avoid circular dependencies
+      const { documentDownloadOrchestrator } = await import('../downloads/documentDownloadOrchestrator');
+
+      // Merge discovered documents with expected documents for verification
+      const allExpectedDocs = [
+        ...expectedDocuments,
+        ...documentsArray.map((d: any) => ({
+          name: d.name,
+          expectedSize: d.size ? this.parseSizeString(d.size) : undefined,
+        })),
+      ];
+
+      const documentsResult = await documentDownloadOrchestrator.processRfpDocuments({
+        rfpId,
+        browserbaseSessionId,
+        expectedDocuments: allExpectedDocs,
+        retryForSeconds: 30,
+      });
+
+      log.log('✅ Document download orchestration complete', {
+        processed: documentsResult.totalDownloaded,
+        failed: documentsResult.totalFailed,
+      });
+
+      return {
+        scrapedData: documentLinks,
+        documentsResult,
+      };
+    } catch (error) {
+      log.error('❌ Portal scan with documents failed', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Parse size string like "279.93 KB" to bytes
+   */
+  private parseSizeString(sizeStr: string): number | undefined {
+    const match = sizeStr.match(/^([\d.]+)\s*(B|KB|MB|GB)$/i);
+    if (!match) return undefined;
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+
+    const multipliers: Record<string, number> = {
+      'B': 1,
+      'KB': 1024,
+      'MB': 1024 * 1024,
+      'GB': 1024 * 1024 * 1024,
+    };
+
+    return Math.round(value * (multipliers[unit] || 1));
+  }
+
+  /**
+   * Scrape SAM.gov using REST API (faster, more reliable than browser automation)
+   */
+  private async scrapeViaSAMGovApi(
+    portal: Portal,
+    searchFilter?: string
+  ): Promise<any[]> {
+    const { SAMGovApiClient } = await import('../scraping/utils/samGovApiClient');
+    const client = new SAMGovApiClient();
+
+    // Build search filters
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Format dates as MM/dd/yyyy for SAM.gov API
+    const formatDate = (date: Date): string => {
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${month}/${day}/${year}`;
+    };
+
+    const filters: any = {
+      postedFrom: formatDate(thirtyDaysAgo),
+      postedTo: formatDate(today),
+      limit: portal.maxRfpsPerScan || 50,
+    };
+
+    if (searchFilter) {
+      filters.keywords = searchFilter;
+    }
+
+    console.log(`🔍 Searching SAM.gov API with filters:`, filters);
+
+    // Use the API client with retry logic
+    const results = await client.searchWithRetry(filters);
+
+    console.log(
+      `📦 SAM.gov API returned ${results.opportunitiesData?.length || 0} opportunities`
+    );
+
+    // Convert to opportunity format
+    return (results.opportunitiesData || []).map((opp: any) => ({
+      title: opp.title || opp.solicitationNumber || 'Untitled Opportunity',
+      solicitationId: opp.solicitationNumber,
+      description: opp.description || opp.additionalInfoLink || '',
+      agency:
+        opp.department ||
+        opp.subTier ||
+        opp.fullParentPathName ||
+        'Federal Government',
+      deadline: opp.responseDeadLine,
+      estimatedValue: opp.award?.amount?.toString(),
+      url: opp.noticeId
+        ? `https://sam.gov/opp/${opp.noticeId}/view`
+        : `https://sam.gov`,
+      category: opp.type || 'Solicitation',
+      confidence: 0.95, // High confidence from official API
+    }));
   }
 }
 
