@@ -13,6 +13,7 @@ export interface PageWithContent {
 // Session manager for consistent Browserbase sessions
 export class BrowserbaseSessionManager {
   private sessions: Map<string, Stagehand> = new Map();
+  private browserbaseSessionIds: Map<string, string> = new Map(); // Track BB session IDs
   private defaultSessionId = 'default';
 
   async ensureStagehand(
@@ -50,6 +51,15 @@ export class BrowserbaseSessionManager {
 
       await stagehand.init();
       this.sessions.set(sessionId, stagehand);
+
+      // Store the Browserbase session ID from the initialized stagehand
+      // The browserbaseSessionId property is available after init()
+      const bbSessionId = (stagehand as any).browserbaseSessionId;
+
+      if (bbSessionId) {
+        this.browserbaseSessionIds.set(sessionId, bbSessionId);
+        console.log(`📌 Browserbase session ID stored: ${bbSessionId}`);
+      }
 
       console.log(
         `✅ Browserbase session ${sessionId} initialized successfully`
@@ -99,12 +109,21 @@ export class BrowserbaseSessionManager {
     return { stagehand, page: pages[0] as unknown as PageWithContent };
   }
 
+  /**
+   * Get the Browserbase session ID for a given local session
+   * Required for accessing Browserbase cloud features like downloads
+   */
+  getBrowserbaseSessionId(sessionId: string = this.defaultSessionId): string | undefined {
+    return this.browserbaseSessionIds.get(sessionId);
+  }
+
   async closeSession(sessionId: string): Promise<void> {
     const stagehand = this.sessions.get(sessionId);
     if (stagehand) {
       try {
         await stagehand.close();
         this.sessions.delete(sessionId);
+        this.browserbaseSessionIds.delete(sessionId); // Clean up BB session ID
         console.log(`🔒 Browserbase session ${sessionId} closed`);
       } catch (error) {
         console.warn(`⚠️ Error closing session ${sessionId}:`, error);
