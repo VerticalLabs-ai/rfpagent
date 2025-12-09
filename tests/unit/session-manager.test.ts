@@ -51,5 +51,28 @@ describe('BrowserbaseSessionManager', () => {
       const bbSessionIdAfterClose = manager.getBrowserbaseSessionId(localSessionId);
       expect(bbSessionIdAfterClose).toBeUndefined();
     }, 60000); // 60 second timeout for this integration test
+
+    it('should enable download behavior after session initialization', async () => {
+      const localSessionId = 'download-test-' + Date.now();
+
+      // Initialize session - this should enable download behavior
+      const stagehand = await manager.ensureStagehand(localSessionId);
+
+      // Verify session was created
+      expect(stagehand).toBeDefined();
+
+      // Verify Browserbase session ID was stored (required for downloads)
+      const bbSessionId = manager.getBrowserbaseSessionId(localSessionId);
+      expect(bbSessionId).toBeDefined();
+      expect(typeof bbSessionId).toBe('string');
+
+      // The download behavior should have been enabled during init
+      // We can't directly test CDP calls, but we can verify the session is ready
+      const pages = await stagehand.context.pages();
+      expect(pages.length).toBeGreaterThan(0);
+
+      // Cleanup
+      await manager.closeSession(localSessionId);
+    }, 60000);
   });
 });

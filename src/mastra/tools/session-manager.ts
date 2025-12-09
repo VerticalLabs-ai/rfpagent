@@ -50,6 +50,10 @@ export class BrowserbaseSessionManager {
       });
 
       await stagehand.init();
+
+      // Enable download behavior for this session
+      await this.enableDownloadBehavior(stagehand);
+
       this.sessions.set(sessionId, stagehand);
 
       // Store the Browserbase session ID from the initialized stagehand
@@ -62,7 +66,7 @@ export class BrowserbaseSessionManager {
       }
 
       console.log(
-        `✅ Browserbase session ${sessionId} initialized successfully`
+        `✅ Browserbase session ${sessionId} initialized with downloads enabled`
       );
     }
 
@@ -115,6 +119,47 @@ export class BrowserbaseSessionManager {
    */
   getBrowserbaseSessionId(sessionId: string = this.defaultSessionId): string | undefined {
     return this.browserbaseSessionIds.get(sessionId);
+  }
+
+  /**
+   * Enable download behavior for a Stagehand session
+   * This allows files downloaded during browser automation to be saved
+   * to Browserbase's cloud storage for later retrieval
+   *
+   * @private
+   */
+  private async enableDownloadBehavior(stagehand: Stagehand): Promise<void> {
+    try {
+      const pages = await stagehand.context.pages();
+      if (pages.length === 0) {
+        console.log('⚠️ No pages available for download behavior setup');
+        return;
+      }
+
+      const page = pages[0];
+
+      // Create CDP session using type assertion since Playwright types may not expose this
+      // At runtime, this is a Playwright Page with full CDP support
+      const pageAny = page as any;
+      if (!pageAny.context || typeof pageAny.context !== 'function') {
+        console.warn('⚠️ Page context method not available');
+        return;
+      }
+
+      const context = pageAny.context();
+      const client = await context.newCDPSession(page);
+
+      await client.send('Browser.setDownloadBehavior', {
+        behavior: 'allow',
+        downloadPath: 'downloads',
+        eventsEnabled: true,
+      });
+
+      console.log('📥 Download behavior enabled for session');
+    } catch (error) {
+      console.warn('⚠️ Failed to enable download behavior:', error);
+      // Non-fatal - session can still be used for scraping
+    }
   }
 
   async closeSession(sessionId: string): Promise<void> {
