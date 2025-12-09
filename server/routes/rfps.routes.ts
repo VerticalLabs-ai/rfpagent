@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { Router } from 'express';
 import { z } from 'zod';
-import { insertRfpSchema } from '@shared/schema';
+import { insertRfpSchema, documents, rfps } from '@shared/schema';
 import { NaturalLanguageSearchRequestSchema } from '@shared/searchTypes';
 import { ObjectStorageService } from '../objectStorage';
 import { DocumentParsingService } from '../services/processing/documentParsingService';
@@ -14,6 +14,9 @@ import { progressTracker } from '../services/monitoring/progressTracker';
 import { analysisOrchestrator } from '../services/orchestrators/analysisOrchestrator';
 import { storage } from '../storage';
 import { validateSchema, validateQuery } from '../middleware/zodValidation';
+import { documentDownloadOrchestrator } from '../services/downloads/documentDownloadOrchestrator';
+import { db } from '../db';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 const objectStorageService = new ObjectStorageService();
@@ -112,11 +115,109 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/documents', async (req, res) => {
   try {
     const { id } = req.params;
-    const documents = await storage.getDocumentsByRFP(id);
-    res.json(documents);
+
+    // Validate RFP exists
+    const rfp = await storage.getRFP(id);
+    if (!rfp) {
+      return res.status(404).json({
+        success: false,
+        error: 'RFP not found',
+      });
+    }
+
+    // Get documents using Drizzle ORM for consistency with new endpoint
+    const docs = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.rfpId, id))
+      .orderBy(documents.uploadedAt);
+
+    res.json({
+      success: true,
+      documents: docs,
+      total: docs.length,
+    });
   } catch (error) {
     console.error('Error getting RFP documents:', error);
-    res.status(500).json({ error: 'Failed to get RFP documents' });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get RFP documents',
+    });
+  }
+});
+
+/**
+ * Trigger document download from Browserbase session
+ * POST /api/rfps/:id/documents/download
+ */
+router.post('/:id/documents/download', async (req, res) => {
+  try {
+    const { id: rfpId } = req.params;
+    const { browserbaseSessionId, expectedDocuments } = req.body;
+
+    // Validate RFP exists
+    const rfp = await storage.getRFP(rfpId);
+    if (!rfp) {
+      return res.status(404).json({
+        success: false,
+        error: 'RFP not found',
+      });
+    }
+
+    // Validate required parameter
+    if (!browserbaseSessionId) {
+      return res.status(400).json({
+        success: false,
+        error: 'browserbaseSessionId is required',
+        message: 'Please provide the Browserbase session ID to retrieve downloads from',
+      });
+    }
+
+    console.log(
+      `📥 Starting document download for RFP ${rfpId} from Browserbase session ${browserbaseSessionId}`
+    );
+
+    // Process documents using the orchestrator
+    const result = await documentDownloadOrchestrator.processRfpDocuments({
+      rfpId,
+      browserbaseSessionId,
+      expectedDocuments: expectedDocuments || [],
+    });
+
+    console.log(
+      `✅ Document download complete: ${result.totalDownloaded} processed, ${result.totalFailed} failed`
+    );
+
+    // Create audit log
+    await storage.createAuditLog({
+      entityType: 'rfp',
+      entityId: rfpId,
+      action: 'documents_downloaded_browserbase',
+      details: {
+        browserbaseSessionId,
+        totalDownloaded: result.totalDownloaded,
+        totalFailed: result.totalFailed,
+        expectedCount: expectedDocuments?.length || 0,
+      },
+    });
+
+    res.json({
+      success: true,
+      rfpId,
+      processed: result.processed,
+      failed: result.failed,
+      totalDownloaded: result.totalDownloaded,
+      totalFailed: result.totalFailed,
+      processedAt: result.processedAt,
+      message: `Processed ${result.totalDownloaded} documents, ${result.totalFailed} failed`,
+    });
+  } catch (error) {
+    console.error('Error downloading RFP documents from Browserbase:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to download documents',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
 });
 
