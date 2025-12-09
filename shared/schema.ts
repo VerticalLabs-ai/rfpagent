@@ -183,6 +183,19 @@ export const documents = pgTable('documents', {
   extractedText: text('extracted_text'),
   parsedData: jsonb('parsed_data'),
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
+
+  // Download tracking fields
+  sourceUrl: text('source_url'), // Original URL where document was found
+  sourceSize: integer('source_size'), // Expected size in bytes from source metadata
+  downloadedSize: integer('downloaded_size'), // Actual size after download
+  downloadStatus: text('download_status', {
+    enum: ['pending', 'downloading', 'completed', 'failed', 'verified'],
+  }).default('pending'),
+  downloadError: text('download_error'), // Error message if download failed
+  verificationStatus: text('verification_status', {
+    enum: ['pending', 'passed', 'failed', 'skipped'],
+  }).default('pending'),
+  downloadedAt: timestamp('downloaded_at'), // When the download completed
 });
 
 export const submissions = pgTable(
