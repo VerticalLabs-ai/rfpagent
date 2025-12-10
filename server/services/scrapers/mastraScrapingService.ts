@@ -31,6 +31,7 @@ import {
 import { validateSAMGovUrl } from '../mastra/utils/urlValidation';
 import { austinFinanceDocumentScraper } from './austinFinanceDocumentScraper';
 import { SAMGovDocumentDownloader } from './samGovDocumentDownloader';
+import { getSAMGovStagehandScraper } from './samGovStagehandScraper';
 import {
   normalizePortalType,
   shouldUseAustinPortalExtraction,
@@ -292,19 +293,112 @@ export class MastraScrapingService {
         }
       }
 
-      // Special handling for SAM.gov URLs
+      // Special handling for SAM.gov URLs - use Stagehand scraper (director.ai pattern)
       if (portalType === 'sam.gov') {
         console.log(
-          `🎯 SAM.gov detected: Using specialized SAM.gov document downloader`
+          `🎯 SAM.gov detected: Using Stagehand browser automation (director.ai pattern)`
         );
         try {
-          // Extract notice ID from URL
-          const noticeIdMatch = url.match(/opp-([^/]+)|opportunity\/([^/]+)/i);
+          // Primary approach: Use Stagehand scraper with page.extract() and page.act()
+          const samGovScraper = getSAMGovStagehandScraper();
+          const stagehandResult = await samGovScraper.scrapeOpportunity(url);
+
+          if (stagehandResult.success && stagehandResult.rfpData) {
+            console.log(
+              `✅ SAM.gov Stagehand extraction successful: ${stagehandResult.rfpData.title}`
+            );
+
+            // Update existing RFP with extracted data if we have an RFP ID
+            if (existingRfpId) {
+              const rfpData = stagehandResult.rfpData;
+              await storage.updateRFP(existingRfpId, {
+                title: rfpData.title || undefined,
+                description: rfpData.description || undefined,
+                agency: rfpData.department || rfpData.office || undefined,
+                deadline: rfpData.dateOffersDue
+                  ? new Date(rfpData.dateOffersDue)
+                  : undefined,
+                estimatedValue: rfpData.estimatedValue || undefined,
+                status: 'parsing',
+                progress: 25,
+                updatedAt: new Date(),
+                metadata: {
+                  noticeId: rfpData.noticeId,
+                  opportunityType: rfpData.opportunityType,
+                  naicsCode: rfpData.naicsCode,
+                  setAside: rfpData.setAside,
+                  productServiceCode: rfpData.productServiceCode,
+                  placeOfPerformance: rfpData.placeOfPerformance,
+                  primaryContact: rfpData.primaryContact,
+                  primaryContactEmail: rfpData.primaryContactEmail,
+                  scrapedAt: new Date().toISOString(),
+                  scraperVersion: 'stagehand-v1',
+                },
+              });
+            }
+
+            // Process downloaded documents if download was triggered
+            if (
+              stagehandResult.downloadTriggered &&
+              stagehandResult.browserbaseSessionId &&
+              existingRfpId
+            ) {
+              try {
+                const { documentDownloadOrchestrator } = await import(
+                  '../downloads/documentDownloadOrchestrator'
+                );
+
+                const docsResult =
+                  await documentDownloadOrchestrator.processRfpDocuments({
+                    rfpId: existingRfpId,
+                    browserbaseSessionId: stagehandResult.browserbaseSessionId,
+                    expectedDocuments: [],
+                    retryForSeconds: 30,
+                  });
+
+                documentsCount = docsResult.totalDownloaded;
+                console.log(
+                  `✅ SAM.gov documents downloaded: ${documentsCount}`
+                );
+              } catch (docError) {
+                console.warn(
+                  `⚠️ Document download processing failed:`,
+                  docError
+                );
+              }
+            }
+
+            return {
+              success: true,
+              message: `SAM.gov RFP scraped successfully using Stagehand automation`,
+              documentsCount,
+              opportunities: 1,
+              rfpData: stagehandResult.rfpData,
+            };
+          }
+        } catch (stagehandError) {
+          console.warn(
+            `⚠️ SAM.gov Stagehand scraper failed, trying API fallback:`,
+            stagehandError
+          );
+        }
+
+        // Fallback: Try API-based document downloader
+        try {
+          const noticeIdMatch = url.match(
+            /opp\/([^/]+)|opp-([^/]+)|opportunity\/([^/]+)|workspace\/contract\/opp\/([^/]+)/i
+          );
           const noticeId = noticeIdMatch
-            ? noticeIdMatch[1] || noticeIdMatch[2]
+            ? noticeIdMatch[1] ||
+              noticeIdMatch[2] ||
+              noticeIdMatch[3] ||
+              noticeIdMatch[4]
             : null;
 
           if (noticeId && existingRfpId) {
+            console.log(
+              `🔄 Trying SAM.gov API downloader for notice: ${noticeId}`
+            );
             const samGovDocs = await this.samGovDownloader.downloadRFPDocuments(
               noticeId,
               existingRfpId
@@ -313,7 +407,7 @@ export class MastraScrapingService {
             if (samGovDocs && Array.isArray(samGovDocs)) {
               documentsCount = samGovDocs.length;
               console.log(
-                `✅ SAM.gov downloader captured ${documentsCount} documents`
+                `✅ SAM.gov API downloader captured ${documentsCount} documents`
               );
 
               return {
@@ -329,7 +423,7 @@ export class MastraScrapingService {
             );
           }
         } catch (samGovError) {
-          console.error(`❌ SAM.gov downloader failed:`, samGovError);
+          console.error(`❌ SAM.gov API downloader also failed:`, samGovError);
           // Fall back to general scraping
         }
       }
