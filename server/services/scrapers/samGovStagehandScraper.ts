@@ -15,8 +15,8 @@
 
 import { z } from 'zod';
 import { sessionManager } from '../../../src/mastra/tools/session-manager';
-import { logger } from '../../utils/logger';
 import { storage } from '../../storage';
+import { logger } from '../../utils/logger';
 
 /**
  * Schema for SAM.gov RFP extraction
@@ -30,7 +30,10 @@ const SAMGovRFPSchema = z.object({
     .optional()
     .describe('Type: Presolicitation, Solicitation, etc.'),
   status: z.string().optional().describe('Active, Inactive, etc.'),
-  inactiveDates: z.string().optional().describe('Inactive date range if applicable'),
+  inactiveDates: z
+    .string()
+    .optional()
+    .describe('Inactive date range if applicable'),
   dateOffersDue: z.string().optional().describe('Response/offers deadline'),
   publishedDate: z.string().optional().describe('Date originally posted'),
   department: z.string().optional().describe('Federal department'),
@@ -44,7 +47,10 @@ const SAMGovRFPSchema = z.object({
     .describe('Location for contract performance'),
   primaryContact: z.string().optional().describe('Primary POC name'),
   primaryContactEmail: z.string().optional().describe('Primary POC email'),
-  contractingOfficeAddress: z.string().optional().describe('Contracting office address'),
+  contractingOfficeAddress: z
+    .string()
+    .optional()
+    .describe('Contracting office address'),
   description: z.string().optional().describe('Full description/scope of work'),
   estimatedValue: z.string().optional().describe('Contract value or ceiling'),
   solicitationNumber: z
@@ -74,7 +80,7 @@ export interface SAMGovScrapingResult {
  */
 export class SAMGovStagehandScraper {
   private readonly DEFAULT_TIMEOUT = 30000;
-  private readonly DOWNLOAD_WAIT_TIMEOUT = 10000;
+  private readonly DOWNLOAD_WAIT_TIMEOUT = 15000;
 
   /**
    * Extract RFP details and trigger document downloads from a SAM.gov opportunity page
@@ -102,12 +108,12 @@ export class SAMGovStagehandScraper {
       }
 
       // Get Stagehand instance and page
-      const { stagehand, page } = await sessionManager.getStagehandAndPage(
-        effectiveSessionId
-      );
+      const { stagehand, page } =
+        await sessionManager.getStagehandAndPage(effectiveSessionId);
 
       // Store Browserbase session ID for later download retrieval
-      browserbaseSessionId = sessionManager.getBrowserbaseSessionId(effectiveSessionId);
+      browserbaseSessionId =
+        sessionManager.getBrowserbaseSessionId(effectiveSessionId);
 
       logger.info('Browserbase session initialized', {
         sessionId: effectiveSessionId,
@@ -135,7 +141,10 @@ export class SAMGovStagehandScraper {
       });
 
       // Step 3: Trigger document downloads by clicking Download All button
-      const downloadTriggered = await this.triggerDocumentDownloads(stagehand, page);
+      const downloadTriggered = await this.triggerDocumentDownloads(
+        stagehand,
+        page
+      );
 
       if (downloadTriggered) {
         logger.info('Document downloads triggered', {
@@ -144,7 +153,9 @@ export class SAMGovStagehandScraper {
         });
 
         // Wait for downloads to sync to Browserbase cloud storage
-        await new Promise(resolve => setTimeout(resolve, this.DOWNLOAD_WAIT_TIMEOUT));
+        await new Promise(resolve =>
+          setTimeout(resolve, this.DOWNLOAD_WAIT_TIMEOUT)
+        );
       }
 
       return {
@@ -199,7 +210,9 @@ export class SAMGovStagehandScraper {
       portalId,
       status: 'discovered' as const,
       progress: 10,
-      deadline: rfpData.dateOffersDue ? new Date(rfpData.dateOffersDue) : undefined,
+      deadline: rfpData.dateOffersDue
+        ? new Date(rfpData.dateOffersDue)
+        : undefined,
       estimatedValue: rfpData.estimatedValue,
       naicsCode: rfpData.naicsCode,
       setAside: rfpData.setAside,
@@ -233,7 +246,7 @@ export class SAMGovStagehandScraper {
       logger.info('Updated existing RFP with SAM.gov data', { rfpId });
     } else {
       // Create new RFP
-      const newRfp = await storage.createRFP(rfpRecord as any);
+      const newRfp = await storage.createRFP(rfpRecord);
       rfpId = newRfp.id;
       logger.info('Created new RFP from SAM.gov data', { rfpId });
     }
@@ -251,12 +264,13 @@ export class SAMGovStagehandScraper {
           '../downloads/documentDownloadOrchestrator'
         );
 
-        const docsResult = await documentDownloadOrchestrator.processRfpDocuments({
-          rfpId,
-          browserbaseSessionId: result.browserbaseSessionId,
-          expectedDocuments: [],
-          retryForSeconds: 30,
-        });
+        const docsResult =
+          await documentDownloadOrchestrator.processRfpDocuments({
+            rfpId,
+            browserbaseSessionId: result.browserbaseSessionId,
+            expectedDocuments: [],
+            retryForSeconds: 30,
+          });
 
         logger.info('Document download processing complete', {
           rfpId,
@@ -411,7 +425,10 @@ export class SAMGovStagehandScraper {
             try {
               const button2 = await page.$(selector);
               if (button2) await button2.click();
-            } catch {
+            } catch (e) {
+              logger.debug('Second download click failed (expected)', {
+                error: (e as Error).message,
+              });
               // Ignore second click errors
             }
 
@@ -440,7 +457,9 @@ export class SAMGovStagehandScraper {
         }
       }
 
-      logger.warn('No download buttons found or clickable on this SAM.gov page');
+      logger.warn(
+        'No download buttons found or clickable on this SAM.gov page'
+      );
       return false;
     } catch (error: any) {
       logger.error('Failed to trigger document downloads', error);

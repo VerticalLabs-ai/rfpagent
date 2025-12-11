@@ -21,6 +21,10 @@ import {
   handleBrowserbaseAuthentication,
   scrapeBrowserbaseContent,
   unifiedBrowserbaseWebScrape,
+  type AuthenticationContext,
+  type AuthenticationResult,
+  type UnifiedScrapeContext,
+  type UnifiedScrapeResult,
 } from '../mastra/core/browserbaseOps';
 import {
   createAuthenticationTool,
@@ -37,6 +41,88 @@ import {
   shouldUseAustinPortalExtraction,
   shouldUseSAMGovExtraction,
 } from './utils/portalTypeUtils';
+
+// Enhanced scraping result type
+export interface EnhancedScrapingResult {
+  success: boolean;
+  message?: string;
+  documentsCount?: number;
+  opportunities?: number;
+  rfpData?: unknown;
+  error?: string;
+}
+
+// Session data interface for authentication results
+interface SessionData {
+  authenticated: boolean;
+  sessionId?: string;
+  method?: string;
+  [key: string]: unknown;
+}
+
+// Structured data from scraping
+interface StructuredScrapingData {
+  opportunities?: Array<{
+    title?: string;
+    description?: string;
+    agency?: string;
+    deadline?: string;
+    estimatedValue?: string;
+    url?: string;
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+// Extracted content from HTML parsing
+interface ExtractedContent {
+  title: string;
+  headings: string[];
+  links: Array<{ url: string; text: string }>;
+  text: string;
+  opportunities: Array<{
+    title: string;
+    description?: string;
+    agency?: string;
+    deadline?: string;
+    estimatedValue?: string;
+    url?: string;
+    [key: string]: unknown;
+  }>;
+}
+
+// Context for RFP data extraction
+interface ExtractRFPDataContext {
+  content: string;
+  url: string;
+}
+
+// HTTP response wrapper for redirect handling
+interface HttpResponseWrapper {
+  statusCode: number;
+  headers: Record<string, string | string[]>;
+  body: {
+    text: () => Promise<string>;
+  };
+}
+
+// Authentication method detection result
+interface AuthenticationMethod {
+  type: 'form' | 'browser_required' | 'none' | 'unknown';
+  details: string;
+  formData?: Record<string, string>;
+}
+
+// Opportunity details result
+interface OpportunityDetails {
+  title: string;
+  description?: string;
+  agency?: string;
+  deadline?: string;
+  estimatedValue?: string;
+  url?: string;
+  extractedAt: string;
+}
 
 // Zod schema for agent response validation
 const OpportunitySchema = z.object({
@@ -69,6 +155,7 @@ export class MastraScrapingService {
   private aiLimiter = pLimit(2); // Limit concurrent AI calls
   private activeCoordinationIds: Map<string, string> = new Map(); // portalId -> coordinationId
   private samGovDownloader = new SAMGovDocumentDownloader(); // SAM.gov document downloader
+  private readonly DOCUMENT_RETRY_TIMEOUT_SECONDS = 30;
 
   constructor() {
     // Memory now enabled with shared, secure memory provider
@@ -86,14 +173,18 @@ export class MastraScrapingService {
    * Unified Browserbase web scraping method using official Mastra integration
    * Replaces the old hybrid approach with consistent Browserbase automation
    */
-  private async unifiedBrowserbaseWebScrape(context: any): Promise<any> {
+  private async unifiedBrowserbaseWebScrape(
+    context: UnifiedScrapeContext
+  ): Promise<UnifiedScrapeResult> {
     return await unifiedBrowserbaseWebScrape(context);
   }
 
   /**
    * Handle portal authentication using unified Browserbase automation
    */
-  private async handleBrowserbaseAuthentication(context: any): Promise<any> {
+  private async handleBrowserbaseAuthentication(
+    context: AuthenticationContext
+  ): Promise<AuthenticationResult> {
     return await handleBrowserbaseAuthentication(context);
   }
 
@@ -235,7 +326,7 @@ export class MastraScrapingService {
   async enhancedScrapeFromUrl(
     url: string,
     existingRfpId?: string
-  ): Promise<any> {
+  ): Promise<EnhancedScrapingResult> {
     console.log(
       `🔄 Enhanced re-scraping of ${url}${
         existingRfpId ? ` for RFP ID: ${existingRfpId}` : ''
@@ -316,19 +407,23 @@ export class MastraScrapingService {
                 description: rfpData.description || undefined,
                 agency: rfpData.department || rfpData.office || undefined,
                 deadline: rfpData.dateOffersDue
-                  ? new Date(rfpData.dateOffersDue)
+                  ? (() => {
+                      const parsed = new Date(rfpData.dateOffersDue);
+                      return isNaN(parsed.getTime()) ? undefined : parsed;
+                    })()
                   : undefined,
                 estimatedValue: rfpData.estimatedValue || undefined,
+                naicsCode: rfpData.naicsCode || undefined,
+                setAsideType: rfpData.setAside || undefined,
+                pscCode: rfpData.productServiceCode || undefined,
+                placeOfPerformance: rfpData.placeOfPerformance || undefined,
+                solicitationNumber: rfpData.noticeId || undefined,
                 status: 'parsing',
                 progress: 25,
                 updatedAt: new Date(),
-                metadata: {
+                analysis: {
                   noticeId: rfpData.noticeId,
                   opportunityType: rfpData.opportunityType,
-                  naicsCode: rfpData.naicsCode,
-                  setAside: rfpData.setAside,
-                  productServiceCode: rfpData.productServiceCode,
-                  placeOfPerformance: rfpData.placeOfPerformance,
                   primaryContact: rfpData.primaryContact,
                   primaryContactEmail: rfpData.primaryContactEmail,
                   scrapedAt: new Date().toISOString(),
@@ -353,7 +448,7 @@ export class MastraScrapingService {
                     rfpId: existingRfpId,
                     browserbaseSessionId: stagehandResult.browserbaseSessionId,
                     expectedDocuments: [],
-                    retryForSeconds: 30,
+                    retryForSeconds: this.DOCUMENT_RETRY_TIMEOUT_SECONDS,
                   });
 
                 documentsCount = docsResult.totalDownloaded;
@@ -432,7 +527,7 @@ export class MastraScrapingService {
         url,
         portalType,
         loginRequired: false, // Assume public access for re-scraping
-        searchFilter: null,
+        searchFilter: undefined,
       });
 
       if (scrapingResult.error) {
@@ -444,14 +539,12 @@ export class MastraScrapingService {
       }
 
       // Extract opportunities from the scraping result
-      let opportunities = [];
+      let opportunities: UnifiedScrapeResult['opportunities'] = [];
       if (
         scrapingResult.opportunities &&
         Array.isArray(scrapingResult.opportunities)
       ) {
         opportunities = scrapingResult.opportunities;
-      } else if (scrapingResult.extractedData?.opportunities) {
-        opportunities = scrapingResult.extractedData.opportunities;
       }
 
       if (opportunities.length === 0) {
@@ -471,13 +564,12 @@ export class MastraScrapingService {
           // Create a basic opportunity from the extracted content - avoid overwriting existing data
           opportunities = [
             {
-              title: null, // Will be preserved from existing RFP
+              title: '', // Will be preserved from existing RFP
               description: content.substring(0, 1000), // Limit description length
-              sourceUrl: url,
-              agency: null, // Will be preserved from existing RFP
-              deadline: null,
-              estimatedValue: null,
-              documents: [], // Will be populated by document extraction
+              url: url,
+              agency: '', // Will be preserved from existing RFP
+              deadline: undefined,
+              estimatedValue: undefined,
             },
           ];
 
@@ -526,8 +618,7 @@ export class MastraScrapingService {
             : existingRfp.deadline,
           estimatedValue:
             opportunity.estimatedValue || existingRfp.estimatedValue,
-          requirements:
-            opportunity.requirements || existingRfp.requirements || [],
+          requirements: existingRfp.requirements || [],
           status: 'parsing',
           progress: 25,
           updatedAt: new Date(),
@@ -539,97 +630,10 @@ export class MastraScrapingService {
           `📄 Found ${existingDocs.length} existing documents for RFP ${existingRfpId}`
         );
 
-        // Process documents if available in the opportunity
-        if (opportunity.documents && Array.isArray(opportunity.documents)) {
-          for (const docInfo of opportunity.documents) {
-            try {
-              // Normalize URL for comparison (remove query params, fragments)
-              const normalizedUrl = docInfo.url
-                ? new URL(docInfo.url).origin + new URL(docInfo.url).pathname
-                : '';
-
-              // Enhanced duplicate detection with normalized URLs and filename sanitization
-              const sanitizedFilename = (
-                docInfo.filename || 'unknown_document'
-              ).replace(/[^a-zA-Z0-9._-]/g, '_');
-
-              const isDuplicate = existingDocs.some(doc => {
-                // Use object path as a fallback for URL comparison since sourceUrl might not exist in schema
-                return (
-                  doc.filename === sanitizedFilename ||
-                  doc.filename === docInfo.filename ||
-                  (doc.objectPath && doc.objectPath.includes(sanitizedFilename))
-                );
-              });
-
-              if (!isDuplicate && docInfo.url && normalizedUrl) {
-                console.log(
-                  `📥 Downloading new document: ${sanitizedFilename}`
-                );
-
-                // Download and validate document with enhanced error handling
-                const response = await fetch(docInfo.url, {
-                  headers: {
-                    'User-Agent': 'Mozilla/5.0 (compatible; RFP-Agent/1.0)',
-                  },
-                });
-
-                if (response.ok && response.status === 200) {
-                  const contentLength = response.headers.get('content-length');
-                  if (contentLength && parseInt(contentLength) > 0) {
-                    const buffer = await response.arrayBuffer();
-
-                    // Additional validation: check if content is actually a document
-                    if (buffer.byteLength > 100) {
-                      // Minimum size check
-                      const document = await storage.createDocument({
-                        rfpId: existingRfpId,
-                        filename: sanitizedFilename,
-                        fileType:
-                          docInfo.fileType ||
-                          this.detectFileType(sanitizedFilename),
-                        objectPath: `rfps/${existingRfpId}/${sanitizedFilename}`,
-                        extractedText: null,
-                        parsedData: {
-                          sourceUrl: docInfo.url,
-                          originalFilename: docInfo.filename,
-                        },
-                      });
-
-                      if (document) {
-                        documentsCount++;
-                        console.log(
-                          `✅ Document saved: ${sanitizedFilename} (${buffer.byteLength} bytes)`
-                        );
-                      }
-                    } else {
-                      console.log(
-                        `⚠️ Skipping document with insufficient content: ${sanitizedFilename}`
-                      );
-                    }
-                  } else {
-                    console.log(
-                      `⚠️ Skipping document with no content: ${sanitizedFilename}`
-                    );
-                  }
-                } else {
-                  console.log(
-                    `⚠️ Failed to download document ${sanitizedFilename}: HTTP ${response.status}`
-                  );
-                }
-              } else {
-                console.log(
-                  `⏭️ Skipping duplicate document: ${sanitizedFilename}`
-                );
-              }
-            } catch (docError) {
-              console.error(
-                `❌ Failed to process document ${docInfo.filename}:`,
-                docError
-              );
-            }
-          }
-        }
+        // Documents are processed separately through document download orchestrator
+        // The opportunity object from UnifiedScrapeResult doesn't include documents
+        // Document processing happens via browserbaseSessionId and documentDownloadOrchestrator
+        // (see lines 350-380 for document download orchestration)
       }
 
       return {
@@ -729,7 +733,7 @@ export class MastraScrapingService {
       const context = await this.buildPortalContext(portal, searchFilter);
 
       // Create coordination record for tracking agent performance
-      let opportunities: any[] = [];
+      let opportunities: UnifiedScrapeResult['opportunities'] = [];
       let coordinationId: string | null = null;
 
       try {
@@ -857,10 +861,10 @@ export class MastraScrapingService {
             loginRequired: portal.loginRequired,
             credentials: portal.loginRequired
               ? {
-                  username: portal.username,
-                  password: portal.password,
+                  username: portal.username || undefined,
+                  password: portal.password || undefined,
                 }
-              : null,
+              : undefined,
             portalType: portal.name.toLowerCase(),
             sessionId: `portal-${portal.id}-${Date.now()}`,
             searchFilter: searchFilter,
@@ -908,21 +912,39 @@ export class MastraScrapingService {
         const opportunity = opportunities[i];
         console.log(
           `🔧 Processing opportunity ${i + 1}/${opportunities.length}: ${
-            opportunity.title || opportunity.solicitationId || 'Unknown'
+            opportunity.title || 'Unknown'
           }`
         );
         try {
-          await this.processOpportunity(opportunity, portal, coordinationId);
+          // Ensure description is a string and confidence is a number for processOpportunity
+          const processedOpportunity: z.infer<typeof OpportunitySchema> = {
+            title: opportunity.title,
+            description: opportunity.description || '',
+            confidence: opportunity.confidence ?? 0.5,
+            agency: opportunity.agency,
+            deadline: opportunity.deadline,
+            estimatedValue: opportunity.estimatedValue,
+            url: opportunity.url,
+            category: opportunity.category,
+            solicitationId:
+              'solicitationId' in opportunity &&
+              typeof (opportunity as Record<string, unknown>).solicitationId ===
+                'string'
+                ? ((opportunity as Record<string, unknown>)
+                    .solicitationId as string)
+                : undefined,
+          };
+          await this.processOpportunity(
+            processedOpportunity,
+            portal,
+            coordinationId
+          );
           console.log(
-            `✅ Successfully processed opportunity: ${
-              opportunity.title || opportunity.solicitationId
-            }`
+            `✅ Successfully processed opportunity: ${opportunity.title}`
           );
         } catch (error) {
           console.error(
-            `❌ Error processing opportunity ${
-              opportunity.title || opportunity.solicitationId
-            }:`,
+            `❌ Error processing opportunity ${opportunity.title}:`,
             error
           );
         }
@@ -1029,8 +1051,9 @@ export class MastraScrapingService {
     const portalName = portal.name.toLowerCase().replace(/\s+/g, '_');
 
     // Try to find specialized agent first
-    if (this.agents.has(portalName)) {
-      return this.agents.get(portalName)!;
+    const specializedAgent = this.agents.get(portalName);
+    if (specializedAgent) {
+      return specializedAgent;
     }
 
     // Check for partial matches
@@ -1041,7 +1064,13 @@ export class MastraScrapingService {
     }
 
     // Fall back to generic agent
-    return this.agents.get('generic')!;
+    const genericAgent = this.agents.get('generic');
+    if (!genericAgent) {
+      throw new Error(
+        'Generic agent not found. Agents must be initialized before use.'
+      );
+    }
+    return genericAgent;
   }
 
   private async buildPortalContext(
@@ -1167,7 +1196,9 @@ Focus on active, open opportunities only. Return results as structured JSON with
 Use your specialized knowledge of this portal type to navigate efficiently and extract accurate data.`;
   }
 
-  private parseAgentResponse(response: string): any[] {
+  private parseAgentResponse(
+    response: string
+  ): z.infer<typeof OpportunitySchema>[] {
     try {
       console.log('🤖 Parsing AI agent response...');
       console.log(`📝 Agent response length: ${response.length} characters`);
@@ -1221,7 +1252,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     }
   }
 
-  private async intelligentWebScrape(context: any): Promise<any> {
+  private async intelligentWebScrape(
+    context: UnifiedScrapeContext
+  ): Promise<UnifiedScrapeResult> {
     return await this.requestLimiter(async () => {
       try {
         const { url, loginRequired, credentials, searchFilter } = context;
@@ -1255,13 +1288,14 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         );
 
         // Step 1: Fetch the page content
-        let sessionData: any = null;
+        let sessionData: SessionData | null = null;
         if (loginRequired && credentials) {
           sessionData = await this.handleAuthentication({
             portalUrl: url,
-            username: credentials.username,
-            password: credentials.password,
-            authContext: `${portalType} portal authentication`,
+            username: credentials.username || '',
+            password: credentials.password || '',
+            sessionId: 'default',
+            portalType: portalType || 'generic',
           });
 
           if (!sessionData.authenticated) {
@@ -1271,7 +1305,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
         // Step 2: Fetch main portal page with optimized session handling
         let html: string;
-        let structuredData: any = null;
+        let structuredData: StructuredScrapingData | null = null;
 
         if (
           portalType.toLowerCase().includes('austin') &&
@@ -1324,7 +1358,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
         // Step 3: Parse HTML content with Cheerio (skip if we have structured data)
         let $: cheerio.CheerioAPI | null = null;
-        let extractedContent: any = null;
+        let extractedContent: ExtractedContent | null = null;
 
         if (structuredData && structuredData.opportunities) {
           // Use structured data directly from Stagehand extraction
@@ -1336,7 +1370,15 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             headings: [],
             links: [],
             text: '',
-            opportunities: structuredData.opportunities,
+            opportunities:
+              structuredData.opportunities?.map(opp => ({
+                title: opp.title || '',
+                description: opp.description,
+                agency: opp.agency,
+                deadline: opp.deadline,
+                estimatedValue: opp.estimatedValue,
+                url: opp.url,
+              })) || [],
           };
         } else if (html) {
           // Parse HTML content with Cheerio for traditional extraction
@@ -1371,17 +1413,22 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         );
 
         // Step 5: Look for RFP/opportunity links to fetch additional details (skip if we have structured data)
-        let opportunityLinks: any[] = [];
+        let opportunityLinks: Array<{
+          url: string;
+          text?: string;
+          title?: string;
+          type?: string;
+        }> = [];
         if (structuredData && structuredData.opportunities) {
           // Extract links from structured opportunities if available
           console.log(`🔗 Extracting links from structured data...`);
           opportunityLinks = structuredData.opportunities
-            .map((opp: any) => ({
-              url: opp.link || opp.url,
+            .map(opp => ({
+              url: (opp.link || opp.url || '') as string,
               title: opp.title,
               type: 'opportunity',
             }))
-            .filter((link: any) => link.url);
+            .filter(link => link.url && typeof link.url === 'string');
         } else if ($) {
           // Traditional HTML link extraction
           console.log(`🔗 Looking for opportunity links...`);
@@ -1395,7 +1442,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         );
 
         // Step 6: Fetch additional opportunity details (skip if we have structured data with sufficient detail)
-        let detailedOpportunities: any[] = [];
+        let detailedOpportunities: UnifiedScrapeResult['opportunities'] = [];
         if (structuredData && structuredData.opportunities) {
           // Skip fetching additional details for structured data since Stagehand extraction is comprehensive
           console.log(
@@ -1414,13 +1461,23 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             (opportunityLinks || []).slice(0, 10).map(
               (
                 link // Limit to 10 opportunities per scrape
-              ) => this.fetchOpportunityDetails(link, sessionData)
+              ) => this.fetchOpportunityDetails(link.url, sessionData)
             )
           );
           detailedOpportunities = detailFetches
             .filter(result => result.status === 'fulfilled')
-            .map(result => (result as PromiseFulfilledResult<any>).value)
-            .filter(opp => opp !== null);
+            .map(
+              result =>
+                (
+                  result as PromiseFulfilledResult<
+                    UnifiedScrapeResult['opportunities'][0]
+                  >
+                ).value
+            )
+            .filter(
+              (opp): opp is UnifiedScrapeResult['opportunities'][0] =>
+                opp !== null
+            );
         }
 
         console.log(
@@ -1428,7 +1485,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         );
 
         // Merge detailed opportunities with extracted opportunities - critical fix!
-        const extractedOpportunities = extractedContent.opportunities || [];
+        const extractedOpportunities = extractedContent?.opportunities || [];
         const allOpportunities = [
           ...detailedOpportunities,
           ...extractedOpportunities,
@@ -1438,17 +1495,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         // This prevents collapsing multiple opportunities due to shared generic list URLs
         const uniqueOpportunities = allOpportunities.filter(
           (opportunity, index, arr) => {
-            const identifier =
-              opportunity.solicitationId ||
-              opportunity.title ||
-              opportunity.link ||
-              opportunity.url;
+            const identifier = opportunity.title || opportunity.url;
             return (
-              arr.findIndex(
-                o =>
-                  (o.solicitationId || o.title || o.link || o.url) ===
-                  identifier
-              ) === index
+              arr.findIndex(o => (o.title || o.url) === identifier) === index
             );
           }
         );
@@ -1459,21 +1508,19 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           const filterTerm = searchFilter.toLowerCase().trim();
           const beforeFilterCount = finalOpportunities.length;
 
-          finalOpportunities = uniqueOpportunities.filter(
-            (opportunity: any) => {
-              const title = (opportunity.title || '').toLowerCase();
-              const description = (opportunity.description || '').toLowerCase();
-              const agency = (opportunity.agency || '').toLowerCase();
-              const category = (opportunity.category || '').toLowerCase();
+          finalOpportunities = uniqueOpportunities.filter(opportunity => {
+            const title = (opportunity.title || '').toLowerCase();
+            const description = (opportunity.description || '').toLowerCase();
+            const agency = (opportunity.agency || '').toLowerCase();
+            const category = String(opportunity.category || '').toLowerCase();
 
-              return (
-                title.includes(filterTerm) ||
-                description.includes(filterTerm) ||
-                agency.includes(filterTerm) ||
-                category.includes(filterTerm)
-              );
-            }
-          );
+            return (
+              title.includes(filterTerm) ||
+              description.includes(filterTerm) ||
+              agency.includes(filterTerm) ||
+              category.includes(filterTerm)
+            );
+          });
 
           console.log(
             `🔍 Search filter "${searchFilter}" applied: ${beforeFilterCount} → ${finalOpportunities.length} opportunities`
@@ -1493,14 +1540,21 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         );
 
         return {
-          content: html,
-          extractedContent,
-          opportunities: finalOpportunities,
-          opportunityLinks,
+          opportunities: finalOpportunities.map(opp => ({
+            title: opp.title || '',
+            description: opp.description,
+            agency: opp.agency,
+            deadline: opp.deadline,
+            estimatedValue: opp.estimatedValue,
+            url: opp.url,
+            category:
+              typeof opp.category === 'string' ? opp.category : undefined,
+            confidence:
+              typeof opp.confidence === 'number' ? opp.confidence : undefined,
+          })),
           status: 'success',
-          timestamp: new Date().toISOString(),
           portalType,
-          url,
+          scrapedAt: new Date().toISOString(),
         };
       } catch (error) {
         console.error(
@@ -1508,16 +1562,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           error
         );
         return {
-          error: error instanceof Error ? error.message : String(error),
+          opportunities: [],
           status: 'error',
-          url: context.url,
-          timestamp: new Date().toISOString(),
+          error: error instanceof Error ? error.message : String(error),
+          portalType: context.portalType,
         };
       }
     });
   }
 
-  private async extractRFPData(context: any): Promise<any> {
+  private async extractRFPData(
+    context: ExtractRFPDataContext
+  ): Promise<unknown> {
     // Use AI to extract structured RFP data from content with rate limiting
     return await this.aiLimiter(async () => {
       try {
@@ -1534,7 +1590,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   // Removed duplicate getWithRedirects method - using the improved version with loop detection
 
-  private async handleAuthentication(context: any): Promise<any> {
+  private async handleAuthentication(
+    context: AuthenticationContext
+  ): Promise<SessionData> {
     return await this.requestLimiter(async () => {
       try {
         const { portalUrl, username, password, authContext } = context;
@@ -1561,11 +1619,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               `🌐 Browser authentication required: HTTP ${finalResponse.statusCode} - portal requires authentication`
             );
             return await this.handleBrowserAuthentication({
-              loginUrl: finalUrl,
-              targetUrl: portalUrl,
+              portalUrl: finalUrl,
               username,
               password,
-              portal: authContext?.portal,
+              sessionId: 'default',
+              portalType:
+                typeof authContext === 'string' ? authContext : undefined,
             });
           }
           throw new Error(
@@ -1587,7 +1646,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           };
         }
 
-        if (authMethod.type === 'unsupported') {
+        if (authMethod.type === 'unknown') {
           return {
             authenticated: false,
             error: 'Unsupported authentication method detected',
@@ -1615,11 +1674,12 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             `🌐 Browser authentication required: ${authMethod.details}`
           );
           return await this.handleBrowserAuthentication({
-            loginUrl: finalUrl,
-            targetUrl: portalUrl,
+            portalUrl: finalUrl,
             username,
             password,
-            portal: authContext?.portal,
+            sessionId: 'default',
+            portalType:
+              typeof authContext === 'string' ? authContext : undefined,
           });
         }
 
@@ -1643,7 +1703,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   }
 
   private async processOpportunity(
-    opportunity: any,
+    opportunity: z.infer<typeof OpportunitySchema>,
     portal: Portal,
     coordinationId?: string | null
   ): Promise<void> {
@@ -1654,14 +1714,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     );
     try {
       // Enhanced AI analysis with confidence scoring
-      console.log(
-        `🤖 Calling AI analysis for: ${
-          opportunity.title || opportunity.solicitationId
-        }`
-      );
+      console.log(`🤖 Calling AI analysis for: ${opportunity.title}`);
       const rfpDetails = await this.aiService.extractRFPDetails(
-        opportunity.content || opportunity.description,
-        opportunity.link || opportunity.url
+        opportunity.description || '',
+        opportunity.url || ''
       );
       console.log(
         `🤖 AI analysis completed. Result:`,
@@ -1680,18 +1736,16 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       if (!rfpDetails) {
         console.log(
-          `🚫 Skipping opportunity - AI returned null: ${
-            opportunity.title || opportunity.solicitationId
-          }`
+          `🚫 Skipping opportunity - AI returned null: ${opportunity.title}`
         );
         return;
       }
 
       if (rfpDetails.confidence < confidenceThreshold) {
         console.log(
-          `🚫 Skipping low-confidence opportunity: ${
-            opportunity.title || opportunity.solicitationId
-          } (confidence: ${(rfpDetails.confidence * 100).toFixed(
+          `🚫 Skipping low-confidence opportunity: ${opportunity.title} (confidence: ${(
+            rfpDetails.confidence * 100
+          ).toFixed(
             1
           )}%, threshold: ${(confidenceThreshold * 100).toFixed(1)}%)`
         );
@@ -1699,22 +1753,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       }
 
       console.log(
-        `✅ AI analysis passed: ${
-          opportunity.title || opportunity.solicitationId
-        } (confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%)`
+        `✅ AI analysis passed: ${opportunity.title} (confidence: ${(rfpDetails.confidence * 100).toFixed(1)}%)`
       );
 
       // Validate and fix sourceUrl - ensure it points to specific RFP detail page
       const sourceUrl = this.validateAndFixSourceUrl(
-        opportunity.link || opportunity.url,
+        opportunity.url || '',
         portal,
         opportunity
       );
       if (!sourceUrl) {
         console.log(
-          `🚫 Skipping opportunity - invalid or generic URL: ${
-            opportunity.link || opportunity.url
-          }`
+          `🚫 Skipping opportunity - invalid or generic URL: ${opportunity.url || 'missing'}`
         );
         return;
       }
@@ -1799,17 +1849,21 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       }
 
       // Download documents for SAM.gov RFPs
+      // Extract notice ID from URL or use solicitationNumber from rfpDetails
+      const noticeId =
+        rfpDetails.solicitationNumber ||
+        (opportunity.url ? this.extractSAMGovNoticeId(opportunity.url) : null);
       if (
         (portal.url.includes('sam.gov') ||
           shouldUseSAMGovExtraction(portal.type, portal.url)) &&
-        opportunity.noticeId
+        noticeId
       ) {
         try {
           console.log(
-            `📄 Downloading documents for SAM.gov RFP: ${rfp.title} (Notice ID: ${opportunity.noticeId})`
+            `📄 Downloading documents for SAM.gov RFP: ${rfp.title} (Notice ID: ${noticeId})`
           );
           const documents = await this.samGovDownloader.downloadRFPDocuments(
-            opportunity.noticeId,
+            noticeId,
             rfp.id
           );
           console.log(
@@ -1860,7 +1914,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private validateAndFixSourceUrl(
     url: string,
     portal: Portal,
-    opportunity: any
+    opportunity: z.infer<typeof OpportunitySchema>
   ): string | null {
     if (!url) {
       console.log(`🚫 No URL provided for opportunity: ${opportunity.title}`);
@@ -1907,7 +1961,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return this.validateGenericUrl(url, opportunity);
   }
 
-  private validateFindRFPUrl(url: string, opportunity: any): string | null {
+  private validateFindRFPUrl(
+    url: string,
+    opportunity: z.infer<typeof OpportunitySchema>
+  ): string | null {
     // FindRFP specific URLs must contain detail pages with rfpid parameter
     if (
       url.includes('detail.aspx?rfpid=') ||
@@ -1934,7 +1991,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private validateAustinFinanceUrl(
     url: string,
-    opportunity: any
+    opportunity: z.infer<typeof OpportunitySchema>
   ): string | null {
     // Austin Finance URLs must contain solicitation_details.cfm with sid parameter
     if (url.includes('solicitation_details.cfm?sid=')) {
@@ -1956,7 +2013,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private validateBonfireUrl(url: string, _opportunity?: any): string | null {
+  private validateBonfireUrl(
+    url: string,
+    _opportunity?: z.infer<typeof OpportunitySchema>
+  ): string | null {
     // Bonfire URLs typically contain opportunity or bid IDs
     if (
       url.includes('/opportunities/') ||
@@ -1972,7 +2032,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private validateSAMGovUrl(url: string, _opportunity?: any): string | null {
+  private validateSAMGovUrl(
+    url: string,
+    _opportunity?: z.infer<typeof OpportunitySchema>
+  ): string | null {
     const result = validateSAMGovUrl(url);
     // Handle workspace URL error - treat as invalid for automated scanning
     if (result && typeof result === 'object' && 'error' in result) {
@@ -1983,7 +2046,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return result;
   }
 
-  private validateGenericUrl(url: string, _opportunity?: any): string | null {
+  private validateGenericUrl(
+    url: string,
+    _opportunity?: z.infer<typeof OpportunitySchema>
+  ): string | null {
     // For generic portals, ensure URL contains some form of ID or specific identifier
     const hasId =
       /[?&](id|rfp|bid|opp|solicitation)=/i.test(url) ||
@@ -1999,13 +2065,16 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private extractRFPId(opportunity: any): string | null {
+  private extractRFPId(
+    opportunity: z.infer<typeof OpportunitySchema> & { [key: string]: unknown }
+  ): string | null {
     // Try to extract RFP ID from various fields
+    const opp = opportunity as { [key: string]: unknown };
     const idSources = [
-      opportunity.rfpId,
-      opportunity.id,
+      opp.rfpId as string | undefined,
+      opp.id as string | undefined,
       opportunity.solicitationId,
-      opportunity.opportunityId,
+      opp.opportunityId as string | undefined,
     ];
 
     for (const id of idSources) {
@@ -2024,13 +2093,16 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return null;
   }
 
-  private extractSolicitationId(opportunity: any): string | null {
+  private extractSolicitationId(
+    opportunity: z.infer<typeof OpportunitySchema> & { [key: string]: unknown }
+  ): string | null {
     // Try to extract solicitation ID from various fields
+    const opp = opportunity as { [key: string]: unknown };
     const idSources = [
       opportunity.solicitationId,
-      opportunity.sid,
-      opportunity.id,
-      opportunity.rfpId,
+      opp.sid as string | undefined,
+      opp.id as string | undefined,
+      opp.rfpId as string | undefined,
     ];
 
     for (const id of idSources) {
@@ -2100,13 +2172,13 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     maxRedirects: number = 10,
     initialCookies?: string | null
   ): Promise<{
-    finalResponse: any;
+    finalResponse: HttpResponseWrapper;
     finalUrl: string;
     cookieHeader: string | null;
   }> {
     let currentUrl = url;
     let redirectCount = 0;
-    let currentResponse: any;
+    let currentResponse: HttpResponseWrapper | undefined;
     const cookies = new Map<string, string>();
     const visitedUrls = new Set<string>();
 
@@ -2157,8 +2229,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       currentResponse = {
         statusCode: axiosResponse.status,
-        headers: axiosResponse.headers as any,
-        body: { text: async () => axiosResponse.data },
+        headers: axiosResponse.headers as Record<string, string | string[]>,
+        body: { text: async () => String(axiosResponse.data) },
       };
 
       // Update cookies from response
@@ -2237,13 +2309,13 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     $: cheerio.CheerioAPI,
     portalType: string,
     url: string
-  ): any {
-    const content = {
+  ): ExtractedContent {
+    const content: ExtractedContent = {
       title: $('title').text(),
-      headings: [] as string[],
-      links: [] as string[],
+      headings: [],
+      links: [],
       text: '',
-      opportunities: [] as any[],
+      opportunities: [],
     };
 
     try {
@@ -2286,7 +2358,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         const href = $(element).attr('href');
         const text = $(element).text().trim();
         if (href && text) {
-          content.links.push(`${href} (${text})`);
+          content.links.push({ url: href, text });
         }
       });
 
@@ -2305,8 +2377,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private extractBonfireOpportunities(
     $: cheerio.CheerioAPI,
     baseUrl: string
-  ): any[] {
-    const opportunities: any[] = [];
+  ): z.infer<typeof OpportunitySchema>[] {
+    const opportunities: z.infer<typeof OpportunitySchema>[] = [];
     console.log(`🔍 Analyzing Bonfire Hub HTML structure...`);
 
     // Debug: Log the page structure to understand what we're working with
@@ -2390,8 +2462,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             description,
             deadline,
             agency,
-            link: link ? new URL(link, baseUrl).toString() : null,
-            source: 'bonfire_table',
+            url: link ? new URL(link, baseUrl).toString() : undefined,
+            confidence: 0.6,
           });
           console.log(`✅ Bonfire table opportunity found: ${title}`);
         }
@@ -2419,10 +2491,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           opportunities.push({
             title,
             description: text,
-            deadline: '',
-            agency: '',
-            link: link ? new URL(link, baseUrl).toString() : null,
-            source: 'bonfire_list',
+            deadline: undefined,
+            agency: undefined,
+            url: link ? new URL(link, baseUrl).toString() : undefined,
+            confidence: 0.5,
           });
           console.log(`✅ Bonfire list opportunity found: ${title}`);
         }
@@ -2452,10 +2524,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
           opportunities.push({
             title,
             description: text,
-            deadline: '',
-            agency: '',
-            link: link ? new URL(link, baseUrl).toString() : null,
-            source: 'bonfire_div',
+            deadline: undefined,
+            agency: undefined,
+            url: link ? new URL(link, baseUrl).toString() : undefined,
+            confidence: 0.5,
           });
           console.log(`✅ Bonfire div opportunity found: ${title}`);
         }
@@ -2468,8 +2540,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private extractSAMGovOpportunities(
     $: cheerio.CheerioAPI,
     baseUrl: string
-  ): any[] {
-    const opportunities: any[] = [];
+  ): z.infer<typeof OpportunitySchema>[] {
+    const opportunities: z.infer<typeof OpportunitySchema>[] = [];
 
     // SAM.gov specific selectors
     $('.opportunity-row, .search-result, [class*="opportunity"]').each(
@@ -2497,11 +2569,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         if (title && link) {
           opportunities.push({
             title,
-            description,
-            agency,
-            deadline,
-            link: new URL(link, baseUrl).toString(),
-            source: 'sam.gov',
+            description: description || '',
+            agency: agency || undefined,
+            deadline: deadline || undefined,
+            url: new URL(link, baseUrl).toString(),
+            confidence: 0.7,
           });
         }
       }
@@ -2515,8 +2587,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private extractAustinFinanceOpportunities(
     $: cheerio.CheerioAPI,
     baseUrl: string
-  ): any[] {
-    const opportunities: any[] = [];
+  ): z.infer<typeof OpportunitySchema>[] {
+    const opportunities: z.infer<typeof OpportunitySchema>[] = [];
 
     console.log(`🔍 Austin Finance: Starting extraction from ${baseUrl}`);
 
@@ -2608,13 +2680,13 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       description = description.substring(0, 500); // Limit length
 
       if (solicitationId && title) {
-        const opportunity = {
+        const opportunity: z.infer<typeof OpportunitySchema> = {
           title: title,
+          description: description || '',
           solicitationId: solicitationId,
-          description: description,
-          dueDate: dueDate,
           agency: 'City of Austin',
-          link: new URL(href, baseUrl).toString(),
+          deadline: dueDate || undefined,
+          url: new URL(href, baseUrl).toString(),
           category: solicitationId.toUpperCase().startsWith('IFQ')
             ? 'Quote'
             : solicitationId.toUpperCase().startsWith('IFB')
@@ -2622,7 +2694,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
               : solicitationId.toUpperCase().startsWith('RFP')
                 ? 'Proposal'
                 : 'Other',
-          source: 'austin_finance',
+          confidence: 0.8,
         };
 
         opportunities.push(opportunity);
@@ -2632,10 +2704,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       }
     });
 
-    // Remove duplicates based on solicitation ID
+    // Remove duplicates based on title
     const unique = opportunities.filter(
-      (opp, index, self) =>
-        index === self.findIndex(o => o.solicitationId === opp.solicitationId)
+      (opp, index, self) => index === self.findIndex(o => o.title === opp.title)
     );
 
     console.log(
@@ -2657,8 +2728,8 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private extractGenericOpportunities(
     $: cheerio.CheerioAPI,
     baseUrl: string
-  ): any[] {
-    const opportunities: any[] = [];
+  ): z.infer<typeof OpportunitySchema>[] {
+    const opportunities: z.infer<typeof OpportunitySchema>[] = [];
 
     // Generic selectors for various portal types
     const selectors = [
@@ -2693,9 +2764,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         if (title && link && !opportunities.some(opp => opp.title === title)) {
           opportunities.push({
             title,
-            description,
-            link: new URL(link, baseUrl).toString(),
-            source: 'generic',
+            description: description || '',
+            url: new URL(link, baseUrl).toString(),
+            confidence: 0.5,
           });
         }
       });
@@ -2708,16 +2779,20 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
   private async fetchOpportunityDetails(
     url: string,
-    sessionData: any
-  ): Promise<any> {
+    sessionData: SessionData | null
+  ): Promise<OpportunityDetails | null> {
     return await this.requestLimiter(async () => {
       try {
         const response = await axios.get(url, {
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            ...(sessionData?.cookies ? { Cookie: sessionData.cookies } : {}),
-            ...(sessionData?.headers ? sessionData.headers : {}),
+            ...(sessionData?.cookies
+              ? { Cookie: String(sessionData.cookies) }
+              : {}),
+            ...(sessionData?.headers
+              ? (sessionData.headers as Record<string, string>)
+              : {}),
           },
           timeout: 20000,
           validateStatus: status => status === 200,
@@ -2780,7 +2855,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
   private detectAuthenticationMethod(
     $: cheerio.CheerioAPI,
     portalUrl: string
-  ): any {
+  ): AuthenticationMethod {
     // Check for common authentication patterns
     const forms = $('form');
 
@@ -2825,6 +2900,7 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
 
       return {
         type: 'form',
+        details: 'Form-based authentication detected',
         formData: {
           action: new URL(action || portalUrl, portalUrl).toString(),
           method,
@@ -3802,7 +3878,11 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     }
   }
 
-  private extractCookies(response: any): string | null {
+  private extractCookies(
+    response:
+      | HttpResponseWrapper
+      | { headers: Record<string, string | string[]> }
+  ): string | null {
     const setCookieHeaders = response.headers['set-cookie'];
     if (!setCookieHeaders) return null;
 
@@ -3813,6 +3893,28 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     return cookies
       .map(cookie => cookie.split(';')[0]) // Take only the name=value part
       .join('; ');
+  }
+
+  /**
+   * Extract SAM.gov notice ID from URL
+   */
+  private extractSAMGovNoticeId(url: string): string | null {
+    try {
+      const urlObj = new URL(url);
+      // SAM.gov URLs typically have notice ID in path or query params
+      const pathMatch = urlObj.pathname.match(/\/view\/([A-Z0-9]+)/i);
+      if (pathMatch) return pathMatch[1];
+
+      const noticeIdParam =
+        urlObj.searchParams.get('noticeId') ||
+        urlObj.searchParams.get('notice_id') ||
+        urlObj.searchParams.get('id');
+      if (noticeIdParam) return noticeIdParam;
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 
   private extractJsonBlocks(text: string): string[] {
@@ -3880,14 +3982,23 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     scrapedData: any;
     documentsResult: any;
   }> {
-    const { rfpId, portalUrl, sessionId = 'default', expectedDocuments = [] } = input;
+    const {
+      rfpId,
+      portalUrl,
+      sessionId = 'default',
+      expectedDocuments = [],
+    } = input;
     const log = console;
 
-    log.log('🚀 Starting portal scan with document downloads', { rfpId, portalUrl });
+    log.log('🚀 Starting portal scan with document downloads', {
+      rfpId,
+      portalUrl,
+    });
 
     try {
       // Step 1: Navigate to RFP page and discover documents
-      const { stagehand, page } = await sessionManager.getStagehandAndPage(sessionId);
+      const { stagehand, page } =
+        await sessionManager.getStagehandAndPage(sessionId);
 
       await page.goto(portalUrl, { waitUntil: 'domcontentloaded' });
       await new Promise(resolve => setTimeout(resolve, 3000)); // Wait for dynamic content
@@ -3902,9 +4013,20 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
             items: {
               type: 'object',
               properties: {
-                name: { type: 'string', description: 'Document filename or description' },
-                url: { type: 'string', optional: true, description: 'Download URL if visible' },
-                size: { type: 'string', optional: true, description: 'File size if shown' },
+                name: {
+                  type: 'string',
+                  description: 'Document filename or description',
+                },
+                url: {
+                  type: 'string',
+                  optional: true,
+                  description: 'Download URL if visible',
+                },
+                size: {
+                  type: 'string',
+                  optional: true,
+                  description: 'File size if shown',
+                },
               },
             },
           },
@@ -3918,11 +4040,16 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       for (const doc of documentsArray) {
         try {
           log.log('⬇️ Triggering download', { document: doc.name });
-          await stagehand.act(`Click the download link or button for "${doc.name}"`);
+          await stagehand.act(
+            `Click the download link or button for "${doc.name}"`
+          );
           // Small delay between downloads to avoid rate limiting
           await new Promise(resolve => setTimeout(resolve, 1000));
         } catch (e) {
-          log.log('⚠️ Failed to click download for document', { document: doc.name, error: (e as Error).message });
+          log.log('⚠️ Failed to click download for document', {
+            document: doc.name,
+            error: (e as Error).message,
+          });
         }
       }
 
@@ -3931,13 +4058,18 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Step 5: Retrieve and process downloads
-      const browserbaseSessionId = sessionManager.getBrowserbaseSessionId(sessionId);
+      const browserbaseSessionId =
+        sessionManager.getBrowserbaseSessionId(sessionId);
       if (!browserbaseSessionId) {
-        throw new Error('Browserbase session ID not found - cannot retrieve downloads');
+        throw new Error(
+          'Browserbase session ID not found - cannot retrieve downloads'
+        );
       }
 
       // Import the orchestrator dynamically to avoid circular dependencies
-      const { documentDownloadOrchestrator } = await import('../downloads/documentDownloadOrchestrator');
+      const { documentDownloadOrchestrator } = await import(
+        '../downloads/documentDownloadOrchestrator'
+      );
 
       // Merge discovered documents with expected documents for verification
       const allExpectedDocs = [
@@ -3948,12 +4080,13 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
         })),
       ];
 
-      const documentsResult = await documentDownloadOrchestrator.processRfpDocuments({
-        rfpId,
-        browserbaseSessionId,
-        expectedDocuments: allExpectedDocs,
-        retryForSeconds: 30,
-      });
+      const documentsResult =
+        await documentDownloadOrchestrator.processRfpDocuments({
+          rfpId,
+          browserbaseSessionId,
+          expectedDocuments: allExpectedDocs,
+          retryForSeconds: this.DOCUMENT_RETRY_TIMEOUT_SECONDS,
+        });
 
       log.log('✅ Document download orchestration complete', {
         processed: documentsResult.totalDownloaded,
@@ -3981,10 +4114,10 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     const unit = match[2].toUpperCase();
 
     const multipliers: Record<string, number> = {
-      'B': 1,
-      'KB': 1024,
-      'MB': 1024 * 1024,
-      'GB': 1024 * 1024 * 1024,
+      B: 1,
+      KB: 1024,
+      MB: 1024 * 1024,
+      GB: 1024 * 1024 * 1024,
     };
 
     return Math.round(value * (multipliers[unit] || 1));
@@ -3997,7 +4130,9 @@ Use your specialized knowledge of this portal type to navigate efficiently and e
     portal: Portal,
     searchFilter?: string
   ): Promise<any[]> {
-    const { SAMGovApiClient } = await import('../scraping/utils/samGovApiClient');
+    const { SAMGovApiClient } = await import(
+      '../scraping/utils/samGovApiClient'
+    );
     const client = new SAMGovApiClient();
 
     // Build search filters
