@@ -283,3 +283,156 @@ layer(base);
 .activity-item:nth-child(5) {
   animation-delay: 400ms;
 }
+
+/* ===========================================
+   Mobile & Touch-Friendly Styles
+   =========================================== */
+
+/* Prevent text selection during drag/swipe */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Touch manipulation for better touch response */
+.touch-target {
+  @apply touch-manipulation;
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Smooth scrolling on iOS */
+@layer base {
+  html {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Safe area insets for notched devices */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Prevent pull-to-refresh on main app shell */
+  html, body {
+    overscroll-behavior: none;
+  }
+
+  /* Allow overscroll on scrollable content areas */
+  .allow-overscroll {
+    overscroll-behavior: auto;
+  }
+}
+
+/* Mobile-specific responsive adjustments */
+@media (max-width: 640px) {
+  /* Reduce padding on mobile */
+  .container {
+    @apply px-3;
+  }
+
+  /* Stack buttons on mobile */
+  .button-group {
+    @apply flex-col gap-2;
+  }
+
+  /* Full-width buttons on mobile */
+  .button-group > button {
+    @apply w-full;
+  }
+
+  /* Smaller text sizes for mobile */
+  h1 {
+    @apply text-xl;
+  }
+
+  h2 {
+    @apply text-lg;
+  }
+
+  /* Compact table cells on mobile */
+  td, th {
+    @apply px-2 py-2 text-sm;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container {
+    @apply px-4;
+  }
+}
+
+/* Active states for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  /* Remove hover effects on touch devices */
+  .hover\:bg-accent:active {
+    @apply bg-accent;
+  }
+
+  /* Add visible active state */
+  button:active,
+  a:active,
+  [role="button"]:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+
+  /* Prevent double-tap zoom on interactive elements */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+}
+
+/* High contrast focus states for accessibility */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Reduce animations for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Mobile sidebar overlay */
+.sidebar-overlay {
+  @apply fixed inset-0 bg-black/50 z-40 md:hidden;
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+/* Scrollbar styling for mobile */
+@media (max-width: 768px) {
+  /* Hide scrollbar but keep functionality */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border-radius: 4px;
+  }
+}

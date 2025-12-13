@@ -10,10 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useMobileSidebar } from '@/contexts/MobileSidebarContext';
 
 export default function Header() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { toggle, isMobile } = useMobileSidebar();
 
   const { data: unreadNotifications } = useQuery({
     queryKey: ['/api/notifications/unread'],
@@ -52,19 +54,35 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-between">
-      <div>
-        <h2
-          className="text-2xl font-bold text-foreground"
-          data-testid="page-title"
-        >
-          RFP Dashboard
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Monitor and manage your automated RFP workflow
-        </p>
+    <header className="bg-card border-b border-border px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+      {/* Left side - hamburger menu on mobile + title */}
+      <div className="flex items-center gap-3 min-w-0">
+        {/* Hamburger menu - only on mobile */}
+        {isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            className="shrink-0 md:hidden touch-manipulation"
+            aria-label="Toggle menu"
+            data-testid="mobile-menu-toggle"
+          >
+            <i className="fas fa-bars text-lg"></i>
+          </Button>
+        )}
+        <div className="min-w-0">
+          <h2
+            className="text-lg sm:text-2xl font-bold text-foreground truncate"
+            data-testid="page-title"
+          >
+            RFP Dashboard
+          </h2>
+          <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+            Monitor and manage your automated RFP workflow
+          </p>
+        </div>
       </div>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-1 sm:gap-4 shrink-0">
         {/* Notifications */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -132,13 +150,13 @@ export default function Header() {
         </Button>
 
         {/* User Menu */}
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center shrink-0">
             <span className="text-xs font-semibold text-primary-foreground">
               VR
             </span>
           </div>
-          <span className="text-sm font-medium" data-testid="user-name">
+          <span className="text-sm font-medium hidden sm:inline" data-testid="user-name">
             Valorie Rodriguez
           </span>
         </div>
